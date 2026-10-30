@@ -1,0 +1,135 @@
+task: m5-spacer
+note: Plain 12 mm OD x 20 mm long tube with a 5.5 mm through bore for an M5 bolt.
+  Bolt length is an assumption, since plate thickness wasn't measured.
+questions:
+- text: What are the plate thicknesses? I assumed ~3 mm each to pick the M5x35 bolt
+    (20 mm spacer + 2 plates + 2 washers + nut). If your plates are much thicker or
+    thinner, use a bolt about 35 mm adjusted accordingly.
+  answer: null
+params:
+  spacer_length:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: requested length
+  spacer_od:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: asked
+    note: requested outer diameter
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal
+  hole_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: total diametral clearance; 5.5 mm hole is the usual M5 medium-fit and allows
+      for FDM hole shrinkage
+  plate_thickness_guess:
+    value: 3.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: user couldn't measure; only used to choose bolt length. Check that bolt
+      length fits your plates
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    hole_d = p.bolt_d + p.hole_clearance\n    return (cq.Workplane('XY').circle(p.spacer_od/2).circle(hole_d/2).extrude(p.spacer_length))"
+  print_orientation: flat end face on the bed, axis vertical
+  use_orientation: axis along the bolt, between the two plates
+hardware:
+- id: bolt
+  ref: ISO 4762 M5x35
+  qty: 1
+- id: washer
+  ref: ISO 7089 M5
+  qty: 2
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: j1
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 20.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: spacer
+    feature: bore
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: c1
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - hole_clearance
+  check:
+    method: measure
+    ref: null
+    description: M5 bolt slides through the bore freely by hand
+- id: c2
+  part: spacer
+  feature: outer diameter and length
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  - spacer_length
+  check:
+    method: measure
+    ref: null
+    description: 'Caliper: 12 mm OD, 20 mm long'
+manual:
+- n: '1'
+  text: Print the spacer standing on its end face (axis vertical), 0.2 mm layers,
+    PLA, 3+ walls. No supports needed.
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check the 5.5 mm bore with the bolt; it should slide through freely. Ream
+    lightly if tight.
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Put a washer on the bolt, pass it through the first plate, then through the
+    spacer, then through the second plate.
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  - washer
+  tool: null
+- n: '4'
+  text: Add the second washer and the nut, then tighten gently. PLA compresses little
+    at 20 mm, but don't overtighten.
+  parts: []
+  hardware:
+  - washer
+  - nut
+  tool: 8 mm spanner and 4 mm hex key

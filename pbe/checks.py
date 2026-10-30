@@ -42,7 +42,7 @@ def bed_fit(built):
             continue
         ex, ey, ez = sorted(b.mesh.extents[:2], reverse=True) + [b.mesh.extents[2]]
         fits = ex <= max(bx, by) and ey <= min(bx, by) and ez <= bz
-        out.append(Finding("bed_fit", b.part, fits, f"{ex:.1f} x {ey:.1f} x {ez:.1f} mm on a {bx} x {by} x {bz} bed", "C6-printability"))
+        out.append(Finding("bed_fit", b.part, bool(fits), f"{ex:.1f} x {ey:.1f} x {ez:.1f} mm on a {bx} x {by} x {bz} bed", "C6-printability"))
     return out
 
 

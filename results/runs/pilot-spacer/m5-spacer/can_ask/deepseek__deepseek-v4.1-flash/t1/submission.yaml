@@ -1,0 +1,126 @@
+task: m5-spacer
+note: 'A single round spacer: 20 mm long, 12 mm OD, 5.5 mm through bore. Print it
+  standing on end (axis vertical) — no supports, no bridges, and the round outside
+  comes out clean. Nothing else is needed: it slips onto your existing M5 bolt and
+  the bolt''s length is set by whatever your two plates plus nut/washer add up to
+  (see the questions). If you want the exact bolt length named from the catalog, tell
+  me the stack thickness.'
+questions:
+- text: How thick are the two plates combined (and are you using a washer plus an
+    ISO 4032 M5 nut, or a lock nut)? Give me that stack and I'll name the exact ISO
+    4762 M5x… length you need.
+  answer: null
+- text: Did you want the ends chamfered or the OD knurled for finger grip, or is a
+    plain cylinder right?
+  answer: null
+params:
+  length_mm:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: user-specified overall length between the two plates
+  od_mm:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: asked
+    note: user-specified outside diameter, '12 mm across'
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M5 nominal shank diameter; person could not measure their bolt,
+      so catalog nominal used
+  clearance_diametral:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance for a printable slip fit over an M5 shank (0.25 mm per
+      side)
+  hole_d:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: design
+    note: bolt_d + clearance_diametral = 5.5; matches the 5.3 mm bore of an ISO 7089
+      M5 washer with a little extra for print tolerance
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    outer = (\n        cq.Workplane(\"XY\")\n        .circle(p.od_mm\
+    \ / 2.0)\n        .extrude(p.length_mm)\n    )\n    bore = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(p.hole_d / 2.0)\n        .extrude(p.length_mm + 2.0)\n\
+    \        .translate((0, 0, -1.0))\n    )\n    return outer.cut(bore)\n"
+  print_orientation: 'Cylinder axis vertical: the bottom end face (the flat annulus
+    at z = 0) sits on the bed; the part stands 20 mm tall. No overhangs or bridges
+    — the bore is a straight vertical wall.'
+  use_orientation: 'Axis along the bolt: bore coaxial with the M5 shank, flat end
+    faces bearing on the two plates. Either end can face down.'
+hardware: []
+joints: []
+criteria:
+- id: c1
+  part: spacer
+  feature: 5.5 mm through bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - hole_d
+  - bolt_d
+  - clearance_diametral
+  check:
+    method: measure
+    ref: M5 bolt shank
+    description: Slide the M5 bolt through the bore before assembly; it should pass
+      with a light rattle, 0.25 mm radial clearance per side (5.5 bore on a 5.0 shank).
+- id: c2
+  part: spacer
+  feature: overall length and outside diameter
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - length_mm
+  - od_mm
+  check:
+    method: measure
+    ref: calipers
+    description: 'Measure the finished part: 20.0 mm long, 12.0 mm across, and the
+      two end faces flat and square to the bore so they seat on the plates.'
+manual:
+- n: '1'
+  text: Print spacer.stl in PLA at 0.2 mm layers, standing on end (axis vertical)
+    — no supports needed. If your slicer offers it, 3 perimeters and 25% infill is
+    plenty for a compression spacer.
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Trim any elephant-foot flare off the bottom end face with a deburring tool
+    or a knife so the annulus is flat, then push the M5 bolt through the bore to check
+    the fit. It should slide through and spin freely.
+  parts:
+  - spacer
+  hardware: []
+  tool: deburring tool
+- n: '3'
+  text: 'Assemble the stack: M5 bolt through the first plate, then the spacer over
+    the bolt, then the second plate.'
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '4'
+  text: Add the washer and the nut on the far side and tighten until the spacer is
+    clamped. The spacer carries the load in compression, so snug it down — do not
+    leave it loose, or the plates will pinch the bolt instead of the spacer.
+  parts:
+  - spacer
+  hardware: []
+  tool: 5 mm hex key + 8 mm wrench

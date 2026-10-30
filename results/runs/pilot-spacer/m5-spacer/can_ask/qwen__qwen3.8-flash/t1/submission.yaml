@@ -1,0 +1,184 @@
+task: m5-spacer
+note: 'Simple round spacer: OD 12 mm, 20 mm long, 5.5 mm clearance bore for an M5
+  bolt (ISO 273 medium fit), 0.6 mm lead-in chamfer at both ends. Printed upright
+  so the bore prints as stacked circles - no bridging and the diameter stays true.
+  The bolt couldn''t be measured, so the bore comes from the catalogue M5 major diameter
+  plus 0.5 mm; manual step 2 covers opening it up if the printed hole runs tight.
+  Left out on purpose: captive-nut or press-fit features, since the spacer rides a
+  bolt between existing plates.'
+questions: []
+params:
+  bolt_major_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M5 major diameter; could not be measured, taken from the hardware
+      table
+  spacer_len:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: requested length; sets the gap held between the two plates
+  spacer_od:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: asked
+    note: 'requested: 12 mm across'
+  hole_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_major_d + 0.5 mm clearance (ISO 273 medium fit for M5); bore printed
+      vertical so the diameter stays true in XY
+  bore_cham:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in chamfer on both bore edges; also keeps the first layer from bulging
+      into the hole
+  wall_min:
+    value: 2.65
+    unit: mm
+    kind: design
+    source: design
+    note: 'derived thinnest wall: (spacer_od - hole_d)/2 at a chamfered face - 3+
+      perimeter loops'
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    L = p.spacer_len\n    R = p.spacer_od / 2.0\n    r = p.hole_d\
+    \ / 2.0\n    c = p.bore_cham\n\n    # tube: OD circle with a clearance bore, extruded\
+    \ up from the bed\n    body = (cq.Workplane(\"XY\")\n            .circle(R)\n\
+    \            .circle(r)\n            .extrude(L))\n\n    # 0.6 mm lead-in chamfer\
+    \ on both bore edges\n    bottom = cq.Workplane(cq.Solid.makeCone(r + c, r, c,\n\
+    \                                           cq.Vector(0, 0, 0),\n            \
+    \                               cq.Vector(0, 0, 1)))\n    top = cq.Workplane(cq.Solid.makeCone(r\
+    \ + c, r, c,\n                                        cq.Vector(0, 0, L),\n  \
+    \                                      cq.Vector(0, 0, -1)))\n    return body.cut(bottom).cut(top)"
+  print_orientation: 'standing on its end: the flat annular face lies at z = 0 on
+    the bed, bore axis vertical along printer Z; no supports'
+  use_orientation: 'as assembled: bore axis along the M5 bolt axis, z = 0 face against
+    the plate on the bolt-head side, z = spacer_len face against the other plate'
+hardware:
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: spacer_on_bolt
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: bore
+    role: clearance
+  nut: m5_nut
+  external: null
+criteria:
+- id: bore_clears_bolt
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.25
+  params:
+  - hole_d
+  - bolt_major_d
+  check:
+    method: measure
+    ref: null
+    description: Bore reads about 5.5 mm across with calipers and the spacer slides
+      onto the M5 bolt by hand without force.
+- id: length_sets_plate_gap
+  part: spacer
+  feature: end faces
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_len
+  check:
+    method: measure
+    ref: null
+    description: Both end faces flat and parallel, 20 mm apart, so the plates sit
+      square 20 mm apart. Scrape any blob off the top (last-layer) face.
+- id: chamfers_guide_bolt
+  part: spacer
+  feature: bore chamfers
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.6
+  params:
+  - bore_cham
+  - hole_d
+  check:
+    method: none
+    ref: null
+    description: 0.6 mm lead-in at each end so the bolt enters the bore without catching
+      on a printed lip.
+- id: bolt_spans_stack
+  part: spacer
+  feature: bore
+  relation: engages
+  hardware: m5_bolt
+  clearance_mm: null
+  params:
+  - spacer_len
+  check:
+    method: none
+    ref: null
+    description: Bolt length must cover the 20 mm spacer plus both plates plus at
+      least 5 mm for the nut (ISO 4032 M5 is 4.7 mm tall). M5x30 suits plates up to
+      5 mm each; use M5x40 for thicker ones.
+manual:
+- n: '1'
+  text: Print the spacer standing on its end, bore vertical, flat annular face on
+    the bed. No supports, no raft - it is 12 mm across and 20 mm tall, so it prints
+    in a few minutes.
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Clean any first-layer flash off the two end faces, then check the fit: the
+    spacer must slide onto the M5 bolt with no force. If it binds, work an M5 bolt
+    or a 5.5 mm drill bit through the bore a few times to open it up rather than re-printing.'
+  parts:
+  - spacer
+  hardware:
+  - m5_bolt
+  tool: M5 bolt or 5.5 mm drill bit
+- n: '3'
+  text: Pass the M5 bolt through the first plate, then through the spacer's bore,
+    so the spacer's flat face sits flush against that plate.
+  parts:
+  - spacer
+  hardware:
+  - m5_bolt
+  tool: null
+- n: '4'
+  text: 'Put the second plate against the other end of the spacer and thread the M5
+    nut on. Tighten until both plates are clamped hard against the spacer faces -
+    the spacer holds the plates exactly 20 mm apart. Don''t over-tighten: PLA will
+    creep under sustained clamp load, so snug is enough.'
+  parts:
+  - spacer
+  hardware:
+  - m5_bolt
+  - m5_nut
+  tool: 4 mm hex key and 8 mm spanner
