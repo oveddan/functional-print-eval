@@ -1,0 +1,74 @@
+task: arca-plate
+note: >
+  The Arca plate as fixed, 2026-10-13 (control). Ported to CadQuery from the
+  agent's rewrite of arca_plate.scad in session c941d075 (2026-10-13T02:08), after
+  the first print: the head didn't fit and the roof over the recess printed as a
+  tangle. Fit-tested 2026-10-14; Dan confirmed on 2026-10-28 that it fit and worked.
+  The recess is still a literal (15), not derived from the bolt head: it worked
+  because 15 was a good second guess.
+questions:
+  - text: Could you send a photo of the tripod's clamp, with a measurement of the slot's width and angle?
+    answer: Photos of the clamp, no measurement.
+  - text: Tell me the webcam bolt's length.
+    answer: null
+params:
+  width:       {value: 38,  kind: design, source: datasheet, note: Arca-Swiss standard width at the bottom}
+  length:      {value: 60,  kind: design, source: design}
+  height:      {value: 10,  kind: design, source: design}
+  bevel:       {value: 3,   kind: design, source: design}
+  land:        {value: 1,   kind: design, source: design}
+  hole_d:      {value: 7,   kind: design, source: design, note: 1/4-20 clearance, with leeway}
+  slot:        {value: 20,  kind: design, source: design}
+  recess_d:    {value: 15,  kind: design, source: guessed, note: 13 was too tight}
+  recess_h:    {value: 5,   kind: design, source: guessed}
+  bridge_step: {value: 0.4, kind: design, source: design, note: two 0.2 mm layers per bridging step}
+  bolt_head_d: {value: null, kind: hardware, source: unknown, note: still never measured}
+  bolt_head_h: {value: null, kind: hardware, source: unknown}
+parts:
+  - id: plate
+    material: PLA
+    print_orientation: As modeled, z = 0 on the bed (the wide face, with the recess opening onto it).
+    use_orientation: Wide face down in the tripod's Arca clamp; the camera sits on the top face.
+    code: |
+      def build(p):
+          w2 = p.width / 2
+          pts = [(-w2, 0), (w2, 0), (w2, p.land), (w2 - p.bevel, p.land + p.bevel),
+                 (w2 - p.bevel, p.height), (-(w2 - p.bevel), p.height),
+                 (-(w2 - p.bevel), p.land + p.bevel), (-w2, p.land)]
+          body = cq.Workplane("XZ").polyline(pts).close().extrude(p.length / 2, both=True)
+
+          def stadium(d, h):
+              return cq.Workplane("XY").workplane(offset=-1).slot2D(p.slot + d, d, 90).extrude(h + 1)
+
+          # the recess roof bridges in steps: a strip across the whole recess, then the
+          # slot's bounding box, then the slot itself
+          step = p.bridge_step
+          strip = (cq.Workplane("XY").workplane(offset=p.recess_h - 0.01)
+                   .rect(p.hole_d, p.slot + p.recess_d).extrude(step + 0.01))
+          box = (cq.Workplane("XY").workplane(offset=p.recess_h - 0.01)
+                 .rect(p.hole_d, p.slot + p.hole_d).extrude(2 * step + 0.01))
+          return (body.cut(stadium(p.recess_d, p.recess_h)).cut(strip).cut(box)
+                  .cut(stadium(p.hole_d, p.height + 1)))
+hardware:
+  - id: bolt
+    ref: salvaged:webcam-mount-bolt
+joints:
+  - id: camera-bolt
+    fastener: bolt
+    axis_origin: [0, 0, 0]
+    axis_dir: [0, 0, 1]
+    seats:
+      - {part: plate, feature: recess, role: head_seat}
+      - {part: plate, feature: slot, role: clearance}
+    external: the camera's 1/4-20 socket
+manual:
+  - n: "1"
+    text: Print the plate wide face down with 0.2 mm layers, 4 walls, 40% infill and no supports.
+    parts: [plate]
+  - n: "2"
+    text: Put the webcam bolt up through the slot from underneath and screw it into the camera.
+    parts: [plate]
+    hardware: [bolt]
+  - n: "3"
+    text: Open the clamp's knob all the way, drop the plate in from above, and tighten it.
+    parts: [plate]

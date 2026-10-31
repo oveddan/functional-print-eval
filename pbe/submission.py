@@ -1,0 +1,134 @@
+"""The submission format: what a model hands in for a task.
+
+Everything a grader needs is declared here, so the graders can be code:
+- params: every hardware and real-world dimension as a named input, with its source.
+  Part code may only use these, which is what lets the metamorphic check vary them.
+- parts: CadQuery code per part, with how it's printed and how it's used.
+- hardware, joints: what fastens what, along which axis, seated in which feature.
+- criteria: the model's own acceptance criteria, typed, each with how it's checked.
+- manual: the steps a person follows, naming parts, hardware and tools.
+- questions: what the model asked before designing.
+"""
+from typing import Literal
+
+import yaml
+from pydantic import BaseModel, Field, model_validator
+
+from pbe import catalog
+
+Source = Literal["measured", "datasheet", "catalog", "asked", "guessed", "unknown", "design"]
+
+
+class Param(BaseModel):
+    value: float | None
+    unit: Literal["mm", "deg", "count"] = "mm"
+    kind: Literal["hardware", "world", "design"]
+    source: Source
+    note: str = ""
+
+
+class Part(BaseModel):
+    id: str
+    role: Literal["final", "coupon"] = "final"
+    material: str
+    code: str = Field(description="Python defining build(p) -> cadquery Workplane or Shape; p.<name> gives each param's value")
+    print_orientation: str = Field(description="Which face goes on the bed, in the part's own frame (z = 0 is the bed)")
+    use_orientation: str
+
+
+class HardwareItem(BaseModel):
+    id: str
+    ref: str = Field(description='Catalog reference, e.g. "ISO 4762 M5x30", "ISO 4032 M5", "salvaged:webcam-mount-bolt"')
+    qty: int = 1
+
+
+class Seat(BaseModel):
+    part: str
+    feature: str
+    role: Literal["head_seat", "clearance", "thread", "nut_pocket", "insert", "washer"]
+
+
+class Joint(BaseModel):
+    id: str
+    fastener: str
+    axis_origin: tuple[float, float, float] = Field(description="Where the fastener's head sits, in the frame of the first part in seats")
+    axis_dir: tuple[float, float, float] = Field(description="Direction the fastener points, head to tip")
+    seats: list[Seat]
+    nut: str | None = None
+    external: str | None = Field(None, description="Anything outside the design it threads into, e.g. a camera's 1/4-20 socket")
+
+
+class Check(BaseModel):
+    method: Literal["coupon", "template", "measure", "none"]
+    ref: str | None = None
+    description: str = ""
+
+
+class Criterion(BaseModel):
+    id: str
+    part: str
+    feature: str
+    relation: Literal["contains", "clears", "engages", "seats", "supports", "faces"]
+    hardware: str | None = None
+    clearance_mm: float | None = None
+    params: list[str] = Field(default_factory=list, description="The params this criterion depends on")
+    check: Check
+
+
+class Step(BaseModel):
+    n: str
+    text: str
+    parts: list[str] = Field(default_factory=list)
+    hardware: list[str] = Field(default_factory=list)
+    tool: str | None = None
+
+
+class Question(BaseModel):
+    text: str
+    answer: str | None = None
+
+
+class Submission(BaseModel):
+    task: str
+    note: str = ""
+    questions: list[Question] = Field(default_factory=list)
+    params: dict[str, Param]
+    parts: list[Part]
+    hardware: list[HardwareItem] = Field(default_factory=list)
+    joints: list[Joint] = Field(default_factory=list)
+    criteria: list[Criterion] = Field(default_factory=list)
+    manual: list[Step] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def references_resolve(self):
+        part_ids = {p.id for p in self.parts}
+        hw_ids = {h.id for h in self.hardware}
+        errors = []
+        for h in self.hardware:
+            try:
+                catalog.resolve(h.ref)
+            except KeyError as e:
+                errors.append(f"hardware {h.id}: {e}")
+        for j in self.joints:
+            if j.fastener not in hw_ids:
+                errors.append(f"joint {j.id}: unknown fastener {j.fastener}")
+            if j.nut and j.nut not in hw_ids:
+                errors.append(f"joint {j.id}: unknown nut {j.nut}")
+            errors += [f"joint {j.id}: unknown part {s.part}" for s in j.seats if s.part not in part_ids]
+        for c in self.criteria:
+            if c.part not in part_ids:
+                errors.append(f"criterion {c.id}: unknown part {c.part}")
+            if c.hardware and c.hardware not in hw_ids:
+                errors.append(f"criterion {c.id}: unknown hardware {c.hardware}")
+            errors += [f"criterion {c.id}: unknown param {p}" for p in c.params if p not in self.params]
+        for s in self.manual:
+            errors += [f"step {s.n}: unknown part {p}" for p in s.parts if p not in part_ids]
+            errors += [f"step {s.n}: unknown hardware {h}" for h in s.hardware if h not in hw_ids]
+        if errors:
+            raise ValueError("; ".join(errors))
+        return self
+
+
+def load(path) -> Submission:
+    with open(path) as f:
+        return Submission.model_validate(yaml.safe_load(f))

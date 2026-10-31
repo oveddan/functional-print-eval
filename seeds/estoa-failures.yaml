@@ -1,0 +1,350 @@
+# Real mechanical and printing failures from Estoa (also called Marea): a wall light
+# piece with an LED disk, ESP32, radar and a printed PLA enclosure, designed with a Claude agent in OpenSCAD
+# and built by Dan, 2026-09-25 to 2026-10-16.
+#
+# Sources: the agent sessions in ~/claude-archive (session ids below, timestamps UTC),
+# and ~/Source/estoa-public/enclosure/{TEST-PRINTS,FIXES,DECISIONS}.md.
+# Mined 2026-10-28 by four reader agents; key quotes spot-checked by hand.
+#
+# status: failed (it went wrong physically), near-miss (caught in review before
+# printing or building), unconfirmed (the record doesn't settle it).
+# who: agent (the AI's design or instruction), dan, vendor, or unclear.
+# class: see seeds/classes.yaml.
+
+# --- C1: designing from unmeasured dimensions ---
+- id: battery-bay-guessed
+  class: C1-unmeasured
+  date: 2026-10-03
+  status: failed
+  who: agent
+  did: Modeled the power-bank bay from a guessed 154 mm length and a guessed cable exit, without asking for measurements
+  right: Measure the real part first (155 x 74 x 18 mm, cable exits about 25 mm from the port end); a 1:1 paper floor plan with the real parts on it
+  found_by: Skeleton test print; the battery didn't fit and the cable would be crushed against the breakout
+  evidence: 2bef22a8 2026-10-04T03:59
+- id: mirror-modeled-as-slab
+  class: C1-unmeasured
+  date: 2026-09-27
+  status: near-miss
+  who: agent
+  did: Modeled the found mirror as a solid 25 mm slab
+  right: Ask for the cross-section; it is a thin sheet with a thicker rim
+  found_by: Dan reviewing a render
+  evidence: 602ba611 2026-09-27T23:37
+- id: mirror-material-never-verified
+  class: C1-unmeasured
+  also: [C9-manual]
+  date: 2026-10-01
+  status: failed
+  who: agent
+  did: Wrote "glass mirror" into the decisions file unverified; after Dan said acrylic, offered a fingernail test that agreed; drilling showed glass. Then urged drilling it at home, with instructions to lay it on a towel and no warning that slow is normal
+  right: Confirm the material before choosing tools (a scratch test in a pilot hole, or a glass shop); for glass, rigid support, water, no pressure, a practice hole first
+  found_by: The metal bit stopped dead at the glass; then the mirror cracked rim to rim under pressure. The piece shipped without it
+  evidence: 602ba611 2026-10-01T04:44; 2bef22a8 2026-10-03T20:32; d2e14034 2026-10-05T15:06
+- id: insert-od-assumed
+  class: C1-unmeasured
+  also: [C3-fastener-stackup]
+  date: 2026-09-29
+  status: near-miss
+  who: agent
+  did: Sized heat-set insert holes at 4.0 mm for 4.5 mm inserts; Dan's were M3 x 4 x 5 (5 mm OD)
+  right: Take the insert size from the part bought, and derive the hole from it (about 4.3 mm)
+  found_by: Dan's photo of the package label
+  evidence: 602ba611 2026-09-29T22:46
+- id: breakout-holes-read-from-listing
+  class: C1-unmeasured
+  date: 2026-10-02
+  status: near-miss
+  who: agent
+  did: Read the USB-C breakout's mounting holes as M2 from a product listing and put M2 screws on the shopping list
+  right: Ask for a measurement; Dan measured 3.25 mm, which takes M3
+  found_by: Dan's measurement
+  evidence: 2bef22a8 2026-10-02T21:45
+- id: washer-recess-assumed
+  class: C1-unmeasured
+  date: 2026-10-03
+  status: failed
+  who: agent
+  did: Sized the stud's washer recess for a 12 mm M6 washer; Dan's washer was wider
+  right: Ask for the washer's OD or size for a fender washer
+  found_by: Assembly
+  evidence: 2bef22a8 2026-10-03T01:50
+- id: velcro-thickness-assumed
+  class: C1-unmeasured
+  date: 2026-10-04
+  status: failed
+  who: agent
+  did: Set the battery opening heights assuming 3 mm of velcro under the battery, which wasn't on hand
+  right: Confirm consumables in the BOM, or pocket the velcro so the height doesn't depend on it
+  found_by: Test print came out about 1 mm low
+  evidence: d2e14034 2026-10-04T18:35
+- id: stud-recess-overwritten
+  class: C1-unmeasured
+  date: 2026-10-02
+  status: unconfirmed
+  who: unclear
+  did: Dan measured the stud recess at about 14.5 mm; a minute later the agent set it to 25 mm, its earlier assumption, and called it measured
+  right: Measured values must trace to the user's input
+  found_by: Reader review of the transcript; no message asking for 25 mm was found
+  evidence: 2bef22a8 2026-10-02T22:11
+
+# --- C2: fit clearance ---
+- id: leg-pocket-too-tight
+  class: C2-fit-clearance
+  date: 2026-10-02
+  status: failed
+  who: agent
+  did: Leg pocket at 0.2 mm per side and 0.2 mm under a bridged roof; bridge sag and elephant's foot stopped the leg seating
+  right: 0.35 mm per side, 0.6 mm under the roof for sag, a 0.5 mm flare at the bed edge
+  found_by: Test print (test_wall)
+  evidence: 2bef22a8 2026-10-02T03:21
+- id: battery-end-stop-tight
+  class: C2-fit-clearance
+  also: [C8-test-plan]
+  date: 2026-10-05
+  status: failed
+  who: agent
+  did: Left 0.5 mm of play at the end stop of a 155 mm battery bay. The test piece passed only because it left out the end stop; the full box (printed overnight at 100% infill) had to be reprinted
+  right: 2 mm of play or no end stop, and a coupon that includes every feature that constrains the fit
+  found_by: Assembly of the full print
+  evidence: d2e14034 2026-10-05T00:35
+
+# --- C3: fastener stack-up ---
+- id: insert-bosses-bulged
+  class: C3-fastener-stackup
+  date: 2026-10-05
+  status: failed
+  who: agent
+  did: Lid-screw posts about 8 mm across and 26 mm tall, freestanding, with 4.3 mm holes for 5 mm inserts; they softened, bent and flared, and inserts sat off-centre. Dan followed the instructed technique
+  right: 11-12 mm posts, ribs to the wall, a chamfered hole mouth; a single-insert coupon first
+  found_by: Assembly
+  evidence: d2e14034 2026-10-05T05:17
+- id: screws-bottomed-pulled-inserts
+  class: C3-fastener-stackup
+  date: 2026-10-05
+  status: failed
+  who: agent
+  did: Specified M3 x 8 for a 2 mm breakout board into blind insert holes; the screws bottomed out and, tightened further, pulled both inserts loose
+  right: Screw length minus clamped thickness no more than the hole depth (M3 x 6 here), or through-holes
+  found_by: Assembly
+  evidence: d2e14034 2026-10-05T05:19
+- id: m3x8-would-bottom-out
+  class: C3-fastener-stackup
+  date: 2026-09-29
+  status: near-miss
+  who: agent
+  did: The M3 x 6 countersunk screws weren't sold locally; M3 x 8 would have bottomed out in the insert holes
+  right: Check stack-up against screws actually available; holes deepened to 7 mm
+  found_by: Agent review while sourcing
+  evidence: 602ba611 2026-09-29T22:57
+- id: screws-too-long-after-change
+  class: C3-fastener-stackup
+  date: 2026-10-04
+  status: near-miss
+  who: agent
+  did: With the mirror dropped from the stack, the M3 x 20 disk screws would stick 4 mm into the box and press on the battery
+  right: Recompute screw length whenever the clamped stack changes (M3 x 16)
+  found_by: Agent review
+  evidence: d2e14034 2026-10-04T19:19
+
+# --- C4: tool access ---
+- id: leg-screw-under-lip
+  class: C4-tool-access
+  date: 2026-10-02
+  status: failed
+  who: agent
+  did: Put the leg screws under the glass ledge's lip, so only an angled hex key reached them
+  right: Moved inward from r 139.4 to r 133 so a straight driver reaches
+  found_by: Assembling the test print
+  evidence: 2bef22a8 2026-10-02T03:28
+- id: pilot-holes-unreachable
+  class: C4-tool-access
+  also: [C3-fastener-stackup]
+  date: 2026-10-05
+  status: failed
+  who: agent
+  did: 2.5 mm pilot holes for M3 self-tappers on the radar pad; the screw wouldn't go in, and the rear hole couldn't be reached with a drill to open it up
+  right: Pilots sized for printed plastic (or inserts), and tool access to every hole
+  found_by: Assembly; the tray ended up held by one screw and glue
+  evidence: d2e14034 2026-10-05T22:31
+- id: power-bank-button-sealed-in
+  class: C4-tool-access
+  date: 2026-10-06
+  status: failed
+  who: agent
+  did: Sealed the power bank in the box with no way to reach its wake button
+  right: An access hole over every user control on an enclosed part
+  found_by: The bank latched off after install; the lid had to come off
+  evidence: d2e14034 2026-10-06T23:30
+
+# --- C5: mating-part envelopes ---
+- id: usb-opening-sized-to-receptacle
+  class: C5-mating-envelopes
+  date: 2026-10-04
+  status: failed
+  who: agent
+  did: Narrowed the ESP32's USB opening from 14 to 11.5 mm (about 0.4 mm each side of the receptacle) at the end of a 9 mm recess; ordinary plug heads couldn't reach the port
+  right: Size the opening to the plug overmold (back to 14 mm)
+  found_by: Use after the build
+  evidence: d2e14034 2026-10-04T18:33, 2026-10-06T00:32
+- id: usb-tunnel-too-long
+  class: C5-mating-envelopes
+  also: [C1-unmeasured]
+  date: 2026-10-05
+  status: failed
+  who: agent
+  did: Assumed the ESP32's port position; the plug tunnel hit the port and the board couldn't seat in its groove
+  right: Measure the connector datum; tunnel stopped 4 mm short
+  found_by: Assembly
+  evidence: d2e14034 2026-10-05T14:23
+- id: lid-screw-heads-proud
+  class: C5-mating-envelopes
+  date: 2026-10-03
+  status: near-miss
+  who: agent
+  did: Six M3 x 8 button heads on the wall side of the lid stood 1.65 mm proud, so the wall screws (3.5 mm off the wall) would jam in the keyholes
+  right: Countersunk M3 x 6, flush
+  found_by: Independent reviewer agent before printing
+  evidence: 2bef22a8 2026-10-03T14:06
+- id: esp32-headers-vs-lid
+  class: C5-mating-envelopes
+  date: 2026-10-04
+  status: near-miss
+  who: agent
+  did: The ESP32 in female headers stood about 16 mm and only just cleared the lid
+  right: Stack component heights including headers; box made 3 mm deeper
+  found_by: Agent review
+  evidence: 2bef22a8 2026-10-04T00:05
+- id: board-layout-overlap
+  class: C5-mating-envelopes
+  date: 2026-10-01
+  status: near-miss
+  who: agent
+  did: Put the box's USB-C opening on the wrong side (didn't rotate the perfboard 180 degrees), and the breakout on its header overlapped the ESP32 header by about 1 mm
+  right: Openings derived from the board layout; a 3D interference check of boards and headers
+  found_by: Dan's photos and the agent's re-check
+  evidence: 2bef22a8 2026-10-01T23:43
+
+# --- C6: printability ---
+- id: hole-cut-through-ledge
+  class: C6-printability
+  date: 2026-10-02
+  status: failed
+  who: agent
+  did: Leg screw clearance hole modeled 50 mm tall, running up through the glass ledge and leaving 0.2 mm of plastic, which broke through. Same flaw at all four legs of the real wall quarters
+  right: Cutters sized to their purpose; a minimum wall thickness around holes
+  found_by: Test print (test_wall)
+  evidence: 2bef22a8 2026-10-02T03:20
+- id: bridged-hole-sealed
+  class: C6-printability
+  date: 2026-10-02
+  status: failed
+  who: agent
+  did: A screw hole through a bridged pocket roof printed closed; the slicer had warned "floating cantilever" and the agent called it a fine bridge
+  right: A stepped (sacrificial bridging) hole
+  found_by: Test print
+  evidence: 602ba611 2026-10-02T03:20
+- id: test-plate-exceeds-bed
+  class: C6-printability
+  date: 2026-10-02
+  status: failed
+  who: agent
+  did: The combined test plate extended past the X1C's printable area
+  right: Check each plate against the usable bed area
+  found_by: Slicer
+  evidence: 2bef22a8 2026-10-02T22:28
+- id: clip-bosses-protrude
+  class: C6-printability
+  date: 2026-09-28
+  status: near-miss
+  who: agent
+  did: Glass clips on bosses sticking about 6 mm out of the cosmetic wall, with cone undersides, printed upright
+  right: Keep fasteners inside the wall; a band inside it
+  found_by: Dan's design review
+  evidence: 602ba611 2026-09-28T21:28
+
+# --- C7: use orientation ---
+- id: keyholes-point-down
+  class: C7-use-orientation
+  date: 2026-10-02
+  status: near-miss
+  who: agent
+  did: The lid's keyhole slots ran down from the entry hole, so the piece couldn't drop onto the wall screws
+  right: Slots run up
+  found_by: Agent review before printing
+  evidence: 2bef22a8 2026-10-02T22:17
+- id: battery-not-retained
+  class: C7-use-orientation
+  date: 2026-10-04
+  status: near-miss
+  who: agent
+  did: Hung, the battery window faced down and nothing held the battery in; a lip was added, then the agent admitted it wasn't enough
+  right: Constrain every loose part in the mounting orientation; the box was redesigned to enclose it
+  found_by: Dan asked what stopped it sliding out
+  evidence: 2bef22a8 2026-10-04T04:47
+
+# --- C8: test plan ---
+- id: test-print-overscoped
+  class: C8-test-plan
+  date: 2026-09-28
+  status: failed
+  who: agent
+  did: A fit-test order of 5 pieces, mostly two long arcs, quoted at 390 MXN by a print shop
+  right: One small coupon per interface (Dan cut it to a short wall piece and a leg stub, about 26 g) plus a paper template for hole positions
+  found_by: The shop's quote
+  evidence: 602ba611 2026-09-29T03:01
+# Also in C8: battery-end-stop-tight (above). Positive record: the Oct 2 wall coupon
+# caught four defects at once (bridged hole, cut-through hole, tight pocket, driver
+# access) before an 8-10 hour wall print.
+
+# --- C9: manual ---
+- id: template-printed-at-wrong-scale
+  class: C9-manual
+  date: 2026-09-27
+  status: failed
+  who: agent
+  did: Sent a raster PNG for a 1:1 template. It printed scaled, first for the disk template (09-27), then again for the wall-hanging template (10-16), where Dan drilled the wall holes about 150 mm apart instead of 120
+  right: Vector PDF only for 1:1 use, a scale bar, and "measure the bar before you drill" as the first instruction
+  found_by: Dan, against the disk; then after drilling the wall
+  evidence: 602ba611 2026-09-27T16:23; d0eca3a0 2026-10-16T02:43
+- id: omitted-holes-undocumented
+  class: C9-manual
+  date: 2026-10-04
+  status: failed
+  who: agent
+  did: Left out two ESP32 mounting holes on purpose (a groove holds that edge) without saying so; Dan took it for a print fault
+  right: Document every design substitution in the build steps
+  found_by: Test print
+  evidence: d2e14034 2026-10-04T18:33
+- id: insert-tool-not-specified
+  class: C9-manual
+  date: 2026-10-01
+  status: failed
+  who: agent
+  did: The build guide said the stock soldering tip works for heat-set inserts; a fine tip slips through the insert without heating it
+  right: Name the tool (a wide chisel tip on the insert's rim), the temperature and the flushness check
+  found_by: Dan during insertion
+  evidence: 2bef22a8 2026-10-01T21:07
+
+# --- C10: process ---
+- id: infill-setting-conflict
+  class: C10-process
+  date: 2026-10-02
+  status: failed
+  who: agent
+  did: Said to set 100% infill without changing the pattern; the slicer rejected cubic at 100%
+  right: Specify a compatible pattern with 100% infill
+  found_by: Slicer error
+  evidence: 602ba611 2026-10-02T05:07
+- id: clear-pla-streaks
+  class: C10-process
+  date: 2026-10-03
+  status: failed
+  who: unclear
+  did: Clear PLA diffuser showed every LED as a streak (layer lines act as lenses); 220 grit alone, the first instruction, did little
+  right: A thickness test strip, then wet-sanding at 120 and 220, both faces
+  found_by: Test coupon
+  evidence: 2bef22a8 2026-10-03T03:17
+
+# Left out: electronics and power (outside this eval's scope), Dan's own technique slips (epoxy handled before curing, filament ran out,
+# rocker wired to 5 V instead of GND on the breadboard), vendor faults (a clone board's
+# PSRAM, a cross-wound spool), and design-taste calls (radar tray height, leg notch).

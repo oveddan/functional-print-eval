@@ -1,0 +1,65 @@
+task: arca-plate
+note: >
+  The Arca plate as first designed, 2026-10-12, before printing (backtest input).
+  Ported to CadQuery from the agent's arca_plate.scad in session c941d075
+  (2026-10-12T22:47). The design had no params for the bolt; its hardware
+  dimensions are listed here as unknown because nobody measured them. Questions and
+  manual are reconstructed from the agent's replies in that session. It wrote no
+  acceptance criteria.
+questions:
+  - text: Could you send a photo of the tripod's clamp, with a measurement of the slot's width and angle?
+    answer: Photos of the clamp, no measurement.
+  - text: Tell me the webcam bolt's length.
+    answer: null
+params:
+  width:     {value: 38,  kind: design, source: datasheet, note: Arca-Swiss standard width at the bottom}
+  length:    {value: 60,  kind: design, source: design}
+  height:    {value: 10,  kind: design, source: design}
+  bevel:     {value: 3,   kind: design, source: design, note: 45 degree bevel height on the clamp edges}
+  land:      {value: 1,   kind: design, source: design}
+  hole_d:    {value: 6.8, kind: design, source: design, note: 1/4-20 clearance}
+  slot:      {value: 20,  kind: design, source: design, note: bolt slot length}
+  recess_d:  {value: 13,  kind: design, source: guessed, note: counterbore for the bolt head, underneath}
+  recess_h:  {value: 4,   kind: design, source: guessed}
+  bolt_head_d: {value: null, kind: hardware, source: unknown, note: never asked}
+  bolt_head_h: {value: null, kind: hardware, source: unknown, note: never asked}
+parts:
+  - id: plate
+    material: PLA
+    print_orientation: As modeled, z = 0 on the bed (the wide face, with the recess opening onto it).
+    use_orientation: Wide face down in the tripod's Arca clamp; the camera sits on the top face.
+    code: |
+      def build(p):
+          w2 = p.width / 2
+          pts = [(-w2, 0), (w2, 0), (w2, p.land), (w2 - p.bevel, p.land + p.bevel),
+                 (w2 - p.bevel, p.height), (-(w2 - p.bevel), p.height),
+                 (-(w2 - p.bevel), p.land + p.bevel), (-w2, p.land)]
+          body = cq.Workplane("XZ").polyline(pts).close().extrude(p.length / 2, both=True)
+
+          def stadium(d, h):
+              return cq.Workplane("XY").workplane(offset=-1).slot2D(p.slot + d, d, 90).extrude(h + 1)
+
+          return body.cut(stadium(p.hole_d, p.height + 1)).cut(stadium(p.recess_d, p.recess_h))
+hardware:
+  - id: bolt
+    ref: salvaged:webcam-mount-bolt
+joints:
+  - id: camera-bolt
+    fastener: bolt
+    axis_origin: [0, 0, 0]
+    axis_dir: [0, 0, 1]
+    seats:
+      - {part: plate, feature: recess, role: head_seat}
+      - {part: plate, feature: slot, role: clearance}
+    external: the camera's 1/4-20 socket
+manual:
+  - n: "1"
+    text: Print the plate wide face down with no supports, 4-5 walls and about 40% infill.
+    parts: [plate]
+  - n: "2"
+    text: Put the webcam bolt up through the slot from underneath and screw it into the camera.
+    parts: [plate]
+    hardware: [bolt]
+  - n: "3"
+    text: Open the clamp's knob all the way, drop the plate in from above, and tighten it.
+    parts: [plate]
