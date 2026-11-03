@@ -1,0 +1,75 @@
+# Tests and reference checks on every pull request and on main. No model is called, so no
+# API key is needed, and nothing is written under results/.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# The tests are slow because they grade real geometry: most of the time goes to the checks
+# reading each part's meshes, and the rest to building parts, each in a fresh sandboxed process
+# that imports CadQuery. So the work is split across parallel jobs: the three slowest test
+# files get a job each, every other test file shares one (so a new file is never left out),
+# and the reference checks get their own.
+jobs:
+  check:
+    name: ${{ matrix.part.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        part:
+          - name: tests (tripod plate)
+            run: uv run pytest tests/test_tripod_plate.py
+          - name: tests (nut knob)
+            run: uv run pytest tests/test_nut_knob.py
+          - name: tests (bearing wheel)
+            run: uv run pytest tests/test_bearing_wheel.py
+          - name: tests (everything else)
+            run: uv run pytest --ignore=tests/test_tripod_plate.py --ignore=tests/test_nut_knob.py --ignore=tests/test_bearing_wheel.py
+          - name: every reference passes every check
+            run: |
+              for task in m5-spacer tripod-plate bearing-wheel nut-knob/M3 nut-knob/M5 nut-knob/M8; do
+                uv run python -m pbe.eval --reference --task "$task"
+              done
+    steps:
+      - uses: actions/checkout@v4
+
+      # bubblewrap is the sandbox for model-written part code on Linux; libgl1 for CadQuery's
+      # kernel, fonts for parts with text on them
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap libgl1 fontconfig fonts-dejavu-core
+
+      # Ubuntu 24.04 stops unprivileged programs making the namespaces bubblewrap needs. This
+      # runner is thrown away after the job, so allow them here rather than run without a sandbox.
+      - name: Let bubblewrap make its namespaces
+        run: |
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install the project
+        run: uv sync --frozen
+
+      # PBE_NO_SANDBOX is deliberately not set: without a working sandbox the sandbox tests
+      # would skip, so stop here instead
+      - name: The sandbox works
+        run: uv run python -c "from pbe.parts import build; kind = build.sandbox(); print(kind); assert kind == 'bwrap'"
+
+      - name: ${{ matrix.part.name }}
+        run: ${{ matrix.part.run }}
