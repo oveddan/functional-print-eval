@@ -2,41 +2,37 @@
 them and no other, and designs unlike the reference still pass. Not graded (ok = None) is kept
 apart from failed: it's what a check says when no recorded print can decide the case."""
 import pytest
-import yaml
 
-from pbe import agent, submission, tasks
+from pbe.parts import submission
+from pbe.runner import agent, tasks
+
+from helpers import checked, failed, grade, not_graded, not_passing
 
 REFERENCE = tasks.load("tripod-plate").reference
 
 
+def with_hardware(sub, hardware):
+    """The design with only this hardware, and nothing else naming any."""
+    sub.hardware = hardware
+    sub.criteria = []
+    for step in sub.manual:
+        step.hardware = []
+    return sub
+
+
 def design(hardware=None, code=None, **params):
     """The reference, changed only where a test says."""
-    data = yaml.safe_load(REFERENCE)
+    sub = submission.parse(REFERENCE)
     for name, value in params.items():
-        data["params"][name]["value"] = value
+        sub.params[name].value = value
     if hardware is not None:
-        data["hardware"] = hardware
-        data["criteria"] = []
-        for step in data["manual"]:
-            step["hardware"] = []
+        with_hardware(sub, hardware)
     if code is not None:
-        data["parts"][0]["code"] = code
-    return submission.Submission.model_validate(data)
+        sub.parts[0].code = code
+    return checked(sub)
 
 
-def grade(sub, tmp_path):
-    return agent.grade(tasks.load("tripod-plate"), sub, tmp_path)
-
-
-def failed(findings):
-    return {f.check for f in findings if f.ok is False}
-
-
-def not_graded(findings):
-    return {f.check for f in findings if f.ok is None}
-
-
-REFERENCE_CODE = yaml.safe_load(REFERENCE)["parts"][0]["code"]
+REFERENCE_CODE = submission.parse(REFERENCE).parts[0].code
 
 # Plain shapes for designs that don't look like the reference. p has the reference's params.
 OUTLINE = '''
@@ -146,7 +142,7 @@ def build(p):
 
 def test_reference_passes_every_check(tmp_path):
     findings = grade(design(), tmp_path)
-    assert all(f.ok is True for f in findings), [f for f in findings if f.ok is not True]
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 @pytest.mark.parametrize("sub, want_failed, want_not_graded", [
@@ -165,7 +161,7 @@ def test_reference_passes_every_check(tmp_path):
     pytest.param(design(code=STRAIGHT_WITH_A_RAISED_PAD), {"R2"}, set(), id="a-raised-pad-is-not-a-dovetail"),
     pytest.param(design(code=ONE_BEVEL), {"R2"}, set(), id="a-bevel-on-one-edge-only"),
     pytest.param(design(hole=6.35), set(), {"R3"}, id="hole-exactly-the-thread"),
-    pytest.param(design(hardware=[{"id": "bolt", "ref": "ISO 4762 M5x20"}]), {"R3"}, {"R4", "R5"}, id="a-bolt-that-wont-fit-a-camera"),
+    pytest.param(design(hardware=[submission.HardwareItem(id="bolt", ref="ISO 4762 M5x20")]), {"R3"}, {"R4", "R5"}, id="a-bolt-that-wont-fit-a-camera"),
     pytest.param(design(hardware=[]), set(), {"R3", "R4", "R5"}, id="printed-screw"),
 ])
 def test_wrong_or_undecided_designs(tmp_path, sub, want_failed, want_not_graded):
@@ -188,7 +184,7 @@ def test_wrong_or_undecided_designs(tmp_path, sub, want_failed, want_not_graded)
 ])
 def test_other_correct_designs_pass(tmp_path, sub):
     findings = grade(sub, tmp_path)
-    assert all(f.ok is True for f in findings), [f for f in findings if f.ok is not True]
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 def test_a_recess_open_at_the_side_still_has_a_bolt_hole(tmp_path):
@@ -206,11 +202,11 @@ def test_the_bolt_checks_read_the_real_seat(tmp_path, code):
 
 
 def test_a_final_part_that_fails_isnt_replaced_by_another(tmp_path):
-    data = yaml.safe_load(REFERENCE)
-    washer = dict(data["parts"][0], id="washer", code='def build(p):\n    return cq.Workplane("XY").circle(10).circle(3.5).extrude(2)\n')
-    data["parts"][0]["code"] = 'def build(p):\n    raise ValueError("no")\n'
-    data["parts"].append(washer)
-    findings = grade(submission.Submission.model_validate(data), tmp_path)
+    sub = submission.parse(REFERENCE)
+    washer = sub.parts[0].model_copy(update={"id": "washer", "code": 'def build(p):\n    return cq.Workplane("XY").circle(10).circle(3.5).extrude(2)\n'})
+    sub.parts[0].code = 'def build(p):\n    raise ValueError("no")\n'
+    sub.parts.append(washer)
+    findings = grade(checked(sub), tmp_path)
     assert "builds" in failed(findings)
     assert {"R1", "R2", "R3", "R4", "R5"} <= not_graded(findings)
 
@@ -224,10 +220,7 @@ def test_the_person_answers_what_the_records_say():
 
 
 def test_no_plate_says_so_rather_than_blaming_a_screw(tmp_path):
-    data = yaml.safe_load(REFERENCE)
-    data["parts"][0]["role"] = "coupon"
-    data["hardware"], data["criteria"] = [], []
-    for step in data["manual"]:
-        step["hardware"] = []
-    details = {f.check: f.detail for f in grade(submission.Submission.model_validate(data), tmp_path)}
+    sub = with_hardware(submission.parse(REFERENCE), [])
+    sub.parts[0].role = "coupon"
+    details = {f.check: f.detail for f in grade(checked(sub), tmp_path)}
     assert details["R3"] == "no plate built"

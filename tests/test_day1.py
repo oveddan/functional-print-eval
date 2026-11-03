@@ -3,8 +3,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from pbe import catalog, checks, submission
-from pbe.build import build_parts
+from pbe.graders import checks
+from pbe.parts import catalog, submission
+from pbe.parts.build import build_parts
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples/arca-plate"
 

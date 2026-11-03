@@ -16,27 +16,55 @@ import sys
 from multiprocessing import Pool
 from pathlib import Path
 
+from string import Template
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import trimesh
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from pydantic import BaseModel
+
+from pbe.parts import submission
+from pbe.runner import tasks
+from pbe.runner.trial_record import TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "results/local/gallery"
 TEMPLATE = Path(__file__).with_name("gallery_template.html")
 MAX_VIEWER_MB = 4  # a publish has a size limit; a bigger mesh keeps its thumbnail only
 MAX_DRAWN_FACES = 40000  # matplotlib slows badly past this; a thumbnail doesn't need them all
-GROUPS = {"anthropic/claude-opus-5.5": 0, "anthropic/claude-sonnet-5.5": 0, "openai/gpt-6.1-sol": 0, "google/gemini-4-argon": 0,
-          "x-ai/grok-4.7": 0, "deepseek/deepseek-v4-pro-0813": 0}  # frontier first, then the smaller models
+# frontier first, then the smaller models
+FRONTIER = ["anthropic/claude-opus-5.5", "anthropic/claude-sonnet-5.5", "openai/gpt-6.1-sol", "google/gemini-4-argon",
+            "x-ai/grok-4.7", "deepseek/deepseek-v4-pro-0813"]
 
 
-def render(job):
-    stl, png = job
-    if png.exists() and png.stat().st_mtime > stl.stat().st_mtime:
-        return
-    mesh = trimesh.load(stl, force="mesh")
+class GalleryPart(BaseModel):
+    id: str
+    name: str  # the file names its render and mesh are saved under
+    viewer: bool  # small enough for the page's 3D viewer
+    role: str = ""  # final or coupon, from the submission
+    thumb: str = ""  # its render's path, once rendered
+
+
+class GalleryTrial(BaseModel):
+    """One trial as the page shows it."""
+    task: str
+    condition: str
+    model: str
+    trial: int
+    run: str
+    verdict: str
+    cost: float
+    asked: list[str]
+    answers: list[str]
+    findings: list[dict]  # the checks that didn't pass
+    parts: list[GalleryPart]
+
+
+def _shaded_faces(mesh):
+    """The faces to draw, at most MAX_DRAWN_FACES of them, each with a colour lit from above left."""
     light = np.array([0.45, -0.35, 0.82])
     faces = mesh.triangles
     normals = mesh.face_normals
@@ -45,6 +73,15 @@ def render(job):
         faces, normals = faces[keep], normals[keep]
     shade = 0.32 + 0.6 * np.clip(normals @ light, 0, 1)
     colours = np.column_stack([shade * 0.86, shade * 0.9, shade * 0.98, np.ones(len(shade))])
+    return faces, colours
+
+
+def render(stl_and_png):
+    stl, png = stl_and_png
+    if png.exists() and png.stat().st_mtime > stl.stat().st_mtime:
+        return
+    mesh = trimesh.load(stl, force="mesh")
+    faces, colours = _shaded_faces(mesh)
     fig = plt.figure(figsize=(4, 3.2), dpi=110)
     fig.patch.set_alpha(0)
     ax = fig.add_axes([0, 0, 1, 1], projection="3d")
@@ -66,45 +103,85 @@ def load_trials(runs):
     """The newest saved copy of each trial, across runs named oldest first."""
     found = {}
     for run in runs:
-        for path in sorted((ROOT / "results/runs" / run).rglob("grades.json")):
-            r = json.loads(path.read_text())
-            found[r["task"], r["condition"], r["model"], r["trial"]] = (run, path.parent, r)
+        for folder, record in TrialRecord.all_in(ROOT / "results/runs" / run):
+            found[record.task, record.condition, record.model, record.trial] = (run, folder, record)
     return found.values()
 
 
-def parts_of(folder, r, jobs, slug):
+def parts_of(folder, renders, slug):
+    """The trial's built parts, each queued to render and, if it's small enough, copied for the 3D viewer."""
+    if not (folder / "parts").exists():
+        return []
     parts = []
-    for stl in sorted((folder / "parts").glob("*.stl")) if (folder / "parts").exists() else []:
+    for stl in sorted((folder / "parts").glob("*.stl")):
         name = f"{slug}-{stl.stem}"
-        png = OUT / "thumbs" / f"{name}.png"
-        jobs.append((stl, png))
+        renders.append((stl, OUT / "thumbs" / f"{name}.png"))
         fits = stl.stat().st_size <= MAX_VIEWER_MB * 1024 * 1024
         if fits:
             # as base64 text, because an artifact can't publish a .stl file
             (OUT / "stl" / f"{name}.txt").write_text(base64.b64encode(stl.read_bytes()).decode())
-        parts.append({"id": stl.stem, "name": name, "viewer": fits})
+        parts.append(GalleryPart(id=stl.stem, name=name, viewer=fits))
     return parts
 
 
-def verdict(r):
-    if r["outcome"] != "submitted":
+def verdict(record):
+    if record.outcome != "submitted":
         return "error"
-    if r["all_pass"]:
+    if record.all_pass:
         return "pass"
-    return "fail" if any(f["ok"] is False for f in r["findings"]) else "not_graded"
+    return "fail" if record.failed_checks else "not_graded"
 
 
 def brief_of(task):
     """The person's words and the first paragraph on why the task is hard, from brief.md."""
-    text = (ROOT / "tasks" / task.split("/")[0] / "brief.md").read_text()
+    family, _, variant = task.partition("/")
+    text = (ROOT / "tasks" / family / "brief.md").read_text()
     words = " ".join(line[1:].strip() for line in text.splitlines() if line.startswith(">"))
     why = re.search(r"## Why it'?s hard\s+(.+?)\n\n", text, re.S)
-    if "/" in task and "$" in words:  # a family's brief is a template
-        import yaml
-        from string import Template
-        values = yaml.safe_load((ROOT / "tasks" / task.split("/")[0] / "variants.yaml").read_text())[task.split("/")[1]]
-        words = Template(words).safe_substitute(values)
+    if variant and "$" in words:  # a family's brief is a template
+        words = Template(words).safe_substitute(tasks.variant_values(family, variant))
     return {"request": words, "why": " ".join(why.group(1).split()) if why else ""}
+
+
+def final_roles(folder):
+    """Each part's role, by id, from the trial's submission: final or coupon."""
+    sub_path = folder / "submission.yaml"
+    if not sub_path.exists():
+        return {}
+    return {part.id: part.role for part in submission.load(sub_path).parts}
+
+
+def trial_entry(run, folder, record, renders):
+    """One trial as the page shows it. Its parts are queued in `renders`."""
+    slug = re.sub(r"[^\w-]+", "_", f"{record.task}-{record.condition}-{record.model}-t{record.trial}")
+    roles = final_roles(folder)
+    parts = parts_of(folder, renders, slug)
+    for part in parts:
+        part.role = roles.get(part.id, "")
+    parts.sort(key=lambda part: part.role != "final")
+    asked = [measurement.what or measurement.item for measurement in record.measures]
+    answers = [measurement.reply for measurement in record.measures]
+    not_passed = [finding.model_dump() for finding in record.findings if finding.ok is not True]
+    return GalleryTrial(task=record.task, condition=record.condition, model=record.model, trial=record.trial, run=run,
+                        verdict=verdict(record), cost=record.cost_usd, asked=asked, answers=answers,
+                        findings=not_passed, parts=parts)
+
+
+def link_thumbnails(trials):
+    """Point each part at its render, or at nothing if it didn't render."""
+    for trial in trials:
+        for part in trial.parts:
+            png = OUT / "thumbs" / f"{part.name}.png"
+            part.thumb = f"thumbs/{part.name}.png" if png.exists() else ""
+
+
+def write_page(trials):
+    briefs = {trial.task: brief_of(trial.task) for trial in trials}
+    data = json.dumps({"trials": [trial.model_dump() for trial in trials], "tasks": briefs, "frontier": FRONTIER})
+    (OUT / "index.html").write_text(TEMPLATE.read_text().replace("/*DATA*/null", data.replace("</", "<\\/")))
+    files = [f for f in OUT.rglob("*") if f.is_file()]
+    size_mb = sum(f.stat().st_size for f in files) / 1e6
+    print(f"{len(trials)} trials on {len(briefs)} tasks; {len(files)} files, {size_mb:.1f} MB; {OUT / 'index.html'}", file=sys.stderr)
 
 
 def main():
@@ -114,34 +191,12 @@ def main():
     (OUT / "thumbs").mkdir(parents=True, exist_ok=True)
     shutil.rmtree(OUT / "stl", ignore_errors=True)
     (OUT / "stl").mkdir()
-    jobs, trials = [], []
-    for run, folder, r in load_trials(args.runs):
-        slug = re.sub(r"[^\w-]+", "_", f"{r['task']}-{r['condition']}-{r['model']}-t{r['trial']}")
-        finals = {}
-        if (folder / "submission.yaml").exists():
-            import yaml
-            finals = {p["id"]: p["role"] for p in yaml.safe_load((folder / "submission.yaml").read_text())["parts"]}
-        parts = parts_of(folder, r, jobs, slug)
-        for p in parts:
-            p["role"] = finals.get(p["id"], "")
-        parts.sort(key=lambda p: p["role"] != "final")
-        trials.append({"task": r["task"], "condition": r["condition"], "model": r["model"], "trial": r["trial"], "run": run,
-                       "verdict": verdict(r), "cost": r["cost_usd"], "asked": [m["what"] or m["item"] for m in r["measures"]],
-                       "answers": [m["reply"] for m in r["measures"]],
-                       "findings": [{"check": f["check"], "part": f["part"], "ok": f["ok"], "detail": f["detail"]} for f in r["findings"] if f["ok"] is not True],
-                       "parts": parts})
+    renders = []
+    trials = [trial_entry(run, folder, record, renders) for run, folder, record in load_trials(args.runs)]
     with Pool() as pool:
-        pool.map(render, jobs)
-    for t in trials:
-        for p in t["parts"]:
-            png = OUT / "thumbs" / f"{p['name']}.png"
-            p["thumb"] = f"thumbs/{p['name']}.png" if png.exists() else ""
-    tasks = {t["task"]: brief_of(t["task"]) for t in trials}
-    data = json.dumps({"trials": trials, "tasks": tasks, "frontier": list(GROUPS)})
-    (OUT / "index.html").write_text(TEMPLATE.read_text().replace("/*DATA*/null", data.replace("</", "<\\/")))
-    size = sum(f.stat().st_size for f in OUT.rglob("*") if f.is_file()) / 1e6
-    files = sum(1 for f in OUT.rglob("*") if f.is_file())
-    print(f"{len(trials)} trials on {len(tasks)} tasks; {files} files, {size:.1f} MB; {OUT / 'index.html'}", file=sys.stderr)
+        pool.map(render, renders)
+    link_thumbnails(trials)
+    write_page(trials)
 
 
 if __name__ == "__main__":

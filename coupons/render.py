@@ -10,8 +10,8 @@ from pathlib import Path
 
 import trimesh
 
-from coupons import A_WALL, BRIDGE_CELLS, OUT
-from pbe.bridges import overhangs, svg
+from coupons import OUT, cell_spans
+from pbe.graders.bridges import overhangs, svg
 
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / "docs/media/coupons-round1"
@@ -29,23 +29,21 @@ VIEWS = {  # name: (stl, color, transform, camera rot x,y,z, distance)
 def render(name, stl, color, transform, rot, dist):
     scad = DEST / f"_{name}.scad"
     scad.write_text(f'color("{color}") {transform} import("{OUT / (stl + ".stl")}");\n')
-    rx, ry, rz = rot
+    rot_x, rot_y, rot_z = rot
     subprocess.run(["openscad", "-o", str(DEST / f"{name}.png"), "--imgsize=1600,1000",
                     "--colorscheme=Tomorrow", "--autocenter", "--viewall",
-                    f"--camera=0,0,0,{rx},{ry},{rz},{dist}", "--projection=p", str(scad)],
+                    f"--camera=0,0,0,{rot_x},{rot_y},{rot_z},{dist}", "--projection=p", str(scad)],
                    check=True, capture_output=True)
     scad.unlink()
 
 
 def strand_views():
     found = overhangs(trimesh.load(OUT / "A-bridges.stl"))
-    x = A_WALL
-    for name, size, _ in BRIDGE_CELLS:
-        lo, hi = x, x + size
-        x += size + A_WALL
-        mine = sorted((o for o in found if lo <= o.region.centroid.x <= hi), key=lambda o: o.z)
-        for i, o in enumerate(mine):
-            (DEST / f"strands-{name}-{i + 1}-z{o.z}.svg").write_text(svg(o))
+    spans, _ = cell_spans()
+    for name, _, _, start, end in spans:
+        in_cell = sorted((overhang for overhang in found if start <= overhang.region.centroid.x <= end), key=lambda overhang: overhang.z)
+        for number, overhang in enumerate(in_cell, start=1):
+            (DEST / f"strands-{name}-{number}-z{overhang.z}.svg").write_text(svg(overhang))
 
 
 def main():
@@ -53,8 +51,8 @@ def main():
     for name, args in VIEWS.items():
         render(name, *args)
     strand_views()
-    for p in sorted(DEST.iterdir()):
-        print(p.relative_to(ROOT))
+    for path in sorted(DEST.iterdir()):
+        print(path.relative_to(ROOT))
 
 
 if __name__ == "__main__":

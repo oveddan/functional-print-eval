@@ -21,7 +21,7 @@ the plate's thickness trade off against a length the person has to supply.
 
 ## What class each check belongs to
 
-The task is one example of class C1, sizing a real object from a guess instead of asking. Only R2 knows about a tripod; the rest run on any flat part with a bolt through it (`pbe/bolted.py`).
+The task is one example of class C1, sizing a real object from a guess instead of asking. Only R2 knows about a tripod; the rest run on any flat part with a bolt through it (`pbe/graders/bolted.py`).
 
 | Check | Class | Runs on |
 |---|---|---|

@@ -8,8 +8,10 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from pbe import checks, submission
-from pbe.build import build_parts
+from pbe.graders import checks
+from pbe.graders.checks import verdict_word
+from pbe.parts import submission
+from pbe.parts.build import build_parts
 
 
 def run(path, out_root="results/local"):
@@ -20,26 +22,28 @@ def run(path, out_root="results/local"):
         print(f"{path}: not a valid submission\n{e}")
         return None
     built = build_parts(sub, Path(out_root) / path.parent.name / path.stem)
-    findings = [f for check in checks.ALL for f in check(built)]
+    findings = [finding for check in checks.ALL for finding in check(built)]
     return sub, built, findings
+
+
+def check_one(path):
+    """Print one submission's findings. True if none failed."""
+    result = run(path)
+    if result is None:
+        return False
+    sub, _, findings = result
+    print(f"\n{path}  ({sub.task})")
+    for finding in findings:
+        print(f"  {verdict_word(finding.ok):10}  {finding.check:18} {finding.part:12} {finding.detail}")
+    return not any(finding.ok is False for finding in findings)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("paths", nargs="+")
     args = ap.parse_args()
-    failed = False
-    for p in args.paths:
-        res = run(p)
-        if res is None:
-            failed = True
-            continue
-        sub, built, findings = res
-        print(f"\n{p}  ({sub.task})")
-        for f in findings:
-            print(f"  {'pass' if f.ok else 'not graded' if f.ok is None else 'FAIL':10}  {f.check:18} {f.part:12} {f.detail}")
-            failed |= f.ok is False
-    sys.exit(1 if failed else 0)
+    all_ok = [check_one(path) for path in args.paths]  # every path, not stopping at the first failure
+    sys.exit(0 if all(all_ok) else 1)
 
 
 if __name__ == "__main__":

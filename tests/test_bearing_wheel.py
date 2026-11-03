@@ -1,42 +1,33 @@
 """The bearing wheel: the reference passes every check, wrong designs fail the check aimed at them
 and no other, and designs unlike the reference still pass. Not graded (ok = None) isn't failed: it's
 what a check says when no recorded print can decide the case."""
-import yaml
+from pbe.parts import submission
+from pbe.runner import measure, tasks
 
-from pbe import agent, measure, submission, tasks
+from helpers import checked, failed, grade, not_graded, not_passing
 
 REFERENCE = tasks.load("bearing-wheel").reference
 
 
 def design(code=None, parts=None, **params):
-    data = yaml.safe_load(REFERENCE)
+    """The reference, changed only where a test says. New parts replace its parts and its criteria,
+    and every step of the manual names all of them but a coupon."""
+    sub = submission.parse(REFERENCE)
     for name, value in params.items():
-        data["params"][name]["value"] = value
+        sub.params[name].value = value
     if code is not None:
-        data["parts"][0]["code"] = code
+        sub.parts[0].code = code
     if parts is not None:
-        data["parts"] = parts
-        names = [p["id"] for p in parts]
-        data["criteria"] = []
-        for step in data["manual"]:
-            step["parts"] = [n for n in names if n != "coupon"]
-    return submission.Submission.model_validate(data)
+        sub.parts = parts
+        sub.criteria = []
+        printed = [part.id for part in parts if part.id != "coupon"]
+        for step in sub.manual:
+            step.parts = list(printed)
+    return checked(sub)
 
 
-def grade(sub, tmp_path):
-    return agent.grade(tasks.load("bearing-wheel"), sub, tmp_path)
-
-
-def failed(findings):
-    return {f.check for f in findings if f.ok is False}
-
-
-def not_graded(findings):
-    return {f.check for f in findings if f.ok is None}
-
-
-def part(id, code, role="final"):
-    return {"id": id, "role": role, "material": "PLA", "print_orientation": "flat", "use_orientation": "any", "code": code}
+def part(part_id, code, role="final"):
+    return submission.Part(id=part_id, role=role, material="PLA", print_orientation="flat", use_orientation="any", code=code)
 
 
 # One bearing seat each side of a shoulder, the obvious design. Its lower seat's roof has a hole in it.
@@ -85,7 +76,7 @@ def build(p):
 
 def test_reference_passes(tmp_path):
     findings = grade(design(), tmp_path)
-    assert all(f.ok is True for f in findings), [f for f in findings if f.ok is not True]
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 def test_a_seat_each_side_with_a_plain_roof_fails_only_the_bridge_check(tmp_path):
@@ -102,7 +93,7 @@ def test_a_stepped_roof_doesnt_fail(tmp_path):
 
 def test_two_halves_pass(tmp_path):
     findings = grade(design(parts=[part("half_a", HALF), part("half_b", HALF)]), tmp_path)
-    assert all(f.ok is True for f in findings), [f for f in findings if f.ok is not True]
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 def test_nominal_seat_fails_fit_only(tmp_path):
@@ -153,14 +144,14 @@ def test_ribs_arent_graded_on_fit(tmp_path):
 
 
 def test_coupon_rescues_a_wrong_seat(tmp_path):
-    wheel = yaml.safe_load(REFERENCE)["parts"][0]
+    wheel = submission.parse(REFERENCE).parts[0]
     sub = design(parts=[wheel, part("coupon", COUPON, role="coupon")], seat=22.0)
     sub.manual[0].text = "Print coupon first, then the wheel at the size that holds."
     assert "R3" not in failed(grade(sub, tmp_path))
 
 
 def test_coupon_not_in_the_manual_rescues_nothing(tmp_path):
-    wheel = yaml.safe_load(REFERENCE)["parts"][0]
+    wheel = submission.parse(REFERENCE).parts[0]
     sub = design(parts=[wheel, part("coupon", COUPON, role="coupon")], seat=22.0)
     assert "R3" in failed(grade(sub, tmp_path))
 
@@ -193,12 +184,12 @@ def test_seats_running_into_hub_bosses_are_read_whole(tmp_path):
 
 
 def test_a_printed_sleeve_too_small_for_the_bolt_fails(tmp_path):
-    wheel = yaml.safe_load(REFERENCE)["parts"][0]
+    wheel = submission.parse(REFERENCE).parts[0]
     assert failed(grade(design(parts=[wheel, part("sleeve", SLEEVE)]), tmp_path)) == {"R4"}
 
 
 def test_a_coupon_of_blind_pockets_rescues_too(tmp_path):
-    wheel = yaml.safe_load(REFERENCE)["parts"][0]
+    wheel = submission.parse(REFERENCE).parts[0]
     sub = design(parts=[wheel, part("coupon", BLIND_COUPON, role="coupon")], seat=22.0)
     sub.manual[0].text = "Print coupon first, then the wheel at the size that holds."
     assert "R3" not in failed(grade(sub, tmp_path))
