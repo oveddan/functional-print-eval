@@ -1,7 +1,8 @@
 """OpenRouter chat client.
 
 The key is read from 1Password at run time, or from OPENROUTER_API_KEY for anyone
-reproducing the runs with their own key. It is never printed or saved.
+reproducing the runs with their own key. It is never printed or saved. In a cloud
+session the variable holds a placeholder, and the proxy attaches the real key.
 """
 import http.client
 import json
