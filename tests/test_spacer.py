@@ -2,7 +2,11 @@
 wrong designs fail the check aimed at them."""
 import pytest
 
-from pbe import agent, requirements, submission, tasks
+from pbe.graders import requirements
+from pbe.parts import submission
+from pbe.runner import tasks
+
+from helpers import failed, grade
 
 TASK = tasks.load("m5-spacer")
 REF = submission.parse(TASK.reference)
@@ -53,12 +57,6 @@ def build(p):
     body = cq.Workplane("XY").circle(p.od / 2).circle(p.hole_d / 2).extrude(p.length)
     return body.cut(cq.Workplane("XY").workplane(offset=0.4 * p.length).circle(4.3).extrude(0.6 * p.length))
 '''
-def grade(sub, tmp_path):
-    return agent.grade(TASK, sub, tmp_path)
-
-
-def failed(findings):
-    return {f.check for f in findings if f.ok is False}
 
 
 def variant(hole_d=None, length=None, code=None, extra_part=False):
@@ -128,6 +126,6 @@ def test_a_crashing_grader_is_a_failure_not_a_crash(monkeypatch):
     def boom(sub, built):
         raise ValueError("bad geometry")
     monkeypatch.setitem(requirements.GRADERS, "dims.boom", boom)
-    task = tasks.Task("t", "x", {}, [{"id": "R9", "text": "t", "grader": "dims.boom", "args": None}], None)
+    task = tasks.Task("t", "x", {}, [tasks.Requirement(id="R9", text="t", grader="dims.boom")], None)
     [f] = requirements.grade(task, REF, {})
     assert f.ok is False and "bad geometry" in f.detail

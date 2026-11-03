@@ -8,8 +8,12 @@ import urllib.request
 import pytest
 from pydantic import ValidationError
 
-from pbe import agent, build, checks, eval as runner, llm, submission, tasks
-from pbe.build import build_parts
+from pbe import eval as runner
+from pbe.graders import checks
+from pbe.parts import build, submission
+from pbe.parts.build import build_parts
+from pbe.runner import agent, llm, tasks
+from pbe.runner.trial_record import TrialRecord
 
 
 def one_part(code, part_id="p"):
@@ -97,9 +101,9 @@ def test_arguments_that_arent_an_object_go_back_to_the_model(name, arguments):
     def chat(model, messages, tools=None, max_tokens=None):
         return {"choices": [{"message": {"role": "assistant", "tool_calls": [tool_call(name, arguments)]}}]}
     record, messages, sub = agent.run_trial(tasks.load("m5-spacer"), "fake", max_turns=1, chat=chat)
-    assert sub is None and record["outcome"] == "no_submission"
+    assert sub is None and record.outcome == "no_submission"
     assert "JSON object" in messages[-1]["content"]
-    assert record["repairs"] == (name == "submit_design")
+    assert record.repairs == (name == "submit_design")
 
 
 class Response:
@@ -147,13 +151,43 @@ class Args:
     max_tokens = 10
 
 
+def a_record(**fields):
+    settings = {"max_turns": 1, "max_tokens": 10, "temperature": "provider default"}
+    return TrialRecord(**{"task": "t", "model": "m", "condition": "can_ask", "outcome": "no_submission", "error": None, "turns": 1,
+                          "repairs": 0, "measures": [], "revealed": [], "hidden": [], "limitations": [], "cost_usd": 0.0,
+                          "elapsed_s": 0.0, "settings": settings, "calls": [], **fields})
+
+
+def test_every_saved_trial_reads_back_unchanged():
+    saved = sorted((runner.ROOT / "results/runs").rglob("grades.json"))
+    assert saved
+    for path in saved:
+        as_saved = json.loads(path.read_text())
+        record = TrialRecord.load(path.parent)
+        assert record.as_saved() == as_saved, path
+
+
+def test_a_record_with_an_unknown_field_doesnt_load(tmp_path):
+    a_record().save(tmp_path)
+    fields = json.loads((tmp_path / "grades.json").read_text())
+    (tmp_path / "grades.json").write_text(json.dumps({**fields, "cost": 1}))
+    with pytest.raises(ValidationError):
+        TrialRecord.load(tmp_path)
+
+
+def test_a_record_sorts_its_checks_into_failed_and_not_graded():
+    record = a_record()
+    record.set_verdict([checks.Finding("a", "-", True, "", ""), checks.Finding("b", "-", False, "", ""), checks.Finding("c", "-", None, "", "")])
+    assert record.failed_checks == ["b"] and record.not_graded_checks == ["c"] and record.all_pass is False
+
+
 def test_a_rerun_counts_what_the_failed_attempt_cost(tmp_path, monkeypatch):
     task = tasks.Task("t", "x", {}, [], None)
     trial = tmp_path / "t" / "can_ask" / "m" / "t1"
     trial.mkdir(parents=True)
-    (trial / "grades.json").write_text(json.dumps({"outcome": "error", "cost_usd": 0.25}))
-    monkeypatch.setattr(agent, "run_trial", lambda *a, **k: ({"cost_usd": 0.5, "outcome": "no_submission"}, [], None))
-    assert runner.run_one(task, "m", "can_ask", 1, tmp_path, Args)["cost_usd"] == 0.75
+    a_record(outcome="error", cost_usd=0.25).save(trial)
+    monkeypatch.setattr(agent, "run_trial", lambda *a, **k: (a_record(cost_usd=0.5), [], None))
+    assert runner.run_one(task, "m", "can_ask", 1, tmp_path, Args).cost_usd == 0.75
     assert runner.spent(tmp_path) == 0.75
 
 
@@ -208,7 +242,7 @@ def test_output_that_isnt_text_doesnt_stop_a_build(tmp_path):
 def test_the_conversation_is_saved_even_if_grading_breaks(tmp_path, monkeypatch):
     task = tasks.load("m5-spacer")
     sub = submission.parse(task.reference)
-    monkeypatch.setattr(agent, "run_trial", lambda *a, **k: ({"cost_usd": 0.5, "outcome": "submitted"}, [{"role": "user", "content": "hi"}], sub))
+    monkeypatch.setattr(agent, "run_trial", lambda *a, **k: (a_record(cost_usd=0.5, outcome="submitted"), [{"role": "user", "content": "hi"}], sub))
 
     def broken(*a):
         raise RuntimeError("grader")
@@ -223,7 +257,7 @@ def test_the_conversation_is_saved_even_if_grading_breaks(tmp_path, monkeypatch)
         return [agent.checks.Finding("R1", "-", True, "", "")], {}
     monkeypatch.setattr(agent, "evaluate", finds_it_fine)
     monkeypatch.setattr(agent, "run_trial", lambda *a, **k: pytest.fail("a resume mustn't pay for the trial again"))
-    assert runner.run_one(task, "m", "can_ask", 1, tmp_path, Args)["all_pass"] is True  # a rerun finishes the grading
+    assert runner.run_one(task, "m", "can_ask", 1, tmp_path, Args).all_pass is True  # a rerun finishes the grading
 
 
 def test_a_check_that_crashes_is_a_failure_not_a_crash(tmp_path, monkeypatch):

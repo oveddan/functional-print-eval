@@ -9,34 +9,50 @@ D's screw slots also test Claude's reading of the tab-hole pitch from Dan's vide
 (inner edges, so centres = reading + hole diameter).
 """
 import datetime
-import subprocess
 from pathlib import Path
 
 import trimesh
 import yaml
+from pydantic import BaseModel
 
-from coupons import A2_CELLS, NUTS, NUTS2, OUT, PEG_DS, SEAT_FITS, SERVO, SERVO_CUTS, SPLINE_FITS, TUNNELS, val
-from pbe.bridges import overhangs, settings
-from predict import bridge_predictions
+from coupons import A2_CELLS, BRIDGE_CELLS, NUTS, NUTS2, OUT, PEG_DS, SEAT_FITS, SERVO, SERVO_CUTS, SPLINE_FITS, TUNNELS
+from pbe.graders.bridges import overhangs, settings
+from predict import bridge_predictions, commit_hash, nut_name, refuse_to_overwrite_outcomes
 
 ROOT = Path(__file__).resolve().parents[1]
 DEST = ROOT / "results/predictions/round2-coupons.yaml"
-ROUND1 = yaml.safe_load((ROOT / "results/predictions/round1-coupons.yaml").read_text())
+
+
+class PrintedCell(BaseModel):
+    cell: str
+    outcome: str | None
+
+
+class BridgeRecord(BaseModel):
+    cells: list[PrintedCell]
+
+
+class Round1(BaseModel):
+    """results/predictions/round1-coupons.yaml, as far as round 2 reads it."""
+    A_bridges: BridgeRecord
+
+
+ROUND1 = Round1.model_validate(yaml.safe_load((ROOT / "results/predictions/round1-coupons.yaml").read_text()))
 
 
 def a_cells(stl="A-bridges.stl", spec=None):
-    before = {c["cell"]: c["outcome"] for c in ROUND1["A_bridges"]["cells"]}
-    cells = bridge_predictions(stl, spec) if spec else bridge_predictions()
-    return [{**c, "round1_outcome": before[c["cell"]]} for c in cells]
+    before = {printed.cell: printed.outcome for printed in ROUND1.A_bridges.cells}
+    cells = bridge_predictions(stl, spec or BRIDGE_CELLS)
+    return [{**cell, "round1_outcome": before[cell["cell"]]} for cell in cells]
 
 
 def tunnels():
-    found = sorted(overhangs(trimesh.load(OUT / "C2-tunnels.stl")), key=lambda o: o.region.centroid.y)
+    found = sorted(overhangs(trimesh.load(OUT / "C2-tunnels.stl")), key=lambda overhang: overhang.region.centroid.y)
     out = []
-    for (name, side, top, flare), o in zip(TUNNELS, found):
+    for (name, side, top, flare), overhang in zip(TUNNELS, found):
         out.append({"tunnel": name, "per_side": side, "above": top, "bed_flare": flare,
-                    "prediction": "clean" if o.ok else "tangled or sagging",
-                    "why": f"{o.anchored:.0%} of strands anchored at both ends, longest {o.longest:.1f} mm",
+                    "prediction": "clean" if overhang.ok else "tangled or sagging",
+                    "why": f"{overhang.anchored:.0%} of strands anchored at both ends, longest {overhang.longest:.1f} mm",
                     "blind": name != "1",
                     "round1": "roof failed, strands along the tunnel" if name == "1" else "void: tunnel broke through the wall (fixed)",
                     "outcome": None})
@@ -49,39 +65,45 @@ EXPECT_NUT = {  # from round 1, 0.05 mm steps between its results
     "M8": {-0.1: "won't go in", -0.05: "tight", 0.0: "holds, snaps in (round 1)", 0.05: "loose (round 1: loose at +0.1)"},
     "Q": {-0.1: "tight", -0.05: "holds", 0.0: "holds without snapping (round 1)", 0.05: "loose"},
 }
+EXPECT_SERVO = {0.15: "drops in, snug (round 1: 10 mm peg tight at 0.1, slid at 0.2)", 0.25: "drops in", 0.3: "drops in, rattles"}
+EXPECT_SPLINE = {0.0: "won't go on", 0.1: "press on, grips", 0.2: "press on, grips", 0.3: "slips"}
+EXPECT_SEAT = {0.0: "won't go in", 0.1: "press in", 0.2: "press in, light", 0.3: "slides in, loose"}
+EXPECT_PEG = {-0.2: "slides into the bore", -0.1: "snug", 0.0: "tight or won't go"}
 
 
 def nuts2():
-    return [{"nut": "1/4-20" if n == "Q" else n, "label": n, "column_dots": i, "across_flats": af, "clearance": c,
-             "expected": EXPECT_NUT[n][c], "outcome": None}
-            for n, af, _ in NUTS for i, c in enumerate(NUTS2[n])]
+    pockets = []
+    for label, af, _ in NUTS:
+        for column, clearance in enumerate(NUTS2[label]):
+            pockets.append({"nut": nut_name(label), "label": label, "column_dots": column, "across_flats": af,
+                            "clearance": clearance, "expected": EXPECT_NUT[label][clearance], "outcome": None})
+    return pockets
 
 
 def servos():
-    cuts = [{"servo": n, "per_side": c, "body_l": val(SERVO[n]["body_l"]), "body_w": val(SERVO[n]["body_w"]),
-             "expected": {0.15: "drops in, snug (round 1: 10 mm peg tight at 0.1, slid at 0.2)",
-                          0.25: "drops in", 0.3: "drops in, rattles"}[c],
-             "screws_reach": "yes: slot centres at reading + hole diameter",
-             "outcome": None, "screws_outcome": None} for n, c in SERVO_CUTS]
-    return cuts
+    return [{"servo": name, "per_side": clearance, "body_l": SERVO[name].body_l.value, "body_w": SERVO[name].body_w.value,
+             "expected": EXPECT_SERVO[clearance], "screws_reach": "yes: slot centres at reading + hole diameter",
+             "outcome": None, "screws_outcome": None} for name, clearance in SERVO_CUTS]
 
 
 def splines_bearings():
-    spl = [{"servo": s, "column_dots": i, "bore": round(val(SERVO[s]["spline_od"]) + f, 2), "over_od": f,
-            "expected": {0.0: "won't go on", 0.1: "press on, grips", 0.2: "press on, grips", 0.3: "slips"}[f],
-            "outcome": None} for s in ("MG996R", "MG90S") for i, f in enumerate(SPLINE_FITS)]
-    seats = [{"column_dots": i, "seat_d": round(22.0 + f, 2), "expected": {0.0: "won't go in", 0.1: "press in",
-              0.2: "press in, light", 0.3: "slides in, loose"}[f], "outcome": None} for i, f in enumerate(SEAT_FITS)]
-    pegs = [{"column_dots": i, "peg_d": round(8.0 + d, 2), "expected": {-0.2: "slides into the bore", -0.1: "snug",
-             0.0: "tight or won't go"}[d], "outcome": None} for i, d in enumerate(PEG_DS)]
-    return {"spline_bores": spl, "608_seats": seats, "8mm_pegs": pegs}
+    splines = []
+    for servo in ("MG996R", "MG90S"):
+        for column, over in enumerate(SPLINE_FITS):
+            splines.append({"servo": servo, "column_dots": column, "bore": round(SERVO[servo].spline_od.value + over, 2),
+                            "over_od": over, "expected": EXPECT_SPLINE[over], "outcome": None})
+    seats = [{"column_dots": column, "seat_d": round(22.0 + over, 2), "expected": EXPECT_SEAT[over], "outcome": None}
+             for column, over in enumerate(SEAT_FITS)]
+    pegs = [{"column_dots": column, "peg_d": round(8.0 + under, 2), "expected": EXPECT_PEG[under], "outcome": None}
+            for column, under in enumerate(PEG_DS)]
+    return {"spline_bores": splines, "608_seats": seats, "8mm_pegs": pegs}
 
 
 def main():
-    commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    refuse_to_overwrite_outcomes(DEST)
     doc = {
         "written": datetime.datetime.now().astimezone().isoformat(timespec="minutes"),
-        "code_at": f"{commit} + this commit's coupon changes",
+        "code_at": f"{commit_hash()} + this commit's coupon changes",
         "printer": "Bambu Lab X1C",
         "print_settings": {"layer_mm": 0.2, "supports": "off", "filament": "black PLA, high speed (as round 1)",
                            "walls": 4, "infill": "15%"},

@@ -5,7 +5,11 @@ at them and no other, and correct designs that don't look like the reference sti
 when no print has measured the case, or when another check has already failed the design."""
 import pytest
 
-from pbe import agent, nuts, submission, tasks
+from pbe.graders import nuts
+from pbe.parts import submission
+from pbe.runner import tasks
+
+from helpers import failed, grade, not_graded, not_passing
 
 # Shared by the designs below, so each one shows only what makes it different.
 HELPERS = '''
@@ -266,22 +270,10 @@ def told_to_drill(sub):
     return told(sub, "Drill out the thin layer over the pocket with a 5.5 mm bit.")
 
 
-def grade(sub, tmp_path):
-    return agent.grade(tasks.load(sub.task), sub, tmp_path)
-
-
-def failed(findings):
-    return {f.check for f in findings if f.ok is False}
-
-
-def not_graded(findings):
-    return {f.check for f in findings if f.ok is None}
-
-
 @pytest.mark.parametrize("nut", ["M3", "M5", "M8"])
 def test_reference_passes_every_check(tmp_path, nut):
     findings = grade(design(nut), tmp_path)
-    assert all(f.ok is True for f in findings), [f for f in findings if f.ok is not True]
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 @pytest.mark.parametrize("sub, want_failed, want_not_graded", [
@@ -320,7 +312,7 @@ def test_reference_passes_every_check(tmp_path, nut):
 ])
 def test_wrong_designs_fail_only_their_check(tmp_path, sub, want_failed, want_not_graded):
     findings = grade(sub, tmp_path)
-    assert (failed(findings), not_graded(findings)) == (want_failed, want_not_graded), [f for f in findings if f.ok is not True]
+    assert (failed(findings), not_graded(findings)) == (want_failed, want_not_graded), not_passing(findings)
 
 
 @pytest.mark.parametrize("sub", [
@@ -341,7 +333,7 @@ def test_wrong_designs_fail_only_their_check(tmp_path, sub, want_failed, want_no
 ])
 def test_right_designs_that_differ_from_the_reference_pass(tmp_path, sub):
     findings = grade(sub, tmp_path)
-    assert all(f.ok is True for f in findings), [f for f in findings if f.ok is not True]
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 @pytest.mark.parametrize("nut", ["M5", "M8"])
@@ -360,7 +352,7 @@ def test_a_bed_pocket_with_a_plain_hole_is_not_measured(tmp_path, nut):
 ])
 def test_a_coupon_no_print_can_judge_is_not_a_failure(tmp_path, sub):
     findings = grade(sub, tmp_path)
-    assert (failed(findings), not_graded(findings)) == (set(), {"R4"}), [f for f in findings if f.ok is not True]
+    assert (failed(findings), not_graded(findings)) == (set(), {"R4"}), not_passing(findings)
 
 
 def test_the_deeper_of_two_hex_pockets_on_one_axis_is_the_nuts(tmp_path):
@@ -383,12 +375,12 @@ def test_the_deeper_of_two_hex_pockets_on_one_axis_is_the_nuts(tmp_path):
 ])
 def test_a_pocket_that_isnt_plain_is_not_graded(tmp_path, sub):
     findings = grade(sub, tmp_path)
-    assert (failed(findings), not_graded(findings)) == (set(), {"R4"}), [f for f in findings if f.ok is not True]
+    assert (failed(findings), not_graded(findings)) == (set(), {"R4"}), not_passing(findings)
 
 
 def test_fingers_split_by_slits_are_not_graded_rather_than_failed(tmp_path):
     findings = grade(design("M3", code=SPLIT_FINGERS), tmp_path)
-    assert {"R3", "R4", "R5"} <= not_graded(findings) and failed(findings) == set(), [f for f in findings if f.ok is not True]
+    assert {"R3", "R4", "R5"} <= not_graded(findings) and failed(findings) == set(), not_passing(findings)
 
 
 def test_a_knob_printed_on_its_side_is_not_graded_rather_than_failed(tmp_path):

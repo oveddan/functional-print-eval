@@ -54,7 +54,7 @@ Both targets:
 
 Local:
 2. Approve keep-awake for the session in the desktop app (Code tab settings), or run it in a terminal tab: `caffeinate -i` while the session runs. Keep the Mac on power. (I changed no settings.)
-3. In the terminal that launches Claude, `export OPENROUTER_API_KEY=...` for the capped key (from 1Password, so it never sits in a file) and start the session from there; `op read` may need an unlock that expires, so the env var is the safer path. `pbe/llm.py` already prefers the env var.
+3. In the terminal that launches Claude, `export OPENROUTER_API_KEY=...` for the capped key (from 1Password, so it never sits in a file) and start the session from there; `op read` may need an unlock that expires, so the env var is the safer path. `pbe/runner/llm.py` already prefers the env var.
 4. Create the worktree/branch: `git worktree add ../overnight -b overnight/2026-10-30` and paste the prompt there.
 
 Cloud:
@@ -62,7 +62,7 @@ Cloud:
 6. Create a new cloud environment, because a network secret applies to every session in its environment:
    - **Network access:** the default. Package managers and GitHub are covered, and a network secret's host is reachable whatever this is set to.
    - **Network secret:** type Bearer, allowed website `openrouter.ai`, header `Authorization`, prefix `Bearer`, and the capped key as the value. The key stays outside the VM.
-   - **Environment variable:** `OPENROUTER_API_KEY=proxy-injected`, a placeholder so `pbe/llm.py` doesn't reach for `op`.
+   - **Environment variable:** `OPENROUTER_API_KEY=proxy-injected`, a placeholder so `pbe/runner/llm.py` doesn't reach for `op`.
    - **Do not set `PBE_NO_SANDBOX`.** If bubblewrap can't run there, the run should stop rather than go on without a sandbox.
    - **Setup script:** below.
 7. Keep sessions off `main` by instruction (`CLAUDE.md`). GitHub rulesets aren't available on this private repo without Pro, and the cloud proxy doesn't restrict which branch a push updates.
@@ -84,7 +84,7 @@ uv python install 3.12
 
 Ask a first session in the new environment to do this and report each result:
 
-1. `check-tools`, then `uv run python -c "import cadquery; from pbe import build; print(build.sandbox())"`. It must print `bwrap`.
+1. `check-tools`, then `uv run python -c "import cadquery; from pbe.parts import build; print(build.sandbox())"`. It must print `bwrap`.
 2. `uv run pytest`. The sandbox tests skip when there's no sandbox, so check they ran.
 3. `uv run python -m pbe.eval --reference --task <each task>`. Every reference must pass as it does on the Mac.
 4. One cheap trial: `uv run python -m pbe.eval --run cloud-smoke --task m5-spacer --model anthropic/claude-haiku-5.5 --trials 1 --budget 0.50`. A 401 means the proxy didn't replace the placeholder header.

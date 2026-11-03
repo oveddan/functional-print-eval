@@ -11,6 +11,7 @@ each trial against what the run has spent so far, so the last trial can overshoo
 """
 import argparse
 import csv
+import itertools
 import json
 import platform
 import subprocess
@@ -20,120 +21,155 @@ from pathlib import Path
 
 import yaml
 
-from pbe import agent, build, llm, submission, tasks
+from pbe.graders.checks import verdict_word
+from pbe.parts import build, submission
+from pbe.runner import agent, llm, tasks
+from pbe.runner.trial_record import CheckResult, TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORM = f"{platform.system()}-{platform.machine()}"  # geometry comes from a platform's own CAD kernel wheel
 
+# only what decides a result: the run's own saved files would mark every trial after the first
+RESULT_DECIDING_PATHS = ["pbe", "tasks", "catalog", "results/predictions", "pyproject.toml", "uv.lock"]
 
-def slug(model):
-    return model.replace("/", "__").replace(":", "_")
+SUMMARY_COLUMNS = {
+    "task": lambda record: record.task,
+    "condition": lambda record: record.condition,
+    "model": lambda record: record.model,
+    "trial": lambda record: record.trial,
+    "outcome": lambda record: record.outcome,
+    "all_pass": lambda record: record.all_pass,
+    "failed_checks": lambda record: " ".join(record.failed_checks),
+    "not_graded": lambda record: " ".join(record.not_graded_checks),
+    "repairs": lambda record: record.repairs,
+    "turns": lambda record: record.turns,
+    "measured": lambda record: " ".join(record.revealed),
+    "limitations": lambda record: len(record.limitations),
+    "cost_usd": lambda record: record.cost_usd,
+    "elapsed_s": lambda record: record.elapsed_s,
+}
+
+
+def git(*args):
+    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+
+
+def code_version():
+    """The short commit hash, marked -dirty if code that decides results has uncommitted changes."""
+    has_changes = git("status", "--porcelain", "--", *RESULT_DECIDING_PATHS)
+    return git("rev-parse", "--short", "HEAD") + ("-dirty" if has_changes else "")
+
+
+def stamp_version(record):
+    record.date = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    record.commit = code_version()
+    record.platform = PLATFORM
 
 
 def spent(run_dir):
-    return sum(json.loads(p.read_text())["cost_usd"] for p in run_dir.rglob("grades.json"))
+    return sum(record.cost_usd for _, record in TrialRecord.all_in(run_dir))
 
 
-def findings_json(findings):
-    return [{"check": f.check, "part": f.part, "ok": f.ok, "detail": f.detail} for f in findings]
+def trial_folder(run_dir, task, condition, model, trial):
+    model_name = model.replace("/", "__").replace(":", "_")
+    return run_dir / task.id / condition / model_name / f"t{trial}"
 
 
-def commit():
-    r = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True)
-    # only what decides a result: the run's own saved files would mark every trial after the first
-    code = ["pbe", "tasks", "catalog", "results/predictions", "pyproject.toml", "uv.lock"]
-    dirty = subprocess.run(["git", "status", "--porcelain", "--", *code], cwd=ROOT, capture_output=True, text=True).stdout.strip()
-    return r.stdout.strip() + ("-dirty" if dirty else "")
-
-
-def run_one(task, model, condition, trial, run_dir, args):
-    out = run_dir / task.id / condition / slug(model) / f"t{trial}"
-    already_spent = 0.0
-    if (out / "grades.json").exists():
-        done = json.loads((out / "grades.json").read_text())
-        if done["outcome"] == "submitted" and not done["findings"]:  # stopped while grading: finish that
-            sub = submission.load(out / "submission.yaml")
-            return grade_and_save(task, sub, out, done)
-        if done["outcome"] != "error":  # an infrastructure error isn't a result; run it again
-            return done
-        already_spent = done["cost_usd"]  # but the failed attempt was still paid for
-    out.mkdir(parents=True, exist_ok=True)
-    record, messages, sub = agent.run_trial(task, model, condition, max_turns=args.max_turns, max_tokens=args.max_tokens)
-    record["cost_usd"] = round(record["cost_usd"] + already_spent, 6)
-    # saved before grading with no findings, so if grading breaks the paid conversation and its
-    # cost are kept, and rerunning finishes the grading instead of paying for the trial again
-    (out / "transcript.json").write_text(json.dumps(messages, indent=1))
+def save_conversation(folder, messages, sub):
+    (folder / "transcript.json").write_text(json.dumps(messages, indent=1))
     if sub:
-        (out / "submission.yaml").write_text(yaml.safe_dump(sub.model_dump(), sort_keys=False, allow_unicode=True))
-    record.update(trial=trial, date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(), platform=PLATFORM,
-                  findings=[], observations={}, all_pass=False)
-    (out / "grades.json").write_text(json.dumps(record, indent=1))
-    return grade_and_save(task, sub, out, record) if sub else record
+        (folder / "submission.yaml").write_text(yaml.safe_dump(sub.model_dump(), sort_keys=False, allow_unicode=True))
 
 
-def grade_and_save(task, sub, out, record):
-    findings, observations = agent.evaluate(task, sub, out)
-    record.update(date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(), platform=PLATFORM,
-                  findings=findings_json(findings), observations=observations,
-                  all_pass=bool(findings) and all(f.ok is True for f in findings))
-    (out / "grades.json").write_text(json.dumps(record, indent=1))
+def grade_and_save(task, sub, folder, record):
+    findings, record.observations = agent.evaluate(task, sub, folder)
+    record.set_verdict(findings)
+    stamp_version(record)
+    record.save(folder)
     return record
 
 
+def finish_saved_trial(task, saved, folder):
+    """A saved trial needs no new model call: at most, finish grading it."""
+    if saved.stopped_during_grading:
+        return grade_and_save(task, submission.load(folder / "submission.yaml"), folder, saved)
+    return saved
+
+
+def run_one(task, model, condition, trial, run_dir, args):
+    folder = trial_folder(run_dir, task, condition, model, trial)
+    saved = TrialRecord.load_if_saved(folder)
+    if saved and saved.outcome != "error":  # an infrastructure error isn't a result; run it again
+        return finish_saved_trial(task, saved, folder)
+    already_paid = saved.cost_usd if saved else 0.0  # the failed attempt was still paid for
+
+    folder.mkdir(parents=True, exist_ok=True)
+    record, messages, sub = agent.run_trial(task, model, condition, max_turns=args.max_turns, max_tokens=args.max_tokens)
+    record.cost_usd = round(record.cost_usd + already_paid, 6)
+    record.trial = trial
+    stamp_version(record)
+    # saved before grading with no findings, so if grading breaks the paid conversation and its
+    # cost are kept, and rerunning finishes the grading instead of paying for the trial again
+    save_conversation(folder, messages, sub)
+    record.save(folder)
+    return grade_and_save(task, sub, folder, record) if sub else record
+
+
 def summarize(run_dir):
-    rows = [json.loads(p.read_text()) for p in sorted(run_dir.rglob("grades.json"))]
+    records = [record for _, record in TrialRecord.all_in(run_dir)]
     with open(run_dir / "summary.csv", "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["task", "condition", "model", "trial", "outcome", "all_pass", "failed_checks", "not_graded", "repairs",
-                    "turns", "measured", "limitations", "cost_usd", "elapsed_s"])
-        for r in rows:
-            failed = [x["check"] for x in r["findings"] if x["ok"] is False]
-            not_graded = [x["check"] for x in r["findings"] if x["ok"] is None]
-            w.writerow([r["task"], r["condition"], r["model"], r["trial"], r["outcome"], r["all_pass"], " ".join(failed), " ".join(not_graded),
-                        r["repairs"], r["turns"], " ".join(r["revealed"]), len(r["limitations"]), r["cost_usd"], r["elapsed_s"]])
-    return rows
+        writer = csv.writer(f)
+        writer.writerow(SUMMARY_COLUMNS)
+        for record in records:
+            writer.writerow(column(record) for column in SUMMARY_COLUMNS.values())
+    return records
+
+
+def is_selected(task_id, task_ids):
+    family = task_id.split("/")[0]  # naming a family regrades all its variants
+    return task_id in task_ids or family in task_ids
+
+
+def regrade_one(record, sub, folder):
+    findings, observations = agent.evaluate(tasks.load(record.task), sub, folder)
+    verdict_changed = [CheckResult.from_finding(finding) for finding in findings] != record.findings
+    if not verdict_changed and observations == record.observations:
+        return
+    record.observations = observations
+    if verdict_changed:
+        was_passing = record.all_pass
+        record.keep_verdict_as_earlier()
+        record.set_verdict(findings)
+        stamp_version(record)
+        print(f"{record.model}: all_pass {was_passing} -> {record.all_pass}")
+    record.save(folder)
 
 
 def regrade(run_dir, task_ids):
     """Grade saved submissions again with the current checks, without calling a model.
     The earlier verdicts stay in grades.json under `regrades`, so a changed result is visible."""
-    for path in sorted(run_dir.rglob("grades.json")):
-        r = json.loads(path.read_text())
-        sub_path = path.parent / "submission.yaml"
-        family = r["task"].split("/")[0]  # naming a family regrades all its variants
-        if (r["task"] not in task_ids and family not in task_ids) or not sub_path.exists():
-            continue
-        sub = submission.load(sub_path)
-        findings, observations = agent.evaluate(tasks.load(r["task"]), sub, path.parent)
-        new = findings_json(findings)
-        if observations != r.get("observations"):
-            r["observations"] = observations
-            path.write_text(json.dumps(r, indent=1))
-        if new != r["findings"]:
-            r.setdefault("regrades", []).append({"date": r["date"], "commit": r["commit"], "platform": r.get("platform"), "findings": r["findings"], "all_pass": r["all_pass"]})
-            r.update(findings=new, all_pass=bool(findings) and all(f.ok is True for f in findings),
-                     date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(), platform=PLATFORM)
-            path.write_text(json.dumps(r, indent=1))
-            print(f"{r['model']}: all_pass {r['regrades'][-1]['all_pass']} -> {r['all_pass']}")
+    for folder, record in TrialRecord.all_in(run_dir):
+        sub_path = folder / "submission.yaml"
+        if is_selected(record.task, task_ids) and sub_path.exists():
+            regrade_one(record, submission.load(sub_path), folder)
 
 
 def check_references(task_ids):
-    ok = True
-    for tid in task_ids:
-        task = tasks.load(tid)
+    all_ok = True
+    for task_id in task_ids:
+        task = tasks.load(task_id)
         if task.reference is None:
-            print(f"{tid}: no reference.yaml")
-            ok = False
+            print(f"{task_id}: no reference.yaml")
+            all_ok = False
             continue
-        sub = submission.parse(task.reference)
-        findings = agent.grade(task, sub, ROOT / "results/local/reference" / tid)
-        for f in findings:
-            print(f"{tid:14} {'pass' if f.ok else 'not graded' if f.ok is None else 'FAIL':10} {f.check:16} {f.detail}")
-            ok &= f.ok is True
-    return ok
+        findings = agent.grade(task, submission.parse(task.reference), ROOT / "results/local/reference" / task_id)
+        for finding in findings:
+            print(f"{task_id:14} {verdict_word(finding.ok):10} {finding.check:16} {finding.detail}")
+            all_ok &= finding.ok is True
+    return all_ok
 
 
-def main():
+def parse_args():
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", action="append", required=True)
     ap.add_argument("--model", action="append", default=[])
@@ -146,34 +182,48 @@ def main():
     ap.add_argument("--reference", action="store_true", help="grade each task's reference solution instead")
     ap.add_argument("--regrade", action="store_true", help="grade the run's saved submissions again with the current checks")
     args = ap.parse_args()
-    if args.reference:
-        sys.exit(0 if check_references(args.task) else 1)
-    if args.regrade:
-        run_dir = ROOT / "results/runs" / args.run
-        regrade(run_dir, args.task)
-        summarize(run_dir)
-        return
-    if not args.model:
-        ap.error("--model is required unless --reference")
-    try:  # fail now, not once per trial
+    if not (args.model or args.reference or args.regrade):
+        ap.error("--model is required unless --reference or --regrade")
+    return args
+
+
+def exit_unless_able_to_run():
+    """Fail now, not once per trial."""
+    try:
         llm._key()
         build.require_sandbox()
     except (llm.LLMError, RuntimeError) as e:
         sys.exit(str(e))
+
+
+def progress_line(record):
+    line = (f"{record.task} {record.condition} {record.model} t{record.trial}: {record.outcome}, "
+            f"all_pass={record.all_pass}, failed={record.failed_checks}, repairs={record.repairs}, "
+            f"turns={record.turns}, ${record.cost_usd:.4f}, {record.elapsed_s} s")
+    return f"{line}\n  error: {record.error[:300]}" if record.error else line
+
+
+def run_all_trials(args, run_dir):
+    conditions = args.condition or ["can_ask"]
+    trial_numbers = range(1, args.trials + 1)
+    for task_id, condition, model, trial in itertools.product(args.task, conditions, args.model, trial_numbers):
+        if (so_far := spent(run_dir)) >= args.budget:
+            print(f"budget reached: ${so_far:.4f} of ${args.budget:.2f}; stopping")
+            return
+        print(progress_line(run_one(tasks.load(task_id), model, condition, trial, run_dir, args)))
+
+
+def main():
+    args = parse_args()
+    if args.reference:
+        sys.exit(0 if check_references(args.task) else 1)
     run_dir = ROOT / "results/runs" / args.run
-    for tid in args.task:
-        task = tasks.load(tid)
-        for condition in args.condition or ["can_ask"]:
-            for model in args.model:
-                for trial in range(1, args.trials + 1):
-                    if (s := spent(run_dir)) >= args.budget:
-                        print(f"budget reached: ${s:.4f} of ${args.budget:.2f}; stopping")
-                        break
-                    r = run_one(task, model, condition, trial, run_dir, args)
-                    failed = [x["check"] for x in r["findings"] if x["ok"] is False]
-                    print(f"{tid} {condition} {model} t{trial}: {r['outcome']}, all_pass={r['all_pass']}, "
-                          f"failed={failed}, repairs={r['repairs']}, turns={r['turns']}, ${r['cost_usd']:.4f}, {r['elapsed_s']} s"
-                          + (f"\n  error: {r['error'][:300]}" if r["error"] else ""))
+    if args.regrade:
+        regrade(run_dir, args.task)
+        summarize(run_dir)
+        return
+    exit_unless_able_to_run()
+    run_all_trials(args, run_dir)
     summarize(run_dir)
     print(f"spent ${spent(run_dir):.4f}; summary in {run_dir / 'summary.csv'}")
 

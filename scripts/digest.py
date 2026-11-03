@@ -9,11 +9,11 @@ reason, what the model asked the person, what it reported as a limitation, its o
 which params it guessed. That settles most failures. Open transcript.json only for the rest.
 """
 import argparse
-import json
 from collections import Counter
 from pathlib import Path
 
-import yaml
+from pbe.parts import submission
+from pbe.runner.trial_record import TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
 CUT = 220
@@ -25,43 +25,61 @@ def short(text, n=CUT):
 
 
 def trials(run, task, model):
-    for path in sorted((ROOT / "results/runs" / run).rglob("grades.json")):
-        r = json.loads(path.read_text())
-        if (not task or r["task"] == task) and (not model or model in r["model"]):
-            yield path.parent, r
+    for folder, record in TrialRecord.all_in(ROOT / "results/runs" / run):
+        if (not task or record.task == task) and (not model or model in record.model):
+            yield folder, record
 
 
-def verdict(r):
-    if r["outcome"] != "submitted":
-        return r["outcome"]
-    if r["all_pass"]:
+def verdict(record):
+    if record.outcome != "submitted":
+        return record.outcome
+    if record.all_pass:
         return "pass"
-    bad = [f["check"] for f in r["findings"] if f["ok"] is False]
-    unknown = [f["check"] for f in r["findings"] if f["ok"] is None]
-    return "failed " + " ".join(dict.fromkeys(bad)) if bad else "not graded " + " ".join(dict.fromkeys(unknown))
+    if record.failed_checks:
+        return "failed " + " ".join(dict.fromkeys(record.failed_checks))
+    return "not graded " + " ".join(dict.fromkeys(record.not_graded_checks))
 
 
-def why(folder, r):
-    for f in r["findings"]:
-        if f["ok"] is not True:
-            print(f"    {'FAIL' if f['ok'] is False else 'n/g '} {f['check']} {f['part']}: {short(f['detail'])}")
-    if r.get("error"):
-        print(f"    error: {short(r['error'])}")
-    for m in r["measures"]:
-        print(f"    asked {short(m['item'], 40)} / {short(m['what'], 50)} -> {short(m['reply'], 90)}")
-    for lim in r["limitations"]:
-        print(f"    limitation: {short(lim.get('wanted', ''), 110)} / {short(lim.get('blocked_by', ''), 60)}")
+def tally_key(verdict_text):
+    """The verdict without the checks it names: "pass", "failed", "not graded" or an outcome."""
+    return "not graded" if verdict_text.startswith("not") else verdict_text.split()[0]
+
+
+def finding_mark(finding):
+    return "FAIL" if finding.ok is False else "n/g "
+
+
+def params_from(sub, sources):
+    return [name for name, param in sub.params.items() if param.source in sources]
+
+
+def print_submission(sub, record):
+    """The model's note, which params it guessed, and what it handed in."""
+    print(f"    note: {short(sub.note)}")
+    guessed = params_from(sub, ("guessed", "unknown"))
+    if guessed:
+        print(f"    guessed: {', '.join(guessed)}")
+    claimed = params_from(sub, ("measured", "asked"))
+    if claimed and not record.revealed:
+        print(f"    says measured or asked, but nobody told it anything: {', '.join(claimed)}")
+    parts = ", ".join(f"{part.id}:{part.role}" for part in sub.parts)
+    hardware = ", ".join(item.ref for item in sub.hardware) or "none"
+    print(f"    parts: {parts}; hardware: {hardware}")
+
+
+def why(folder, record):
+    for finding in record.findings:
+        if finding.ok is not True:
+            print(f"    {finding_mark(finding)} {finding.check} {finding.part}: {short(finding.detail)}")
+    if record.error:
+        print(f"    error: {short(record.error)}")
+    for measurement in record.measures:
+        print(f"    asked {short(measurement.item, 40)} / {short(measurement.what, 50)} -> {short(measurement.reply, 90)}")
+    for limitation in record.limitations:  # whatever the model passed, so any key may be missing
+        print(f"    limitation: {short(limitation.get('wanted', ''), 110)} / {short(limitation.get('blocked_by', ''), 60)}")
     sub_path = folder / "submission.yaml"
     if sub_path.exists():
-        sub = yaml.safe_load(sub_path.read_text())
-        print(f"    note: {short(sub.get('note', ''))}")
-        guessed = [k for k, v in sub["params"].items() if v.get("source") in ("guessed", "unknown")]
-        if guessed:
-            print(f"    guessed: {', '.join(guessed)}")
-        claimed = [k for k, v in sub["params"].items() if v.get("source") in ("measured", "asked")]
-        if claimed and not r["revealed"]:
-            print(f"    says measured or asked, but nobody told it anything: {', '.join(claimed)}")
-        print(f"    parts: {', '.join(p['id'] + ':' + p['role'] for p in sub['parts'])}; hardware: {', '.join(h['ref'] for h in sub['hardware']) or 'none'}")
+        print_submission(submission.load(sub_path), record)
 
 
 def main():
@@ -72,13 +90,14 @@ def main():
     ap.add_argument("--model", help="part of a model's name")
     args = ap.parse_args()
     tally, cost = Counter(), 0.0
-    for folder, r in trials(args.run, args.task, args.model):
-        v = verdict(r)
-        tally["not graded" if v.startswith("not") else v.split()[0]] += 1
-        cost += r["cost_usd"]
-        print(f"{r['task']} {r['condition']} {r['model'].split('/')[-1]} t{r['trial']}: {v} (asked {len(r['measures'])}, ${r['cost_usd']:.3f})")
-        if args.why and v != "pass":
-            why(folder, r)
+    for folder, record in trials(args.run, args.task, args.model):
+        verdict_text = verdict(record)
+        tally[tally_key(verdict_text)] += 1
+        cost += record.cost_usd
+        model_name = record.model.split("/")[-1]
+        print(f"{record.task} {record.condition} {model_name} t{record.trial}: {verdict_text} (asked {len(record.measures)}, ${record.cost_usd:.3f})")
+        if args.why and verdict_text != "pass":
+            why(folder, record)
     print(f"{sum(tally.values())} trials: {dict(tally)}, ${cost:.2f}")
 
 

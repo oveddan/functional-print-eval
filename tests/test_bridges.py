@@ -3,7 +3,7 @@ import cadquery as cq
 import pytest
 import trimesh
 
-from pbe.bridges import overhangs
+from pbe.graders.bridges import overhangs
 
 
 def mesh(shape, tmp_path):

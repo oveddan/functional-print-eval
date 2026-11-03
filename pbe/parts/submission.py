@@ -16,7 +16,7 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field, model_validator
 
-from pbe import catalog
+from pbe.parts import catalog
 
 Source = Literal["measured", "datasheet", "catalog", "asked", "guessed", "unknown", "design"]
 
@@ -115,36 +115,58 @@ class Submission(BaseModel):
 
     @model_validator(mode="after")
     def references_resolve(self):
-        part_ids = {p.id for p in self.parts}
-        hw_ids = {h.id for h in self.hardware}
-        errors = []
+        part_ids = {part.id for part in self.parts}
+        hardware_ids = {item.id for item in self.hardware}
+        errors = self._part_id_errors(part_ids) + self._hardware_errors()
+        errors += self._joint_errors(part_ids, hardware_ids) + self._criterion_errors(part_ids, hardware_ids)
+        errors += self._manual_errors(part_ids, hardware_ids)
+        if errors:
+            raise ValueError("; ".join(errors) + f". Part ids: {sorted(part_ids)}; hardware ids: {sorted(hardware_ids)}")
+        return self
+
+    def _part_id_errors(self, part_ids):
         # a part id becomes a file name when the part is built
-        errors += [f"part id {p.id!r}: use only letters, digits, - and _" for p in self.parts if not re.fullmatch(r"[\w-]+", p.id, re.ASCII)]
+        errors = [f"part id {part.id!r}: use only letters, digits, - and _" for part in self.parts
+                  if not re.fullmatch(r"[\w-]+", part.id, re.ASCII)]
         if len(part_ids) != len(self.parts):
             errors.append("two parts have the same id")
-        for h in self.hardware:
+        return errors
+
+    def _hardware_errors(self):
+        errors = []
+        for item in self.hardware:
             try:
-                catalog.resolve(h.ref)
+                catalog.resolve(item.ref)
             except KeyError as e:
-                errors.append(f"hardware {h.id}: {e}")
-        for j in self.joints:
-            if j.fastener not in hw_ids:
-                errors.append(f"joint {j.id}: unknown fastener {j.fastener}")
-            if j.nut and j.nut not in hw_ids:
-                errors.append(f"joint {j.id}: unknown nut {j.nut}")
-            errors += [f"joint {j.id}: unknown part {s.part}" for s in j.seats if s.part not in part_ids]
-        for c in self.criteria:
-            if c.part not in part_ids:
-                errors.append(f"criterion {c.id}: unknown part {c.part}")
-            if c.hardware and c.hardware not in hw_ids:
-                errors.append(f"criterion {c.id}: unknown hardware {c.hardware}")
-            errors += [f"criterion {c.id}: unknown param {p}" for p in c.params if p not in self.params]
-        for s in self.manual:
-            errors += [f"step {s.n}: unknown part {p}" for p in s.parts if p not in part_ids]
-            errors += [f"step {s.n}: unknown hardware {h}" for h in s.hardware if h not in hw_ids]
-        if errors:
-            raise ValueError("; ".join(errors) + f". Part ids: {sorted(part_ids)}; hardware ids: {sorted(hw_ids)}")
-        return self
+                errors.append(f"hardware {item.id}: {e}")
+        return errors
+
+    def _joint_errors(self, part_ids, hardware_ids):
+        errors = []
+        for joint in self.joints:
+            if joint.fastener not in hardware_ids:
+                errors.append(f"joint {joint.id}: unknown fastener {joint.fastener}")
+            if joint.nut and joint.nut not in hardware_ids:
+                errors.append(f"joint {joint.id}: unknown nut {joint.nut}")
+            errors += [f"joint {joint.id}: unknown part {seat.part}" for seat in joint.seats if seat.part not in part_ids]
+        return errors
+
+    def _criterion_errors(self, part_ids, hardware_ids):
+        errors = []
+        for criterion in self.criteria:
+            if criterion.part not in part_ids:
+                errors.append(f"criterion {criterion.id}: unknown part {criterion.part}")
+            if criterion.hardware and criterion.hardware not in hardware_ids:
+                errors.append(f"criterion {criterion.id}: unknown hardware {criterion.hardware}")
+            errors += [f"criterion {criterion.id}: unknown param {name}" for name in criterion.params if name not in self.params]
+        return errors
+
+    def _manual_errors(self, part_ids, hardware_ids):
+        errors = []
+        for step in self.manual:
+            errors += [f"step {step.n}: unknown part {part}" for part in step.parts if part not in part_ids]
+            errors += [f"step {step.n}: unknown hardware {item}" for item in step.hardware if item not in hardware_ids]
+        return errors
 
 
 def parse(text) -> Submission:

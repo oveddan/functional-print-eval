@@ -22,7 +22,7 @@ from pathlib import Path
 
 import trimesh
 
-from pbe.submission import Submission
+from pbe.parts.submission import Submission
 
 RUNNER = r"""
 import json, sys, types
@@ -65,24 +65,32 @@ def require_sandbox():
                            "would run with your network and files. Run it in a throwaway container or VM with PBE_NO_SANDBOX=1.")
 
 
+def _in_bwrap(command, writable):
+    binds = [arg for folder in writable for arg in ("--bind", folder, folder)]
+    return [*BWRAP, *binds, *command]
+
+
+def _in_sandbox_exec(command, writable):
+    subpaths = " ".join(f'(subpath "{folder}")' for folder in writable)
+    profile = (f'(version 1)(allow default)(deny network*)(deny process-fork)(deny file-write*)'
+               f'(allow file-write* {subpaths} (literal "/dev/null"))')
+    return ["sandbox-exec", "-p", profile, *command]
+
+
 def _isolated(command, out_dir, tmp):
     """(command, env) for running model code: no inherited environment, and a sandbox if there is one."""
     env = {"PATH": os.environ.get("PATH", ""), "HOME": tmp, "TMPDIR": tmp}
     kind = sandbox()
     if kind is None:
         return command, env
-    if kind == "bwrap":
-        binds = [arg for d in (out_dir, tmp) for arg in ("--bind", str(Path(d).resolve()), str(Path(d).resolve()))]
-        return [*BWRAP, *binds, *command], env
-    writable = " ".join(f'(subpath "{Path(d).resolve()}")' for d in (out_dir, tmp))
-    profile = (f'(version 1)(allow default)(deny network*)(deny process-fork)(deny file-write*)'
-               f'(allow file-write* {writable} (literal "/dev/null"))')
-    return ["sandbox-exec", "-p", profile, *command], env
+    writable = [str(Path(folder).resolve()) for folder in (out_dir, tmp)]
+    wrap = _in_bwrap if kind == "bwrap" else _in_sandbox_exec
+    return wrap(command, writable), env
 
 
 @dataclass
 class Built:
-    part: str
+    part_id: str
     ok: bool
     stl: Path | None = None
     mesh: trimesh.Trimesh | None = None
@@ -90,33 +98,43 @@ class Built:
     role: str = ""
 
 
+def _last_line(stderr):
+    """The error's last line, the one that names the exception."""
+    return (stderr.strip().splitlines() or ["no output"])[-1]
+
+
+def _build_one(part, params, out_dir, tmp, runner, timeout) -> Built:
+    """Run one part's code in its own process and read the mesh it exports."""
+    def failed(error):
+        return Built(part_id=part.id, ok=False, error=error, role=part.role)
+
+    stl = out_dir / f"{part.id}.stl"
+    spec = Path(tmp) / f"{part.id}.json"
+    spec.write_text(json.dumps({"params": params, "code": part.code, "part": part.id, "out": str(stl)}))
+    command, env = _isolated([sys.executable, "-I", str(runner), str(spec)], out_dir, tmp)
+    try:
+        finished = subprocess.run(command, cwd=tmp, env=env, capture_output=True, text=True, errors="replace", timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return failed(f"timed out after {timeout} s")
+    if finished.returncode != 0 or not stl.exists():
+        return failed(_last_line(finished.stderr))
+    try:
+        mesh = trimesh.load(stl, force="mesh")
+    except Exception as e:  # a model's shape can export as something trimesh can't read
+        return failed(f"exported, but the mesh can't be read: {e}")
+    return Built(part_id=part.id, ok=True, stl=stl, mesh=mesh, role=part.role)
+
+
 def build_parts(sub: Submission, out_dir, overrides=None, timeout=120) -> dict[str, Built]:
     require_sandbox()
     out_dir = Path(out_dir).resolve()  # the runner's cwd is a temp dir
     out_dir.mkdir(parents=True, exist_ok=True)
-    params = {k: v.value for k, v in sub.params.items()}
+    params = {name: param.value for name, param in sub.params.items()}
     params.update(overrides or {})
     results = {}
     with tempfile.TemporaryDirectory() as tmp:
         runner = Path(tmp) / "runner.py"
         runner.write_text(RUNNER)
         for part in sub.parts:
-            stl = out_dir / f"{part.id}.stl"
-            spec = Path(tmp) / f"{part.id}.json"
-            spec.write_text(json.dumps({"params": params, "code": part.code, "part": part.id, "out": str(stl)}))
-            command, env = _isolated([sys.executable, "-I", str(runner), str(spec)], out_dir, tmp)
-            try:
-                r = subprocess.run(command, cwd=tmp, env=env, capture_output=True, text=True, errors="replace", timeout=timeout)
-            except subprocess.TimeoutExpired:
-                results[part.id] = Built(part.id, False, error=f"timed out after {timeout} s")
-                continue
-            if r.returncode != 0 or not stl.exists():
-                results[part.id] = Built(part.id, False, error=(r.stderr.strip().splitlines() or ["no output"])[-1])
-                continue
-            try:
-                results[part.id] = Built(part.id, True, stl, trimesh.load(stl, force="mesh"))
-            except Exception as e:  # a model's shape can export as something trimesh can't read
-                results[part.id] = Built(part.id, False, error=f"exported, but the mesh can't be read: {e}")
-    for part in sub.parts:
-        results[part.id].role = part.role
+            results[part.id] = _build_one(part, params, out_dir, tmp, runner, timeout)
     return results

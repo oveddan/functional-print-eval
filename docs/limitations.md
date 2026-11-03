@@ -2,7 +2,7 @@
 
 What each check and test can and can't claim, and how it could be extended. The report's limitations section draws from this file. One section per check.
 
-## Bridge check (`pbe/bridges.py`) and its test print (coupon A)
+## Bridge check (`pbe/graders/bridges.py`) and its test print (coupon A)
 
 ### What it claims
 

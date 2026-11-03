@@ -17,14 +17,28 @@ import math
 from pathlib import Path
 
 import cadquery as cq
+import yaml
+from pydantic import BaseModel
 
 OUT = Path(__file__).resolve().parent / "out"
 LABEL_DEPTH = 0.6
 
 
+def at(x, y, z):
+    """A sketch plane at height z, centred on (x, y)."""
+    return cq.Workplane("XY").workplane(offset=z).center(x, y)
+
+
 def label(body, text, x, y, top, size=5):
-    t = cq.Workplane("XY").workplane(offset=top - LABEL_DEPTH).center(x, y).text(text, size, LABEL_DEPTH + 0.1, halign="center", valign="center")
-    return body.cut(t)
+    letters = at(x, y, top - LABEL_DEPTH).text(text, size, LABEL_DEPTH + 0.1, halign="center", valign="center")
+    return body.cut(letters)
+
+
+def cut_dots(body, count, x, y, top, spacing=3, radius=0.8):
+    """A row of `count` dots centred on x, sunk into the top face: how a column is told apart."""
+    for k in range(count):
+        body = body.cut(at(x + (k - (count - 1) / 2) * spacing, y, top - LABEL_DEPTH).circle(radius).extrude(1))
+    return body
 
 
 # --- A: bridges -------------------------------------------------------------------
@@ -39,22 +53,35 @@ A_WIDTH = 50 + 2 * A_WALL  # every pocket centred in a band this wide
 A2_CELLS = [("40", 40, None), ("50", 50, None)]  # round 2: only the pair that contradicted the span limit
 
 
-def bridges(spec=BRIDGE_CELLS):
-    cells, x = [], A_WALL
+def cell_spans(spec=BRIDGE_CELLS):
+    """Where each pocket runs along x: (name, size, hole, start, end), and the coupon's length."""
+    spans, x = [], A_WALL
     for name, size, hole in spec:
-        cells.append((name, size, hole, x + size / 2))
+        spans.append((name, size, hole, x, x + size))
         x += size + A_WALL
-    length, h = x, A_DEPTH + A_ROOF
-    body = cq.Workplane("XY").box(length, A_WIDTH, h, centered=False).translate((0, -A_WIDTH / 2, 0))
-    for name, size, hole, cx in cells:
-        body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(cx, 0).rect(size, size).extrude(A_DEPTH + 1))
+    return spans, x
+
+
+def bridge_cells(spec=BRIDGE_CELLS):
+    """Each pocket with its centre along x: (name, size, hole, centre), and the coupon's length."""
+    spans, length = cell_spans(spec)
+    return [(name, size, hole, start + size / 2) for name, size, hole, start, _ in spans], length
+
+
+def bridges(spec=BRIDGE_CELLS):
+    cells, length = bridge_cells(spec)
+    height = A_DEPTH + A_ROOF
+    body = cq.Workplane("XY").box(length, A_WIDTH, height, centered=False).translate((0, -A_WIDTH / 2, 0))
+    for name, size, hole, centre in cells:
+        body = body.cut(at(centre, 0, -1).rect(size, size).extrude(A_DEPTH + 1))
         if hole == "stepped":
             # a strip the hole's width across the whole pocket, then a square, then the hole
-            for w, l, steps in ((A_HOLE, size, 1), (A_HOLE, A_HOLE, 2)):
-                body = body.cut(cq.Workplane("XY").workplane(offset=A_DEPTH - 0.01).center(cx, 0).rect(w, l).extrude(steps * A_STEP + 0.01))
+            for width, length_along, steps in ((A_HOLE, size, 1), (A_HOLE, A_HOLE, 2)):
+                body = body.cut(at(centre, 0, A_DEPTH - 0.01).rect(width, length_along).extrude(steps * A_STEP + 0.01))
         if hole:
-            body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(cx, 0).circle(A_HOLE / 2).extrude(h + 2))
-        body = label(body, name, cx, size / 2 + 4 if size < 50 else -size / 2 + 2, h, size=4) if size < 50 else body
+            body = body.cut(at(centre, 0, -1).circle(A_HOLE / 2).extrude(height + 2))
+        if size < 50:  # the 50 mm pocket leaves no room for a label
+            body = label(body, name, centre, size / 2 + 4, height, size=4)
     return body, cells
 
 
@@ -64,23 +91,32 @@ CLEARANCES = [0.0, 0.1, 0.2, 0.3]
 B_PITCH, B_FLOOR = 22, 1.6
 
 
-def nuts():
-    h = B_FLOOR + max(n[2] for n in NUTS)
-    rows, cols = len(NUTS), len(CLEARANCES)
-    w, d = cols * B_PITCH + 12, rows * B_PITCH + 4
-    body = cq.Workplane("XY").box(w, d, h, centered=False)
-    for r, (name, af, nh) in enumerate(NUTS):
-        cy = d - 2 - B_PITCH / 2 - r * B_PITCH
-        body = label(body, name, 6, cy, h, size=4)
-        for c, cl in enumerate(CLEARANCES):
-            cx = 12 + B_PITCH / 2 + c * B_PITCH
-            across_corners = (af + cl) / math.cos(math.radians(30))
-            body = body.cut(cq.Workplane("XY").workplane(offset=h - nh).center(cx, cy).polygon(6, across_corners).extrude(nh + 1))
-    for c, cl in enumerate(CLEARANCES):  # clearance marks along the near edge: 0 to 3 dots
-        cx = 12 + B_PITCH / 2 + c * B_PITCH
-        for k in range(c):
-            body = body.cut(cq.Workplane("XY").workplane(offset=h - LABEL_DEPTH).center(cx + (k - (c - 1) / 2) * 3, 2.2).circle(0.8).extrude(1))
+def nut_block(clearances_for, mark=None):
+    """A row of hex pockets per nut, one column per clearance; `clearances_for(name)` gives a row's."""
+    height = B_FLOOR + max(nut_height for _, _, nut_height in NUTS)
+    columns = len(CLEARANCES)
+    width, depth = columns * B_PITCH + 12, len(NUTS) * B_PITCH + 4
+    body = cq.Workplane("XY").box(width, depth, height, centered=False)
+    if mark:
+        body = label(body, mark, width - 4, 2.6, height, size=3)
+    for row, (name, af, nut_height) in enumerate(NUTS):
+        row_y = depth - 2 - B_PITCH / 2 - row * B_PITCH
+        body = label(body, name, 6, row_y, height, size=4)
+        for column, clearance in enumerate(clearances_for(name)):
+            across_corners = (af + clearance) / math.cos(math.radians(30))
+            pocket = at(_nut_column_x(column), row_y, height - nut_height).polygon(6, across_corners).extrude(nut_height + 1)
+            body = body.cut(pocket)
+    for column in range(columns):  # clearance marks along the near edge: 0 to 3 dots
+        body = cut_dots(body, column, _nut_column_x(column), 2.2, height)
     return body
+
+
+def _nut_column_x(column):
+    return 12 + B_PITCH / 2 + column * B_PITCH
+
+
+def nuts():
+    return nut_block(lambda name: CLEARANCES)
 
 
 # --- B2: nut pockets, round 2 ----------------------------------------
@@ -92,23 +128,7 @@ NUTS2 = {"M3": [0.1, 0.15, 0.2, 0.25], "M5": [0.0, 0.05, 0.1, 0.15],
 
 
 def nuts2():
-    h = B_FLOOR + max(n[2] for n in NUTS)
-    rows, cols = len(NUTS), len(CLEARANCES)
-    w, d = cols * B_PITCH + 12, rows * B_PITCH + 4
-    body = cq.Workplane("XY").box(w, d, h, centered=False)
-    body = label(body, "2", w - 4, 2.6, h, size=3)  # tells round 2 from round 1
-    for r, (name, af, nh) in enumerate(NUTS):
-        cy = d - 2 - B_PITCH / 2 - r * B_PITCH
-        body = label(body, name, 6, cy, h, size=4)
-        for c, cl in enumerate(NUTS2[name]):
-            cx = 12 + B_PITCH / 2 + c * B_PITCH
-            across_corners = (af + cl) / math.cos(math.radians(30))
-            body = body.cut(cq.Workplane("XY").workplane(offset=h - nh).center(cx, cy).polygon(6, across_corners).extrude(nh + 1))
-    for c in range(cols):
-        cx = 12 + B_PITCH / 2 + c * B_PITCH
-        for k in range(c):
-            body = body.cut(cq.Workplane("XY").workplane(offset=h - LABEL_DEPTH).center(cx + (k - (c - 1) / 2) * 3, 2.2).circle(0.8).extrude(1))
-    return body
+    return nut_block(lambda name: NUTS2[name], mark="2")  # the 2 tells round 2 from round 1
 
 
 # --- C: slide fits ----------------------------------------------------------------
@@ -122,40 +142,37 @@ TUNNELS = [  # (label, side, top, bed flare): Estoa's first leg pocket, then its
 C_H = 12
 
 
+def cut_tunnels(body, width, first_y):
+    """The bar's tunnels, 12 mm apart from first_y. They run along x, open at both ends, sitting
+    on the bed; their roofs are bridges."""
+    for j, (name, side, top, flare) in enumerate(TUNNELS):
+        tunnel_y = first_y + j * 12
+        tunnel_w, tunnel_h = BAR_W + 2 * side, BAR_H + top
+        body = body.cut(at(width / 2, tunnel_y, -1).rect(width + 2, tunnel_w).extrude(tunnel_h + 1))
+        if flare:
+            body = body.cut(at(width / 2, tunnel_y, -1).rect(width + 2, tunnel_w + 2 * flare).extrude(1 + flare))
+        body = label(body, name, 4, tunnel_y, C_H, size=4)
+    return body
+
+
 def fits():
     pitch = 18
-    w = len(SQUARE_FITS) * pitch + 4
-    d = 22 + 36  # was 22 + 30: tunnel 2 broke through the back wall (round 1 print)
-    body = cq.Workplane("XY").box(w, d, C_H, centered=False)
-    for i, c in enumerate(SQUARE_FITS):
-        cx = 2 + pitch / 2 + i * pitch
-        s = PEG + 2 * c
-        body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(cx, 11).rect(s, s).extrude(C_H + 2))
-        for k in range(i + 1):  # 1 to 4 dots
-            body = body.cut(cq.Workplane("XY").workplane(offset=C_H - LABEL_DEPTH).center(cx + (k - i / 2) * 2.5, 20.5).circle(0.7).extrude(1))
-    # tunnels run along x, open at both ends, sitting on the bed; their roofs are bridges
-    for j, (name, side, top, flare) in enumerate(TUNNELS):
-        cy = 30 + 6 + j * 12
-        tw, th = BAR_W + 2 * side, BAR_H + top
-        body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(w / 2, cy).rect(w + 2, tw).extrude(th + 1))
-        if flare:
-            body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(w / 2, cy).rect(w + 2, tw + 2 * flare).extrude(1 + flare))
-        body = label(body, name, 4, cy, C_H, size=4)
-    return body
+    width = len(SQUARE_FITS) * pitch + 4
+    depth = 22 + 36  # was 22 + 30: tunnel 2 broke through the back wall (round 1 print)
+    body = cq.Workplane("XY").box(width, depth, C_H, centered=False)
+    for i, per_side in enumerate(SQUARE_FITS):
+        hole_x = 2 + pitch / 2 + i * pitch
+        side = PEG + 2 * per_side
+        body = body.cut(at(hole_x, 11, -1).rect(side, side).extrude(C_H + 2))
+        body = cut_dots(body, i + 1, hole_x, 20.5, C_H, spacing=2.5, radius=0.7)  # 1 to 4 dots
+    return cut_tunnels(body, width, 30 + 6)
 
 
 def tunnels():
     """C2 (round 2): C's two tunnels without the square holes, already measured in round 1."""
-    w, d = len(SQUARE_FITS) * 18 + 4, 36
-    body = cq.Workplane("XY").box(w, d, C_H, centered=False)
-    for j, (name, side, top, flare) in enumerate(TUNNELS):
-        cy = 12 + j * 12
-        tw, th = BAR_W + 2 * side, BAR_H + top
-        body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(w / 2, cy).rect(w + 2, tw).extrude(th + 1))
-        if flare:
-            body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(w / 2, cy).rect(w + 2, tw + 2 * flare).extrude(1 + flare))
-        body = label(body, name, 4, cy, C_H, size=4)
-    return body
+    width, depth = len(SQUARE_FITS) * 18 + 4, 36
+    body = cq.Workplane("XY").box(width, depth, C_H, centered=False)
+    return cut_tunnels(body, width, 12)
 
 
 def pegs():
@@ -172,15 +189,42 @@ def pegs():
 # E: through-bores for each spline at +0.0 to +0.3 over the measured outer diameter
 #    (which press on and grip), 608 seats at +0.0 to +0.3 over 22 mm, and 8 mm pegs
 #    at -0.2 to +0.0 for the bearing's bore.
-import yaml  # noqa: E402
-
-HW = yaml.safe_load((Path(__file__).resolve().parents[1] / "catalog/hardware.yaml").read_text())
-SERVO = {s["id"]: s for s in HW["servos"]}
-BEARING = HW["bearings"][0]
+Number = int | float
 
 
-def val(d):
-    return d.get("used", d["measured"] if not isinstance(d["measured"], list) else max(d["measured"]))
+class Reading(BaseModel):
+    """One dimension in catalog/hardware.yaml: what the calipers read, what's used, the nominal."""
+    measured: Number | list[Number] | None = None
+    used: Number | None = None
+    nominal: Number | None = None
+
+    @property
+    def value(self):
+        """What to design to: the value used if one is given, else the largest reading."""
+        if self.used is not None:
+            return self.used
+        return max(self.measured) if isinstance(self.measured, list) else self.measured
+
+
+class Servo(BaseModel):
+    """The readings these coupons use; the catalog records more."""
+    id: str
+    body_l: Reading
+    body_w: Reading
+    tab_hole_pitch: Reading
+    tab_hole_d: Reading
+    spline_od: Reading
+
+
+class Bearing(BaseModel):
+    od: Reading
+    bore: Reading
+    width: Reading
+
+
+HARDWARE = yaml.safe_load((Path(__file__).resolve().parents[1] / "catalog/hardware.yaml").read_text())
+SERVO = {servo.id: servo for servo in (Servo.model_validate(entry) for entry in HARDWARE["servos"])}
+BEARING = Bearing.model_validate(HARDWARE["bearings"][0])
 
 
 SERVO_CUTS = [("MG996R", 0.25), ("MG90S", 0.15), ("MG90S", 0.3)]  # (servo, clearance per side)
@@ -190,63 +234,72 @@ SEAT_FITS = [0.0, 0.1, 0.2, 0.3]
 PEG_DS = [-0.2, -0.1, 0.0]
 
 
+def _tab_slots(name):
+    """(slot width, how far it runs either way, its length) for a servo's tab screws."""
+    hole = SERVO[name].tab_hole_d.value
+    if name == "MG996R":
+        # one slot spans each tab's hole pair (datasheet 10 mm apart); the self-tapping screw bites its sides
+        return 3.0, 1.0, 10 + hole
+    return 2.0, 0.5, 2.0  # MG90S: more travel would leave under 1 mm of wall to the cutout
+
+
 def servo_plate():
-    w = 66
-    rows = [(n, c, val(SERVO[n]["body_l"]), val(SERVO[n]["body_w"])) for n, c in SERVO_CUTS]
-    d = sum(bw + 2 * c for _, c, _, bw in rows) + D_GAP * (len(rows) + 1)
-    body = cq.Workplane("XY").box(w, d, D_T, centered=False)
+    width = 66
+    cutouts = [(name, clearance, SERVO[name].body_l.value, SERVO[name].body_w.value) for name, clearance in SERVO_CUTS]
+    depth = sum(body_w + 2 * clearance for _, clearance, _, body_w in cutouts) + D_GAP * (len(cutouts) + 1)
+    body = cq.Workplane("XY").box(width, depth, D_T, centered=False)
     y = D_GAP
-    for name, c, bl, bw in rows:
-        cy = y + bw / 2 + c
-        body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(w / 2, cy).rect(bl + 2 * c, bw + 2 * c).extrude(D_T + 2))
-        pitch, hole = val(SERVO[name]["tab_hole_pitch"]), val(SERVO[name]["tab_hole_d"])
-        across = 10 + hole if name == "MG996R" else hole  # MG996R: one slot spans each tab's hole pair (datasheet 10 mm apart)
-        slot_w = 3.0 if name == "MG996R" else 2.0  # self-tapping screw bites the slot sides
-        travel = 1.0 if name == "MG996R" else 0.5  # MG90S: more would leave under 1 mm of wall to the cutout
-        for sx in (-1, 1):
-            body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(w / 2 + sx * pitch / 2, cy)
-                            .rect(slot_w + 2 * travel, slot_w if name == "MG90S" else across).extrude(D_T + 2))
+    for name, clearance, body_l, body_w in cutouts:
+        cutout_y = y + body_w / 2 + clearance
+        body = body.cut(at(width / 2, cutout_y, -1).rect(body_l + 2 * clearance, body_w + 2 * clearance).extrude(D_T + 2))
+        pitch = SERVO[name].tab_hole_pitch.value
+        slot_w, travel, slot_l = _tab_slots(name)
+        for side in (-1, 1):
+            body = body.cut(at(width / 2 + side * pitch / 2, cutout_y, -1).rect(slot_w + 2 * travel, slot_l).extrude(D_T + 2))
         short = "996" if name == "MG996R" else "90S"
-        body = label(body, f"{short} {c:.2f}".replace("0.", "."), w / 2, cy + bw / 2 + c + D_GAP / 2, D_T, size=3.5)
-        y += bw + 2 * c + D_GAP
+        text = f"{short} {clearance:.2f}".replace("0.", ".")
+        body = label(body, text, width / 2, cutout_y + body_w / 2 + clearance + D_GAP / 2, D_T, size=3.5)
+        y += body_w + 2 * clearance + D_GAP
     return body
 
 
 def spline_bearing_block():
-    seat_d, floor, bore = BEARING["od"]["used"], 1.2, BEARING["bore"]["nominal"]
-    seat_h = BEARING["width"]["nominal"] + 0.2
-    h = seat_h + floor
+    seat_d, floor, bore = BEARING.od.used, 1.2, BEARING.bore.nominal
+    seat_h = BEARING.width.nominal + 0.2
+    height = seat_h + floor
     pitch = seat_d + 6
-    cols = len(SEAT_FITS)
-    w = 12 + cols * pitch
+    columns = len(SEAT_FITS)
+    width = 12 + columns * pitch
     rows_y = {"608": 4 + pitch / 2, "996": 4 + pitch + 6, "90": 4 + pitch + 18, "peg": 4 + pitch + 30}
-    d = rows_y["peg"] + 8
-    body = cq.Workplane("XY").box(w, d, h, centered=False)
-    for c in range(cols):
-        cx = 12 + pitch / 2 + c * pitch
-        body = body.cut(cq.Workplane("XY").workplane(offset=floor).center(cx, rows_y["608"]).circle((seat_d + SEAT_FITS[c]) / 2).extrude(h))
-        body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(cx, rows_y["608"]).circle(6).extrude(floor + 2))  # push the bearing out
+    depth = rows_y["peg"] + 8
+    body = cq.Workplane("XY").box(width, depth, height, centered=False)
+    for column in range(columns):
+        column_x = 12 + pitch / 2 + column * pitch
+        body = body.cut(at(column_x, rows_y["608"], floor).circle((seat_d + SEAT_FITS[column]) / 2).extrude(height))
+        body = body.cut(at(column_x, rows_y["608"], -1).circle(6).extrude(floor + 2))  # push the bearing out
         for row, servo in (("996", "MG996R"), ("90", "MG90S")):
-            dia = val(SERVO[servo]["spline_od"]) + SPLINE_FITS[c]
-            body = body.cut(cq.Workplane("XY").workplane(offset=-1).center(cx, rows_y[row]).circle(dia / 2).extrude(h + 2))
-        if c < len(PEG_DS):
-            body = body.union(cq.Workplane("XY").workplane(offset=h).center(cx, rows_y["peg"]).circle((bore + PEG_DS[c]) / 2).extrude(8))
-        for k in range(c):  # 0 to 3 dots, like B
-            body = body.cut(cq.Workplane("XY").workplane(offset=h - LABEL_DEPTH).center(cx + (k - (c - 1) / 2) * 3, rows_y["90"] + 6).circle(0.8).extrude(1))
+            bore_d = SERVO[servo].spline_od.value + SPLINE_FITS[column]
+            body = body.cut(at(column_x, rows_y[row], -1).circle(bore_d / 2).extrude(height + 2))
+        if column < len(PEG_DS):
+            body = body.union(at(column_x, rows_y["peg"], height).circle((bore + PEG_DS[column]) / 2).extrude(8))
+        body = cut_dots(body, column, column_x, rows_y["90"] + 6, height)  # 0 to 3 dots, like B
     for row in ("996", "90"):
-        body = label(body, row, 6, rows_y[row], h, size=3.5)
+        body = label(body, row, 6, rows_y[row], height, size=3.5)
     return body
 
 
 def main():
     OUT.mkdir(exist_ok=True)
-    a, _ = bridges()
-    parts = {"A-bridges": a, "B-nuts": nuts(), "B2-nuts": nuts2(), "A2-bridges": bridges(A2_CELLS)[0], "C-fits": fits(), "C2-tunnels": tunnels(), "C-pegs": pegs(),
+    bridge_coupon, _ = bridges()
+    round2_bridges, _ = bridges(A2_CELLS)
+    parts = {"A-bridges": bridge_coupon, "B-nuts": nuts(), "B2-nuts": nuts2(), "A2-bridges": round2_bridges,
+             "C-fits": fits(), "C2-tunnels": tunnels(), "C-pegs": pegs(),
              "D-servos": servo_plate(), "E-splines-bearings": spline_bearing_block()}
     for name, shape in parts.items():
         cq.exporters.export(shape, str(OUT / f"{name}.stl"), tolerance=0.01, angularTolerance=0.1)
-        bb = shape.val().BoundingBox()
-        print(f"{name:10} {bb.xlen:6.1f} x {bb.ylen:5.1f} x {bb.zlen:4.1f} mm  {shape.val().Volume() / 1000:5.1f} cm3")
+        box = shape.val().BoundingBox()
+        volume_cm3 = shape.val().Volume() / 1000
+        print(f"{name:10} {box.xlen:6.1f} x {box.ylen:5.1f} x {box.zlen:4.1f} mm  {volume_cm3:5.1f} cm3")
 
 
 if __name__ == "__main__":
