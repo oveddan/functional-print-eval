@@ -4,6 +4,10 @@ Tools: measure (the person's own measurements, from a lookup table), submit_desi
 (schema errors go back to the model to fix; repairs are counted, not failed) and
 report_limitation (changes nothing; records what the model wanted to use but couldn't,
 and what stopped it, so a failure caused by the eval's constraints shows as one).
+In the can_run_code condition the model also has run_python (pbe/runner/python_tool.py), and
+submit_design builds every part before accepting the design, sending build errors back to
+fix (pbe/runner/build_on_submit.py). The other conditions' prompt and tools are exactly as
+they were before either existed.
 """
 import json
 import re
@@ -18,12 +22,15 @@ from pbe.graders import checks, nuts, requirements
 from pbe.parts.build import build_parts
 from pbe.parts.printer import printer
 from pbe.parts.submission import Submission
-from pbe.runner import llm
+from pbe.runner import build_on_submit, llm, python_tool
 from pbe.runner.measure import Person
-from pbe.runner.trial_record import ModelCall, Settings, TrialRecord
+from pbe.runner.python_tool import PythonTool
+from pbe.runner.trial_record import BuildOnSubmit, ModelCall, Settings, TrialRecord
 
 ROOT = Path(__file__).resolve().parents[2]
-CONDITIONS = ("can_ask", "all_given")
+CONDITIONS = ("can_ask", "all_given", python_tool.CONDITION)
+# each code run takes a turn, so a model that can run code gets more of them
+DEFAULT_MAX_TURNS = {"can_ask": 8, "all_given": 8, python_tool.CONDITION: 20}
 
 SYSTEM = """You're designing a part for someone to 3D print at home. They'll print it on their own printer, use only the hardware listed below, and put it together by following your manual.
 
@@ -94,11 +101,23 @@ def _inline(schema):
     return walk(schema)
 
 
+SUBMIT = "Hand in the finished design. This ends the conversation."
+# can_run_code: what changes in submit_design's description and its line in the system prompt
+SUBMIT_BUILDS_FIRST = ("Hand in the finished design. Every part is built first: if one doesn't build, you get its "
+                       "error back to fix and call this again. A design whose parts all build ends the conversation. "
+                       "Building uses run_python's shared code time; once that's used up, the design is handed in "
+                       "without being built.")
+SUBMIT_LINE = "- submit_design(...): hand in the finished design. This ends the conversation."
+SUBMIT_LINE_BUILDS_FIRST = ("- submit_design(...): hand in the finished design. Every part is built first: if one doesn't "
+                            "build, you get its error back to fix. A design whose parts all build ends the conversation.")
+
+
 @cache
-def tools():
+def tools(condition="can_ask"):
     design = _inline(Submission.model_json_schema())
     design["properties"].pop("task")  # the runner fills it in
     design["required"] = [r for r in design["required"] if r != "task"]
+    submit = SUBMIT_BUILDS_FIRST if condition == python_tool.CONDITION else SUBMIT
 
     def function_tool(name, description, parameters):
         return {"type": "function", "function": {"name": name, "description": description, "parameters": parameters}}
@@ -108,7 +127,7 @@ def tools():
                "item": {"type": "string", "description": "What to measure, e.g. 'desk'"},
                "what": {"type": "string", "description": "Which dimension, e.g. 'thickness at the edge'"}},
             "required": ["item", "what"]}),
-        function_tool("submit_design", "Hand in the finished design. This ends the conversation.", design),
+        function_tool("submit_design", submit, design),
         function_tool("report_limitation", "Say you wanted to use something (a technique, a tool, a part or material, a way of "
            "handing in the design) but couldn't because of what's available here. It changes nothing; it's noted.",
            {"type": "object", "properties": {
@@ -116,7 +135,7 @@ def tools():
                "blocked_by": {"type": "string", "description": "What stopped you, e.g. not in the hardware list, no such tool, the submission format"},
                "why": {"type": "string", "description": "Why you wanted it"}},
             "required": ["wanted", "blocked_by", "why"]}),
-    ]
+    ] + ([python_tool.spec()] if condition == python_tool.CONDITION else [])
 
 
 def first_message(task, condition, person):
@@ -228,18 +247,24 @@ def read_arguments(call: llm.ToolCall) -> dict:
 
 
 class TrialTools:
-    """The model's three tools, and what its calls to them collect over one trial."""
+    """The model's tools (three, and run_python where it can run code), and what its calls
+    to them collect over one trial."""
 
-    def __init__(self, task, person):
+    def __init__(self, task, person, python: PythonTool | None = None):
         self.task = task
         self.person = person
+        self.python = python
         self.limitations = []  # whatever the model passed to report_limitation
         self.repairs = 0  # submit_design calls sent back to be fixed
+        self.sent_back_unbuilt = []  # can_run_code: per call sent back for a build error, the parts that didn't build
+        self.accepted_unbuilt = []  # can_run_code: parts of the accepted design left unbuilt when code time ran out
         self.submission = None  # the valid design, once one is handed in
 
     def answer(self, call: llm.ToolCall) -> str:
         """Run one tool call; what the model is told."""
         tools_by_name = {"measure": self.measure, "report_limitation": self.report_limitation, "submit_design": self.submit_design}
+        if self.python is not None:
+            tools_by_name["run_python"] = self.run_python
         try:
             arguments = read_arguments(call)
         except UnreadableArguments as e:
@@ -254,22 +279,64 @@ class TrialTools:
     def measure(self, arguments):
         return self.person.measure(str(arguments.get("item", "")), str(arguments.get("what", "")))
 
+    def run_python(self, arguments):
+        return self.python.run(str(arguments.get("code", "")))
+
     def report_limitation(self, arguments):
         self.limitations.append(arguments)
         return "Noted. Continue with what you have."
 
     def submit_design(self, arguments):
         try:
-            self.submission = Submission.model_validate({**arguments, "task": self.task.id})
+            submission = Submission.model_validate({**arguments, "task": self.task.id})
         except ValidationError as e:
             self.repairs += 1
             return f"That isn't a valid submission. Fix these and call submit_design again:\n{e}"
+        if self.python is not None:
+            built = build_on_submit.build(self.python, submission)
+            if built.errors:
+                self.repairs += 1
+                self.sent_back_unbuilt.append(list(built.errors))
+                return build_on_submit.sent_back(built.errors)
+            self.accepted_unbuilt = built.unbuilt
+        self.submission = submission
         return "Received."
 
+    def build_record(self, error) -> BuildOnSubmit | None:
+        """can_run_code only: what building on submit sent back, and whether turns ran out while fixing it."""
+        if self.python is None:
+            return None
+        still_fixing = bool(self.sent_back_unbuilt) and self.submission is None and error is None
+        return BuildOnSubmit(sent_back=self.sent_back_unbuilt, out_of_turns_while_fixing=still_fixing,
+                             accepted_unbuilt=self.accepted_unbuilt)
 
-def opening_messages(task, condition, person, max_turns):
-    system = SYSTEM.format(setup=setup_text(), hardware=hardware_text(), max_turns=max_turns)
+
+def system_prompt(max_turns, python: PythonTool | None = None):
+    text = SYSTEM.format(setup=setup_text(), hardware=hardware_text(), max_turns=max_turns)
+    if python is None:
+        return text
+    assert text.count(SUBMIT_LINE) == 1
+    text = text.replace(SUBMIT_LINE, SUBMIT_LINE_BUILDS_FIRST)
+    before_turns = "\nYou have at most "  # run_python joins the list of tools, just above this line
+    assert text.count(before_turns) == 1
+    return text.replace(before_turns, f"\n{python.prompt_line()}{before_turns}")
+
+
+def opening_messages(task, condition, person, max_turns, python: PythonTool | None = None):
+    system = system_prompt(max_turns, python)
     return [{"role": "system", "content": system}, {"role": "user", "content": first_message(task, condition, person)}]
+
+
+def code_tool(task, condition, workdir) -> PythonTool | None:
+    """run_python for a condition that has it. Raises before the trial if there's no safe sandbox."""
+    if condition != python_tool.CONDITION:
+        return None
+    return PythonTool.for_trial(task.id, workdir)
+
+
+def trial_settings(max_turns, max_tokens, python: PythonTool | None) -> Settings:
+    code_settings = python.settings if python is not None else None
+    return Settings(max_turns=max_turns, max_tokens=max_tokens, temperature="provider default", run_python=code_settings)
 
 
 def as_sent_back(message: dict) -> dict:
@@ -289,33 +356,39 @@ def outcome_of(error, sub):
     return "submitted" if sub is not None else "no_submission"
 
 
-def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, chat=llm.chat):
+def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, chat=llm.chat, workdir=None):
     """Returns (record, messages, submission or None). Infrastructure errors end the trial
-    with outcome "error", counted apart from the model's own failures."""
+    with outcome "error", counted apart from the model's own failures. `workdir` is
+    run_python's working folder, in the condition that has it."""
     person = Person(task.hidden_facts)
-    trial_tools = TrialTools(task, person)
-    messages = opening_messages(task, condition, person, max_turns)
+    python = code_tool(task, condition, workdir)
+    trial_tools = TrialTools(task, person, python)
+    messages = opening_messages(task, condition, person, max_turns, python)
     calls, error = [], None
     started = time.monotonic()
     for _ in range(max_turns):
         try:
-            response = chat(model, messages, tools=tools(), max_tokens=max_tokens)
+            response = chat(model, messages, tools=tools(condition), max_tokens=max_tokens)
         except llm.LLMError as e:
             error = str(e)
             break
         reply = llm.Reply.model_validate(response)
         calls.append(ModelCall.from_reply(reply))
         messages.append(as_sent_back(reply.message))
-        messages += answers_to(reply, trial_tools)
+        try:
+            messages += answers_to(reply, trial_tools)
+        except build_on_submit.BuildUnavailable as e:
+            error = f"building on submit: {e}"
+            break
         if trial_tools.submission is not None:
             break
     record = TrialRecord(
         task=task.id, model=model, condition=condition, outcome=outcome_of(error, trial_tools.submission), error=error,
-        turns=len(calls), repairs=trial_tools.repairs, measures=person.log, revealed=person.revealed,
+        turns=len(calls), repairs=trial_tools.repairs, build_on_submit=trial_tools.build_record(error), measures=person.log, revealed=person.revealed,
         hidden=[f"{thing}.{measurement}" for thing, measurement in person.every_measurement()],
         limitations=trial_tools.limitations, cost_usd=round(sum(call.cost_usd for call in calls), 6),
         elapsed_s=round(time.monotonic() - started, 1),
-        settings=Settings(max_turns=max_turns, max_tokens=max_tokens, temperature="provider default"),
+        settings=trial_settings(max_turns, max_tokens, python),
         calls=calls,
     )
     return record, messages, trial_tools.submission

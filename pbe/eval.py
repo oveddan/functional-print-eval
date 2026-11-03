@@ -3,8 +3,10 @@
     uv run python -m pbe.eval --run pilot --task m5-spacer --model anthropic/claude-haiku-5.5 --trials 1 --budget 0.50
     uv run python -m pbe.eval --reference --task m5-spacer   # the reference must pass every check
     uv run python -m pbe.eval --regrade --run pilot --task m5-spacer   # saved submissions, current checks
+    uv run python -m pbe.eval --run pilot-code --condition can_run_code --task m5-spacer --model ... --budget 0.50
 
-Each trial saves transcript.json, submission.yaml, grades.json (and parts/, not committed).
+Each trial saves transcript.json, submission.yaml, grades.json (and parts/, not committed;
+in can_run_code also workspace/, run_python's working folder, not committed).
 A trial already saved is skipped, so a stopped run resumes; one that ended in an
 infrastructure error is run again. The budget is checked before
 each trial against what the run has spent so far, so the last trial can overshoot it.
@@ -24,7 +26,7 @@ import yaml
 from pbe.graders import declined
 from pbe.graders.checks import verdict_word
 from pbe.parts import build, submission
-from pbe.runner import agent, llm, tasks
+from pbe.runner import agent, code_sandbox, llm, python_tool, tasks
 from pbe.runner.trial_record import TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -109,7 +111,9 @@ def run_one(task, model, condition, trial, run_dir, args):
     already_paid = saved.cost_usd if saved else 0.0  # the failed attempt was still paid for
 
     folder.mkdir(parents=True, exist_ok=True)
-    record, messages, sub = agent.run_trial(task, model, condition, max_turns=args.max_turns, max_tokens=args.max_tokens)
+    max_turns = args.max_turns or agent.DEFAULT_MAX_TURNS[condition]
+    record, messages, sub = agent.run_trial(task, model, condition, max_turns=max_turns, max_tokens=args.max_tokens,
+                                            workdir=folder / "workspace")
     record.cost_usd = round(record.cost_usd + already_paid, 6)
     record.trial = trial
     stamp_version(record)
@@ -191,7 +195,7 @@ def parse_args():
     ap.add_argument("--trials", type=int, default=1)
     ap.add_argument("--run", default="scratch")
     ap.add_argument("--budget", type=float, default=1.0, help="USD for the whole run")
-    ap.add_argument("--max-turns", type=int, default=8)
+    ap.add_argument("--max-turns", type=int, help="default: 8, or 20 for can_run_code (agent.DEFAULT_MAX_TURNS)")
     ap.add_argument("--max-tokens", type=int, default=32000)
     ap.add_argument("--reference", action="store_true", help="grade each task's reference solution instead")
     ap.add_argument("--regrade", action="store_true", help="grade the run's saved submissions again with the current checks")
@@ -201,11 +205,13 @@ def parse_args():
     return args
 
 
-def exit_unless_able_to_run():
+def exit_unless_able_to_run(conditions):
     """Fail now, not once per trial."""
     try:
         llm._key()
         build.require_sandbox()
+        if python_tool.CONDITION in conditions:
+            code_sandbox.find()
     except (llm.LLMError, RuntimeError) as e:
         sys.exit(str(e))
 
@@ -214,13 +220,14 @@ def progress_line(record):
     line = (f"{record.task} {record.condition} {record.model} t{record.trial}: {record.outcome}, "
             f"{record.verdict}, failed={record.failed_checks}, repairs={record.repairs}, "
             f"turns={record.turns}, ${record.cost_usd:.4f}, {record.elapsed_s} s")
+    if built := record.build_on_submit:
+        line += f", sent back unbuilt {len(built.sent_back)}x" + (", out of turns while fixing" if built.out_of_turns_while_fixing else "")
     return f"{line}\n  error: {record.error[:300]}" if record.error else line
 
 
 def run_all_trials(args, run_dir):
-    conditions = args.condition or ["can_ask"]
     trial_numbers = range(1, args.trials + 1)
-    for task_id, condition, model, trial in itertools.product(args.task, conditions, args.model, trial_numbers):
+    for task_id, condition, model, trial in itertools.product(args.task, args.condition, args.model, trial_numbers):
         if (so_far := spent(run_dir)) >= args.budget:
             print(f"budget reached: ${so_far:.4f} of ${args.budget:.2f}; stopping")
             return
@@ -236,7 +243,8 @@ def main():
         regrade(run_dir, args.task)
         summarize(run_dir)
         return
-    exit_unless_able_to_run()
+    args.condition = args.condition or ["can_ask"]
+    exit_unless_able_to_run(args.condition)
     run_all_trials(args, run_dir)
     summarize(run_dir)
     print(f"spent ${spent(run_dir):.4f}; summary in {run_dir / 'summary.csv'}")
