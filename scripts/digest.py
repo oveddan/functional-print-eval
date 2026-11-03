@@ -9,11 +9,12 @@ reason, what the model asked the person, what it reported as a limitation, its o
 which params it guessed. That settles most failures. Open transcript.json only for the rest.
 """
 import argparse
-import json
 from collections import Counter
 from pathlib import Path
 
 import yaml
+
+from pbe.trial_record import TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
 CUT = 220
@@ -25,31 +26,30 @@ def short(text, n=CUT):
 
 
 def trials(run, task, model):
-    for path in sorted((ROOT / "results/runs" / run).rglob("grades.json")):
-        r = json.loads(path.read_text())
-        if (not task or r["task"] == task) and (not model or model in r["model"]):
-            yield path.parent, r
+    for folder, record in TrialRecord.all_in(ROOT / "results/runs" / run):
+        if (not task or record.task == task) and (not model or model in record.model):
+            yield folder, record
 
 
-def verdict(r):
-    if r["outcome"] != "submitted":
-        return r["outcome"]
-    if r["all_pass"]:
+def verdict(record):
+    if record.outcome != "submitted":
+        return record.outcome
+    if record.all_pass:
         return "pass"
-    bad = [f["check"] for f in r["findings"] if f["ok"] is False]
-    unknown = [f["check"] for f in r["findings"] if f["ok"] is None]
-    return "failed " + " ".join(dict.fromkeys(bad)) if bad else "not graded " + " ".join(dict.fromkeys(unknown))
+    if record.failed_checks:
+        return "failed " + " ".join(dict.fromkeys(record.failed_checks))
+    return "not graded " + " ".join(dict.fromkeys(record.not_graded_checks))
 
 
-def why(folder, r):
-    for f in r["findings"]:
-        if f["ok"] is not True:
-            print(f"    {'FAIL' if f['ok'] is False else 'n/g '} {f['check']} {f['part']}: {short(f['detail'])}")
-    if r.get("error"):
-        print(f"    error: {short(r['error'])}")
-    for m in r["measures"]:
-        print(f"    asked {short(m['item'], 40)} / {short(m['what'], 50)} -> {short(m['reply'], 90)}")
-    for lim in r["limitations"]:
+def why(folder, record):
+    for f in record.findings:
+        if f.ok is not True:
+            print(f"    {'FAIL' if f.ok is False else 'n/g '} {f.check} {f.part}: {short(f.detail)}")
+    if record.error:
+        print(f"    error: {short(record.error)}")
+    for m in record.measures:
+        print(f"    asked {short(m.item, 40)} / {short(m.what, 50)} -> {short(m.reply, 90)}")
+    for lim in record.limitations:
         print(f"    limitation: {short(lim.get('wanted', ''), 110)} / {short(lim.get('blocked_by', ''), 60)}")
     sub_path = folder / "submission.yaml"
     if sub_path.exists():
@@ -59,7 +59,7 @@ def why(folder, r):
         if guessed:
             print(f"    guessed: {', '.join(guessed)}")
         claimed = [k for k, v in sub["params"].items() if v.get("source") in ("measured", "asked")]
-        if claimed and not r["revealed"]:
+        if claimed and not record.revealed:
             print(f"    says measured or asked, but nobody told it anything: {', '.join(claimed)}")
         print(f"    parts: {', '.join(p['id'] + ':' + p['role'] for p in sub['parts'])}; hardware: {', '.join(h['ref'] for h in sub['hardware']) or 'none'}")
 
@@ -72,13 +72,14 @@ def main():
     ap.add_argument("--model", help="part of a model's name")
     args = ap.parse_args()
     tally, cost = Counter(), 0.0
-    for folder, r in trials(args.run, args.task, args.model):
-        v = verdict(r)
+    for folder, record in trials(args.run, args.task, args.model):
+        v = verdict(record)
         tally["not graded" if v.startswith("not") else v.split()[0]] += 1
-        cost += r["cost_usd"]
-        print(f"{r['task']} {r['condition']} {r['model'].split('/')[-1]} t{r['trial']}: {v} (asked {len(r['measures'])}, ${r['cost_usd']:.3f})")
+        cost += record.cost_usd
+        model_name = record.model.split("/")[-1]
+        print(f"{record.task} {record.condition} {model_name} t{record.trial}: {v} (asked {len(record.measures)}, ${record.cost_usd:.3f})")
         if args.why and v != "pass":
-            why(folder, r)
+            why(folder, record)
     print(f"{sum(tally.values())} trials: {dict(tally)}, ${cost:.2f}")
 
 

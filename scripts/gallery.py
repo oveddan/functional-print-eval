@@ -23,6 +23,8 @@ import numpy as np
 import trimesh
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
+from pbe.trial_record import TrialRecord
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "results/local/gallery"
 TEMPLATE = Path(__file__).with_name("gallery_template.html")
@@ -66,13 +68,12 @@ def load_trials(runs):
     """The newest saved copy of each trial, across runs named oldest first."""
     found = {}
     for run in runs:
-        for path in sorted((ROOT / "results/runs" / run).rglob("grades.json")):
-            r = json.loads(path.read_text())
-            found[r["task"], r["condition"], r["model"], r["trial"]] = (run, path.parent, r)
+        for folder, record in TrialRecord.all_in(ROOT / "results/runs" / run):
+            found[record.task, record.condition, record.model, record.trial] = (run, folder, record)
     return found.values()
 
 
-def parts_of(folder, r, jobs, slug):
+def parts_of(folder, jobs, slug):
     parts = []
     for stl in sorted((folder / "parts").glob("*.stl")) if (folder / "parts").exists() else []:
         name = f"{slug}-{stl.stem}"
@@ -86,12 +87,12 @@ def parts_of(folder, r, jobs, slug):
     return parts
 
 
-def verdict(r):
-    if r["outcome"] != "submitted":
+def verdict(record):
+    if record.outcome != "submitted":
         return "error"
-    if r["all_pass"]:
+    if record.all_pass:
         return "pass"
-    return "fail" if any(f["ok"] is False for f in r["findings"]) else "not_graded"
+    return "fail" if record.failed_checks else "not_graded"
 
 
 def brief_of(task):
@@ -115,20 +116,20 @@ def main():
     shutil.rmtree(OUT / "stl", ignore_errors=True)
     (OUT / "stl").mkdir()
     jobs, trials = [], []
-    for run, folder, r in load_trials(args.runs):
-        slug = re.sub(r"[^\w-]+", "_", f"{r['task']}-{r['condition']}-{r['model']}-t{r['trial']}")
+    for run, folder, record in load_trials(args.runs):
+        slug = re.sub(r"[^\w-]+", "_", f"{record.task}-{record.condition}-{record.model}-t{record.trial}")
         finals = {}
         if (folder / "submission.yaml").exists():
             import yaml
             finals = {p["id"]: p["role"] for p in yaml.safe_load((folder / "submission.yaml").read_text())["parts"]}
-        parts = parts_of(folder, r, jobs, slug)
+        parts = parts_of(folder, jobs, slug)
         for p in parts:
             p["role"] = finals.get(p["id"], "")
         parts.sort(key=lambda p: p["role"] != "final")
-        trials.append({"task": r["task"], "condition": r["condition"], "model": r["model"], "trial": r["trial"], "run": run,
-                       "verdict": verdict(r), "cost": r["cost_usd"], "asked": [m["what"] or m["item"] for m in r["measures"]],
-                       "answers": [m["reply"] for m in r["measures"]],
-                       "findings": [{"check": f["check"], "part": f["part"], "ok": f["ok"], "detail": f["detail"]} for f in r["findings"] if f["ok"] is not True],
+        trials.append({"task": record.task, "condition": record.condition, "model": record.model, "trial": record.trial, "run": run,
+                       "verdict": verdict(record), "cost": record.cost_usd, "asked": [m.what or m.item for m in record.measures],
+                       "answers": [m.reply for m in record.measures],
+                       "findings": [f.model_dump() for f in record.findings if f.ok is not True],
                        "parts": parts})
     with Pool() as pool:
         pool.map(render, jobs)

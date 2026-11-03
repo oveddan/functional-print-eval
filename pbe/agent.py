@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from pbe import checks, llm, nuts, requirements
 from pbe.build import build_parts
 from pbe.measure import Person
+from pbe.trial_record import TrialRecord
 from pbe.submission import Submission
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -228,12 +229,12 @@ def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, c
             break
     cost = sum((c["usage"] or {}).get("cost") or 0 for c in calls)
     outcome = "error" if error else "submitted" if sub else "no_submission"
-    record = {
-        "task": task.id, "model": model, "condition": condition, "outcome": outcome, "error": error,
-        "turns": len(calls), "repairs": repairs, "measures": person.log, "revealed": person.revealed,
-        "hidden": [f"{k}.{m}" for k, v in person.facts.items() for m in v["measurements"]],
-        "limitations": limitations, "cost_usd": round(cost, 6), "elapsed_s": round(time.monotonic() - t0, 1),
-        "settings": {"max_turns": max_turns, "max_tokens": max_tokens, "temperature": "provider default"},
-        "calls": calls,
-    }
+    record = TrialRecord(
+        task=task.id, model=model, condition=condition, outcome=outcome, error=error,
+        turns=len(calls), repairs=repairs, measures=person.log, revealed=person.revealed,
+        hidden=[f"{k}.{m}" for k, v in person.facts.items() for m in v["measurements"]],
+        limitations=limitations, cost_usd=round(cost, 6), elapsed_s=round(time.monotonic() - t0, 1),
+        settings={"max_turns": max_turns, "max_tokens": max_tokens, "temperature": "provider default"},
+        calls=calls,
+    )
     return record, messages, sub
