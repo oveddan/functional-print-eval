@@ -48,7 +48,7 @@ uv run python -m pbe.run examples/arca-plate/original.yaml examples/arca-plate/f
 uv run pytest
 ```
 
-Tests run in parallel (pytest-xdist). Model code builds under macOS `sandbox-exec`, with no network; elsewhere it won't run unless you set `PBE_NO_SANDBOX=1`, which is for a throwaway container or VM.
+Tests run in parallel (pytest-xdist). Model code builds under `sandbox-exec` on macOS or bubblewrap (`bwrap`) on Linux, with no network; with neither it won't run unless you set `PBE_NO_SANDBOX=1`, which is for a throwaway container or VM.
 
 A check has three answers: pass, fail and not graded (`ok = None`). Not graded means the recorded prints can't decide the case. It's never a pass, and `summary.csv` lists it in its own column.
 

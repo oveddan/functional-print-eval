@@ -28,7 +28,7 @@ def test_part_code_cannot_see_the_api_key(tmp_path, monkeypatch):
     assert built["p"].ok, built["p"].error
 
 
-@pytest.mark.skipif(not shutil.which("sandbox-exec"), reason="the sandbox is macOS only")
+@pytest.mark.skipif(not build.sandbox(), reason="no sandbox here")
 @pytest.mark.parametrize("line", [
     'socket.create_connection(("1.1.1.1", 443), timeout=3)',
     'subprocess.run(["true"])',
@@ -38,7 +38,7 @@ def test_part_code_cannot_reach_out_of_the_sandbox(tmp_path, line):
     assert not built["p"].ok and "not permitted" in built["p"].error
 
 
-@pytest.mark.skipif(not shutil.which("sandbox-exec"), reason="the sandbox is macOS only")
+@pytest.mark.skipif(not build.sandbox(), reason="no sandbox here")
 def test_part_code_can_write_only_to_its_own_folders(tmp_path):
     elsewhere = tmp_path / "elsewhere.txt"  # a folder that exists, next to the parts folder
     built = build_parts(one_part(code_that(f'open({str(elsewhere)!r}, "w")')), tmp_path / "parts")
@@ -164,6 +164,35 @@ def test_no_sandbox_means_no_model_code_unless_someone_chose_that(tmp_path, monk
         build_parts(one_part(""), tmp_path)
     monkeypatch.setenv("PBE_NO_SANDBOX", "1")
     build.require_sandbox()
+
+
+def test_a_bubblewrap_the_kernel_refuses_is_no_sandbox(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/bwrap" if name == "bwrap" else None)
+    monkeypatch.setattr(build, "_bwrap_runs", lambda: False)
+    assert build.sandbox() is None
+    monkeypatch.setattr(build, "_bwrap_runs", lambda: True)
+    assert build.sandbox() == "bwrap"
+
+
+def test_bubblewrap_cuts_the_network_and_writes_everywhere_but_the_two_folders(tmp_path, monkeypatch):
+    monkeypatch.setattr(build, "sandbox", lambda: "bwrap")
+    command, env = build._isolated(["python", "runner.py"], tmp_path / "parts", tmp_path / "tmp")
+    assert command[:5] == ["bwrap", "--ro-bind", "/", "/", "--dev"] and "--unshare-net" in command
+    parts, scratch = str((tmp_path / "parts").resolve()), str((tmp_path / "tmp").resolve())
+    assert ["--bind", parts, parts, "--bind", scratch, scratch] == command[-8:-2]
+    assert command[-2:] == ["python", "runner.py"] and "OPENROUTER_API_KEY" not in env
+
+
+@pytest.mark.parametrize("line", [
+    'socket.create_connection(("127.0.0.1", 9), timeout=3)',
+    'subprocess.run(["true"])',
+    'os.system("true")',
+], ids=["network", "subprocess", "system"])
+def test_the_runner_refuses_the_same_things_on_every_platform(tmp_path, line, monkeypatch):
+    monkeypatch.setenv("PBE_NO_SANDBOX", "1")
+    monkeypatch.setattr(build, "sandbox", lambda: None)  # the hook alone, without the OS's sandbox
+    built = build_parts(one_part(code_that(line)), tmp_path)
+    assert not built["p"].ok and "is not permitted here" in built["p"].error
 
 
 def test_a_family_needs_a_variant():

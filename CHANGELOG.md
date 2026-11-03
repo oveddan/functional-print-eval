@@ -2,6 +2,34 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-03: Second cloud session; the smoke test passes with no hand fixes
+
+A fresh session in the updated environment. `bwrap`, `openscad` and `xvfb-run` were already installed and the `SessionStart` hook had synced `.venv`, so nothing was installed by hand.
+- `build.sandbox()` is `bwrap`.
+- `uv run pytest`: 236 passed, none skipped, in 4 min 23 s on 4 cores.
+- `--reference`: every check passes for bearing-wheel, m5-spacer, tripod-plate and nut-knob M3, M5 and M8, as in the first session. phone-stand has no reference.
+- Run `cloud-smoke-2`: Haiku 5.5 on m5-spacer, one trial, all checks pass, $0.0014, `platform` Linux-x86_64. The proxy-injected key worked.
+
+Still unchecked: maximum session length, and whether Linux and Mac measure the references to the same digits.
+
+## 2026-11-03: First cloud session; the smoke test passes once bubblewrap is installed
+
+The smoke test from `docs/overnight-runs.md`, run in a Claude cloud session (Linux x86_64, Python 3.12.13):
+- CadQuery imports. **`bwrap` was missing**: the environment's setup script installed `openscad` and `xvfb` but not `bubblewrap`, so `build.sandbox()` returned `None` and model code would have refused to run. After `apt-get install -y bubblewrap` in the session, the VM allows its namespaces and `build.sandbox()` is `bwrap`. The environment's setup script needs `bubblewrap` added, or every new session has to install it first.
+- `uv run pytest`: 236 passed, none skipped, in 6 minutes.
+- `--reference`: every check passes for bearing-wheel, m5-spacer, tripod-plate and nut-knob M3, M5 and M8. phone-stand has no reference. Whether the measured numbers match the Mac to the last digit isn't checked: no Mac reference output is saved to compare against.
+- Run `cloud-smoke`: Haiku 5.5 on m5-spacer, one trial, all checks pass, $0.0014. The proxy replaced the placeholder key; no key appears in the saved files.
+
+## 2026-11-03: Runs can move to Linux; records say which platform
+
+`pbe/build.py`: model code now runs under bubblewrap on Linux, with no network and writes only to its own two folders, as under `sandbox-exec` on macOS. If bubblewrap is missing or the VM refuses it, code doesn't run unless `PBE_NO_SANDBOX=1`. The runner also refuses child processes and network connections itself, so a part can't pass on one platform for doing what the other blocks. On Linux that hook is the only thing refusing child processes, and ctypes could get round it. A part that tries these now fails with "is not permitted here" instead of the OS's wording; it failed before too.
+
+`pbe/eval.py`: `grades.json` now records `platform`, because geometry comes from each platform's own CAD kernel wheel. Records from before this have none.
+
+Added `.claude/settings.json` and `scripts/cloud_session_start.sh` to install dependencies in cloud sessions. `CLAUDE.md` now carries the rules a cloud session wouldn't otherwise get. `docs/overnight-runs.md` has the checked setup and a smoke test.
+
+Evidence: the test suite passes on macOS. **Nothing has run on Linux yet**: the bubblewrap command is only checked as a command line, and the smoke test decides whether references grade the same there.
+
 ## 2026-11-03: Second wheel round; two more verdicts the records didn't back
 
 `pilot-wheel` now has t2 for 11 models: 22 trials, $2.07 in all. 3 pass, 13 fail, 6 not graded. Without `bridges`, 9 pass, 7 fail, 6 not graded. Seats and coupons of both rounds measured from the saved meshes. Spend stops here: $8.74 used of the $9.00 limit.

@@ -12,6 +12,7 @@ each trial against what the run has spent so far, so the last trial can overshoo
 import argparse
 import csv
 import json
+import platform
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -22,6 +23,7 @@ import yaml
 from pbe import agent, build, llm, submission, tasks
 
 ROOT = Path(__file__).resolve().parents[1]
+PLATFORM = f"{platform.system()}-{platform.machine()}"  # geometry comes from a platform's own CAD kernel wheel
 
 
 def slug(model):
@@ -63,7 +65,7 @@ def run_one(task, model, condition, trial, run_dir, args):
     (out / "transcript.json").write_text(json.dumps(messages, indent=1))
     if sub:
         (out / "submission.yaml").write_text(yaml.safe_dump(sub.model_dump(), sort_keys=False, allow_unicode=True))
-    record.update(trial=trial, date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(),
+    record.update(trial=trial, date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(), platform=PLATFORM,
                   findings=[], observations={}, all_pass=False)
     (out / "grades.json").write_text(json.dumps(record, indent=1))
     return grade_and_save(task, sub, out, record) if sub else record
@@ -71,7 +73,7 @@ def run_one(task, model, condition, trial, run_dir, args):
 
 def grade_and_save(task, sub, out, record):
     findings, observations = agent.evaluate(task, sub, out)
-    record.update(date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(),
+    record.update(date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(), platform=PLATFORM,
                   findings=findings_json(findings), observations=observations,
                   all_pass=bool(findings) and all(f.ok is True for f in findings))
     (out / "grades.json").write_text(json.dumps(record, indent=1))
@@ -108,9 +110,9 @@ def regrade(run_dir, task_ids):
             r["observations"] = observations
             path.write_text(json.dumps(r, indent=1))
         if new != r["findings"]:
-            r.setdefault("regrades", []).append({"date": r["date"], "commit": r["commit"], "findings": r["findings"], "all_pass": r["all_pass"]})
+            r.setdefault("regrades", []).append({"date": r["date"], "commit": r["commit"], "platform": r.get("platform"), "findings": r["findings"], "all_pass": r["all_pass"]})
             r.update(findings=new, all_pass=bool(findings) and all(f.ok is True for f in findings),
-                     date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit())
+                     date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(), platform=PLATFORM)
             path.write_text(json.dumps(r, indent=1))
             print(f"{r['model']}: all_pass {r['regrades'][-1]['all_pass']} -> {r['all_pass']}")
 
