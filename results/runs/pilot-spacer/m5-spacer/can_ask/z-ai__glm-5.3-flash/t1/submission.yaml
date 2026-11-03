@@ -1,0 +1,130 @@
+task: m5-spacer
+note: ''
+questions: []
+params:
+  end_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg chamfer on both end faces and both hole mouths
+  clearance_hole_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: ISO 273 medium clearance for M5 (+0.5 mm); also allows for PLA holes printing
+      slightly undersized
+  m5_bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal shank diameter from the ISO 4762 / pitch table
+  spacer_length:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: length between the plates, as requested
+  spacer_od:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: asked
+    note: '"12 mm across" = outer diameter, as requested'
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    r = p.spacer_od / 2.0\n    hr = p.clearance_hole_d / 2.0\n\
+    \    c = p.end_chamfer\n    L = p.spacer_length\n    # Revolved profile in the\
+    \ XZ plane: local x = radius, local y = axis (global Z)\n    pts = [\n       \
+    \ (hr + c, 0.0),\n        (r - c, 0.0),\n        (r, c),\n        (r, L - c),\n\
+    \        (r - c, L),\n        (hr + c, L),\n        (hr, L - c),\n        (hr,\
+    \ c),\n    ]\n    return (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n\
+    \        .close()\n        .revolve(360.0, (0, 0), (0, 1))\n    )"
+  print_orientation: 'as modeled: flat end face on the bed (z=0), bore vertical; no
+    supports, no bridging'
+  use_orientation: axis parallel to the bolt; either end can face the bolt head (part
+    is symmetric)
+hardware:
+- id: m5-bolt
+  ref: ISO 4762 M5x25
+  qty: 1
+- id: m5-washer
+  ref: ISO 7089 M5
+  qty: 2
+joints:
+- id: spacer-on-bolt
+  fastener: m5-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: through bore (5.5 mm clearance hole)
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: bolt-passes
+  part: spacer
+  feature: through bore
+  relation: clears
+  hardware: m5-bolt
+  clearance_mm: null
+  params:
+  - clearance_hole_d
+  - m5_bolt_d
+  check:
+    method: measure
+    ref: null
+    description: 'On the printed part: an M5 bolt must slide through the bore by hand
+      with no force. If tight, open the bore with a 5.5 mm drill.'
+- id: washer-covered
+  part: spacer
+  feature: end faces (12 mm OD)
+  relation: seats
+  hardware: m5-washer
+  clearance_mm: null
+  params:
+  - spacer_od
+  check:
+    method: none
+    ref: null
+    description: ISO 7089 M5 washer is OD 10 mm, so it bears fully within the 12 mm
+      spacer ends if washers are used
+manual:
+- n: '1'
+  text: 'Print the spacer in PLA exactly as oriented in the model: flat end face down
+    on the bed, bore vertical. No supports and no brim needed; the bore prints as
+    a clean vertical hole.'
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Check the fit: the M5 bolt should slide through the bore by hand. If it binds
+    (printed holes can close up a little), ream the bore with a 5.5 mm drill bit.'
+  parts:
+  - spacer
+  hardware:
+  - m5-bolt
+  tool: 5.5 mm drill (only if the bore is tight)
+- n: '3'
+  text: 'Slide the spacer onto the M5 bolt and place it between the two plates, then
+    fasten the rest of your assembly as normal. Optional: an M5 washer under the bolt
+    head and under the nut — the spacer''s 12 mm OD fully covers the 10 mm washer,
+    so the clamp load never touches the printed chamfer.'
+  parts:
+  - spacer
+  hardware:
+  - m5-bolt
+  - m5-washer
+  tool: null

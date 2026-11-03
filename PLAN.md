@@ -11,8 +11,6 @@ Elsewhere:
 
 A rigorous, reproducible eval showing where frontier models fail at consumer mechanical design: a model draws a part, but does it know what it can't know before you print? Depth, grader reliability and a clear write-up come before breadth; `docs/scoring.md` is the bar.
 
-**Deadline: one week from day 1.** The week is scoped to what one person with coding agents can finish well. Anything not in "This week" waits; cut breadth before rigor.
-
 ## The design
 
 - **Failure classes drive the eval.** `seeds/classes.yaml` groups 56 real failures (tripod, Estoa, two side projects, the eval's own coupons) into ten task-independent classes. Tasks are chosen to exercise several classes, and results are reported by class. The most common class is C1, designing from unmeasured dimensions: in every project the agent guessed first and asked only after a failed print.
@@ -22,53 +20,57 @@ A rigorous, reproducible eval showing where frontier models fail at consumer mec
 - **Blind backtest.** Would the eval have known, from the design alone, that it would fail? Real designs as they stood before printing go through frozen graders with no knowledge of the outcome, scored in a 2x2 table against what happened. Controls are fixes that were built and worked (`control:` in the seed files); proposed fixes that were never built don't count. Hits that need a measurement the design guessed at are counted separately from hits found in the geometry.
 - **Parametric task families.** One parametric reference per family (cite BenchCAD 2.0's part-family format, a build file plus a check file), so each variation gets its reference by changing parameters. Variations come from a small explicit dimension table per family (hardware, unknown dimension, use and load, the person's request including "impossible as specified"), stratified by failure class. Every family traces to a real seed.
 - **What the model is told (Dan).** Setup facts are always given, because a model can't know them and they decide whether a design prints: printer, nozzle, filament, layer height, longest clean bridge, the hardware bin (`catalog/`). Techniques are not given in the main condition: stepped holes in bridges, teardrop holes, flipping a part, nut clearances are standard printing knowledge a designer should have, and a person at home won't explain them. Each task runs under these conditions:
-  - **Base:** the brief and the setup facts.
-  - **Design guide:** the same, plus a short guide naming the common techniques. Failing without it but passing with it is a knowledge gap; failing with it is a judgment gap (the model knows the technique but doesn't see when it applies). The Arca agent already knew stepped bridging from Estoa and still drew a plain roof, so judgment gaps are expected.
-  - **Oracle:** all hidden facts given upfront. Passing only then means the failure was information gathering (C1); failing both means design skill.
-  - **Checks as a tool (after the week):** the model can run the eval's checks on its own design before handing it in. Whether it uses them and fixes what they flag is another judgment signal.
+  - **Can ask (main, Dan 2026-10-30):** the brief and the setup facts. The person's own measurements (their desk, phone, salvaged bolt) are withheld, and the model can ask for them with `measure`. This is the realistic case and the headline result.
+  - **All measurements given:** the same, with every measurement stated upfront. Passing only here means the failure was not asking (C1); failing both means design skill. Not called "oracle": in Harbor that means running the reference solution.
+  - **Design guide (a subset of tasks, once the first two work):** the main condition plus a short guide naming the common techniques. Failing without it but passing with it is a knowledge gap; failing with it is a judgment gap (the model knows the technique but doesn't see when it applies). The Arca agent already knew stepped bridging from Estoa and still drew a plain roof, so judgment gaps are expected.
+  - No separate can't-ask condition: every submission labels each dimension's source, so a model that never measures is graded on its labels anyway.
+  - **Checks as a tool (later):** the model can run the eval's checks on its own design before handing it in. Whether it uses them and fixes what they flag is another judgment signal.
+- **The person is a lookup table (Dan).** The model talks to no person and no model playing one. `measure(item, what)` returns the value the task records, matched by item and dimension through short alias lists; anything not in the table gets "I can't measure that" and is logged, and a measurement several models ask for gets measured and added. Preferences and use are written in the brief. τ2-bench found LLM-played users erred in 16-47% of conversations, mostly by inventing details (`docs/context/2026-10-30-paper-tau2-bench-dual-control-user-simulator.md`); a table can't, costs nothing, and answers a rerun identically.
+- **Tools:** `measure`; `submit_design`, whose schema errors go back to the model for repair (repairs are counted, not failed); and `report_limitation(wanted, blocked_by, why)` (Dan), which changes nothing and records what the model wanted to use (a technique, tool, part, material or way of handing in) but couldn't, and what stopped it, so a failure caused by the eval's own constraints shows as one. No web search: the public facts are in the catalog, and search results would change between reruns.
 - **Grade the outcome, not the technique.** A check never demands one specific fix. The bridge check asks whether every overhang will print, so stepped layers, flipping the part, declared supports, a drill-out layer or moving the feature all pass.
 - **Grader reliability, shown three ways:** the backtest; a regression suite (references pass, real failed designs fail, simple reward-hacking attempts fail); and Dan's hand ranking of about 10 designs compared with the graders'. Dan is named as the task author and domain expert.
 
-## This week
+## Work
 
-### Day 1 (afternoon): environment and the submission format
+In order. Cut breadth before rigor.
+
+### Environment and the submission format (done)
 - A `uv` environment pinned to Python 3.12 (system Python is 3.15) with CadQuery, trimesh and pyyaml.
 - The submission format as a schema with one worked example (the Arca plate fix).
 - `catalog/hardware.yaml` from the ISO tables: thread lengths, head sizes, nuts, heat-set inserts.
 
-### Day 2: runner and the pilot
-- Runner: OpenRouter client, a scripted user that reveals hidden facts only when asked, transcripts and costs saved under `results/`.
+### Runner and the pilot
+- Runner: OpenRouter client, the measurement lookup, transcripts and costs saved under `results/`, a spending cap.
 - Geometry checks: code runs, one connected body per part, fits the bed's usable area.
-- Pilot: the phone stand and the Arca plate, 4-5 models x 2 runs. Read every transcript. Go/no-go: do models repeat the seed classes, and can they produce the format at all? Report format failures separately from design failures.
-- If the OpenRouter key isn't ready, swap Days 2 and 3.
+- Pilot: the M5 spacer first (a control every model should pass; nothing withheld), then the phone stand and the Arca plate, 4-5 models x 2 runs. Read every transcript. Go/no-go: do models repeat the seed classes, and can they produce the format at all? Report format failures separately from design failures.
 
-### Day 3: the assembly simulation and the first backtest
+### Assembly simulation and the first backtest
 - Hardware geometry from the catalog; insertion as axis moves with collision; bolt reach and thread engagement; tracking which parts are used.
 - The metamorphic check.
 - Backtest: the Arca plate (original and fix), then the tripod's partly threaded clamp screw and the fork-to-clamp M5x20. Rebuild the originals from the tripod session's edits.
 
-### Day 4: three task families
+### Three task families
 - The Arca plate, the desk-clamp phone stand, and one mechanism family that leads toward the robot arm: a servo horn coupling (real hardware, a clear fit, Dan's Presence work).
 - Each with a parametric reference, a dimension table, brief templates, hidden facts and requirements.
 - The design guide: one page of common printing techniques, written so it names techniques without pointing at any task's answer.
 - Second-coder check: an independent agent re-classifies the seeds blind; report agreement.
 - Then revisit the classes with the pilot's failures and that agreement in hand. Known weak spots: C1 and C8 are about behavior (didn't ask, didn't plan a coupon) while the rest are about the design, so the report may group them separately; C2 and C5 overlap (both are "this doesn't fit that"); C10 is mostly outside code grading.
 
-### Day 5: printability, regression suite, reward hacking
+### Printability, regression suite, reward hacking
 - Printability: minimum wall, holes through bridges without stepped layers, bed fit.
 - Fit clearance against a fixed printer offset from `catalog/printer.yaml`'s observed fits (no Monte Carlo yet).
 - The grader regression suite as one command, including two reward-hacking attempts: oversized pockets and undeclared hardware.
 
-### Day 6: full run
+### Full run
 - About 5 models x the family variations x 3 runs, under the base, design-guide and oracle conditions (on a subset for the last two if the budget is tight). Read failures by hand, fix graders, log each fix in `CHANGELOG.md`.
 - Dan ranks about 10 designs by hand; compare with the graders.
 
-### Day 7: report
+### Report
 - **A one-page summary a reviewer reads in five minutes:** the headline; two numbers (backtest hits and false alarms; how often models build on a guessed dimension instead of asking); the Arca plate before and after; failures by class; honest limitations (one person's projects, mostly one agent's mistakes, a kinematic simulation, small samples).
 - Behind it: all-pass rate, pass^k, failures by class, cost per successful task, bootstrapped confidence intervals with paired comparisons (about 18 runs per model is a small sample; no claims on small differences), grader reliability.
 - README: one command to reproduce, dependencies, versions, expected results, runtime and cost.
 
-## After the week
+## Later
 
 Per-check limits and extensions are in `docs/limitations.md`; the report's limitations section draws from it. In rough order of value:
 - The backtest on Estoa, from the `local-lights` git history (a commit before each test print).
@@ -108,9 +110,11 @@ No photo is committed, and nothing in the repo should point at a file that only 
 Decided:
 - CAD language: CadQuery (matches BenchCAD; install size is no concern, Dan). OpenSCAD stays available for the tripod's ground-truth files.
 - Electronics out of scope (Dan). Enclosure geometry around electronic parts stays in.
+- One printer and one filament (Dan, 2026-10-30): the eval is scoped to the X1C with the PLA the coupons were printed in, every task states that setup, and the report says its fit and bridge numbers hold for that setup only. More setups are future work (`docs/limitations.md`).
 - Commit straight to `main`.
+- The OpenRouter key is in 1Password at `op://kb-sync/OpenRouter/credential` (Dan), capped at $100 per key.
 
 Open (Dan's):
-1. The OpenRouter key (Dan is setting one up) and its credit limit.
-2. Is the printer available this week?
+1. OpenRouter credits: $10 on 2026-10-30 (Dan). The pilot measures cost per run; the full run's budget is set from that.
+2. Is the printer available?
 3. How "good design" is weighted in the score, after Dan ranks a first set of designs.

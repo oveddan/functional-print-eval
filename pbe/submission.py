@@ -22,8 +22,12 @@ Source = Literal["measured", "datasheet", "catalog", "asked", "guessed", "unknow
 class Param(BaseModel):
     value: float | None
     unit: Literal["mm", "deg", "count"] = "mm"
-    kind: Literal["hardware", "world", "design"]
-    source: Source
+    kind: Literal["hardware", "world", "design"] = Field(description=(
+        "What the dimension belongs to: hardware (a bought part, such as a bolt or nut), world (something "
+        "the person has, such as their desk or phone) or design (a choice you make)"))
+    source: Source = Field(description=(
+        "Where the value came from: measured (the person measured it for you), datasheet, catalog (the "
+        "hardware list), asked (the person told you), guessed, unknown, or design (your own choice)"))
     note: str = ""
 
 
@@ -43,18 +47,18 @@ class HardwareItem(BaseModel):
 
 
 class Seat(BaseModel):
-    part: str
+    part: str = Field(description="The id of a part in `parts`")
     feature: str
     role: Literal["head_seat", "clearance", "thread", "nut_pocket", "insert", "washer"]
 
 
 class Joint(BaseModel):
     id: str
-    fastener: str
+    fastener: str = Field(description="The id of an item in `hardware` (not its catalog reference)")
     axis_origin: tuple[float, float, float] = Field(description="Where the fastener's head sits, in the frame of the first part in seats")
     axis_dir: tuple[float, float, float] = Field(description="Direction the fastener points, head to tip")
     seats: list[Seat]
-    nut: str | None = None
+    nut: str | None = Field(None, description="The id of an item in `hardware`")
     external: str | None = Field(None, description="Anything outside the design it threads into, e.g. a camera's 1/4-20 socket")
 
 
@@ -66,10 +70,10 @@ class Check(BaseModel):
 
 class Criterion(BaseModel):
     id: str
-    part: str
+    part: str = Field(description="The id of a part in `parts`")
     feature: str
     relation: Literal["contains", "clears", "engages", "seats", "supports", "faces"]
-    hardware: str | None = None
+    hardware: str | None = Field(None, description="The id of an item in `hardware` (not its catalog reference)")
     clearance_mm: float | None = None
     params: list[str] = Field(default_factory=list, description="The params this criterion depends on")
     check: Check
@@ -78,8 +82,8 @@ class Criterion(BaseModel):
 class Step(BaseModel):
     n: str
     text: str
-    parts: list[str] = Field(default_factory=list)
-    hardware: list[str] = Field(default_factory=list)
+    parts: list[str] = Field(default_factory=list, description="Ids of parts in `parts`")
+    hardware: list[str] = Field(default_factory=list, description="Ids of items in `hardware` (not their catalog references)")
     tool: str | None = None
 
 
@@ -125,7 +129,7 @@ class Submission(BaseModel):
             errors += [f"step {s.n}: unknown part {p}" for p in s.parts if p not in part_ids]
             errors += [f"step {s.n}: unknown hardware {h}" for h in s.hardware if h not in hw_ids]
         if errors:
-            raise ValueError("; ".join(errors))
+            raise ValueError("; ".join(errors) + f". Part ids: {sorted(part_ids)}; hardware ids: {sorted(hw_ids)}")
         return self
 
 

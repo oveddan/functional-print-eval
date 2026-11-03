@@ -1,0 +1,107 @@
+task: m5-spacer
+note: A cylindrical M5 spacer, 12 mm OD by 20 mm long, with a 5.5 mm clearance bore
+  printed upright on the bed.
+questions: []
+params:
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of an M5 screw
+  spacer_od:
+    value: 12.0
+    unit: mm
+    kind: world
+    source: asked
+    note: Requested outer diameter of the spacer
+  bore_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for an M5 bolt in a 3D-printed vertical hole
+  spacer_length:
+    value: 20.0
+    unit: mm
+    kind: world
+    source: asked
+    note: Requested spacer length between the two plates
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    bore_d = p.bolt_d + p.bore_clearance\n    return (\n \
+    \       cq.Workplane(\"XY\")\n        .circle(p.spacer_od / 2.0)\n        .circle(bore_d\
+    \ / 2.0)\n        .extrude(p.spacer_length)\n    )\n"
+  print_orientation: Bottom flat annular face on the bed (z = 0 to z = spacer_length),
+    axis vertical.
+  use_orientation: Coaxial with the M5 bolt, flat ends seated against the two plates.
+hardware:
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: m5_through_spacer
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 20.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: spacer
+    feature: center_bore
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: bore_clears_m5
+  part: spacer
+  feature: center_bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - bore_clearance
+  check:
+    method: measure
+    ref: null
+    description: Check that an M5 bolt slides freely through the bore.
+- id: spacer_length_20mm
+  part: spacer
+  feature: spacer_body
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_length
+  check:
+    method: measure
+    ref: null
+    description: Measure the spacer height between the two end faces with calipers.
+- id: spacer_od_12mm
+  part: spacer
+  feature: outer_wall
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Measure the outer diameter of the spacer with calipers.
+manual:
+- n: '1'
+  text: Slide the printed spacer onto the M5 bolt between the two plates and fasten
+    as required.
+  parts:
+  - spacer
+  hardware:
+  - m5_bolt
+  tool: null
