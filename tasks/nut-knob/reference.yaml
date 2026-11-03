@@ -1,0 +1,46 @@
+task: nut-knob/$nut
+note: Reference solution. It knows the coupon's answer, which a model can't. tests/test_nut_knob.py checks that wrong versions fail.
+params:
+  knob_d:     {value: $knob_d,      kind: design,   source: design,   note: from the request}
+  floor:      {value: 5,            kind: design,   source: design,   note: plastic under the nut}
+  nut_af:     {value: $af,          kind: hardware, source: catalog,  note: ISO 4032 $nut}
+  nut_h:      {value: $h,           kind: hardware, source: catalog,  note: ISO 4032 $nut}
+  clearance:  {value: $clearance,   kind: design,   source: measured, note: what held on coupon B}
+  recess:     {value: 0.4,          kind: design,   source: design,   note: the nut sits just below the face}
+  bolt_hole:  {value: $hole_medium, kind: design,   source: catalog,  note: ISO 273 medium clearance hole}
+  scallop_d:  {value: $scallop_d,   kind: design,   source: design,   note: finger grips}
+parts:
+  - id: knob
+    role: final
+    material: PLA
+    print_orientation: Pocket facing up, z = 0 on the bed, so the pocket's floor needs no bridge.
+    use_orientation: On the bolt, with the nut's pocket facing away from what it tightens against.
+    code: |
+      import math
+
+      def build(p):
+          height = p.floor + p.nut_h + p.recess
+          body = cq.Workplane("XY").circle(p.knob_d / 2).extrude(height)
+          grips = cq.Workplane("XY").polarArray(p.knob_d / 2 + p.scallop_d / 4, 30, 360, 6).circle(p.scallop_d / 2).extrude(height)
+          body = body.cut(grips).cut(cq.Workplane("XY").circle(p.bolt_hole / 2).extrude(height))
+          corners = (p.nut_af + p.clearance) / math.cos(math.radians(30))
+          return body.cut(cq.Workplane("XY").workplane(offset=p.floor).polygon(6, corners).extrude(p.nut_h + p.recess))
+hardware:
+  - {id: nut, ref: ISO 4032 $nut}
+criteria:
+  - id: C1
+    part: knob
+    feature: pocket
+    relation: seats
+    hardware: nut
+    clearance_mm: $clearance
+    params: [nut_af, clearance]
+    check: {method: none, description: The clearance comes from a test print on this printer.}
+manual:
+  - n: "1"
+    text: Print the knob with its pocket facing up, no supports.
+    parts: [knob]
+  - n: "2"
+    text: Press the nut into the pocket by hand, then turn the knob over to check it stays.
+    parts: [knob]
+    hardware: [nut]

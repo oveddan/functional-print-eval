@@ -37,8 +37,8 @@ def main():
         sub, built, findings = res
         print(f"\n{p}  ({sub.task})")
         for f in findings:
-            print(f"  {'pass' if f.ok else 'FAIL'}  {f.check:18} {f.part:12} {f.detail}")
-            failed |= not f.ok
+            print(f"  {'pass' if f.ok else 'not graded' if f.ok is None else 'FAIL':10}  {f.check:18} {f.part:12} {f.detail}")
+            failed |= f.ok is False
     sys.exit(1 if failed else 0)
 
 

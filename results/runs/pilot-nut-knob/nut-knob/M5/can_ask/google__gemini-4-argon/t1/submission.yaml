@@ -1,0 +1,219 @@
+task: nut-knob/M5
+note: Single-piece 30 mm fluted M5 hand knob. The hex pocket is 6.5 mm deep (recessing
+  the 4.7 mm thick ISO 4032 M5 nut by 1.8 mm) with a solid 7.5 mm floor so the nut
+  cannot push through the far side, a 5.4 mm through-hole so the M5 bolt can pass
+  all the way through, a 1.2 mm lead-in at the top of the pocket for easy alignment,
+  and six vertical crush ribs along the flats for a hand-press friction fit that holds
+  the nut upside down without glue.
+questions: []
+params:
+  flute_d:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of each finger flute cutout
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of M5 bolt
+  lead_in_h:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Un-ribbed top depth of hex pocket to guide the nut in straight by hand
+  rib_protrusion:
+    value: 0.14
+    unit: mm
+    kind: design
+    source: design
+    note: Inward protrusion of each crush rib from the hex flat (7.84 mm across opposing
+      ribs)
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut thickness/height
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger flutes around perimeter
+  nut_pocket_af:
+    value: 8.12
+    unit: mm
+    kind: design
+    source: design
+    note: Base across-flats width of the hex pocket before crush ribs
+  nut_pocket_depth:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: Total depth of hex pocket from top face so the 4.7 mm nut sits fully inside
+  rib_w:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Width of each vertical crush rib on the hex flats
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut across flats
+  flute_offset:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance of flute centers from knob axis
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of the hand knob (~30 mm across)
+  knob_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height of the knob
+  bolt_clearance_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole diameter for M5 bolt clearance
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    # Main cylindrical body sitting on z =\
+    \ 0\n    body = cq.Workplane(\"XY\").circle(p.knob_od / 2.0).extrude(p.knob_h)\n\
+    \n    # Cut finger flutes around the perimeter\n    flute_pts = [\n        (\n\
+    \            p.flute_offset * math.cos(math.radians(i * 360.0 / p.flute_count)),\n\
+    \            p.flute_offset * math.sin(math.radians(i * 360.0 / p.flute_count)),\n\
+    \        )\n        for i in range(int(p.flute_count))\n    ]\n    flutes = (\n\
+    \        cq.Workplane(\"XY\")\n        .pushPoints(flute_pts)\n        .circle(p.flute_d\
+    \ / 2.0)\n        .extrude(p.knob_h)\n    )\n    body = body.cut(flutes)\n\n \
+    \   # Cut M5 bolt clearance hole all the way through\n    bolt_hole = cq.Workplane(\"\
+    XY\").circle(p.bolt_clearance_d / 2.0).extrude(p.knob_h)\n    body = body.cut(bolt_hole)\n\
+    \n    # Cut recessed hex pocket from the top face down to the internal floor\n\
+    \    # In CadQuery, polygon(6, d) uses circumdiameter d; flat-to-flat is along\
+    \ Y when angle=0\n    hex_circum_d = p.nut_pocket_af * 2.0 / math.sqrt(3.0)\n\
+    \    pocket_z0 = p.knob_h - p.nut_pocket_depth\n    hex_pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=pocket_z0)\n        .polygon(6, hex_circum_d)\n\
+    \        .extrude(p.nut_pocket_depth)\n    )\n    body = body.cut(hex_pocket)\n\
+    \n    # Add 6 vertical crush ribs centered on the 6 flats of the hex pocket,\n\
+    \    # stopping lead_in_h below the top face so the nut aligns easily by hand.\n\
+    \    rib_h = p.nut_pocket_depth - p.lead_in_h\n    for i in range(6):\n      \
+    \  # Flats of cq.polygon(6, d) have normals at 30, 90, 150, 210, 270, 330 degrees\n\
+    \        angle_deg = 30.0 + i * 60.0\n        rib = (\n            cq.Workplane(\"\
+    XY\")\n            .workplane(offset=pocket_z0)\n            .transformed(rotate=(0,\
+    \ 0, angle_deg))\n            .center(p.nut_pocket_af / 2.0 - p.rib_protrusion\
+    \ / 2.0, 0)\n            .box(p.rib_protrusion, p.rib_w, rib_h, centered=(True,\
+    \ True, False))\n        )\n        body = body.union(rib)\n\n    return body\n"
+  print_orientation: Flat bottom face on the build plate (z = 0), hex nut pocket opening
+    upward at z = 14 mm so the internal floor prints cleanly with no supports.
+  use_orientation: Bolt enters through the bottom face (z = 0), threads through the
+    captured M5 nut inside the pocket, and exits out the top face (z = 14 mm).
+hardware:
+- id: nut_m5
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt_m5
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: knob_m5_joint
+  fastener: bolt_m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bolt_through_hole
+    role: clearance
+  - part: knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  nut: nut_m5
+  external: null
+criteria:
+- id: nut_press_fit
+  part: knob
+  feature: hex_nut_pocket
+  relation: seats
+  hardware: nut_m5
+  clearance_mm: -0.16
+  params:
+  - nut_af
+  - nut_h
+  - nut_pocket_af
+  - nut_pocket_depth
+  - rib_w
+  - rib_protrusion
+  check:
+    method: measure
+    ref: ISO 4032 M5
+    description: Verify M5 hex nut presses in by hand and stays captive when inverted
+- id: nut_fully_inside
+  part: knob
+  feature: hex_nut_pocket
+  relation: contains
+  hardware: nut_m5
+  clearance_mm: 1.8
+  params:
+  - nut_h
+  - nut_pocket_depth
+  - knob_h
+  check:
+    method: measure
+    ref: ISO 4032 M5
+    description: Verify nut sits recessed below the top face and stops against the
+      internal floor
+- id: bolt_clearance
+  part: knob
+  feature: bolt_through_hole
+  relation: clears
+  hardware: bolt_m5
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: ISO 4762 M5x30
+    description: Verify M5 bolt passes freely through the knob and out the far side
+manual:
+- n: '1'
+  text: Align the ISO 4032 M5 hex nut with the hexagonal opening on the top of the
+    knob (the upper 1.2 mm of the pocket acts as a lead-in) and press it firmly by
+    hand until it seats against the internal floor below the top rim.
+  parts:
+  - knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '2'
+  text: Invert the knob to confirm the crush ribs hold the nut captive, then thread
+    the M5 bolt through the bottom clearance hole, through the captured nut, and out
+    the top opening.
+  parts:
+  - knob
+  hardware:
+  - bolt_m5
+  tool: null

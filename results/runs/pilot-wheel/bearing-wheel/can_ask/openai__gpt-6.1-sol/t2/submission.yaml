@@ -1,0 +1,401 @@
+task: bearing-wheel
+note: Unloaded-fit prototype, not a load-rated door repair. Wheel estimates came from
+  user; nominal 608 dimensions are unverified. Track profile, bracket gap, existing
+  bolt length and door load are unknown. Flat tread is provisional. Complete spacer
+  stack is 20 mm, not 16 mm. CAD not executed here.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: ''
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: ''
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bearing_diametral_clearance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shoulder_bore:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  axle_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  spacer_bore:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  end_spacer_length:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_od:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_floor:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  washer_thickness:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_length:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_threaded_length:
+    value: 28
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_height:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  thread_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+parts:
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    h=p.bearing_width+p.coupon_floor\n    s=cq.Workplane('XY').circle(p.coupon_od/2).circle(p.shoulder_bore/2).extrude(h)\n\
+    \    cut=cq.Workplane('XY').workplane(offset=p.coupon_floor).circle((p.bearing_od+p.bearing_diametral_clearance)/2).extrude(p.bearing_width)\n\
+    \    return s.cut(cut)\n"
+  print_orientation: Annular floor at z=0; pocket upward.
+  use_orientation: Finger-test bearing in pocket.
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    if p.wheel_width<=2*p.bearing_width:\n        raise ValueError('Positive\
+    \ central shoulder required')\n    s=cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_width)\n\
+    \    s=s.edges('%Circle').chamfer(p.edge_chamfer)\n    s=s.cut(cq.Workplane('XY').circle(p.shoulder_bore/2).extrude(p.wheel_width))\n\
+    \    r=(p.bearing_od+p.bearing_diametral_clearance)/2\n    a=cq.Workplane('XY').circle(r).extrude(p.bearing_width)\n\
+    \    b=cq.Workplane('XY').workplane(offset=p.wheel_width-p.bearing_width).circle(r).extrude(p.bearing_width)\n\
+    \    return s.cut(a).cut(b)\n"
+  print_orientation: Flat side at z=0; axle vertical. Shoulder radial overhang only
+    2.1 mm; no support intended.
+  use_orientation: Axle on z axis. Bearings occupy z=0..7 and 9..16.
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    h=p.wheel_width-2*p.bearing_width\n    if h<=0:\n    \
+    \    raise ValueError('Positive spacer length required')\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_bore/2).extrude(h)\n"
+  print_orientation: Annular end at z=0.
+  use_orientation: Translate to wheel z=7..9, between inner rings.
+- id: left_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_bore/2).extrude(p.end_spacer_length)\n"
+  print_orientation: Annular end at z=0.
+  use_orientation: Translate to wheel z=-2..0; inner-ring contact only.
+- id: right_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_bore/2).extrude(p.end_spacer_length)\n"
+  print_orientation: Annular end at z=0.
+  use_orientation: Translate to wheel z=16..18; inner-ring contact only.
+hardware:
+- id: bearing_left
+  ref: 608ZZ
+  qty: 1
+- id: bearing_right
+  ref: 608ZZ
+  qty: 1
+- id: axle
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: axle_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: axle_washers
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: bench_axle
+  fastener: axle
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -3.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: left_spacer
+    feature: Axial bore and head-side annular face behind washer
+    role: clearance
+  - part: inner_spacer
+    feature: Axial bore between bearing inner rings
+    role: clearance
+  - part: right_spacer
+    feature: Axial bore and nut-side annular face behind washer
+    role: clearance
+  nut: axle_nut
+  external: Bench assembly only. Washers at wheel z=-3.6..-2 and 18..19.6; nut starts
+    z=19.6. Actual bracket mounting unresolved.
+criteria:
+- id: bearing_fit
+  part: wheel
+  feature: Two bearing seats
+  relation: contains
+  hardware: bearing_left
+  clearance_mm: 0.2
+  params:
+  - bearing_od
+  - bearing_width
+  - bearing_diametral_clearance
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: Test both bearings. Finger pressure must seat fully without visible
+      rocking. Clearance is diametral. Adjust allowance and reprint coupon if needed;
+      do not hammer.
+- id: second_fit
+  part: wheel
+  feature: Opposite seat
+  relation: contains
+  hardware: bearing_right
+  clearance_mm: null
+  params:
+  - bearing_od
+  - bearing_width
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: Confirm second bearing fits equally well.
+- id: inner_ring_stack
+  part: inner_spacer
+  feature: 2 mm inner-ring spacer
+  relation: seats
+  hardware: bearing_left
+  clearance_mm: null
+  params:
+  - wheel_width
+  - bearing_width
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Actual bearings must be 7 mm wide and spacer 2 mm. Ends touch inner
+      rings only. Wheel must spin freely with nut snug.
+- id: left_contact
+  part: left_spacer
+  feature: Inner-ring-only stand-off
+  relation: seats
+  hardware: bearing_left
+  clearance_mm: null
+  params:
+  - spacer_od
+  - end_spacer_length
+  check:
+    method: measure
+    ref: null
+    description: No shield/outer-ring contact; washer clears wheel.
+- id: right_contact
+  part: right_spacer
+  feature: Inner-ring-only stand-off
+  relation: seats
+  hardware: bearing_right
+  clearance_mm: null
+  params:
+  - spacer_od
+  - end_spacer_length
+  check:
+    method: measure
+    ref: null
+    description: No shield/outer-ring contact; washer clears wheel.
+- id: mount_gate
+  part: wheel
+  feature: Flat tread and spacer stack
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_width
+  - end_spacer_length
+  check:
+    method: measure
+    ref: null
+    description: 'Unresolved: establish bracket gap, track profile and door loading.
+      Inner stack needs 20 mm. Do not bend bracket to fit. Reject flat tread if groove/flange
+      required. No safe door load established.'
+- id: bolt_engagement
+  part: right_spacer
+  feature: Axle stack
+  relation: clears
+  hardware: axle
+  clearance_mm: null
+  params:
+  - bolt_length
+  - bolt_threaded_length
+  - nut_height
+  - thread_pitch
+  - washer_thickness
+  check:
+    method: measure
+    ref: null
+    description: Installed under-head stack plus 8 mm nut plus two thread pitches
+      must fit within 40 mm. Nylon must fully engage threads; nut cannot stop on shank.
+      Head/tip must clear track.
+manual:
+- n: '1'
+  text: Safely support and unload the door. Do not remove a roller with the door resting
+    on it. This design is only an unloaded-fit prototype.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print bearing_fit_coupon in PLA, 0.2 mm layers, four walls, solid fill. Test
+    both bearings with fingers. Adjust bearing_diametral_clearance and repeat if tight
+    or loose.
+  parts:
+  - bearing_fit_coupon
+  hardware:
+  - bearing_left
+  - bearing_right
+  tool: null
+- n: '3'
+  text: Print wheel with six walls, six top/bottom layers and 100% infill. Print all
+    spacers solid. Use stated orientations without supports. Remove brim/elephant
+    foot without changing seat geometry; reject cracks or incomplete layers.
+  parts:
+  - wheel
+  - inner_spacer
+  - left_spacer
+  - right_spacer
+  hardware: []
+  tool: null
+- n: '4'
+  text: Seat first bearing, insert inner_spacer through opposite side and align bores,
+    then seat second bearing. Bearing outer faces should be flush with wheel sides.
+    Wheel's central shoulder locates outer rings; inner_spacer separates inner rings.
+  parts:
+  - wheel
+  - inner_spacer
+  hardware:
+  - bearing_left
+  - bearing_right
+  tool: null
+- n: '5'
+  text: 'Bench assembly order: M8x40 head, washer, left_spacer, first bearing in wheel,
+    inner_spacer, second bearing in wheel, right_spacer, washer, lock nut. Spacers
+    must contact inner rings only. Never place full-size washers directly against
+    shields.'
+  parts:
+  - wheel
+  - inner_spacer
+  - left_spacer
+  - right_spacer
+  hardware:
+  - axle
+  - axle_washers
+  - axle_nut
+  - bearing_left
+  - bearing_right
+  tool: null
+- n: '6'
+  text: Gently snug nut while holding bolt head. Do not apply steel-joint M8 torque
+    to PLA. Wheel must spin freely without bolt turning. Binding requires dismantling
+    and checking spacer lengths, burrs and shield contact—not leaving nut loose. PLA
+    spacers can creep; this is not a qualified permanent clamped joint.
+  parts:
+  - wheel
+  - inner_spacer
+  - left_spacer
+  - right_spacer
+  hardware:
+  - axle
+  - axle_nut
+  tool: 6 mm hex key and 13 mm spanner
+- n: '7'
+  text: Before installation resolve track profile, bracket geometry, roller loading
+    and lateral retention. Wheel width is 16 mm but spacer stack is 20 mm, or 23.2
+    mm with washers. Do not bend bracket to fit. Verify full nylon engagement with
+    two threads beyond nut, no shank interference and head/tip clearance. Existing
+    bolt length is unknown. Bench joint does not specify a bracket mounting.
+  parts:
+  - wheel
+  - left_spacer
+  - right_spacer
+  hardware:
+  - axle
+  - axle_washers
+  - axle_nut
+  tool: null
+- n: '8'
+  text: Do not return a load-bearing door to service on this unvalidated PLA prototype.
+    Use a correctly profiled, load-rated replacement roller for permanent service.
+    Unloaded fit/spin tests do not establish capacity, creep resistance or derailment
+    safety.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

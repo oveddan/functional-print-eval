@@ -10,7 +10,9 @@ in every direction, because some strands always end at the hole. That is the
 Arca plate's first print (and Estoa's sealed leg-pocket hole).
 
 Material within a short distance of the layer below is an ordinary small
-overhang and is skipped.
+overhang and is skipped. A ledge wider than that but narrower than anything seen to
+tangle (a nut pocket's roof around its bolt hole) fails the strand test without any
+print to back it up, so it's reported as not measured, never as a pass.
 """
 from dataclasses import dataclass, field
 from functools import cache, reduce
@@ -39,7 +41,8 @@ class Overhang:
     best_angle: float
     anchored: float  # share of strands anchored at both ends in the best direction
     longest: float
-    ok: bool
+    ok: bool  # some direction's strands land on solid at both ends
+    narrow: bool  # narrower than anything seen to tangle, so a failed strand test isn't settled
     strands: list = field(default_factory=list)  # (LineString, anchored) in the best direction
 
 
@@ -98,6 +101,11 @@ def assess(region, support, s):
     return angle, share, longest, ok, strands
 
 
+def _within(region, support, mm):
+    """Is the whole region, but for slivers, this close to the layer below?"""
+    return region.difference(support.buffer(mm)).area < 0.05
+
+
 def overhangs(mesh: trimesh.Trimesh):
     """Every region in every layer that needs a bridge, with whether it can be bridged."""
     s = settings()
@@ -111,10 +119,11 @@ def overhangs(mesh: trimesh.Trimesh):
                 if region.is_empty or region.area < 0.5:
                     continue
                 # an ordinary small overhang: everything is close to the layer below
-                if region.difference(prev.buffer(s["small_overhang_mm"])).area < 0.05:
+                if _within(region, prev, s["small_overhang_mm"]):
                     continue
                 angle, share, longest, ok, strands = assess(region, prev, s)
-                found.append(Overhang(round(z - s["layer"] / 2, 2), region, prev, angle, share, longest, ok, strands))
+                narrow = _within(region, prev, s["narrowest_tangled_mm"])
+                found.append(Overhang(round(z - s["layer"] / 2, 2), region, prev, angle, share, longest, ok, narrow, strands))
         prev = poly
     return found
 

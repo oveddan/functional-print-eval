@@ -99,6 +99,7 @@ No photo is committed, and nothing in the repo should point at a file that only 
 - Code with no license (CADEngBench, the BenchCAD 2.0 harness): reimplement and cite, never copy. Read BenchCAD's LICENSE before reusing anything.
 - Secrets: model API keys come from 1Password at run time and are never printed, echoed or committed.
 - Models are called by API through OpenRouter, not through subscriptions, so runs log versions, settings and cost.
+- Nothing physical before publishing (Dan, 2026-10-30, restated 2026-11-02): no new print or measurement, and no model's design gets printed. What the existing records can't decide is reported as not graded or a labelled estimate, as a limitation of the eval. Requests state the person's problem in their words, and Dan approves those words before models run on them.
 
 ## Working method
 

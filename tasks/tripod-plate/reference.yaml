@@ -1,0 +1,56 @@
+task: tripod-plate
+note: Reference solution, a CadQuery port of the plate Dan printed (arca_plate.scad, after the recess fix).
+params:
+  width:    {value: 38, kind: world, source: measured, note: what fit the clamp}
+  length:   {value: 60, kind: design, source: design, note: room for the slot}
+  height:   {value: 10, kind: design, source: design, note: enough for the recess and a roof}
+  bevel:    {value: 3, kind: design, source: design, note: 45 degree edges for the clamp's lips}
+  land:     {value: 1, kind: design, source: design, note: short straight edge under the bevel}
+  hole:     {value: 7, kind: design, source: measured, note: 1/4-20 clearance that printed fine}
+  slot:     {value: 20, kind: design, source: design, note: lets the camera slide for balance}
+  head_d:   {value: 15, kind: hardware, source: measured, note: the person's bolt head}
+  head_h:   {value: 5, kind: hardware, source: measured, note: the person's bolt head}
+  step:     {value: 0.4, kind: design, source: design, note: two layers per bridging step}
+parts:
+  - id: plate
+    role: final
+    material: PLA
+    print_orientation: Wide face and recess on the bed, so the bevels narrow upward and need no support.
+    use_orientation: Wide face down in the clamp, narrow face against the camera.
+    code: |
+      def stadium(p, d, h, z=0):
+          return cq.Workplane("XY").workplane(offset=z).slot2D(p.slot + d, d, 90).extrude(h)
+
+      def build(p):
+          w, top = p.width / 2, p.width / 2 - p.bevel
+          outline = [(-w, 0), (w, 0), (w, p.land), (top, p.land + p.bevel), (top, p.height),
+                     (-top, p.height), (-top, p.land + p.bevel), (-w, p.land)]
+          plate = cq.Workplane("XZ").polyline(outline).close().extrude(p.length / 2, both=True)
+          # the recess's roof steps so each layer bridges from both sides: a strip, a box, then the slot
+          strip = cq.Workplane("XY").workplane(offset=p.head_h).rect(p.hole, p.slot + p.head_d).extrude(p.step)
+          box = cq.Workplane("XY").workplane(offset=p.head_h).rect(p.hole, p.slot + p.hole).extrude(2 * p.step)
+          return plate.cut(stadium(p, p.head_d, p.head_h)).cut(strip).cut(box).cut(stadium(p, p.hole, p.height))
+hardware:
+  - {id: bolt, ref: "salvaged:webcam-mount-bolt"}
+criteria:
+  - id: C1
+    part: plate
+    feature: recess
+    relation: seats
+    hardware: bolt
+    clearance_mm: 0
+    params: [head_d, head_h]
+    check: {method: none, description: The head's size comes from the person.}
+manual:
+  - n: "1"
+    text: Print the plate wide face down with no supports.
+    parts: [plate]
+    hardware: []
+  - n: "2"
+    text: Push the bolt up through the plate from the wide side, so its head sits in the recess, and screw it into the camera.
+    parts: [plate]
+    hardware: [bolt]
+  - n: "3"
+    text: Open the clamp's knob, drop the plate in with the wide face down, and tighten.
+    parts: [plate]
+    hardware: []

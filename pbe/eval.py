@@ -19,7 +19,7 @@ from pathlib import Path
 
 import yaml
 
-from pbe import agent, llm, submission, tasks
+from pbe import agent, build, llm, submission, tasks
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,25 +38,42 @@ def findings_json(findings):
 
 def commit():
     r = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True, text=True)
-    dirty = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
+    # only what decides a result: the run's own saved files would mark every trial after the first
+    code = ["pbe", "tasks", "catalog", "results/predictions", "pyproject.toml", "uv.lock"]
+    dirty = subprocess.run(["git", "status", "--porcelain", "--", *code], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     return r.stdout.strip() + ("-dirty" if dirty else "")
 
 
 def run_one(task, model, condition, trial, run_dir, args):
     out = run_dir / task.id / condition / slug(model) / f"t{trial}"
+    already_spent = 0.0
     if (out / "grades.json").exists():
         done = json.loads((out / "grades.json").read_text())
+        if done["outcome"] == "submitted" and not done["findings"]:  # stopped while grading: finish that
+            sub = submission.load(out / "submission.yaml")
+            return grade_and_save(task, sub, out, done)
         if done["outcome"] != "error":  # an infrastructure error isn't a result; run it again
             return done
+        already_spent = done["cost_usd"]  # but the failed attempt was still paid for
     out.mkdir(parents=True, exist_ok=True)
     record, messages, sub = agent.run_trial(task, model, condition, max_turns=args.max_turns, max_tokens=args.max_tokens)
-    findings, observations = agent.evaluate(task, sub, out) if sub else ([], {})
-    record.update(trial=trial, date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(),
-                  findings=findings_json(findings), observations=observations,
-                  all_pass=bool(sub) and bool(findings) and all(f.ok is True for f in findings))
+    record["cost_usd"] = round(record["cost_usd"] + already_spent, 6)
+    # saved before grading with no findings, so if grading breaks the paid conversation and its
+    # cost are kept, and rerunning finishes the grading instead of paying for the trial again
     (out / "transcript.json").write_text(json.dumps(messages, indent=1))
     if sub:
         (out / "submission.yaml").write_text(yaml.safe_dump(sub.model_dump(), sort_keys=False, allow_unicode=True))
+    record.update(trial=trial, date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(),
+                  findings=[], observations={}, all_pass=False)
+    (out / "grades.json").write_text(json.dumps(record, indent=1))
+    return grade_and_save(task, sub, out, record) if sub else record
+
+
+def grade_and_save(task, sub, out, record):
+    findings, observations = agent.evaluate(task, sub, out)
+    record.update(date=datetime.now(timezone.utc).isoformat(timespec="seconds"), commit=commit(),
+                  findings=findings_json(findings), observations=observations,
+                  all_pass=bool(findings) and all(f.ok is True for f in findings))
     (out / "grades.json").write_text(json.dumps(record, indent=1))
     return record
 
@@ -65,11 +82,12 @@ def summarize(run_dir):
     rows = [json.loads(p.read_text()) for p in sorted(run_dir.rglob("grades.json"))]
     with open(run_dir / "summary.csv", "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["task", "condition", "model", "trial", "outcome", "all_pass", "failed_checks", "repairs",
+        w.writerow(["task", "condition", "model", "trial", "outcome", "all_pass", "failed_checks", "not_graded", "repairs",
                     "turns", "measured", "limitations", "cost_usd", "elapsed_s"])
         for r in rows:
             failed = [x["check"] for x in r["findings"] if x["ok"] is False]
-            w.writerow([r["task"], r["condition"], r["model"], r["trial"], r["outcome"], r["all_pass"], " ".join(failed),
+            not_graded = [x["check"] for x in r["findings"] if x["ok"] is None]
+            w.writerow([r["task"], r["condition"], r["model"], r["trial"], r["outcome"], r["all_pass"], " ".join(failed), " ".join(not_graded),
                         r["repairs"], r["turns"], " ".join(r["revealed"]), len(r["limitations"]), r["cost_usd"], r["elapsed_s"]])
     return rows
 
@@ -80,9 +98,10 @@ def regrade(run_dir, task_ids):
     for path in sorted(run_dir.rglob("grades.json")):
         r = json.loads(path.read_text())
         sub_path = path.parent / "submission.yaml"
-        if r["task"] not in task_ids or not sub_path.exists():
+        family = r["task"].split("/")[0]  # naming a family regrades all its variants
+        if (r["task"] not in task_ids and family not in task_ids) or not sub_path.exists():
             continue
-        sub = submission.Submission.model_validate(yaml.safe_load(sub_path.read_text()))
+        sub = submission.load(sub_path)
         findings, observations = agent.evaluate(tasks.load(r["task"]), sub, path.parent)
         new = findings_json(findings)
         if observations != r.get("observations"):
@@ -104,10 +123,10 @@ def check_references(task_ids):
             print(f"{tid}: no reference.yaml")
             ok = False
             continue
-        sub = submission.load(task.reference)
+        sub = submission.parse(task.reference)
         findings = agent.grade(task, sub, ROOT / "results/local/reference" / tid)
         for f in findings:
-            print(f"{tid:12} {'pass' if f.ok else 'not graded' if f.ok is None else 'FAIL':10} {f.check:16} {f.detail}")
+            print(f"{tid:14} {'pass' if f.ok else 'not graded' if f.ok is None else 'FAIL':10} {f.check:16} {f.detail}")
             ok &= f.ok is True
     return ok
 
@@ -134,9 +153,10 @@ def main():
         return
     if not args.model:
         ap.error("--model is required unless --reference")
-    try:
-        llm._key()  # fail now, not once per trial
-    except llm.LLMError as e:
+    try:  # fail now, not once per trial
+        llm._key()
+        build.require_sandbox()
+    except (llm.LLMError, RuntimeError) as e:
         sys.exit(str(e))
     run_dir = ROOT / "results/runs" / args.run
     for tid in args.task:

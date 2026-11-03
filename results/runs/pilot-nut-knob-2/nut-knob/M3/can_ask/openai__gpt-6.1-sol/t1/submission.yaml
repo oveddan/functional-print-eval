@@ -1,0 +1,329 @@
+task: nut-knob/M3
+note: 20 mm one-piece nut-style M3 hand knob. Mandatory fit coupon accommodates unmeasured
+  nut and printing tolerances; only the knob is used in the finished assembly. Dimensions
+  in mm.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: world
+    source: asked
+    note: ''
+  knob_h:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  fit_adjust:
+    value: -0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_recess:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_chamfer:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_round:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_r:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_center_r:
+    value: 11.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_start:
+    value: -0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_count:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pitch:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_link_w:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_link_h:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  mark_d:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  mark_pitch:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  mark_y:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  mark_depth:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    h=p.knob_h\n    depth=p.nut_h+p.nut_recess\n\
+    \    floor=h-depth\n    af=p.nut_af+p.fit_adjust\n    def pts(a):\n        r=a/math.sqrt(3)\n\
+    \        return [(r*math.cos(math.radians(60*i)),r*math.sin(math.radians(60*i)))\
+    \ for i in range(6)]\n    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \    body=body.edges('%Circle').fillet(p.edge_round)\n    for i in range(int(p.grip_count)):\n\
+    \        a=2*math.pi*i/p.grip_count\n        cutter=cq.Workplane('XY').center(p.grip_cut_center_r*math.cos(a),p.grip_cut_center_r*math.sin(a)).circle(p.grip_cut_r).extrude(h)\n\
+    \        body=body.cut(cutter)\n    pocket=cq.Workplane('XY').workplane(offset=floor).polyline(pts(af)).close().extrude(depth)\n\
+    \    flare=(cq.Workplane('XY').workplane(offset=h-p.entry_chamfer).polyline(pts(af)).close().workplane(offset=p.entry_chamfer).polyline(pts(af+2*p.entry_chamfer)).close().loft())\n\
+    \    bore=cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(h)\n\
+    \    return body.cut(pocket).cut(flare).cut(bore)\n"
+  print_orientation: Flat underside at z=0 on bed, nut pocket upward. No supports.
+  use_orientation: Nut enters upper face and rests recessed on retaining floor. Bolt
+    passes axially through nut and central bore.
+- id: fit_strip
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    h=p.knob_h\n    depth=p.nut_h+p.nut_recess\n\
+    \    floor=h-depth\n    def pts(a):\n        r=a/math.sqrt(3)\n        return\
+    \ [(r*math.cos(math.radians(60*i)),r*math.sin(math.radians(60*i))) for i in range(6)]\n\
+    \    def socket(af):\n        body=cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \        body=body.edges('%Circle').fillet(p.edge_round)\n        for i in range(int(p.grip_count)):\n\
+    \            a=2*math.pi*i/p.grip_count\n            cutter=cq.Workplane('XY').center(p.grip_cut_center_r*math.cos(a),p.grip_cut_center_r*math.sin(a)).circle(p.grip_cut_r).extrude(h)\n\
+    \            body=body.cut(cutter)\n        pocket=cq.Workplane('XY').workplane(offset=floor).polyline(pts(af)).close().extrude(depth)\n\
+    \        flare=(cq.Workplane('XY').workplane(offset=h-p.entry_chamfer).polyline(pts(af)).close().workplane(offset=p.entry_chamfer).polyline(pts(af+2*p.entry_chamfer)).close().loft())\n\
+    \        bore=cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(h)\n\
+    \        return body.cut(pocket).cut(flare).cut(bore)\n    count=int(p.coupon_count)\n\
+    \    out=None\n    for i in range(count):\n        x=(i-(count-1)/2)*p.coupon_pitch\n\
+    \        unit=socket(p.nut_af+p.coupon_start+i*p.coupon_step).translate((x,0,0))\n\
+    \        for j in range(i+1):\n            mx=x+(j-i/2)*p.mark_pitch\n       \
+    \     mark=cq.Workplane('XY').workplane(offset=h-p.mark_depth).center(mx,p.mark_y).circle(p.mark_d/2).extrude(p.mark_depth)\n\
+    \            unit=unit.cut(mark)\n        out=unit if out is None else out.union(unit)\n\
+    \    link=cq.Workplane('XY').box((count-1)*p.coupon_pitch,p.coupon_link_w,p.coupon_link_h,centered=(True,True,False))\n\
+    \    return out.union(link)\n"
+  print_orientation: Flat underside at z=0 on bed, pockets and dots upward. No supports.
+  use_orientation: 'Test only: one to five dots identify increasing pocket sizes.'
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: threaded_connection
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: Central bore through retaining floor
+    role: clearance
+  - part: knob
+    feature: Recessed interference-fit hex pocket
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria:
+- id: retention
+  part: knob
+  feature: Interference-fit hex pocket with flared entry
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - fit_adjust
+  - entry_chamfer
+  check:
+    method: coupon
+    ref: fit_strip
+    description: Select loosest fit that seats by thumb pressure, prevents rotation
+      and retains nut when inverted and gently shaken. Repeat on final knob.
+- id: recess
+  part: knob
+  feature: 3 mm pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  check:
+    method: coupon
+    ref: fit_strip
+    description: Seated nut top must be entirely below knob surface.
+- id: stop
+  part: knob
+  feature: 4 mm retaining floor with 3.5 mm bore
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - nut_h
+  - nut_recess
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: coupon
+    ref: fit_strip
+    description: Nut bottoms firmly and cannot pass through smaller bore.
+- id: passage
+  part: knob
+  feature: Coaxial through-bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: coupon
+    ref: fit_strip
+    description: Insert bolt from underside and thread through seated nut; tip must
+      emerge freely on pocket side.
+manual:
+- n: '1'
+  text: Print fit_strip using PLA, 0.2 mm layers, 0.4 mm nozzle, 4 walls, 5 top/bottom
+    layers and 35% infill. No supports. Use the same filament and settings for the
+    final knob.
+  parts:
+  - fit_strip
+  hardware: []
+  tool: null
+- n: '2'
+  text: Start with the 5-dot pocket (loosest). Align nut flats and press down by thumb.
+    If loose, try the next smaller pocket. Choose the loosest pocket that seats fully
+    by hand, prevents nut rotation and holds when inverted and gently shaken. Do not
+    hammer, heat, glue or force the nut with a bolt.
+  parts:
+  - fit_strip
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Recover test nut by threading the M3x16 bolt into it a few turns from the
+    pocket side and pulling straight outward. Separately check bolt passage from the
+    underside through the seated nut. If no pocket passes all checks, adjust coupon_start
+    and coupon_step to test 0.05 mm increments around the closest fit before proceeding.
+  parts:
+  - fit_strip
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '4'
+  text: 'Set fit_adjust = coupon_start + (dot count minus 1) times coupon_step. Defaults:
+    1 dot=-0.20, 2=-0.10, 3=0, 4=+0.10, 5=+0.20 mm. Print knob with identical settings
+    and compensation, flat underside down.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: Press nut fully onto internal floor. Confirm it is completely recessed, cannot
+    turn, stays in when inverted and cannot pass through the far side. Repeat bolt-passage
+    check on the final knob. Coupon is not part of the finished assembly.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '6'
+  text: Turn knob to move its captured nut along the M3 bolt. This is a nut-style
+    knob, not a captive bolt-head knob. M3x16 is for passage testing; fastening length
+    depends on your application. Hand-tighten only; avoid high torque, safety-critical
+    loads and heat that softens PLA. If retention loosens with wear, reprint with
+    a tighter coupon-tested fit.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

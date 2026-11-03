@@ -1,0 +1,186 @@
+task: tripod-plate
+note: ''
+questions: []
+params:
+  plate_width_base:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Arca-Swiss standard base width; the clamp's jaw opening should be slightly
+      larger. Confirm by test fit.
+  plate_dovetail_angle_deg:
+    value: 45.0
+    unit: mm
+    kind: design
+    source: design
+    note: Standard Arca-Swiss dovetail side angle
+  plate_length:
+    value: 55.0
+    unit: mm
+    kind: design
+    source: design
+    note: Enough length for a compact camera base
+  plate_thickness:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_height:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the dovetail side wall before the angle starts
+  slot_width:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: Slot for the 1/4-20 bolt to slide, wider than bolt shank
+  slot_cap_width:
+    value: 14.0
+    unit: mm
+    kind: design
+    source: design
+    note: Undercut pocket width to capture the bolt head
+  bolt_head_d:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt head across (~15 mm)
+  bolt_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt head height (~5 mm)
+  bolt_len:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt length under the head (~10 mm)
+  bolt_shank_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 major diameter (0.25 in)
+  cap_head_d:
+    value: 17.0
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for bolt head to pass while loose
+  cap_shank_d:
+    value: 7.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance for the bolt shank in the top slot
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    w = p.plate_width_base\n    L\
+    \ = p.plate_length\n    t = p.plate_thickness\n    lh = p.lip_height\n    ang\
+    \ = p.plate_dovetail_angle_deg\n    sw = p.slot_width\n    cw = p.slot_cap_width\n\
+    \    chd = p.cap_head_d\n    csd = p.cap_shank_d\n    bhd = p.bolt_head_d\n  \
+    \  bhh = p.bolt_head_h\n\n    # Dovetail profile (cross-section), Arca-style:\
+    \ wide base, angled sides\n    # Build base rectangle first\n    base = cq.Workplane('XY').box(w,\
+    \ L, t)\n\n    # Sides angle inward. Create the dovetail by cutting from the top\
+    \ sides.\n    # Use a wedge cut on each side from the top edge down.\n    h_start\
+    \ = t - lh  # height where the angle begins\n    cut_w = w  # remove a triangular\
+    \ notch on each side\n    # A notch on left and right: rectangle of width = w\
+    \ shifted, angled.\n    body = base\n    # left wedge\n    left = (\n        cq.Workplane('XZ')\n\
+    \        .center(0, 0)\n        .moveTo(-w/2, h_start)\n        .lineTo(-big_gap*0\
+    \ if False else 0, 0)\n    )\n    # simpler: compute the inset from angle over\
+    \ height lh\n    import math\n    inset = lh / math.tan(math.radians(ang))\n \
+    \   # top width narrower than base width\n    top_w = w - 2*inset\n\n    # Build\
+    \ the dovetail as a lofted/trapezoid profile extruded along length.\n    prof\
+    \ = (\n        cq.Workplane('XZ')\n        .moveTo(-w/2, 0)\n        .lineTo(-w/2,\
+    \ h_start)\n        .lineTo(-top_w/2, t)\n        .lineTo(top_w/2, t)\n      \
+    \  .lineTo(w/2, h_start)\n        .lineTo(w/2, 0)\n        .close()\n    )\n \
+    \   plate = cq.Workplane('YZ').moveTo(-L/2, 0).workplane().toPending()\n    #\
+    \ Use sweep via extrude of the section along Y\n    plate = prof.extrude(L)\n\n\
+    \    # Central slot for the bolt shank (through the whole thickness, along X?\
+    \ no: along length)\n    # The slot runs along the plate length (Y) so the camera\
+    \ can be positioned.\n    slot = (\n        cq.Workplane('XY')\n        .moveTo(0,\
+    \ 0)\n        .slot2D(L, sw/2)\n        .extrude(t - lh)\n    )\n    plate = plate.cut(slot)\n\
+    \n    # Undercut pocket along the bottom to capture the bolt head so it can't\
+    \ spin\n    under = (\n        cq.Workplane('XY')\n        .moveTo(0, 0)\n   \
+    \     .slot2D(L, cw/2)\n        .extrude(bhh + 0.5)\n        .translate((0, 0,\
+    \ -0.5))\n    )\n    plate = plate.cut(under)\n\n    return plate\n"
+  print_orientation: flat, dovetail base (wide side) on the bed, top face up
+  use_orientation: dovetail base drops into the tripod clamp; top face touches the
+    camera
+hardware:
+- id: tripod_screw
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: tripod_screw
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: central slot
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: qr_plate
+  feature: dovetail base
+  relation: engages
+  hardware: tripod_screw
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: Print the plate and test-drop it into the tripod clamp; it should
+      seat and the knob should clamp it
+- id: c2
+  part: qr_plate
+  feature: central slot
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Fit the bolt head into the undercut pocket so it can't spin
+manual:
+- n: '1'
+  text: Print the plate (qr_plate) flat with the wide dovetail base on the bed.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the plate into the tripod's clamp from above and tighten the clamp knob
+    to check fit.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Slide the salvaged 1/4-20 bolt up through the plate's slot, then thread it
+    into the camera's tripod socket and tighten.
+  parts:
+  - qr_plate
+  hardware:
+  - tripod_screw
+  tool: null

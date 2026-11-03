@@ -1,0 +1,216 @@
+task: nut-knob/M5
+note: You couldn't measure the nut, so the nut's width across the flats is the catalog
+  8.0 mm. That's why the coupon is there to tune the press fit.
+questions: []
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats; could not be measured
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_fit:
+    value: 0.0
+    unit: mm
+    kind: design
+    source: design
+    note: added to nut_af for the pocket. 0 = nominal, which on a 0.4 nozzle usually
+      prints ~0.1-0.15 mm small, giving a hand press fit. Change it to whichever coupon
+      pocket worked best
+  coupon_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance on bolt diameter (5.5 hole); smaller than nut_af so the nut can't
+      push through
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_extra:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: pocket deeper than nut so it sits fully inside
+  lead_in:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d/2\n    H = p.knob_h\n    k =\
+    \ cq.Workplane('XY').circle(R).extrude(H)\n    n = int(p.scallop_n)\n    for i\
+    \ in range(n):\n        a = 2*math.pi*i/n\n        c = cq.Workplane('XY').center((R+p.scallop_r*0.4)*math.cos(a),(R+p.scallop_r*0.4)*math.sin(a)).circle(p.scallop_r).extrude(H)\n\
+    \        k = k.cut(c)\n    k = k.edges('>Z or <Z').chamfer(0.6)\n    af = p.nut_af\
+    \ + p.nut_fit\n    dc = af/math.cos(math.radians(30))\n    depth = p.nut_h + p.pocket_extra\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=H-depth).polygon(6, dc).extrude(depth)\n\
+    \    lead = cq.Workplane('XY').workplane(offset=H-p.lead_in).polygon(6, dc).workplane(offset=p.lead_in).polygon(6,\
+    \ dc+2*p.lead_in).loft()\n    hole = cq.Workplane('XY').circle((p.bolt_d+p.bolt_clear)/2).extrude(H)\n\
+    \    return k.cut(pocket).cut(lead).cut(hole)\n"
+  print_orientation: Flat bottom (the side with only the round bolt hole) on the bed;
+    hex pocket opens upward, no supports or bridges
+  use_orientation: Any; the bolt passes from the floor side through the nut, or into
+    the nut from the pocket side
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    depth = p.nut_h + p.pocket_extra\n    T =\
+    \ depth + 2.0\n    b = cq.Workplane('XY').box(48, 16, T, centered=(True, True,\
+    \ False))\n    for i, off in enumerate([-1, 0, 1]):\n        x = (i-1)*15\n  \
+    \      af = p.nut_af + p.nut_fit + off*p.coupon_step\n        dc = af/math.cos(math.radians(30))\n\
+    \        b = b.cut(cq.Workplane('XY').workplane(offset=T-depth).center(x, 0).polygon(6,\
+    \ dc).extrude(depth))\n        b = b.cut(cq.Workplane('XY').center(x, 0).circle((p.bolt_d+p.bolt_clear)/2).extrude(T))\n\
+    \        for j in range(i+1):\n            b = b.cut(cq.Workplane('XY').workplane(offset=T-0.6).center(x-2+2*j,\
+    \ -6.5).circle(0.5).extrude(0.6))\n    return b\n"
+  print_orientation: Flat on bed, pockets open upward
+  use_orientation: 'Hand test: press the nut into each pocket'
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_retained
+  part: knob
+  feature: hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_fit
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut goes in with firm thumb pressure and doesn't fall out when the
+      part is shaken upside down
+- id: nut_recessed
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.4
+  params:
+  - nut_h
+  - pocket_extra
+  check:
+    method: measure
+    ref: null
+    description: Nut top sits about 0.4 mm below the knob face
+- id: no_pushthrough
+  part: knob
+  feature: pocket floor / bolt hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bolt_clear
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: 5.5 mm hole is much smaller than the 8 mm nut, so the floor holds
+      the nut
+- id: bolt_passes
+  part: knob
+  feature: bolt hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: M5 bolt slides through the floor hole freely
+manual:
+- n: '1'
+  text: 'Print fit_coupon flat, without supports. It has three hex pockets marked
+    with 1, 2 and 3 dots: tight (−0.1 mm), nominal, and loose (+0.1 mm).'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Press the M5 nut into each pocket with your thumb, then turn the coupon upside
+    down and shake it. Pick the tightest pocket the nut still goes into by hand and
+    that holds it. 1 dot: set nut_fit to -0.1. 2 dots: keep 0. 3 dots: set +0.1. If
+    even the 1-dot pocket is loose, use -0.2. Also check that your bolt slides through
+    the round hole.'
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Print the knob with its flat round-hole side on the bed and the hex pocket
+    facing up. No supports. 3 walls and 25%+ infill is fine.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Line up the nut's flats with the pocket and press it in until it bottoms out.
+    The chamfer at the opening guides it in. If it's stiff, put the knob face-down
+    on the table and press with a flat object such as a coin, or squeeze it gently
+    in a vise. The nut ends up slightly below the face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the knob onto your M5 bolt. The bolt goes through the nut and out through
+    the round hole in the floor (or the other way round). The floor stops the nut
+    from being pushed out the far side.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

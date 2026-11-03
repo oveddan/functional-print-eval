@@ -1,0 +1,149 @@
+task: tripod-plate
+note: Bolt-fit test ONLY, not a functional tripod mount. Clamp dimensions and camera
+  socket depth are still unknown. A properly fitted plate may be printable, but use
+  a metal camera screw, not a printed screw. Do not attach this coupon to the camera
+  or tripod.
+questions:
+- text: Clamp bottom and top gap at the same knob position, lip height, jaw length,
+    stop locations, and tripod model?
+  answer: null
+- text: Camera weight including lens, usable socket depth, and bolt drive?
+  answer: null
+params:
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate reported head width in mm; circular recess tests its envelope
+      only.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate mm.
+  bolt_underhead_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate mm; not validated for camera engagement.
+  bolt_nominal_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 major diameter in mm.
+  head_radial_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shank_diametral_clearance:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_depth_allowance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_floor:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_outer_d:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: bolt_fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    h = p.coupon_floor + p.bolt_head_h + p.head_depth_allowance\n\
+    \    body = cq.Workplane('XY').circle(p.coupon_outer_d/2).extrude(h)\n    bore\
+    \ = cq.Workplane('XY').circle((p.bolt_nominal_d+p.shank_diametral_clearance)/2).extrude(h)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=p.coupon_floor).circle(p.bolt_head_d/2+p.head_radial_clearance).extrude(p.bolt_head_h+p.head_depth_allowance)\n\
+    \    return body.cut(bore).cut(pocket)\n"
+  print_orientation: Flat annular underside at z=0 on bed, large recess upward; no
+    supports.
+  use_orientation: Hand-held bolt-fit test only, separate from camera and tripod.
+    Bolt enters from the large recess side.
+hardware:
+- id: existing_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: head_fit
+  part: bolt_fit_coupon
+  feature: Large upward-facing recess
+  relation: contains
+  hardware: existing_bolt
+  clearance_mm: 0.5
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_radial_clearance
+  - head_depth_allowance
+  check:
+    method: coupon
+    ref: bolt_fit_coupon
+    description: Head must fit loosely and seat flat. This validates envelope fit
+      only, not load capacity or camera compatibility.
+- id: shank_fit
+  part: bolt_fit_coupon
+  feature: Central bore
+  relation: clears
+  hardware: existing_bolt
+  clearance_mm: 0.225
+  params:
+  - bolt_nominal_d
+  - shank_diametral_clearance
+  check:
+    method: coupon
+    ref: bolt_fit_coupon
+    description: Shank must slide freely without threading into the plastic.
+manual:
+- n: '1'
+  text: Print recess upward with 0.2 mm layers, 4 walls, 30% infill and no supports.
+    This is a test coupon, NOT a tripod plate.
+  parts:
+  - bolt_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Away from the camera, insert the existing metal bolt from the large recess
+    side. Check that its head fits loosely and seats flat, and its shank slides freely.
+    Do not force it. Remove the bolt afterward. Never mount the coupon on the camera
+    or tripod.
+  parts:
+  - bolt_fit_coupon
+  hardware:
+  - existing_bolt
+  tool: null
+- n: '3'
+  text: Before designing a functional plate, identify the tripod model or measure
+    an original plate. Obtain jaw bottom and top gaps at one knob position, engagement
+    height, jaw length, and stops. Establish camera weight, socket depth and bolt
+    drive. Coupon fit does not establish these dimensions.
+  parts: []
+  hardware: []
+  tool: null
+- n: '4'
+  text: Do not use a printed camera screw. Keep the camera off this tripod until the
+    plate fit and metal screw engagement are verified. Even a subsequently fitted
+    PLA plate needs validation and should not be trusted unattended, over people,
+    in heat, or with a heavy or valuable camera.
+  parts: []
+  hardware: []
+  tool: null

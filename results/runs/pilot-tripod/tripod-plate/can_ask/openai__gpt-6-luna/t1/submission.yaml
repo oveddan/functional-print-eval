@@ -1,0 +1,185 @@
+task: tripod-plate
+note: 'A replacement is feasible, but the clamp dimensions weren''t available, so
+  this is a cautious Arca-Swiss-style guess—not a verified fit for this tripod. Print
+  and test the short coupon first; only print/use the plate if it seats fully under
+  both angled jaws and clamps firmly without rocking. PLA is not metal: use only temporarily
+  for a light camera, with a hand under it while testing; never use over people or
+  valuables. First check the supplied metal 1/4-20 bolt threads smoothly into the
+  camera by hand. Stop if it binds.'
+questions: []
+params:
+  plate_width_bottom:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Common Arca-Swiss-style nominal rail width; clamp was not measured.
+  plate_width_top:
+    value: 28.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  plate_thickness:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bevel_height:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_length:
+    value: 50.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_length:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_diameter:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User-reported approximate head width.
+  bolt_head_height:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User-reported approximate head height.
+  bolt_underhead_length:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User-reported length from under head to tip.
+  head_pocket_diameter:
+    value: 15.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_pocket_depth:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  screw_clearance_diameter:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rail_test_length:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w0 = p.plate_width_bottom / 2\n    w1 = p.plate_width_top\
+    \ / 2\n    h = p.plate_thickness\n    b = p.bevel_height\n    L = p.rail_test_length\n\
+    \    section = [(-w0, 0), (w0, 0), (w1, b), (w1, h), (-w1, h), (-w1, b)]\n   \
+    \ return cq.Workplane('XZ').polyline(section).close().extrude(L).translate((0,\
+    \ L/2, 0))"
+  print_orientation: Dovetail cross-section lies in XZ; length extrudes along Y; bottom
+    flat at z=0 on bed.
+  use_orientation: Place trapezoidal bottom face in tripod clamp and check both angled
+    lips engage.
+- id: camera_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w0 = p.plate_width_bottom / 2\n    w1 = p.plate_width_top\
+    \ / 2\n    h = p.plate_thickness\n    b = p.bevel_height\n    L = p.plate_length\n\
+    \    section = [(-w0, 0), (w0, 0), (w1, b), (w1, h), (-w1, h), (-w1, b)]\n   \
+    \ body = cq.Workplane('XZ').polyline(section).close().extrude(L).translate((0,\
+    \ L/2, 0))\n    pocket = cq.Workplane('XY').workplane(offset=-0.1).circle(p.head_pocket_diameter/2).extrude(p.head_pocket_depth\
+    \ + 0.1)\n    channel = (cq.Workplane('XY').workplane(offset=-0.1).center(0, -L/4)\n\
+    \               .rect(p.head_pocket_diameter, L/2).extrude(p.head_pocket_depth\
+    \ + 0.1))\n    through = cq.Workplane('XY').workplane(offset=-0.1).circle(p.screw_clearance_diameter/2).extrude(h\
+    \ + 0.2)\n    return body.cut(pocket).cut(channel).cut(through)"
+  print_orientation: Dovetail cross-section lies in XZ; length extrudes along Y; bottom
+    flat at z=0 on bed.
+  use_orientation: Top face supports camera; angled edges engage clamp. Bolt head
+    enters the underside pocket through the open short-end channel, bolt points upward.
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: rail-fit
+  part: fit_coupon
+  feature: nominal 38 mm dovetail rail under both clamp lips
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: Print coupon first. Test in jaws. Do not make/use final unless it
+      seats fully, is not loose or rocking, and clamp closes securely.
+- id: camera-thread
+  part: camera_plate
+  feature: bolt clearance and camera 1/4-20 threaded socket
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Hand-check bolt threads smoothly in camera. It is reported 10 mm
+      long under the head; plate leaves about 4.6 mm above the top face. Do not force.
+manual:
+- n: '1'
+  text: Print fit_coupon flat on its bottom face and test the clamp. Do not continue
+    if fit is not secure.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check the webcam bolt threads smoothly into the camera socket by hand; stop
+    if it binds.
+  parts: []
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '3'
+  text: Print camera_plate flat on its bottom face and inspect for print defects or
+    cracks; reject a damaged print.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Slide bolt head into the underside channel from the open short end and centre
+    it in the circular pocket. Put plate against camera and turn the bolt head through
+    the channel until snug. Do not overtighten.
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '5'
+  text: Support camera by hand, drop plate into clamp, verify both lips capture it
+    evenly, gently tighten the clamp, and check for movement before letting go.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null

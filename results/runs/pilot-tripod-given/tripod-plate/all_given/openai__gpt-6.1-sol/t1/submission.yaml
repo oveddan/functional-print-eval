@@ -1,0 +1,373 @@
+task: tripod-plate
+note: Conditional sizing model, NOT a verified replacement. Jaw dimensions and length
+  are guessed placeholders. Final generation is blocked until real dimensions, bolt
+  drive and camera socket are checked. Use the metal webcam bolt, not a printed screw.
+  No load rating or reliable safety retention has been established.
+questions:
+- text: Actual jaw dimensions and unobstructed length?
+  answer: null
+- text: Camera socket usable depth, footprint and weight?
+  answer: null
+- text: Bolt head drive?
+  answer: null
+params:
+  clamp_bottom_width:
+    value: 40.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  clamp_top_width:
+    value: 34.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  clamp_lip_height:
+    value: 5.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  usable_clamp_length:
+    value: 45.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  profile_width_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  length_end_clearance:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_length:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_deck_thickness:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_diameter:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_height:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_underhead_length:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_nominal_diameter:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  shaft_diametral_clearance:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_pocket_diametral_allowance:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_recess_extra_depth:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  target_thread_engagement:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  socket_usable_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  socket_bottom_margin:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  minimum_engaged_turns:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  minimum_plate_web:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  minimum_pocket_sidewall:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  minimum_deck_above_lips:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  fit_verified:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_verified:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: jaw_fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    b = p.clamp_bottom_width-p.profile_width_clearance\n \
+    \   t = p.clamp_top_width-p.profile_width_clearance\n    h = p.clamp_lip_height\n\
+    \    if not (b > t > 0 and h > 0 and 0 < p.coupon_length <= p.usable_clamp_length):\n\
+    \        raise ValueError('Requires unobstructed straight wider-at-bottom dovetail.')\n\
+    \    body = cq.Workplane('XZ').polyline([(-b/2,0),(b/2,0),(t/2,h),(-t/2,h)]).close().extrude(p.coupon_length/2,both=True)\n\
+    \    deck = cq.Workplane('XY').workplane(offset=h).rect(t,p.coupon_length).extrude(p.coupon_deck_thickness)\n\
+    \    return body.union(deck)\n"
+  print_orientation: Wide flat base at z=0 on bed, Y along jaws. No supports.
+  use_orientation: Z upward from clamp floor. Unloaded profile gauge only; never mount
+    a camera.
+- id: temporary_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    if not p.fit_verified or not p.bolt_verified or p.socket_usable_depth\
+    \ is None:\n        raise ValueError('STOP: missing measurements or verification.')\n\
+    \    b = p.clamp_bottom_width-p.profile_width_clearance\n    t = p.clamp_top_width-p.profile_width_clearance\n\
+    \    h = p.clamp_lip_height\n    L = p.usable_clamp_length-p.length_end_clearance\n\
+    \    pd = p.bolt_head_diameter+p.head_pocket_diametral_allowance\n    recess =\
+    \ p.bolt_head_height+p.head_recess_extra_depth\n    e = p.target_thread_engagement\n\
+    \    web = p.bolt_underhead_length-e\n    H = recess+web\n    bore = p.bolt_nominal_diameter+p.shaft_diametral_clearance\n\
+    \    if not (b > t > pd and h > 0 and L > pd):\n        raise ValueError('Incompatible\
+    \ profile or pocket.')\n    if min(t,L) < pd+2*p.minimum_pocket_sidewall:\n  \
+    \      raise ValueError('Insufficient pocket walls.')\n    if web < p.minimum_plate_web\
+    \ or H < h+p.minimum_deck_above_lips:\n        raise ValueError('Insufficient\
+    \ web or deck clearance.')\n    if e < p.minimum_engaged_turns*p.bolt_pitch or\
+    \ e+p.socket_bottom_margin > p.socket_usable_depth:\n        raise ValueError('Unsafe\
+    \ thread engagement or bottoming risk.')\n    if max(b,L,H) > 256:\n        raise\
+    \ ValueError('Exceeds printer envelope.')\n    body = cq.Workplane('XZ').polyline([(-b/2,0),(b/2,0),(t/2,h),(-t/2,h)]).close().extrude(L/2,both=True)\n\
+    \    deck = cq.Workplane('XY').workplane(offset=h).rect(t,L).extrude(H-h)\n  \
+    \  pocket = cq.Workplane('XY').circle(pd/2).extrude(recess)\n    hole = cq.Workplane('XY').circle(bore/2).extrude(H)\n\
+    \    return body.union(deck).cut(pocket).cut(hole)\n"
+  print_orientation: Wide base at z=0 on bed, pocket opening downward. Default pocket
+    roof bridge is 23 mm, below stated 50 mm capability. No inaccessible internal
+    supports.
+  use_orientation: Z up from clamp floor, camera on top, bolt enters from below. X
+    across jaws; Y along jaws.
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_connection
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.4
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: temporary_plate
+    feature: Annular underside pocket roof
+    role: head_seat
+  - part: temporary_plate
+    feature: Central through-bore
+    role: clearance
+  nut: null
+  external: Camera 1/4-20 socket; requires verified usable depth and manufacturer-approved
+    engagement.
+criteria:
+- id: capture
+  part: temporary_plate
+  feature: Sloped longitudinal faces and base
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_bottom_width
+  - clamp_top_width
+  - clamp_lip_height
+  - profile_width_clearance
+  check:
+    method: coupon
+    ref: jaw_fit_coupon
+    description: Unloaded gauge seats on floor, both lips capture it, knob has travel,
+      gauge resists upward hand withdrawal and releases normally. Does not prove load
+      capacity or full-length fit.
+- id: envelope
+  part: temporary_plate
+  feature: Full plate envelope
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - usable_clamp_length
+  - length_end_clearance
+  - fit_verified
+  check:
+    method: measure
+    ref: null
+    description: Check length, stops, pins and flat camera footprint. Model has no
+      safety-pin recess; stop if one is needed.
+- id: bolt_seat
+  part: temporary_plate
+  feature: Pocket roof and bore
+  relation: seats
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_head_diameter
+  - bolt_head_height
+  - head_pocket_diametral_allowance
+  - shaft_diametral_clearance
+  check:
+    method: measure
+    ref: null
+    description: Head seats flat, clears clamp floor and permits proper tightening-tool
+      access. Shank slides freely. Reject defective bridge roof.
+- id: thread_depth
+  part: temporary_plate
+  feature: Bolt protrusion above camera contact face
+  relation: supports
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - target_thread_engagement
+  - socket_usable_depth
+  - socket_bottom_margin
+  - bolt_verified
+  check:
+    method: measure
+    ref: null
+    description: Measure actual exposed thread with head seated. Meet camera manufacturer's
+      engagement requirements, leave bottom margin, and confirm flat clamping without
+      bottoming.
+manual:
+- n: '1'
+  text: Do not mount a camera. The 40/34/5 mm profile and 45 mm length defaults are
+    guesses. Replace with measured bottom jaw gap, gap at lip height, lip height above
+    floor, and usable length, all at the same knob setting. This model only suits
+    straight wider-at-bottom dovetail jaws and a flat floor. Check pins and stops;
+    do not bypass safety features.
+  parts: []
+  hardware: []
+  tool: Calipers
+- n: '2'
+  text: 'Print jaw_fit_coupon at 0.2 mm layers, 5 walls, 100% infill. Keep fit_verified
+    false. Test unloaded: floor contact, both lips captured, gentle knob closure with
+    travel remaining, resistance to lifting, normal release. Adjust total width clearance
+    and reprint as needed. Never use coupon to mount a camera.'
+  parts:
+  - jaw_fit_coupon
+  hardware: []
+  tool: Slicer
+- n: '3'
+  text: Separately verify full plate length, obstructions and flat camera footprint.
+    Confirm actual bolt maximum head envelope, height, under-head length and accessible
+    drive. User bolt measurements were approximate. Obtain usable socket depth and
+    allowed engagement from camera instructions or gentle measurement. Do not force
+    anything into the socket.
+  parts: []
+  hardware:
+  - camera_bolt
+  tool: Calipers and camera instructions
+- n: '4'
+  text: 'Enter socket_usable_depth. Default thread protrusion is provisionally 4 mm,
+    about 3.15 turns, not a camera specification. Adjust target_thread_engagement
+    to manufacturer requirements while retaining bottom margin and web thickness.
+    Set fit_verified and bolt_verified true only after all interface checks pass.
+    If generation rejects dimensions, do not bypass checks: redesign is required.'
+  parts: []
+  hardware: []
+  tool: null
+- n: '5'
+  text: Generate temporary_plate and print at 0.2 mm layers, 6 walls, 100% infill.
+    No supports in pocket. Inspect roof bridge and layers; reject cracks, gaps, warping
+    or loose strands. Default joint head underside Z is 0.4 mm; if dimensions change
+    it equals head_recess_extra_depth.
+  parts:
+  - temporary_plate
+  hardware: []
+  tool: Slicer
+- n: '6'
+  text: Off tripod, insert camera_bolt from below and seat head against pocket roof.
+    Measure actual exposed thread and confirm socket limit again. Tighten gently with
+    the proper accessible drive tool until camera contacts plate flat. Stop if resistance
+    comes before contact, tool cannot reach, or camera rotates easily. Do not force
+    or use a printed screw. No padding or anti-rotation pin is provided; stop if camera
+    requires them.
+  parts:
+  - temporary_plate
+  hardware:
+  - camera_bolt
+  tool: Calipers and matching bolt-head tool
+- n: '7'
+  text: Support camera fully by hand while dropping plate into open jaws and closing
+    knob gently. Check floor seating, both lips captured, bolt head clear of floor,
+    no sliding and adequate knob travel. Coupon alone did not verify full assembly.
+    Stop if uncertain.
+  parts:
+  - temporary_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '8'
+  text: No load capacity is established. Use only briefly, attended, low over a soft
+    surface with camera independently supported. No heavy cameras, long lenses, motion,
+    elevated use, heat or use over people. PLA may creep or crack. Inspect frequently,
+    remove after use, and replace promptly with correct manufacturer plate.
+  parts:
+  - temporary_plate
+  hardware:
+  - camera_bolt
+  tool: null

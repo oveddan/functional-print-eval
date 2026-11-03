@@ -1,0 +1,501 @@
+task: nut-knob/M3
+note: 'One-piece hand knob, Ø20 x 15 mm, 12 vertical grip flutes, printed base-down
+  with no supports. An M3 hex nut is pressed in from the top through a slightly undersized
+  hex socket (across-flats = nut_af - seat_interference, default 5.45 mm vs a 5.5
+  mm nut) and seats on the socket floor, 0.7 mm below the top face, so nothing sticks
+  out. The far side is a Ø3.8 hole: it passes an M3 shaft but is 1.7 mm smaller than
+  the nut''s 5.5 across flats, so the nut cannot be pushed or shaken out that way;
+  the socket floor also carries the tightening load. Retention is the press fit (flats
+  friction) plus that positive floor stop; no glue, no insert needed. Since the person
+  could not measure their nut, the fit is deliberately left as one param and a 4-pocket
+  coupon (0.00/-0.05/-0.10/-0.15 mm interference, pocket 2 = the knob''s default)
+  lets them pick the tightest size they can still press in by thumb before/after printing
+  the knob.'
+questions:
+- text: What is your M3 hex nut's actual across-flats, and can you measure it with
+    calipers?
+  answer: Could not measure; using ISO 4032 catalog 5.5 mm and a fit coupon to dial
+    the interference in.
+- text: Should the bolt head need to be captured inside the knob (a deeper chamber)?
+  answer: No - you said the bolt goes through the nut and out the other side, so only
+    a 3.8 mm shaft-clearance hole is provided.
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across flats; user could not measure, so the seat is
+      deliberately parametric and tested with the coupon
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 thread nominal diameter (ISO 4762)
+  seat_interference:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: how much smaller than the nut the hex seat is printed, across flats. 0.05
+      = pocket 2 on the coupon; raise to 0.10 (pocket 3) for a firmer grab, lower
+      to 0.00 if it will not press in by hand
+  nut_top_cover:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: plastic above the nut's top face, so the nut sits fully inside and cannot
+      be flicked out
+  mouth_extra:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: the socket mouth is this much wider across flats than the seat, as a funnel
+      for the nut
+  mouth_lead_in:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: axial length of that funnel; it widens upward only, so it cannot block the
+      nut
+  bolt_hole_clearance:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: far-side hole = bolt_d + this = 3.8 mm; passes the M3 shaft, blocks the
+      5.5 mm nut
+  bolt_hole_chamfer:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: entry flare on the base side to help the bolt tip find the hole
+  knob_dia:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: requested ~20 mm across
+  knob_h:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  n_flutes:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_depth:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: groove depth, so the grip reads 20 mm over the ridges
+  flute_r:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: groove cutter radius; adjacent cutters do not meet, leaving 1.7 mm ridges
+  flute_start_z:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: full-diameter base rim for bed adhesion and for bearing on the workpiece
+  coupon_l:
+    value: 48.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_w:
+    value: 16.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 6.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_spacing:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_end_gap:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: distance from the -X end to pocket 1's centre; the ends are deliberately
+      unequal so the order cannot be read backwards
+  coupon_step:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pockets:
+    value: 4
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\nCORNER = 1.0 / math.cos(math.pi / 6.0)   # hexagon circumradius\
+    \ / across-flats\n\n\ndef hex_prism(r_bot, r_top, z_bot, z_top):\n    def wire(r,\
+    \ z):\n        pts = [cq.Vector(r * math.cos(math.pi * k / 3.0),\n           \
+    \               r * math.sin(math.pi * k / 3.0), z) for k in range(6)]\n     \
+    \   pts.append(pts[0])\n        return cq.Wire.makePolygon(pts)\n    return cq.Solid.makeLoft([wire(r_bot,\
+    \ z_bot), wire(r_top, z_top)], True, True)\n\n\ndef build(p):\n    R = p.knob_dia\
+    \ / 2.0\n    H = p.knob_h\n    seat_af = p.nut_af - p.seat_interference\n    r_seat\
+    \ = seat_af * CORNER / 2.0\n    r_mouth = (seat_af + p.mouth_extra) * CORNER /\
+    \ 2.0\n    seat_depth = p.nut_h + p.nut_top_cover\n    z_seat = H - seat_depth\
+    \                     # top of the base wall = socket floor\n    lead = p.mouth_lead_in\n\
+    \    hole_r = (p.bolt_d + p.bolt_hole_clearance) / 2.0\n\n    # 1. blank cylinder\n\
+    \    w = cq.Workplane(\"XY\").circle(R).extrude(H)\n\n    # 2. grip flutes: vertical\
+    \ grooves, leaving a full-diameter rim at the base\n    n = int(p.n_flutes)\n\
+    \    cg = R - p.flute_depth + p.flute_r          # cutter centres\n    for k in\
+    \ range(n):\n        a = 2.0 * math.pi * k / n\n        w = w.cut(cq.Solid.makeCylinder(p.flute_r,\
+    \ H - p.flute_start_z + 0.6,\n                                        cq.Vector(cg\
+    \ * math.cos(a), cg * math.sin(a),\n                                         \
+    \         p.flute_start_z), cq.Vector(0, 0, 1)))\n\n    # 3. hex seat (uniform\
+    \ interference fit along the nut's whole thickness)\n    w = w.cut(hex_prism(r_seat,\
+    \ r_seat, z_seat, H - lead))\n    # ... widening into a funnel only towards the\
+    \ top face, so nothing blocks the nut\n    slope = (r_mouth - r_seat) / lead\n\
+    \    w = w.cut(hex_prism(r_seat, r_mouth + 0.6 * slope, H - lead, H + 0.6))\n\n\
+    \    # 4. far side: bolt clearance hole too small for the nut, with an entry chamfer\n\
+    \    w = w.cut(cq.Solid.makeCylinder(hole_r, z_seat + 0.5,\n                 \
+    \                   cq.Vector(0, 0, -0.25), cq.Vector(0, 0, 1)))\n    w = w.cut(cq.Solid.makeCone(hole_r\
+    \ + p.bolt_hole_chamfer, hole_r,\n                                p.bolt_hole_chamfer\
+    \ + 0.25,\n                                cq.Vector(0, 0, -0.25), cq.Vector(0,\
+    \ 0, 1)))\n    return w"
+  print_orientation: 'Base face (the flat Ø20 face with the Ø3.8 bolt hole) on the
+    bed, knob axis vertical, hex socket mouth pointing up. Nothing overhangs: the
+    flutes are vertical grooves that start 1.2 mm above the bed, and the socket is
+    a straight vertical hex hole in the top 3.1 mm. No supports.'
+  use_orientation: 'Used as printed, axis vertical: the flat base bears on the workpiece,
+    the M3 bolt enters through the base hole from the work side and its tip comes
+    out of the socket mouth at the top; the captive nut is inserted from that same
+    mouth. Turn the knob clockwise (viewed from above the mouth) to tighten.'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\nCORNER = 1.0 / math.cos(math.pi / 6.0)\n\n\ndef hex_prism(r_bot,\
+    \ r_top, z_bot, z_top):\n    def wire(r, z):\n        pts = [cq.Vector(r * math.cos(math.pi\
+    \ * k / 3.0),\n                          r * math.sin(math.pi * k / 3.0), z) for\
+    \ k in range(6)]\n        pts.append(pts[0])\n        return cq.Wire.makePolygon(pts)\n\
+    \    return cq.Solid.makeLoft([wire(r_bot, z_bot), wire(r_top, z_top)], True,\
+    \ True)\n\n\ndef build(p):\n    T = p.coupon_t\n    z_floor = T - p.nut_h    \
+    \                   # pocket floor\n    hole_r = (p.bolt_d + p.bolt_hole_clearance)\
+    \ / 2.0\n\n    w = cq.Workplane(\"XY\").box(p.coupon_l, p.coupon_w, T, centered=(True,\
+    \ True, False))\n    # half-round index notch on the end where pocket 1 sits\n\
+    \    w = w.cut(cq.Solid.makeCylinder(2.5, T + 2.0, cq.Vector(-p.coupon_l / 2.0,\
+    \ 0.0, -1.0)))\n\n    n = int(p.coupon_pockets)\n    x0 = -p.coupon_l / 2.0 +\
+    \ p.coupon_end_gap\n    for i in range(n):\n        x = x0 + i * p.coupon_spacing\n\
+    \        af = p.nut_af - i * p.coupon_step       # 5.50, 5.45, 5.40, 5.35\n  \
+    \      r = af * CORNER / 2.0\n        r_m = (af + p.mouth_extra) * CORNER / 2.0\n\
+    \        w = w.cut(hex_prism(r, r, z_floor, T))\n        slope = (r_m - r) / p.mouth_lead_in\n\
+    \        w = w.cut(hex_prism(r, r_m + 0.4 * slope, T - p.mouth_lead_in, T + 0.4))\n\
+    \        # far-side stop, exactly as in the knob: the nut cannot pass this hole\n\
+    \        w = w.cut(cq.Solid.makeCylinder(hole_r, z_floor + 0.5,\n            \
+    \                            cq.Vector(x, 0.0, -0.25), cq.Vector(0, 0, 1)))\n\
+    \    return w"
+  print_orientation: Flat on the bed, pocket mouths facing up. The pockets sit in
+    the top 2.4 mm, above the squish of the first layers, the same way the knob's
+    seat sits in the top of its print.
+  use_orientation: Test only, not part of the knob. Read pocket 1 (loosest, = the
+    nut's own across-flats) at the notched end, then 2, 3, 4 going the other way;
+    pocket 2 is the size the knob is modelled at by default (nut_af - 0.05).
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: nut_press_fit
+  fastener: m3_nut
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 11.9
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: hand_knob
+    feature: nut_seat
+    role: nut_pocket
+  - part: hand_knob
+    feature: seat_floor
+    role: head_seat
+  nut: null
+  external: null
+- id: bolt_through_knob
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: hand_knob
+    feature: bolt_hole
+    role: clearance
+  - part: hand_knob
+    feature: nut_seat
+    role: thread
+  nut: m3_nut
+  external: null
+criteria:
+- id: nut_press_fit
+  part: hand_knob
+  feature: nut_seat
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: -0.05
+  params:
+  - nut_af
+  - nut_h
+  - seat_interference
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Hex seat is printed at nut_af - seat_interference across flats (negative
+      clearance = interference). Pocket 2 on the coupon is this exact size; choose
+      the tightest pocket a nut still presses into with the thumb, then set seat_interference
+      to match before printing the knob.
+- id: nut_holds_upside_down
+  part: hand_knob
+  feature: nut_seat
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - seat_interference
+  - nut_h
+  - nut_top_cover
+  check:
+    method: measure
+    ref: null
+    description: 'Turn the knob upside down and shake it over a soft surface: the
+      nut must not move or fall out. Interference friction along the nut''s full 2.4
+      mm of flats, with 0.7 mm of socket above it, holds it with no glue.'
+- id: nut_cannot_exit_far_side
+  part: hand_knob
+  feature: bolt_hole
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: -1.7
+  params:
+  - bolt_d
+  - bolt_hole_clearance
+  - nut_af
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The far-side opening is bolt_d + 0.8 = 3.8 mm, i.e. 1.7 mm smaller
+      than the nut's 5.5 mm across flats, so the nut cannot be pushed or shaken out
+      through it. The coupon's Ø3.8 holes reproduce this so it can be seen first hand.
+- id: nut_fully_inside
+  part: hand_knob
+  feature: nut_seat
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - knob_h
+  - nut_top_cover
+  - seat_interference
+  check:
+    method: none
+    ref: null
+    description: Socket depth = nut_h + nut_top_cover, so with the nut on the seat
+      floor its top face is 0.7 mm below the knob's top face and no part of it breaks
+      out of the knob's Ø20 x 15 envelope.
+- id: bolt_passes_out
+  part: hand_knob
+  feature: bolt_hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.8
+  params:
+  - bolt_d
+  - bolt_hole_clearance
+  - bolt_hole_chamfer
+  check:
+    method: measure
+    ref: null
+    description: An M3 shaft slips through the base hole with 0.8 mm clearance and
+      a 0.7 mm entry chamfer to find it, then through the nut and out of the socket
+      mouth.
+- id: tightening_load_path
+  part: hand_knob
+  feature: seat_floor
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - knob_h
+  - bolt_d
+  - bolt_hole_clearance
+  check:
+    method: none
+    ref: null
+    description: 'When tightening, the bolt pulls the nut down onto the seat floor
+      (a 14 mm² ring around the Ø3.8 hole) and the load goes through 11.9 mm of solid
+      body into the flat base rim on the workpiece. Hand-tight only: PLA creeps.'
+- id: grip_size
+  part: hand_knob
+  feature: grip_flutes
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_dia
+  - flute_depth
+  - n_flutes
+  - flute_r
+  - flute_start_z
+  check:
+    method: none
+    ref: null
+    description: 20 mm over the flute ridges, 18 mm in the valleys, 13.8 mm of fluted
+      height for fingers, and the 0.4 mm nozzle can print the vertical grooves without
+      supports.
+- id: coupon_order_identifiable
+  part: fit_coupon
+  feature: index_notch
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - coupon_end_gap
+  - coupon_spacing
+  - coupon_pockets
+  - coupon_step
+  check:
+    method: none
+    ref: null
+    description: Pockets run 0.00, -0.05, -0.10, -0.15 mm interference from the notched
+      end; the two end gaps differ (3.8 mm vs 7.8 mm of plastic) so the order cannot
+      be read backwards.
+manual:
+- n: '1'
+  text: 'Print both parts in PLA, 0.2 mm layers, no supports. hand_knob: stand it
+    on its flat Ø20 base (the face with the small hole), socket mouth up. fit_coupon:
+    flat on the bed, pocket mouths up. Both are self-supporting - the flutes are vertical
+    grooves and the hex seat is a straight vertical hole.'
+  parts:
+  - hand_knob
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Read the coupon first: pocket 1 is next to the half-round index notch, then
+    2, 3, 4 going the other way. Their across-flats are 1 = nut_af (5.50, free), 2
+    = 5.45, 3 = 5.40, 4 = 5.35 - pocket 2 is the size the knob is modelled at.'
+  parts:
+  - fit_coupon
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Drop a nut into each pocket and press it in with your thumb, flat-side down,
+    onto the pocket floor. Note (a) which ones you can seat by hand without a bench
+    press, and (b) which hold the nut when you turn the coupon upside down and shake
+    it hard. You can also confirm the nut will not pass through the Ø3.8 hole underneath
+    - that is the same far-side stop the knob uses.
+  parts:
+  - fit_coupon
+  hardware:
+  - m3_nut
+  - m3_bolt
+  tool: thumb, then the coupon to shake
+- n: '4'
+  text: Pick the interference. If pocket 2 was comfortably pressable and held, print
+    the knob as modelled (seat_interference = 0.05). If pocket 2 fell out when shaken
+    but pocket 3 pressed in OK, set seat_interference = 0.10. If even pocket 2 needed
+    real force, set it to 0.00-0.03. The knob's walls are far thicker and stiffer
+    than the coupon's, so a given size feels slightly tighter in the knob - lean towards
+    the looser pocket.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: slicer / CAD param
+- n: '5'
+  text: 'Insert the nut: drop it into the knob''s hex socket flat-side down. Seat
+    it fully using the bolt rather than a press - pass the M3 bolt up through the
+    Ø3.8 hole in the base so its tip goes through the nut, then turn the knob clockwise;
+    it draws itself down and pulls the nut onto the seat floor, finishing 0.7 mm below
+    the top face. Back the bolt out. Do not hammer the nut: driving it past its seat
+    would leave it loose.'
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  - m3_bolt
+  tool: M3 bolt
+- n: '6'
+  text: 'Check before use: hold the knob by its fluted grip, turn it upside down over
+    a soft surface and shake - the nut must not move. Push the nut with your thumb:
+    it must not go through the base hole, because 5.5 mm across flats will not pass
+    3.8 mm.'
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '7'
+  text: 'Use: put the bolt through what you are clamping, tip up into the knob''s
+    base hole, and turn the knob clockwise until its flat base bears on the work and
+    pulls up snug. Hand-tight plus a quarter turn is the limit - do not put a spanner
+    or a drill on it, PLA slowly creeps under sustained clamp load.'
+  parts:
+  - hand_knob
+  hardware:
+  - m3_bolt
+  tool: null
+- n: '8'
+  text: If the seat wears loose later, reprint with seat_interference raised by 0.05
+    (or drill the seat out to Ø4.3 and set in the M3x4x5 heat-set insert instead).
+    To recover the nuts from the coupon, grip their top edges with pliers or lever
+    under a flat with a small screwdriver - the pockets are flush so the nut is reachable.
+  parts:
+  - hand_knob
+  - fit_coupon
+  hardware:
+  - m3_nut
+  tool: null

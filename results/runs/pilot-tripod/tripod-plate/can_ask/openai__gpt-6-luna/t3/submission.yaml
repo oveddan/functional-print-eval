@@ -1,0 +1,174 @@
+task: tripod-plate
+note: A plastic screw is not a safe substitute for a camera mounting screw. This plate
+  uses the listed salvaged metal 1/4-20 webcam bolt because the camera socket was
+  confirmed as 1/4-20. The clamp was not measured, so the guessed Arca-style dimensions
+  may not fit; test-fit before mounting anything. Use only as a stationary, light-duty
+  temporary mount. Hold the camera, do not carry it on the tripod, and do not use
+  it over people or valuable equipment. PLA can crack or creep. Confirm the bolt does
+  not bottom out in the camera socket.
+questions: []
+params:
+  plate_length_mm:
+    value: 60
+    unit: mm
+    kind: world
+    source: guessed
+    note: Initial Arca-style plate length; clamp was not measured.
+  plate_top_width_mm:
+    value: 40
+    unit: mm
+    kind: world
+    source: guessed
+    note: Top deck width; adjust to the clamp.
+  rail_bottom_width_mm:
+    value: 34
+    unit: mm
+    kind: world
+    source: guessed
+    note: Narrow bottom of tapered rail profile; guessed to suit a generic clamp.
+  rail_top_width_mm:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: Top of tapered rail profile; guessed to suit a generic clamp.
+  rail_height_mm:
+    value: 4.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Guessed Arca-style dovetail engagement height.
+  deck_thickness_mm:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: Deck thickness above the rail.
+  bolt_clearance_d_mm:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Designed clearance for a 1/4-20 bolt shank; inspect the actual bolt.
+  bolt_head_pocket_width_mm:
+    value: 22
+    unit: mm
+    kind: world
+    source: guessed
+    note: Estimated pocket width for a webcam-style thumb head; measure actual head.
+  bolt_head_pocket_length_mm:
+    value: 26
+    unit: mm
+    kind: world
+    source: guessed
+    note: Estimated pocket length to allow some positioning adjustment.
+  bolt_head_pocket_depth_mm:
+    value: 4.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Estimated head thickness; measure actual bolt head.
+  bolt_slot_length_mm:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Length of through-slot for some fore/aft adjustment.
+  pocket_clearance_mm:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Added clearance around the estimated bolt head.
+parts:
+- id: plate
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    rail = (cq.Workplane('XY').rect(p.rail_bottom_width_mm,\
+    \ p.plate_length_mm)\n            .workplane(offset=p.rail_height_mm)\n      \
+    \      .rect(p.rail_top_width_mm, p.plate_length_mm).loft(combine=True))\n   \
+    \ deck = (cq.Workplane('XY').box(p.plate_top_width_mm, p.plate_length_mm,\n  \
+    \          p.deck_thickness_mm, centered=(True, True, False))\n            .translate((0,\
+    \ 0, p.rail_height_mm)))\n    part = rail.union(deck)\n    total_h = p.rail_height_mm\
+    \ + p.deck_thickness_mm\n    def slot_solid(width, length, z0, depth):\n     \
+    \   r = width / 2.0\n        straight = max(0.01, length - width)\n        cut\
+    \ = (cq.Workplane('XY').box(width, straight, depth,\n               centered=(True,\
+    \ True, False)).translate((0, 0, z0)))\n        for y in (-straight / 2.0, straight\
+    \ / 2.0):\n            end = cq.Workplane('XY').circle(r).extrude(depth).translate((0,\
+    \ y, z0))\n            cut = cut.union(end)\n        return cut\n    through =\
+    \ slot_solid(p.bolt_clearance_d_mm, p.bolt_slot_length_mm,\n                 \
+    \        -0.2, total_h + 0.4)\n    pocket_w = p.bolt_head_pocket_width_mm + 2\
+    \ * p.pocket_clearance_mm\n    pocket_l = p.bolt_head_pocket_length_mm + 2 * p.pocket_clearance_mm\n\
+    \    pocket = slot_solid(pocket_w, pocket_l, -0.1,\n                        p.bolt_head_pocket_depth_mm\
+    \ + 0.1)\n    return part.cut(through).cut(pocket)\n"
+  print_orientation: Print with the narrow rail bottoms on the bed (z=0); camera-support
+    deck faces upward. No supports intended; the underside bolt-head pocket roof bridges
+    about 23 mm.
+  use_orientation: Tapered rails engage the tripod clamp lips; flat deck faces the
+    camera, with the metal bolt inserted from the underside into the camera's 1/4-20
+    socket.
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: clamp-fit
+  part: plate
+  feature: tapered side rails
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: template
+    ref: null
+    description: Test the printed rails in the open clamp with no camera. They should
+      drop in without force and be retained securely when the knob is tightened. Adjust
+      the dimensions and reprint if needed.
+- id: camera-fastener
+  part: plate
+  feature: through-slot and underside head pocket
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.6
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Measure the salvaged bolt head and shank to confirm they fit the
+      pocket and slot. Verify the bolt threads into the camera by hand and does not
+      bottom out; tighten gently.
+manual:
+- n: '1'
+  text: Measure the clamp opening/lips and the salvaged bolt head. Update the guessed
+    rail and pocket parameters to suit; do not assume the dimensions fit your tripod.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '2'
+  text: Print the plate and test it in the clamp without a camera. It must sit fully
+    down and be retained by the angled lips without forcing or rocking. Adjust dimensions
+    and reprint if needed.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Check that the metal bolt threads into the camera socket by hand. Verify its
+    length will not bottom out, then fit the plate and tighten only gently.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: hand screwdriver, if needed
+- n: '4'
+  text: Use only as a light-duty, stationary temporary support. Keep a hand on the
+    camera while testing; do not carry it on the tripod or use it above people or
+    valuable equipment.
+  parts:
+  - plate
+  hardware: []
+  tool: null

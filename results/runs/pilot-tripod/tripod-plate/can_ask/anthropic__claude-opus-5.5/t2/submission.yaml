@@ -1,0 +1,234 @@
+task: tripod-plate
+note: Temporary PLA Arca-style quick-release plate. Use the metal webcam bolt; don't
+  print a screw. A printed 1/4-20 thread in PLA strips easily and could drop the camera.
+  The profile is guessed from the standard Arca-Swiss shape because no clamp dimensions
+  were measured, so check the coupon first. Keep heavy cameras off it, and don't leave
+  it in a hot car, because PLA softens.
+questions:
+- text: What is the clamp's jaw opening in mm (knob fully open and fully closed),
+    and how deep is it from the lip edge down to the floor? I only need this if the
+    coupon doesn't fit.
+  answer: null
+params:
+  arca_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: Arca-Swiss standard width. The clamp described (angled-lip jaws, knob, drop-in
+      plate) matches Arca-Swiss, but no numbers were measured. Coupon checks this.
+  bevel_depth:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: 45-degree dovetail bevel height (and inset) that the jaw lips grip
+  land:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: vertical strip at the bottom edge so the bevel doesn't end in a feather
+      edge
+  plate_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_len:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_len:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 nominal
+  bolt_clear_d:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for 1/4-20
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about 15
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about 5
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about 10 under head
+  cb_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: head_d + 1
+  cb_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: = head height, so the head sits flush with the bottom. Leaves a 5 mm floor
+      and 5 mm of thread showing for the camera
+  slot_travel:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: front/back adjustment so you can balance the camera
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W = p.arca_width\n    Wt = W - 2*p.bevel_depth\n    z1\
+    \ = p.land\n    z2 = p.land + p.bevel_depth\n    pts = [(-W/2,0),(W/2,0),(W/2,z1),(Wt/2,z2),(Wt/2,p.plate_t),(-Wt/2,p.plate_t),(-Wt/2,z2),(-W/2,z1)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_len/2, both=True)\n\
+    \    hole = cq.Workplane('XY').slot2D(p.slot_travel + p.bolt_clear_d, p.bolt_clear_d,\
+    \ 90).extrude(p.plate_t)\n    cb = cq.Workplane('XY').slot2D(p.slot_travel + p.cb_d,\
+    \ p.cb_d, 90).extrude(p.cb_depth)\n    return body.cut(hole).cut(cb)\n"
+  print_orientation: tripod (bottom, widest) face on the bed. Bevels taper inward
+    going up so there are no overhangs. The slot floor bridges 16 mm over the counterbore.
+  use_orientation: bevelled side down in the tripod clamp, narrow flat top against
+    the camera
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    W = p.arca_width\n    Wt = W - 2*p.bevel_depth\n    z1\
+    \ = p.land\n    z2 = p.land + p.bevel_depth\n    pts = [(-W/2,0),(W/2,0),(W/2,z1),(Wt/2,z2),(Wt/2,p.plate_t),(-Wt/2,p.plate_t),(-Wt/2,z2),(-W/2,z1)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().extrude(p.coupon_len/2, both=True)\n"
+  print_orientation: bottom face on the bed
+  use_orientation: clamp it in the tripod head to test the fit
+hardware:
+- id: cam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: cam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: counterbore slot
+    role: head_seat
+  - part: qr_plate
+    feature: clearance slot
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: dovetail_fit
+  part: fit_coupon
+  feature: 45-degree side bevels
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - arca_width
+  - bevel_depth
+  - land
+  - plate_t
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The coupon drops into the open clamp, and when the knob is tightened
+      it locks with no wobble
+- id: head_flush
+  part: qr_plate
+  feature: counterbore slot
+  relation: contains
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - cb_d
+  - cb_depth
+  check:
+    method: measure
+    ref: null
+    description: The bolt head sits flush or below the bottom face and slides along
+      the slot
+- id: thread_reach
+  part: qr_plate
+  feature: floor under counterbore
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - cb_depth
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: About 5 mm of thread sticks out the top. The camera tightens down
+      onto the plate before the bolt bottoms out in the socket
+manual:
+- n: '1'
+  text: Print fit_coupon (a 15 mm slice of the plate) and clamp it in the tripod head.
+    If it locks firmly, go on. If it's too loose or won't go in, tell me the jaw opening
+    in mm and I'll adjust arca_width/bevel_depth.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print qr_plate in PLA, bottom face down, with 4+ walls and 40%+ infill for
+    stiffness.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the webcam bolt up through the slot from the bottom so its head sits
+    in the recess.
+  parts:
+  - qr_plate
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '4'
+  text: Thread the bolt into the camera's tripod socket by turning the head (coin
+    or fingers), moving it along the slot until the camera balances. Tighten until
+    it's snug. Don't crank it, because PLA will crush.
+  parts:
+  - qr_plate
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '5'
+  text: Put the plate into the tripod clamp, tighten the knob, and test with a gentle
+    wiggle before letting go of the camera. A strip of rubber or grip tape on top
+    of the plate stops the camera twisting.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null

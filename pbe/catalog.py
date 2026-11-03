@@ -22,13 +22,16 @@ def _family(kind, standard):
 
 def resolve(ref: str) -> dict:
     """Dimensions for a reference such as "ISO 4762 M5x30", "ISO 4032 M5",
-    "ISO 7089 M5", "insert M3x4x5" or "salvaged:webcam-mount-bolt"."""
+    "ISO 7089 M5", "insert M3x4x5", "608ZZ" or "salvaged:webcam-mount-bolt"."""
     if ref.startswith("salvaged:"):
         key = ref.split(":", 1)[1]
         for item in _data()["salvaged"]:
             if item["id"] == key:
                 return {"kind": "salvaged", **item}
         raise KeyError(f"no salvaged part {key}")
+    for item in _data()["bearings"]:
+        if ref in (item["id"], item["id"].removesuffix("ZZ")):
+            return {"kind": "bearing", **item}
     if ref.startswith("insert "):
         size = ref.split(" ", 1)[1]
         return {"kind": "insert", "size": size, **_family("inserts", "none")["sizes"][size]}

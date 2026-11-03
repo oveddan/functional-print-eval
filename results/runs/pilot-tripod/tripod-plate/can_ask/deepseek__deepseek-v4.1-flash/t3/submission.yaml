@@ -1,0 +1,353 @@
+task: tripod-plate
+note: 'A drop-in "shoe" plate plus your salvaged 1/4-20 bolt. The bolt is the part
+  that screws in — don''t print a screw for this: a printed 1/4-20 thread at 0.2 mm
+  layers is weak and will strip in a camera socket, and a metal bolt is the right
+  answer. The plate is the flat part, and the only thing I could not pin down is the
+  inside of your friend''s clamp, so the first thing to print is the fit coupon (same
+  cross-section as the plate) to test the drop-in before the real plate.'
+questions:
+- text: How wide is the gap between the two jaws inside the clamp, in mm, and how
+    deep is it from the top surface down to the bottom?
+  answer: null
+- text: How deep is the 1/4-20 socket in your camera's base (so the bolt does not
+    bottom out before it seats)?
+  answer: null
+- text: Is the salvaged bolt's head a round knurled knob or a hex head, and does it
+    have a slot or cross recess on top?
+  answer: null
+- text: Is the clamp slot open at one end so a plate can also slide in from the side,
+    or is it closed at both ends?
+  answer: null
+params:
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 major diameter (0.25 in).
+  bolt_len:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Threaded length under the head of the salvaged webcam bolt, as you measured.
+  bolt_head_d:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Head across, as you measured.
+  bolt_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Head height, as you measured.
+  cam_socket_depth:
+    value: 6.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Depth of the 1/4-20 socket in your camera's base. Not measured; 6 mm is
+      typical. Used only to sanity-check thread engagement.
+  plate_w:
+    value: 38.0
+    unit: mm
+    kind: design
+    source: guessed
+    note: Plate width across the jaws. Sized for a jaw opening of roughly 40 mm; the
+      clamp knob gives some range, and the coupon lets you scale this before printing
+      the plate.
+  plate_l:
+    value: 55.0
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length along the slide direction.
+  plate_t:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: Plate thickness. Sets how much bolt thread is left proud of the plate (5.2
+      mm).
+  lip_chamfer:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: guessed
+    note: 45-degree chamfer on the two long top edges, for the clamp's angled lips
+      to bite. Chamfer band is 3 mm tall so the lips have some vertical tolerance.
+  slot_cc:
+    value: 22.0
+    unit: mm
+    kind: design
+    source: design
+    note: Centre-to-centre travel of the screw slot, for balancing the camera on the
+      head.
+  slot_w:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'Slot width in the camera face: clearance for the 6.35 mm bolt shank.'
+  pocket_w:
+    value: 24.0
+    unit: mm
+    kind: design
+    source: design
+    note: Width of the screw-head pocket in the underside. Deliberately much wider
+      than the 15 mm head so a thumb can reach the head to turn the bolt.
+  pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'Pocket depth: head height + 0.2 mm, so the head sits flush and nothing
+      protrudes below the plate.'
+  groove_w:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Width of the grip grooves in the camera face.
+  groove_depth:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the grip grooves, so the plate does not skid on the camera base.
+  groove_pitch:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: Spacing of the grip grooves.
+  coupon_l:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the fit coupon slice.
+parts:
+- id: plate
+  role: final
+  material: PLA (high-speed, black)
+  code: "import cadquery as cq\n\ndef _stad(cc, w, z0, z1):\n    r = w / 2.0\n   \
+    \ h = z1 - z0\n    body = cq.Workplane(\"XY\").box(cc, w, h, centered=(True, True,\
+    \ False)).translate((0, 0, z0))\n    a = cq.Workplane(\"XY\").cylinder(h, r).translate((-cc\
+    \ / 2.0, 0, z0 + h / 2.0))\n    b = cq.Workplane(\"XY\").cylinder(h, r).translate((cc\
+    \ / 2.0, 0, z0 + h / 2.0))\n    return body.union(a).union(b)\n\ndef build(p):\n\
+    \    L = p.plate_l\n    W = p.plate_w\n    T = p.plate_t\n    ch = p.lip_chamfer\n\
+    \    # cross-section in the YZ plane (y = width, z = 0 at the camera face), extruded\
+    \ along X\n    pts = [(-W / 2.0 + ch, 0.0), (W / 2.0 - ch, 0.0), (W / 2.0, ch),\n\
+    \           (W / 2.0, T), (-W / 2.0, T), (-W / 2.0, ch)]\n    plate = cq.Workplane(\"\
+    YZ\").polyline(pts).close().extrude(L).translate((-L / 2.0, 0, 0))\n\n    pd =\
+    \ p.pocket_depth\n    # screw-head pocket, opening at the plate's underside (z\
+    \ = T)\n    plate = plate.cut(_stad(p.slot_cc, p.pocket_w, T - pd, T + 2.0))\n\
+    \    # screw slot through the camera face\n    plate = plate.cut(_stad(p.slot_cc,\
+    \ p.slot_w, -2.0, T - pd))\n\n    gw = p.groove_w\n    gd = p.groove_depth\n \
+    \   gp = p.groove_pitch\n    y = gp\n    while y <= W / 2.0 - 4.0:\n        for\
+    \ s in (1.0, -1.0):\n            plate = plate.cut(cq.Workplane(\"XY\").box(L\
+    \ + 2.0, gw, gd, centered=(True, True, False)).translate((0, s * y, -0.1)))\n\
+    \        y += gp\n    x = gp\n    while x <= L / 2.0 - 8.0:\n        for s in\
+    \ (1.0, -1.0):\n            plate = plate.cut(cq.Workplane(\"XY\").box(gw, W +\
+    \ 2.0, gd, centered=(True, True, False)).translate((s * x, 0, -0.1)))\n      \
+    \  x += gp\n    return plate"
+  print_orientation: 'Camera-side face on the bed: z = 0 is the flat face the camera
+    sits on. The screw-head pocket then opens upward, so there is no overhang anywhere
+    except the 45-degree chamfer flare in the first 3 mm.'
+  use_orientation: Chamfered edges up, into the clamp's lips; the flat camera face
+    up, gripping the camera base; the screw-head pocket facing down toward the channel
+    floor, with the bolt head flush in it.
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "import cadquery as cq\n\ndef build(p):\n    L = p.coupon_l\n    W = p.plate_w\n\
+    \    T = p.plate_t\n    ch = p.lip_chamfer\n    pts = [(-W / 2.0 + ch, 0.0), (W\
+    \ / 2.0 - ch, 0.0), (W / 2.0, ch),\n           (W / 2.0, T), (-W / 2.0, T), (-W\
+    \ / 2.0, ch)]\n    return cq.Workplane(\"YZ\").polyline(pts).close().extrude(L).translate((-L\
+    \ / 2.0, 0, 0))"
+  print_orientation: 'Same as the plate: camera-side face on the bed, chamfer flare
+    at the bottom.'
+  use_orientation: Dropped into the tripod's clamp exactly as the plate would be,
+    chamfered edges up.
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: j_camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 9.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: screw-head pocket in the underside
+    role: head_seat
+  - part: plate
+    feature: screw slot in the camera face
+    role: clearance
+  nut: null
+  external: the camera's 1/4-20 tripod socket (not printed)
+criteria:
+- id: c_head_pocket
+  part: plate
+  feature: screw-head pocket
+  relation: contains
+  hardware: bolt
+  clearance_mm: 4.5
+  params:
+  - pocket_w
+  - pocket_depth
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: measure
+    ref: null
+    description: 'Re-check the webcam bolt head: it must be under 24 mm across and
+      under 5.2 mm tall, and the printed pocket must be open enough for a thumb to
+      reach past it.'
+- id: c_slot
+  part: plate
+  feature: screw slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.325
+  params:
+  - slot_w
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Check the bolt shank mics up at about 6.35 mm so it passes the 7
+      mm slot.
+- id: c_chamfer_seat
+  part: plate
+  feature: long top-edge chamfers
+  relation: seats
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - plate_w
+  - lip_chamfer
+  - plate_t
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Print the coupon and drop it into the tripod clamp. It must drop
+      in from above and the jaws' lips must come down onto the chamfered edges with
+      travel left on the knob. Scale in X/Y if it will not go in.
+- id: c_depth
+  part: plate
+  feature: plate body
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The coupon shows whether the plate thickness fouls anything; the
+      lips only need to reach the 3 mm chamfer band, so the plate may sit a little
+      proud.
+- id: c_face
+  part: plate
+  feature: camera face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_l
+  - plate_w
+  - groove_depth
+  check:
+    method: none
+    ref: null
+    description: Flat face with shallow grip grooves that the camera base seats against.
+- id: c_thread
+  part: plate
+  feature: clearance above the screw-head pocket
+  relation: engages
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_len
+  - plate_t
+  - pocket_depth
+  - cam_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: The bolt leaves 5.2 mm of thread proud of the plate, so the camera's
+      socket must be deeper than that or the bolt bottoms out and the camera sits
+      loose. Measure the socket depth on your camera.
+manual:
+- n: '1'
+  text: Print fit_coupon first. PLA, 0.2 mm layers, 4 walls, ~30% infill, no supports
+    needed.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Open the clamp knob on the tripod head and drop the coupon into the channel,
+    chamfered edges up. It should drop in from above and the jaws' angled lips should
+    come down onto the two chamfered edges, with travel left on the knob to pinch
+    it. If it will not go in, scale the coupon in the slicer (X and Y together) until
+    it does, and remember that scale factor.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '3'
+  text: If the coupon fits, print plate. Same settings, same scale factor if you needed
+    one, no supports. Print it camera-face-down as modelled so the screw-head pocket
+    opens upward.
+  parts:
+  - plate
+  hardware: []
+  tool: 3D printer
+- n: '4'
+  text: 'Drop the salvaged 1/4-20 bolt up through the plate from underneath: the shank
+    through the long slot, the head sitting in the wide pocket. The head should end
+    up flush with the plate''s underside.'
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Hold the plate and start the bolt into the camera's 1/4-20 socket. Reach a
+    thumb onto the bolt head through the wide pocket opening and turn until the camera
+    base is snug on the plate face. The slot lets you slide the bolt along so the
+    camera balances on the head; hand-tight only, do not reef on it.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: Open the clamp knob, drop the plate-and-camera into the channel chamfered-edges-up,
+    and close the knob until it grips. Give the camera a gentle twist to check it
+    cannot rotate; if it does, tighten the bolt a little more, not the clamp.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '7'
+  text: Treat it as temporary. PLA creeps under steady load, and the plate is only
+    as strong as its layer bonds, so no long lenses, no hanging the rig by the camera,
+    and re-check the bolt before each session. Remove the camera before storing so
+    the plate is not left loaded.
+  parts: []
+  hardware: []
+  tool: null

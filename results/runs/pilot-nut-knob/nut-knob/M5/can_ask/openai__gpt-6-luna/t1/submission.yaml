@@ -1,0 +1,164 @@
+task: nut-knob/M5
+note: 'One-piece, flat-printing hand knob with an underside hex pocket for a captive
+  ISO 4032 M5 nut and a 5.5 mm through-bore. The nut is pressed in from the bed-facing
+  side; the solid roof around the smaller bolt bore stops it being pushed through
+  the far face. The pocket is intentionally a slight press fit, but printed fit varies:
+  if the nut is too tight or loose, adjust `nut_pocket_af` in small increments (about
+  0.05 mm) and reprint. The bolt is the user''s own M5 bolt; it is not included in
+  the listed hardware.'
+questions: []
+params:
+  knob_thickness:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  core_radius:
+    value: 12.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_count:
+    value: 8.0
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  lobe_center_radius:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_radius:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_height:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_pocket_af:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: guessed
+    note: ''
+  nut_pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clearance_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_nominal_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.core_radius).extrude(p.knob_thickness)\n\
+    \    for i in range(p.lobe_count):\n        a = 2.0 * math.pi * i / p.lobe_count\n\
+    \        x = p.lobe_center_radius * math.cos(a)\n        y = p.lobe_center_radius\
+    \ * math.sin(a)\n        lobe = cq.Workplane(\"XY\").center(x, y).circle(p.lobe_radius).extrude(p.knob_thickness)\n\
+    \        body = body.union(lobe)\n    circumradius = p.nut_pocket_af / math.sqrt(3.0)\n\
+    \    pts = [(circumradius * math.cos(math.radians(60 * i)), circumradius * math.sin(math.radians(60\
+    \ * i))) for i in range(6)]\n    pocket = cq.Workplane(\"XY\").polyline(pts).close().extrude(p.nut_pocket_depth)\n\
+    \    body = body.cut(pocket)\n    bore = cq.Workplane(\"XY\").circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(p.knob_thickness)\n    body = body.cut(bore)\n    return body"
+  print_orientation: Lay the broad face with the hex nut pocket on the build plate
+    (z=0); print the knob upright, with the opposite face at the top. No supports
+    are needed.
+  use_orientation: The pocket-opening face is the nut insertion side. The opposite
+    face is the bolt-entry/exit face.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: hand_knob
+  feature: underside hex pocket
+  relation: engages
+  hardware: m5_nut
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Press the nut into the pocket by hand. It should be snug enough to
+      remain seated when the knob is turned upside down; tune nut_pocket_af in 0.05
+      mm steps if needed.
+- id: nut_axial_stop
+  part: hand_knob
+  feature: solid roof surrounding the 5.5 mm through-bore
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: The nut pocket ends inside the knob, while the smaller through-bore
+      leaves a retaining shoulder at the far side.
+- id: m5_bolt_clearance
+  part: hand_knob
+  feature: 5.5 mm axial through-bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_clearance_d
+  - bolt_nominal_d
+  check:
+    method: measure
+    ref: null
+    description: Confirm the user's M5 bolt passes through the bore and threads into
+      the captive nut.
+manual:
+- n: '1'
+  text: Print hand_knob flat with the hex pocket facing the build plate. Remove any
+    first-layer elephant-foot material from the pocket entrance if present.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Place m5_nut squarely at the pocket opening and press it in by hand until
+    it seats against the internal roof. If it is excessively tight, increase nut_pocket_af
+    slightly and reprint.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down to check that the nut stays captured. Pass an M5
+    bolt through the opposite face and thread it into the nut.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null

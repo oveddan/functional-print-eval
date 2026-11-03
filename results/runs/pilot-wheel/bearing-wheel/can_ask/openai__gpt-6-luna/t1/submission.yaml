@@ -1,0 +1,162 @@
+task: bearing-wheel
+note: 'A simple flat-tread replacement wheel: 50 mm diameter × 16 mm body, with two
+  608 bearings seated from opposite faces and an 8.5 mm through-bore for the M8 bolt.
+  Print the fit coupon first. This does not reproduce any groove or flange the old
+  wheel may have had. PLA may wear or creep under a heavy door load; test gently and
+  do not rely on this for a door that could fall or injure someone. The bolt/carriage
+  must clamp the bearing inner races without rubbing the rotating outer races or wheel
+  body.'
+questions: []
+params:
+  wheel_diameter_mm:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate diameter of old wheel as reported by user.
+  wheel_width_mm:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate width of old wheel as reported by user.
+  bearing_od_mm:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608ZZ OD used in supplied measurements.
+  bearing_width_mm:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal 608 bearing width.
+  bearing_seat_d_mm:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: Starting CAD seat diameter; verify with coupon and adjust for printer fit.
+  bearing_pocket_depth_mm:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Makes a nominal 7 mm bearing stand 0.2 mm proud of each wheel face.
+  axle_bore_d_mm:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance for user's approximately 8 mm M8 bolt shank.
+  coupon_diameter_mm:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_thickness_mm:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_floor_mm:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: roller
+  role: final
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    import cadquery as cq\n    r = p.wheel_diameter_mm / 2.0\n\
+    \    w = p.wheel_width_mm\n    solid = cq.Solid.makeCylinder(r, w, cq.Vector(0,\
+    \ 0, 0), cq.Vector(0, 0, 1))\n    bore = cq.Solid.makeCylinder(p.axle_bore_d_mm\
+    \ / 2.0, w + 0.2, cq.Vector(0, 0, -0.1), cq.Vector(0, 0, 1))\n    solid = solid.cut(bore)\n\
+    \    d = p.bearing_seat_d_mm\n    dep = p.bearing_pocket_depth_mm\n    lower =\
+    \ cq.Solid.makeCylinder(d / 2.0, dep, cq.Vector(0, 0, 0), cq.Vector(0, 0, 1))\n\
+    \    upper = cq.Solid.makeCylinder(d / 2.0, dep, cq.Vector(0, 0, w - dep), cq.Vector(0,\
+    \ 0, 1))\n    solid = solid.cut(lower).cut(upper)\n    return cq.Workplane('XY').newObject([solid])"
+  print_orientation: Print with one circular side face on the bed; wheel axis is Z.
+    No supports intended.
+  use_orientation: Wheel axis is the M8 bolt axis. Bearings enter from opposite faces;
+    the bearing outer races turn with the wheel.
+- id: seat_coupon
+  role: coupon
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    import cadquery as cq\n    t = p.coupon_thickness_mm\n\
+    \    floor = p.coupon_floor_mm\n    solid = cq.Solid.makeCylinder(p.coupon_diameter_mm\
+    \ / 2.0, t, cq.Vector(0, 0, 0), cq.Vector(0, 0, 1))\n    pocket = cq.Solid.makeCylinder(p.bearing_seat_d_mm\
+    \ / 2.0, t - floor + 0.1, cq.Vector(0, 0, floor), cq.Vector(0, 0, 1))\n    bore\
+    \ = cq.Solid.makeCylinder(p.axle_bore_d_mm / 2.0, t + 0.2, cq.Vector(0, 0, -0.1),\
+    \ cq.Vector(0, 0, 1))\n    solid = solid.cut(pocket).cut(bore)\n    return cq.Workplane('XY').newObject([solid])"
+  print_orientation: Print flat on its circular bottom face, with test pocket opening
+    upward.
+  use_orientation: Test coupon only; press one 608 bearing into the pocket by hand
+    to evaluate seat fit.
+hardware: []
+joints: []
+criteria:
+- id: bearing-seat-fit
+  part: roller
+  feature: opposed 608 bearing counterbores
+  relation: seats
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - bearing_od_mm
+  - bearing_seat_d_mm
+  - bearing_pocket_depth_mm
+  check:
+    method: coupon
+    ref: seat_coupon
+    description: Print coupon first and test a bearing. It should press in firmly
+      by hand without cracking; if too tight or loose, adjust bearing_seat_d_mm in
+      small steps (about 0.1 mm) and reprint coupon.
+- id: axle-clearance
+  part: roller
+  feature: through axle bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - axle_bore_d_mm
+  check:
+    method: measure
+    ref: null
+    description: Check that M8 bolt passes freely through the printed bore.
+manual:
+- n: '1'
+  text: Print seat_coupon first. Press one bearing into the test pocket by hand. If
+    too tight or loose, adjust bearing_seat_d_mm by roughly 0.1 mm and reprint the
+    coupon before printing the wheel.
+  parts:
+  - seat_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print roller with a circular side face flat on the bed; keep the wheel axis
+    vertical. No supports are intended.
+  parts:
+  - roller
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608 bearing into each counterbore from opposite sides. Bearings
+    should stand slightly proud of wheel faces. Do not hammer them in; stop if wheel
+    cracks.
+  parts:
+  - roller
+  hardware: []
+  tool: null
+- n: '4'
+  text: Pass the M8 bolt through the bearings and attach wheel to existing door carriage.
+    Arrange bolt head and carriage so they bear on bearing inner races only; verify
+    wheel spins freely and bolt/carriage do not rub wheel or outer races. Test door
+    gently before normal use.
+  parts: []
+  hardware: []
+  tool: null

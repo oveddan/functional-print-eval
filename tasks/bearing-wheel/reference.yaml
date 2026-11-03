@@ -1,0 +1,44 @@
+task: bearing-wheel
+note: Reference solution. Both bearings stack from one side, so the open side prints up and nothing has to bridge.
+params:
+  across:   {value: 50, kind: world, source: asked, note: the old wheel}
+  width:    {value: 16, kind: world, source: asked, note: the old wheel}
+  seat:     {value: 22.2, kind: design, source: measured, note: held upside down on this printer}
+  seat_h:   {value: 14.2, kind: design, source: design, note: two 7 mm bearings and a little over}
+  relief:   {value: 13, kind: design, source: design, note: the floor touches only the outer ring}
+parts:
+  - id: wheel
+    role: final
+    material: PLA
+    print_orientation: Closed side on the bed, open side up, no supports.
+    use_orientation: Spins on the bolt in any position.
+    code: |
+      def build(p):
+          body = cq.Workplane("XY").circle(p.across / 2).extrude(p.width)
+          seat = cq.Workplane("XY").workplane(offset=p.width - p.seat_h).circle(p.seat / 2).extrude(p.seat_h)
+          return body.cut(seat).cut(cq.Workplane("XY").circle(p.relief / 2).extrude(p.width))
+hardware:
+  - {id: bearing, ref: "608ZZ", qty: 2}
+  - {id: bolt, ref: "ISO 4762 M8x40"}
+criteria:
+  - id: C1
+    part: wheel
+    feature: seat
+    relation: seats
+    hardware: bearing
+    clearance_mm: 0.2
+    params: [seat, seat_h]
+    check: {method: none, description: Printed on this printer in round 2.}
+manual:
+  - n: "1"
+    text: Print the wheel closed side down with no supports.
+    parts: [wheel]
+    hardware: []
+  - n: "2"
+    text: Press both bearings into the open side until the first reaches the floor.
+    parts: [wheel]
+    hardware: [bearing]
+  - n: "3"
+    text: Put the bolt through both bearings and mount it on the door.
+    parts: [wheel]
+    hardware: [bolt]
