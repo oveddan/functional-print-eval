@@ -1,27 +1,27 @@
 # Overnight runs
 
-How to let the eval's iterate loop (run, read failures, fix a grader or prompt, log, run again) work while Dan is away. Researched 2026-10-30 from the official docs (links at the end). Where the docs are silent this says **unclear**.
+How to let the eval's iterate loop (run, read failures, fix a grader or prompt, log, run again) work while Dan is away. Researched 2026-10-30 from the official docs (links at the end). Where the docs are silent this says **unclear**. The cloud parts were rechecked against the docs on 2026-11-03.
 
 ## Options compared
 
 | | Local, Mac kept awake | Cloud session, one long prompt | Cloud scheduled routine (`/schedule`) | `/loop` | Workflow tool |
 |---|---|---|---|---|---|
-| Setup Dan must do | Keep-awake, export key in a shell | Private GitHub repo, cloud environment, key, network allowlist | Same as cloud session, plus the routine | None extra | None extra |
+| Setup Dan must do | Keep-awake, export key in a shell | Cloud environment with a network secret and setup script | Same as cloud session, plus the routine | None extra | None extra |
 | Runs if the Mac sleeps | No | Yes (continues if the app closes) | Yes | No | Only where its session lives |
-| Max unattended time | Mac's uptime | **Unclear** (no documented cap; an idle VM pauses after a few minutes, and a reclaimed VM loses background commands and `/loop` tasks) | One run per hour at most; per-run length **unclear** | Recurring tasks expire after 7 days; dies with the process | No time cap; agent count is the limit |
+| Max unattended time | Mac's uptime | **Unclear** (no documented cap; an idle VM pauses after a few minutes, a reclaimed VM loses background commands and `/loop` tasks, and a command moved to the background gets about 30 more minutes) | One run per hour at most; per-run length **unclear** | Recurring tasks expire after 7 days; dies with the process | No time cap; agent count is the limit |
 | Fits "run, read, fix, log, repeat" | Yes | Yes, as plain sequential work | Awkward: every run is a fresh clone with no memory, so state must live in git | Yes locally, shaky in cloud | Overkill: the loop is sequential, and it costs the most (many agents) |
 | Cost | Plan usage plus OpenRouter | Plan usage plus OpenRouter (no compute charge) | Same, 100 runs/hour account cap | Same | Highest; the guideline here is under 10 agents |
-| Risk for this repo | None; CadQuery already works | CadQuery on the cloud image is **unverified**; Python 3.12 there is **unclear** | Same as the cloud session | Lost on sleep | Not needed |
+| Risk for this repo | None; CadQuery already works | Not yet smoke tested: CadQuery on the image, and bubblewrap inside the VM | Same as the cloud session | Lost on sleep | Not needed |
 
 ## Recommendation
 
 0. **Best if set up: the home server `ovedai`, under a new unprivileged account (next section).** Always on, no keep-awake; needs a one-time account setup and an `import cadquery` check.
 1. **Otherwise tonight: run it locally.** Nothing here needs Dan's approval beyond keep-awake, the env already runs CadQuery, and nothing leaves the machine. Use a dedicated branch in a fresh worktree, not `main`.
-2. **Cloud once it has a 10-minute smoke test.** It frees the Mac, but three things are unproven (below), and it forces a GitHub push of a repo that today has no remote. Try it for a short run before trusting it overnight.
+2. **Cloud once it has a 10-minute smoke test.** It frees the Mac. Try it for a short run before trusting it overnight.
 3. **Skip the Workflow tool** for this loop, and use `/loop` only as the local driver if wanted. A single session with an explicit loop in its prompt (below) is simpler and is what both targets run.
 4. A scheduled routine is a backstop at most: hourly minimum, fresh clone each run, so it can only continue from what is committed to a branch.
 
-Unproven for cloud: (a) the docs list Python 3.x with uv but not the version, and whether `uv python install 3.12` works is unclear; (b) whether CadQuery's x86_64 Linux wheels install in the setup script was not checked; (c) maximum session length. The smoke test answers (a) and (b).
+Unproven for cloud: (a) `uv python install 3.12` on the image; (b) whether the x86_64 Linux CadQuery wheels import there (the VM is Ubuntu 24.04 x86_64, which the `manylinux_2_31` wheel in `uv.lock` targets); (c) whether the VM allows bubblewrap's namespaces; (d) whether the proxy replaces the placeholder `Authorization` header; (e) whether reference designs grade the same as on the Mac; (f) maximum session length. The smoke test below answers (a) to (e).
 
 ## Option: the home server (`ovedai`)
 
@@ -43,10 +43,9 @@ Optional: add the server as a saved SSH connection in the desktop app to watch t
 ## Spending cap: three layers
 
 - **OpenRouter key limit (the hard one).** Create a *separate* OpenRouter API key for overnight use with a credit limit of about $3 (as I understand OpenRouter keys, a per-key limit can be set in the dashboard; check it exists there). Even a runaway loop cannot exceed it. Put only this key in the environment, never the main key.
-- **Runner ledger.** Every call adds `usage.cost` to `results/spend.json`. The runner refuses to start a call once the total reaches the cap (default $3), and the session stops. The ledger is committed with each iteration, so a cloud run that restarts from a fresh clone still sees what was spent.
+- **Run budget.** `pbe/eval.py --budget` stops a run once its saved `cost_usd` totals reach the budget, checked before each trial, so the last trial can overshoot. It is per run, so it doesn't cap several runs together: the key limit does.
 - **Iteration and time limits** in the prompt (below).
 
-Note the ledger and cap check are not in `pbe/llm.py` yet; the main session should add them before an unattended run (or the prompt's first step is to add them and commit). Today the only protection would be the key limit.
 
 ## Dan's one-time steps (each is his to do or approve)
 
@@ -58,32 +57,46 @@ Local:
 3. In the terminal that launches Claude, `export OPENROUTER_API_KEY=...` for the capped key (from 1Password, so it never sits in a file) and start the session from there; `op read` may need an unlock that expires, so the env var is the safer path. `pbe/llm.py` already prefers the env var.
 4. Create the worktree/branch: `git worktree add ../overnight -b overnight/2026-10-30` and paste the prompt there.
 
-Cloud (only after the smoke test passes):
-5. Decide whether to push. The repo has no remote. Create a **private** GitHub repo and push a branch. The repo tracks `docs/context/` (16 private source files) and 7 PNG renders in `docs/media/`. Decide first whether to push those, or push a branch with `docs/context/` removed. Alternative with no GitHub at all: `claude --cloud` from the terminal bundles a local repo (git 2.31+, at least one commit, under 100 MB), but it can only push results back if there is a GitHub remote it has push access to, so results would stay in the session transcript.
-6. Install the Claude GitHub App on that private repo (or run `/web-setup`).
-7. Create a cloud environment with: network access set to **Custom**, allowed domain `openrouter.ai`, and "include default list of common package managers" ticked (the default Trusted list does not include openrouter.ai); env var `OPENROUTER_API_KEY=<capped key>`; and a setup script (below).
-8. Know the secret trade-off: environment variables are readable by anyone using the environment and by commands Claude runs, so the capped key is exposed to the session. The docs' safer "network secret" (the proxy adds the key to requests to listed hosts, so it never appears in the session) would need `pbe/llm.py` to send no key itself; how to configure the header is unclear, so use the capped env var for now.
-9. Add a branch ruleset on GitHub protecting `main`: the cloud proxy blocks tag pushes and branch deletes but does not restrict which branch a push updates.
-10. Start the session from the desktop app: choose the cloud environment, pick the repo, and paste the prompt. (Moving a local session via Open in > Cloud is possible, but how files move is unclear, so start fresh.)
+Cloud:
+5. Make sure the Claude GitHub App is installed on `oveddan/print-build-eval`, or run `/web-setup`. The repo is private and already pushed, `docs/context/` included (Dan 2026-10-30: pushing it all is fine).
+6. Create a new cloud environment, because a network secret applies to every session in its environment:
+   - **Network access:** the default. Package managers and GitHub are covered, and a network secret's host is reachable whatever this is set to.
+   - **Network secret:** type Bearer, allowed website `openrouter.ai`, header `Authorization`, prefix `Bearer`, and the capped key as the value. The key stays outside the VM.
+   - **Environment variable:** `OPENROUTER_API_KEY=proxy-injected`, a placeholder so `pbe/llm.py` doesn't reach for `op`.
+   - **Do not set `PBE_NO_SANDBOX`.** If bubblewrap can't run there, the run should stop rather than go on without a sandbox.
+   - **Setup script:** below.
+7. Keep sessions off `main` by instruction (`CLAUDE.md`). GitHub rulesets aren't available on this private repo without Pro, and the cloud proxy doesn't restrict which branch a push updates.
+8. Start the session from the desktop app under **Cloud**, on a branch that has `.claude/settings.json`. The `SessionStart` hook in it runs `uv sync --frozen`.
 
-Setup script for the cloud environment (runs as root, must exit 0, keep under ~5 minutes; setup scripts cannot see environment variables):
+Setup script for the cloud environment (runs as root on Ubuntu 24.04, must exit 0, keep under about 5 minutes to be cached; it can't see the environment's variables):
 
 ```bash
 #!/bin/bash
 set -e
-command -v uv >/dev/null || pip install uv
-uv python install 3.12 || true
-uv sync --frozen
-uv run python -c "import cadquery, trimesh; print('cadquery ok')"
+apt-get update
+apt-get install -y bubblewrap libgl1 openscad xvfb
+uv python install 3.12
 ```
 
-If `import cadquery` fails there, stay local.
+`libgl1` is a precaution that hasn't been shown to be needed. `openscad` and `xvfb` are only for gallery renders.
+
+## Cloud smoke test
+
+Ask a first session in the new environment to do this and report each result:
+
+1. `check-tools`, then `uv run python -c "import cadquery; from pbe import build; print(build.sandbox())"`. It must print `bwrap`.
+2. `uv run pytest`. The sandbox tests skip when there's no sandbox, so check they ran.
+3. `uv run python -m pbe.eval --reference --task <each task>`. Every reference must pass as it does on the Mac.
+4. One cheap trial: `uv run python -m pbe.eval --run cloud-smoke --task m5-spacer --model anthropic/claude-haiku-5.5 --trials 1 --budget 0.50`. A 401 means the proxy didn't replace the placeholder header.
+5. Commit and push `results/runs/cloud-smoke` to the session's branch.
+
+A run stopped by a reclaimed VM resumes: trials already saved are skipped. Results survive only if pushed, and `results/runs/**/parts/` isn't committed, so meshes have to be rebuilt with `--regrade`. Atlas assets (`report/atlas/examples.yaml`) are on Dan's Mac, so the atlas doesn't build in the cloud.
 
 ## What one overnight iteration does
 
-1. Read `CLAUDE.md`, `PLAN.md`, `docs/scoring.md`, the tail of `CHANGELOG.md` and `results/spend.json`.
+1. Read `CLAUDE.md`, `PLAN.md`, `docs/scoring.md` and the tail of `CHANGELOG.md`, and add up the saved `cost_usd` of runs so far.
 2. Run the test suite (`uv run pytest`). If it fails before any change, stop.
-3. Run the eval on the current tasks and models, writing under `results/` (cost counted in the ledger).
+3. Run the eval on the current tasks and models with `--budget`, writing under `results/`.
 4. Read every failure transcript. Classify each as format, design, grader bug, or task bug.
 5. Make at most one fix: a grader bug, a task or prompt wording, or a measurement-table entry. Do not change what is being scored to make scores rise, and do not weaken a check without a regression test.
 6. Re-run the tests and the affected tasks. Keep the change only if tests pass and no previously passing reference now fails; otherwise revert it.
@@ -108,27 +121,17 @@ Setup: read CLAUDE.md, PLAN.md, docs/scoring.md, the end of CHANGELOG.md, and do
 
 Secrets: the key is in OPENROUTER_API_KEY. Never print, echo, log, or commit it, and never run env/printenv or any command that would show it.
 
-Budget: hard cap $3.00 total OpenRouter spend, tracked in results/spend.json (add a ledger and a pre-call cap check to the runner first if it is not there, with a test, and commit that as the first change). Max 6 iterations, 8 hours.
+Budget: hard cap $3.00 total OpenRouter spend. Pass --budget to each run and add up the runs' saved cost_usd before starting another. Max 6 iterations, 8 hours.
 
 Each iteration: (1) uv run pytest; (2) run the eval on the current tasks, saving under results/; (3) read every failing transcript and classify it as format, design, grader bug, or task bug; (4) make at most one fix to a grader, task wording, or measurement table, never lowering a bar just to raise scores and adding a regression test for any grader change; (5) re-run tests and the affected tasks, and revert the fix if anything that passed now fails; (6) append a CHANGELOG.md entry with the evidence (run ids, before/after) and commit once.
 
 Stop when: spend reaches the cap, 6 iterations are done, tests are red and not fixable within the iteration, two iterations in a row find nothing worth fixing, a call fails on auth/credit, or 8 hours pass. Then write results/overnight-<date>.md (what ran, spend, what changed, what is left, anything you were unsure about) and commit it. Do not start another iteration after writing it.
 ```
 
-## Follow-up: move the key to a network secret
-
-Environment variables are readable by the session, so the capped key is exposed to it. A cloud environment's **network secret** is safer: the agent proxy attaches the secret to requests for the hosts listed (here `openrouter.ai`), and the key never appears in the session's environment or in any file. Not yet tried. To do it:
-- Change `pbe/llm.py` so it sends the request without a real key (or a placeholder) when a setting such as `PBE_PROXY_KEY=1` is on, instead of failing when `OPENROUTER_API_KEY` and `op` are both missing.
-- In the smoke test, check that the proxy's header injection works with OpenRouter's `Authorization: Bearer` header; the docs do not say how the header is formed (unclear).
-- Keep the $3 key limit either way.
-
 ## Open questions for Dan
 
-- Local tonight, or do the cloud smoke test first?
-- If cloud: push the private repo with or without `docs/context/` and the PNG renders? (Dan 2026-10-30: pushing it all is fine.)
-- 1Password in the cloud: not supported out of the box. The only route is a 1Password service account token as the env var plus the `op` CLI in the setup script, which adds a vault-wide secret and a download from a host not on the allowlist. Use the capped OpenRouter key directly instead.
-- Cap: is $3 right out of the $10, and OK to create a separate capped key?
+- Cap: is a separate capped key's limit right for the runs planned?
 
 ## Sources
 
-Official docs, fetched 2026-10-30: code.claude.com/docs/en/ claude-code-on-the-web, cloud-environments, web-quickstart, routines, scheduled-tasks, workflows, tools-reference, desktop.
+Official docs, fetched 2026-10-30, cloud pages again on 2026-11-03: code.claude.com/docs/en/ claude-code-on-the-web, cloud-environments, web-quickstart, routines, scheduled-tasks, workflows, tools-reference, desktop.
