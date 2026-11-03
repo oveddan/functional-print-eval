@@ -1,0 +1,198 @@
+task: bearing-wheel
+note: ''
+questions: []
+params:
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: User said old wheel was about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: User said old wheel was about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing OD nominal 22.000
+  bearing_id:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing bore nominal 8.0
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing width nominal 7.0
+  axle_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User measured bolt shank ~8 mm, i.e. M8
+  bore_press:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Total diametral interference for the bearing press fit in PLA
+  rim_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Tyre wall thickness around the bearing
+  bearing_inset:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Bearing face recess from wheel face
+  spacer_len:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: Spacer thickness between inner races
+  crown_h:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Crown height on rolling face
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: 'import cadquery as cq
+
+    id_ = p.axle_d + 0.3
+
+    od = p.bearing_id + 5.0
+
+    sp = cq.Workplane(''XY'').circle(od/2).circle(id_/2).extrude(p.spacer_len)
+
+    build = lambda p: sp
+
+    '
+  print_orientation: Flat on the bed, axis vertical (z=0 on one face).
+  use_orientation: Sits between the two bearings' inner races, coaxial with the axle;
+    M8 bolt passes through its ID.
+- id: wheel
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\nd = p.wheel_d\nw = p.wheel_w\nbod = p.bearing_od\n\
+    bid = p.bearing_id\nbw = p.bearing_w\nbore_d = bod - p.bore_press\ninset = p.bearing_inset\n\
+    \nbody = cq.Workplane('XY').circle(d/2).extrude(w)\n\nprof = (cq.Workplane('XZ')\n\
+    \        .moveTo(d/2 - p.crown_h, 0)\n        .lineTo(d/2, 0)\n        .threePointArc((d/2\
+    \ - p.crown_h/2, p.crown_h), (d/2 - p.crown_h, 2*p.crown_h))\n        .lineTo(d/2\
+    \ - p.crown_h, w - 2*p.crown_h)\n        .threePointArc((d/2 - p.crown_h/2, w\
+    \ - p.crown_h), (d/2, w))\n        .lineTo(d/2 - p.crown_h, w)\n        .close())\n\
+    crown = prof.revolve(360, (0,0,0), (1,0,0))\nwheel = body.union(crown)\n\n# axle\
+    \ clearance bore through the middle\nwheel = wheel.faces('>Z').workplane().hole(p.axle_d\
+    \ + 0.3)\n# bearing corridor at press diameter\nwheel = wheel.faces('>Z').workplane().hole(bore_d)\n\
+    # relieve the centre so only outer bw+inset bands grip the bearings\nrelief_len\
+    \ = w - 2*bw - 2*inset\nif relief_len > 0:\n    wheel = (wheel.faces('>Z').workplane()\n\
+    \             .circle(bid/2 + 0.3).cutBlind(-relief_len))\n\nbuild = lambda p:\
+    \ wheel\n"
+  print_orientation: Standing on one flat face, bore vertical (z axis along the axle
+    bore). This prints clean circular bearing bores.
+  use_orientation: Axle axis horizontal; wheel rolls on its crowned tread, bearing
+    faces near the wheel faces; M8 bolt passes through both bearing bores.
+hardware:
+- id: axle_bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: axle_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer_a
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: central bore
+    role: clearance
+  - part: spacer
+    feature: spacer ID
+    role: clearance
+  nut: axle_nut
+  external: null
+criteria:
+- id: bearing_seat
+  part: wheel
+  feature: bearing bore
+  relation: contains
+  hardware: null
+  clearance_mm: 0.15
+  params:
+  - bearing_od
+  - bore_press
+  check:
+    method: coupon
+    ref: null
+    description: Print a short cylinder with the bearing bore and press a 608 bearing
+      in; it should be snug without cracking. Adjust bore_press.
+manual:
+- n: '1'
+  text: Print the wheel (bore vertical) and the spacer. First print a small coupon
+    with the bearing bore and press one 608 bearing in to confirm the fit; adjust
+    the press amount in the slicer/params if too tight or too loose.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into each face of the wheel until it seats against the
+    shoulder (bearing_inset from each face).
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop the spacer into the bore between the two bearings so it sits against
+    the inner races.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '4'
+  text: Slide the M8x50 bolt through one side of the bracket, then through the wheel
+    (both bearings + spacer), then out the other side of the bracket.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - axle_bolt
+  - washer_a
+  tool: null
+- n: '5'
+  text: 'Fit a washer and the M8 lock nut on the far end and snug to the bracket.
+    Don''t overtighten: the nut clamps the bracket, not the bearings, so the wheel
+    spins freely.'
+  parts: []
+  hardware:
+  - axle_nut
+  - washer_a
+  tool: null

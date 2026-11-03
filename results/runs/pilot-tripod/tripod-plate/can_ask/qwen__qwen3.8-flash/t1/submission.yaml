@@ -1,0 +1,486 @@
+task: tripod-plate
+note: 'Two printed pieces plus the bolt you already own: a flat bar the angled jaws
+  pinch, and a captive 1/4-20 thumb screw that winds into the camera''s socket. The
+  screw head sits in a round chamber open at the plate''s underside and is trapped
+  by its own stem passing through a hole in the chamber roof - captive with no extra
+  hardware, and flush so nothing protrudes into the clamp. Load path deliberately
+  runs through the jaws'' pinch, not through the plastic thread. I never got the clamp''s
+  channel depth or jaw gap, so those two are guessed nominals with a printed gauge
+  (fit_gauge) to measure them before the real parts are printed; steps 2-4 are the
+  ones to take seriously.'
+questions: []
+params:
+  pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 pitch; the camera socket was measured as 1/4-20
+  thread_major:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 major diameter
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged webcam bolt head across flats; corner-to-corner about 17.3
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged webcam bolt head height
+  cam_socket_depth:
+    value: 7
+    unit: mm
+    kind: world
+    source: guessed
+    note: typical 1/4-20 camera socket depth, not measured on this camera
+  jaw_open_gap:
+    value: 41
+    unit: mm
+    kind: world
+    source: guessed
+    note: inside gap of the open jaws; the fit_gauge prongs find the real value
+  channel_depth:
+    value: 14
+    unit: mm
+    kind: world
+    source: guessed
+    note: jaw-lip top down to the clamp floor; the fit_gauge tabs find the real value
+  chamber_d:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: 'captive-screw chamber: clears the bolt''s 17.3 corners and lets the 17
+      mm printed head turn'
+  chamber_h:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: head height plus 0.6; the head ends flush with the plate underside so nothing
+      sticks into the clamp
+  head_long:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: stadium head long axis, gripped by thumb and forefinger
+  head_short:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_h:
+    value: 4.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  stem_root:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: core of the printed thread, just under the 1/4-20 minor diameter
+  bore_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: clears the printed thread root and a 6.35 metal shank
+  recess_d:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: camera-side recess so the plate still seats when the socket sits in a moulded
+      dimple
+  recess_h:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  thread_len:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: thread standing above the plate top, at least cam_socket_depth
+  plate_thk:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: set to the channel_depth the gauge finds; the plate must fill the channel
+      so the jaws carry the camera, not the thread
+  plate_w:
+    value: 38
+    unit: mm
+    kind: design
+    source: design
+    note: set to the widest gauge prong that drops in freely
+  plate_len:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: along the jaws; keeps the screw centre away from the knob mechanism
+  jaw_chamfer:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: 45 degree chamfers where the angled lips land
+parts:
+- id: fit_gauge
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef ridge(p, z0, length, r0, r1, pitch):\n    try:\n     \
+    \   path = cq.Workplane('XY').workplane(offset=z0).helix(pitch, length, r0)\n\
+    \        prof = (cq.Workplane(cq.Plane(cq.Vector(r0, 0, z0), cq.Vector(0, -1,\
+    \ 0), cq.Vector(1, 0, 0)))\n                .moveTo(-0.30, -0.66).lineTo(r1 -\
+    \ r0, -0.20)\n                .lineTo(r1 - r0, 0.20).lineTo(-0.30, 0.66).close())\n\
+    \        s = prof.sweep(path).solids().vals()\n        if len(s) != 1:\n     \
+    \       raise ValueError('sweep')\n        return s[0]\n    except Exception:\n\
+    \        step = pitch / 9.0\n        n = int(math.ceil(length / step))\n     \
+    \   rb = (r1 - r0) * 0.62\n        rm = (r0 + r1) * 0.5\n        out = None\n\
+    \        for i in range(n):\n            a = 2.0 * math.pi * (i * step) / pitch\n\
+    \            wp = cq.Workplane(cq.Plane(cq.Vector(rm * math.cos(a), rm * math.sin(a),\
+    \ z0 + i * step), cq.Vector(0, 0, 1), cq.Vector(1, 0, 0)))\n            b = wp.circle(rb).extrude(step\
+    \ * 1.6)\n            out = b if out is None else out.union(b)\n        return\
+    \ out\n\ndef wedge(w0, l, y0, h, c):\n    x0 = -w0 / 2.0\n    x1 = w0 / 2.0\n\
+    \    prof = (cq.Workplane('XZ').moveTo(x0, 0).lineTo(x1, 0).lineTo(x1, c)\n  \
+    \          .lineTo(x1 - c, h).lineTo(x0 + c, h).lineTo(x0, c).close())\n    return\
+    \ prof.extrude(l, both=True).translate((0, y0, 0))\n\ndef dots(n, y0, h):\n  \
+    \  out = []\n    for j in range(n):\n        dx = (j - (n - 1) / 2.0) * 6.0\n\
+    \        out.append(cq.Workplane(cq.Plane(cq.Vector(dx, y0, h), cq.Vector(0, 0,\
+    \ 1), cq.Vector(1, 0, 0))).circle(1.2).extrude(0.8))\n    return out\n\ndef build(p):\n\
+    \    c = p.jaw_chamfer\n    w = cq.Workplane('XY').box(48.0, 100.0, 2.0, centered=(True,\
+    \ True, False))\n    for i in range(4):\n        h = p.plate_thk - 2.0 + 2.0 *\
+    \ i\n        yc = -42.0 + 10.0 * i\n        w = w.union(wedge(30.0, 8.0, yc, h,\
+    \ c))\n        for d in dots(i + 1, yc, h):\n            w = w.union(d)\n    for\
+    \ j in range(3):\n        ww = p.plate_w - 2.0 + 2.0 * j\n        yc = 4.0 + 10.0\
+    \ * j\n        w = w.union(wedge(ww, 8.0, yc, p.plate_thk, c))\n        for d\
+    \ in dots(j + 1, yc, p.plate_thk):\n            w = w.union(d)\n    r0 = p.stem_root\
+    \ / 2.0\n    r1 = p.thread_major / 2.0\n    w = w.union(cq.Workplane(cq.Plane(cq.Vector(0,\
+    \ 40.0, 0), cq.Vector(0, 0, 1), cq.Vector(1, 0, 0))).circle(r0).extrude(6.0))\n\
+    \    w = w.union(ridge(p, 5.0, 7.0, r0, r1, p.pitch))\n    return w"
+  print_orientation: 'As modelled: the 2 mm spine flat on the bed, tabs, prongs and
+    thread post standing up in +Z.'
+  use_orientation: 'Throwaway. Read in jaw_plate''s frame: tab height in Z = a candidate
+    plate_thk, prong width in X = a candidate plate_w.'
+- id: jaw_plate
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    W = p.plate_w\n    L = p.plate_len\n  \
+    \  T = p.plate_thk\n    c = p.jaw_chamfer\n    x0 = -W / 2.0\n    x1 = W / 2.0\n\
+    \    prof = (cq.Workplane('XZ').moveTo(x0, 0).lineTo(x1, 0).lineTo(x1, c)\n  \
+    \          .lineTo(x1 - c, T).lineTo(x0 + c, T).lineTo(x0, c).close())\n    w\
+    \ = prof.extrude(L, both=True)\n    w = w.faces('<Z').workplane().circle(p.chamber_d\
+    \ / 2.0).cutBlind(p.chamber_h)\n    w = w.faces('>Z').workplane().circle(p.bore_d\
+    \ / 2.0).cutBlind(T - p.chamber_h)\n    w = w.faces('>Z').workplane().circle(p.recess_d\
+    \ / 2.0).cutBlind(p.recess_h)\n    r = p.recess_d / 2.0 + 1.6\n    for i in range(4):\n\
+    \        a = math.pi / 4.0 + i * math.pi / 2.0\n        w = w.union(cq.Workplane(cq.Plane(cq.Vector(r\
+    \ * math.cos(a), r * math.sin(a), T), cq.Vector(0, 0, 1), cq.Vector(1, 0, 0))).circle(0.7).extrude(0.6))\n\
+    \    return w"
+  print_orientation: 'As modelled: the face with the round counterbore (z=0, the underside)
+    on the bed. No supports.'
+  use_orientation: 'Same as printed: +Z up towards the camera, underside on the clamp,
+    the two +/-X faces pinched by the jaws.'
+- id: camera_screw
+  role: final
+  material: PLA
+  code: "import math\n\ndef ridge(p, z0, length, r0, r1, pitch):\n    try:\n     \
+    \   path = cq.Workplane('XY').workplane(offset=z0).helix(pitch, length, r0)\n\
+    \        prof = (cq.Workplane(cq.Plane(cq.Vector(r0, 0, z0), cq.Vector(0, -1,\
+    \ 0), cq.Vector(1, 0, 0)))\n                .moveTo(-0.30, -0.66).lineTo(r1 -\
+    \ r0, -0.20)\n                .lineTo(r1 - r0, 0.20).lineTo(-0.30, 0.66).close())\n\
+    \        s = prof.sweep(path).solids().vals()\n        if len(s) != 1:\n     \
+    \       raise ValueError('sweep')\n        return s[0]\n    except Exception:\n\
+    \        step = pitch / 9.0\n        n = int(math.ceil(length / step))\n     \
+    \   rb = (r1 - r0) * 0.62\n        rm = (r0 + r1) * 0.5\n        out = None\n\
+    \        for i in range(n):\n            a = 2.0 * math.pi * (i * step) / pitch\n\
+    \            wp = cq.Workplane(cq.Plane(cq.Vector(rm * math.cos(a), rm * math.sin(a),\
+    \ z0 + i * step), cq.Vector(0, 0, 1), cq.Vector(1, 0, 0)))\n            b = wp.circle(rb).extrude(step\
+    \ * 1.6)\n            out = b if out is None else out.union(b)\n        return\
+    \ out\n\ndef build(p):\n    hl = p.head_long\n    hs = p.head_short\n    hh =\
+    \ p.head_h\n    T = p.plate_thk\n    r0 = p.stem_root / 2.0\n    r1 = p.thread_major\
+    \ / 2.0\n    half = (hl - hs) / 2.0\n    w = cq.Workplane('XY').box(2.0 * half,\
+    \ hs, hh, centered=(True, True, False))\n    for sx in (-1.0, 1.0):\n        w\
+    \ = w.union(cq.Workplane(cq.Plane(cq.Vector(sx * half, 0, 0), cq.Vector(0, 0,\
+    \ 1), cq.Vector(1, 0, 0))).circle(hs / 2.0).extrude(hh))\n    w = w.union(cq.Workplane('XY').workplane(offset=hh).circle(hs\
+    \ / 2.0 + 1.2).extrude(1.6))\n    zt = T + 0.1\n    w = w.union(cq.Workplane('XY').workplane(offset=hh).circle(r0).extrude(zt\
+    \ - hh))\n    w = w.union(ridge(p, zt, p.thread_len, r0, r1, p.pitch))\n    try:\n\
+    \        cone = (cq.Workplane(cq.Plane(cq.Vector(0, 0, zt + p.thread_len - 1.3),\
+    \ cq.Vector(0, 0, 1), cq.Vector(1, 0, 0)))\n                .circle(r1 + 0.8).workplane(offset=1.4).circle(1.0).loft())\n\
+    \        w = w.cut(cone)\n    except Exception:\n        pass\n    return w"
+  print_orientation: 'As modelled: flat underside of the head on the bed (z=0), stem
+    and thread pointing up. No supports.'
+  use_orientation: 'Same frame as printed, and the same frame as jaw_plate: head down
+    in the plate''s chamber, thread up into the camera.'
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+- id: nut_qq20
+  ref: ASME B18.2.2 1/4-20
+  qty: 1
+joints:
+- id: camera_thread
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: jaw_plate
+    feature: head_chamber
+    role: head_seat
+  - part: jaw_plate
+    feature: screw_bore
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+- id: thread_gauge
+  fastener: nut_qq20
+  axis_origin:
+  - 0.0
+  - 40.0
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: fit_gauge
+    feature: thread_post
+    role: thread
+  nut: null
+  external: null
+criteria:
+- id: gauge_clamp_fit
+  part: fit_gauge
+  feature: tabs_and_prongs
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_thk
+  - plate_w
+  - jaw_open_gap
+  - channel_depth
+  check:
+    method: coupon
+    ref: fit_gauge
+    description: prong widths plate_w-2/0/+2 and tab thicknesses plate_thk-2/-0/+2/+4
+      measure the real clamp before the final parts are printed
+- id: gauge_thread_fit
+  part: fit_gauge
+  feature: thread_post
+  relation: engages
+  hardware: nut_qq20
+  clearance_mm: null
+  params:
+  - pitch
+  - thread_major
+  - stem_root
+  check:
+    method: coupon
+    ref: fit_gauge
+    description: 'the post must wind into the 1/4-20 nut by hand: stiff, self-forming,
+      but not seized'
+- id: plate_pinched_by_jaws
+  part: jaw_plate
+  feature: jaw_faces
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_thk
+  - jaw_chamfer
+  - jaw_open_gap
+  - channel_depth
+  check:
+    method: coupon
+    ref: fit_gauge
+    description: the plate must fill the channel so the knob's pinch, not the plastic
+      thread, carries the camera
+- id: head_seats_in_chamber
+  part: camera_screw
+  feature: head
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: 0.5
+  params:
+  - chamber_d
+  - chamber_h
+  - head_long
+  - head_h
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: measure
+    ref: null
+    description: printed head, or the 15 mm bolt head, fits the 18 x 5.4 chamber and
+      finishes flush with the plate underside
+- id: stem_clears_bore
+  part: jaw_plate
+  feature: screw_bore
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.25
+  params:
+  - bore_d
+  - stem_root
+  - thread_major
+  check:
+    method: none
+    ref: null
+    description: ''
+- id: thread_engages_camera
+  part: camera_screw
+  feature: thread
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - thread_len
+  - pitch
+  - thread_major
+  - cam_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: about 8 mm of thread stands above the plate top face to enter the
+      camera socket
+- id: plate_supports_camera
+  part: jaw_plate
+  feature: top_face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - recess_d
+  - recess_h
+  check:
+    method: none
+    ref: null
+    description: ''
+manual:
+- n: '1'
+  text: 'Print fit_gauge first, lying flat as oriented: PLA, 0.2 mm layers, 3 perimeters.
+    It is a throwaway, so use any leftover filament.'
+  parts:
+  - fit_gauge
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Find your jaw gap. Wind the knob fully open and drop each of the three wide
+    prongs in from above, the way the real plate went in. The smaller ones drop freely,
+    the biggest will not enter. Set plate_w to the widest prong that still drops in
+    with no force: 1 dot = plate_w - 2 mm, 2 dots = plate_w, 3 dots = plate_w + 2
+    mm.'
+  parts:
+  - fit_gauge
+  hardware: []
+  tool: null
+- n: '3'
+  text: 'Find your channel depth. Drop the tallest tab (4 dots) in from above; if
+    it does not go right down, try 3 dots, then 2, then 1. The right tab is the tallest
+    one that seats fully and, with the knob wound snug, is pinched hard with its top
+    face level with or above the jaw lips. Set plate_thk to that tab''s height: 1
+    dot = plate_thk - 2 mm, 2 = plate_thk, 3 = +2 mm, 4 = +4 mm. Do not skip this
+    step - the plate has to fill the channel so the clamp carries the camera rather
+    than the plastic thread.'
+  parts:
+  - fit_gauge
+  hardware: []
+  tool: null
+- n: '4'
+  text: Check the thread before trusting it with your camera. Wind the gauge's little
+    threaded post into the 1/4-20 nut by hand. It should start without forcing and
+    turn stiffly as the plastic forms itself to the nut. If it will not start, re-slice
+    the gauge with stem_root 0.2 mm smaller; if it spins with no feel at all, 0.2
+    mm larger.
+  parts:
+  - fit_gauge
+  hardware:
+  - nut_qq20
+  tool: 1/4-20 hex nut as a thread gauge
+- n: '5'
+  text: 'With plate_thk and plate_w set from steps 2 and 3, print jaw_plate (round
+    counterbore face down on the bed) and camera_screw (head down on the bed). Neither
+    needs supports. Use 4 perimeters and 25-30% infill on jaw_plate: it is the part
+    taking the load.'
+  parts:
+  - jaw_plate
+  - camera_screw
+  hardware: []
+  tool: null
+- n: '6'
+  text: Turn jaw_plate upside down over a table. Push camera_screw's head up into
+    the round chamber and line its stem up with the small hole in the chamber roof,
+    then push the stem through. The head is now captive - it cannot escape upwards
+    because the stem passes through that hole, and the head is flush with the plate's
+    underside.
+  parts:
+  - jaw_plate
+  - camera_screw
+  hardware: []
+  tool: null
+- n: '7'
+  text: Put the plate on the camera's underside with the thread entering the 1/4-20
+    socket and wind it in by the flat-sided head, thumb and forefinger, until the
+    plate is snugged against the camera body. Hand tight only. If it binds, back it
+    out and re-check against step 4 - never force plastic into the camera's metal
+    socket.
+  parts:
+  - jaw_plate
+  - camera_screw
+  hardware: []
+  tool: null
+- n: '8'
+  text: 'Drop the plate into the clamp from above and wind the knob down hard. Push
+    the camera gently: if the assembly rocks or the plate slides, the plate is too
+    thin for the channel, so go back to step 3 and re-print jaw_plate one tab thicker.'
+  parts:
+  - jaw_plate
+  hardware: []
+  tool: null
+- n: '9'
+  text: 'Metal version, and the better one: the salvaged webcam bolt (1/4-20, 15 mm
+    head, 10 mm thread) drops into the same chamber and is wound up into the camera
+    with a driver from below before the plate goes into the clamp. Its head finishes
+    flush with the plate underside, so it does not stop the plate seating. Use it
+    if your camera''s socket is deeper than the printed 8 mm thread, or for anything
+    heavier than a compact camera.'
+  parts:
+  - jaw_plate
+  hardware:
+  - webcam_bolt
+  tool: driver that fits the bolt head
+- n: '10'
+  text: This is a temporary part. Keep looking for the real plate; do not put a long
+    lens or a pan head under load on it, and check the printed thread for stretching
+    before each use since PLA creeps under side load. If you want to keep it, print
+    a second camera_screw as a spare - the plate is the good part, the screw is the
+    wear part.
+  parts:
+  - jaw_plate
+  - camera_screw
+  hardware: []
+  tool: null

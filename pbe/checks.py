@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class Finding:
     check: str
     part: str
-    ok: bool
+    ok: bool | None  # None: not graded, which is never a pass
     detail: str
     failure_class: str
 
@@ -23,12 +23,20 @@ def bed():
 
 
 def connected_bodies(built):
-    """Each printed part must be one connected body (the tripod's floating hex peg)."""
+    """Each printed part must be one connected body (the tripod's floating hex peg). A sealed
+    void in a part is a shell of its own too, but inside out, so its volume is negative. A test
+    coupon may be several pieces on the bed, such as three separate pockets; each must rest on it."""
     out = []
     for b in built.values():
         if not b.ok:
             continue
-        n = len(b.mesh.split(only_watertight=False))
+        pieces = [shell for shell in b.mesh.split(only_watertight=False) if shell.volume > 0]
+        n = len(pieces)
+        if b.role == "coupon":
+            bed = b.mesh.bounds[0][2]
+            ok = all(piece.bounds[0][2] <= bed + 0.01 for piece in pieces)
+            out.append(Finding("connected_bodies", b.part, ok, f"{n} pieces, {'all' if ok else 'not all'} on the bed", "C6-printability"))
+            continue
         out.append(Finding("connected_bodies", b.part, n == 1, f"{n} bodies", "C6-printability"))
     return out
 
@@ -53,21 +61,28 @@ def builds(built):
 
 def bridges(built):
     """Every overhang that needs a bridge can be bridged: in some direction, its
-    strands land on solid at both ends (the Arca plate's tangled roof)."""
+    strands land on solid at both ends (the Arca plate's tangled roof). A narrow ledge
+    that fails this but that no print has measured is not graded."""
     from pbe.bridges import overhangs
 
     out = []
     for b in built.values():
         if not b.ok:
             continue
-        bad = [o for o in overhangs(b.mesh) if not o.ok]
+        found = overhangs(b.mesh)
+        bad = [o for o in found if not o.ok and not o.narrow]
+        unmeasured = [o for o in found if not o.ok and o.narrow]
         if bad:
             o = bad[0]
-            detail = (f"{len(bad)} unbridgeable overhang(s); first at z = {o.z} mm, {o.region.area:.0f} mm²: "
-                      f"best direction {o.best_angle}°, {o.anchored:.0%} of strands land on solid at both ends")
+            ok, detail = False, (f"{len(bad)} unbridgeable overhang(s); first at z = {o.z} mm, {o.region.area:.0f} mm²: "
+                                 f"best direction {o.best_angle}°, {o.anchored:.0%} of strands land on solid at both ends")
+        elif unmeasured:
+            o = unmeasured[0]
+            ok, detail = None, (f"not measured: a {o.region.area:.0f} mm² ledge at z = {o.z} mm, too wide to be an "
+                                "ordinary overhang and narrower than any roof seen to tangle")
         else:
-            detail = "every overhang can be bridged"
-        out.append(Finding("bridges", b.part, not bad, detail, "C6-printability"))
+            ok, detail = True, "every overhang can be bridged"
+        out.append(Finding("bridges", b.part, ok, detail, "C6-printability"))
     return out
 
 

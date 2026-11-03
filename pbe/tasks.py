@@ -2,6 +2,7 @@
 the reference solution."""
 from dataclasses import dataclass
 from pathlib import Path
+from string import Template
 
 import yaml
 
@@ -14,15 +15,25 @@ class Task:
     request: str
     hidden_facts: dict
     requirements: list
-    reference: Path | None
+    reference: str | None  # the reference solution, as YAML text
 
 
 def load(task_id) -> Task:
-    d = ROOT / "tasks" / task_id
-    brief = (d / "brief.md").read_text()
+    """A task folder, or one variant of a task family: "family/variant". A family is a
+    task folder whose files are templates, with variants.yaml giving each variant's $values
+    (the parametric families in PLAN), so one design makes many tasks."""
+    family, _, variant = task_id.partition("/")
+    d = ROOT / "tasks" / family
+    if (d / "variants.yaml").exists() and not variant:
+        raise ValueError(f"{family} is a task family: name a variant, e.g. {family}/{next(iter(yaml.safe_load((d / 'variants.yaml').read_text())))}")
+    values = yaml.safe_load((d / "variants.yaml").read_text())[variant] if variant else None
+
+    def read(name):
+        text = (d / name).read_text()
+        return Template(text).substitute(values) if variant else text
     # the person's words are the brief's first blockquote; the rest of brief.md is notes,
     # and a later quote in the notes must not leak into the prompt
-    lines = brief.splitlines()
+    lines = read("brief.md").splitlines()
     start = next((i for i, line in enumerate(lines) if line.startswith(">")), len(lines))
     quote = []
     for line in lines[start:]:
@@ -32,7 +43,6 @@ def load(task_id) -> Task:
     request = "\n".join(quote).strip()
     if not request:
         raise ValueError(f"{d / 'brief.md'} has no blockquote with the person's request")
-    facts = yaml.safe_load((d / "hidden_facts.yaml").read_text()) or {}
-    reqs = yaml.safe_load((d / "requirements.yaml").read_text()) or []
-    ref = d / "reference.yaml"
-    return Task(task_id, request, facts, reqs, ref if ref.exists() else None)
+    facts = yaml.safe_load(read("hidden_facts.yaml")) or {}
+    reqs = yaml.safe_load(read("requirements.yaml")) or []
+    return Task(task_id, request, facts, reqs, read("reference.yaml") if (d / "reference.yaml").exists() else None)

@@ -1,0 +1,151 @@
+task: bearing-wheel
+note: ''
+questions: []
+params:
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ outer diameter (nominal per hardware list)
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ bore, rides on M8 bolt
+  bearing_w:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ width; two stacked = 14
+  wheel_od:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel approx diameter given by user
+  wheel_w:
+    value: 16.0
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel approx width given by user
+  axle_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M8 bolt major diameter
+  axle_hole_d:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: M8 clearance hole
+  rim_wall:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: plastic rim thickness around bearings
+  press_fit_tol:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: interference to lightly grip bearing OD
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    od = p.wheel_od\n    w = p.wheel_w\n\
+    \    b_od = p.bearing_od\n    b_w = p.bearing_w\n    hole_d = p.axle_hole_d\n\
+    \    wall = p.rim_wall\n    bore_d = b_od - p.press_fit_tol  # cavity ID, slight\
+    \ press onto bearing OD\n\n    # outer tire / rim body\n    body = (cq.Workplane(\"\
+    XY\")\n            .circle(od/2)\n            .extrude(w))\n\n    # axle clearance\
+    \ bore all the way through\n    body = body.cut(cq.Workplane(\"XY\").circle(hole_d/2).extrude(w))\n\
+    \n    # bearing cavity: two pockets, one from each side, meeting in the middle\n\
+    \    # each pocket depth = b_w, so the two meeting faces form the shoulder\n \
+    \   pocket_d = bore_d\n    pocket_depth = b_w\n    body = body.cut(cq.Workplane(\"\
+    XY\", origin=(0,0,0))\n                    .circle(pocket_d/2).extrude(pocket_depth))\n\
+    \    body = body.cut(cq.Workplane(\"XY\", origin=(0,0,w))\n                  \
+    \  .circle(pocket_d/2).extrude(-pocket_depth))\n\n    # rounded tire edge for\
+    \ smooth rolling\n    body = body.edges(\"|Z\").fillet(1.5)\n    return body\n"
+  print_orientation: flat side down, axle axis vertical (z = 0 on one face)
+  use_orientation: axle axis horizontal; wheel rolls on its rim
+hardware:
+- id: axle_bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: axle_nut
+  ref: ISO 4032 M8
+  qty: 1
+- id: washer_in
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle_joint
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -16.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: roller_wheel
+    feature: axle bore
+    role: clearance
+  - part: roller_wheel
+    feature: face 1
+    role: washer
+  - part: roller_wheel
+    feature: face 2
+    role: washer
+  nut: axle_nut
+  external: null
+criteria: []
+manual:
+- n: '1'
+  text: Print the roller_wheel flat (axle hole pointing up). Remove supports from
+    any cavities if present.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608ZZ bearing into each side pocket. Bearings should be a light
+    press fit; if loose, add a wrap of tape on the bearing OD before pressing in.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Slide the M8x50 bolt through the wheel's axle bore (through both bearing bores).
+  parts:
+  - roller_wheel
+  hardware:
+  - axle_bolt
+  tool: null
+- n: '4'
+  text: Fit a washer on each side of the wheel against the bearing inner race, then
+    thread on the M8 nut. Tighten just until the nut touches the inner race - do not
+    overtighten, the wheel must spin freely on the bearings.
+  parts:
+  - roller_wheel
+  hardware:
+  - washer_in
+  - axle_nut
+  tool: wrench
+- n: '5'
+  text: Mount the bolt ends into your door's roller bracket (reuse the old bracket
+    or a new one per your door) and test that the wheel rolls smoothly in the track.
+  parts:
+  - roller_wheel
+  hardware:
+  - axle_bolt
+  tool: null

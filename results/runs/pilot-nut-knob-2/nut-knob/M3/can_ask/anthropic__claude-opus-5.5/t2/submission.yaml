@@ -1,0 +1,227 @@
+task: nut-knob/M3
+note: Knob is 20 mm across and 7 mm tall, with 8 finger scallops. There's a 4 mm solid
+  floor with a 3.4 mm hole, so the nut can't be pushed out through the far side. The
+  nut is held by three crush ribs on alternate flats, so no glue is needed. Ribs stop
+  0.6 mm below the pocket mouth so the nut lines up before it presses in.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 height
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 nominal diameter
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: bolt hole = 3.4 mm, well under the 5.5 mm nut so the nut can't pass through
+  pocket_clear:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: per-side clearance on the hex flats; the crush ribs provide the grip
+  rib_h:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: how far each crush rib sticks into the pocket. Set this from the coupon
+      result
+  rib_w:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_lead:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ribs stop this far below the pocket mouth so the nut lines up before it
+      presses in
+  recess:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: top of nut sits this far below the knob face (fully inside)
+  floor_t:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: solid floor under the nut, stops push-through
+  knob_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_r:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_rib_a:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_rib_b:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_rib_c:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    r = p.knob_d/2\n    h = p.floor_t + p.nut_h\
+    \ + p.recess\n    body = cq.Workplane('XY').circle(r).extrude(h)\n    n = int(p.grip_count)\n\
+    \    for i in range(n):\n        a = 2*math.pi*i/n\n        body = body.cut(cq.Workplane('XY').center((r+0.6)*math.cos(a),(r+0.6)*math.sin(a)).circle(p.grip_r).extrude(h))\n\
+    \    body = body.edges('>Z').chamfer(0.6)\n    af = p.nut_af + 2*p.pocket_clear\n\
+    \    depth = p.nut_h + p.recess\n    pocket = cq.Workplane('XY').workplane(offset=p.floor_t).polygon(6,\
+    \ af/math.cos(math.radians(30))).extrude(depth)\n    rr = p.rib_w/2\n    rib_len\
+    \ = depth - p.rib_lead\n    for ang in (90, 210, 330):\n        d = af/2 + rr\
+    \ - p.rib_h\n        a = math.radians(ang)\n        rib = cq.Workplane('XY').workplane(offset=p.floor_t).center(d*math.cos(a),\
+    \ d*math.sin(a)).circle(rr).extrude(rib_len)\n        pocket = pocket.cut(rib)\n\
+    \    body = body.cut(pocket)\n    hole = cq.Workplane('XY').circle((p.bolt_d+p.bolt_clear)/2).extrude(h)\n\
+    \    return body.cut(hole)\n"
+  print_orientation: Knob's flat underside (bolt-entry face) on the bed; hex pocket
+    opening faces up, so no bridges or supports
+  use_orientation: Bolt comes in through the underside, goes through the nut and out
+    of the pocket face
+- id: rib_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    af = p.nut_af + 2*p.pocket_clear\n    depth\
+    \ = p.nut_h + p.recess\n    fl = 1.5\n    out = None\n    for k, rh in enumerate((p.coupon_rib_a,\
+    \ p.coupon_rib_b, p.coupon_rib_c)):\n        x = k*13.0\n        c = cq.Workplane('XY').center(x,0).circle(6).extrude(fl+depth)\n\
+    \        pocket = cq.Workplane('XY').workplane(offset=fl).center(x,0).polygon(6,\
+    \ af/math.cos(math.radians(30))).extrude(depth)\n        rr = p.rib_w/2\n    \
+    \    for ang in (90,210,330):\n            d = af/2 + rr - rh\n            a =\
+    \ math.radians(ang)\n            pocket = pocket.cut(cq.Workplane('XY').workplane(offset=fl).center(x+d*math.cos(a),\
+    \ d*math.sin(a)).circle(rr).extrude(depth-p.rib_lead))\n        c = c.cut(pocket).cut(cq.Workplane('XY').center(x,0).circle((p.bolt_d+p.bolt_clear)/2).extrude(fl+depth))\n\
+    \        for j in range(k+1):\n            c = c.cut(cq.Workplane('XY').center(x-1.5+1.5*j,\
+    \ -6).rect(0.8,1.6).extrude(fl+depth))\n        out = c if out is None else out.union(c)\n\
+    \    return out\n"
+  print_orientation: Flat side on the bed, pockets open upward, same as the knob
+  use_orientation: 'Test piece: press a nut into each pocket and check which one grips'
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex pocket with crush ribs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_clear
+  - rib_h
+  - rib_w
+  check:
+    method: coupon
+    ref: rib_coupon
+    description: Nut goes in with thumb pressure (or a light push with a bolt head)
+      and stays put when you hold it upside down and shake it
+- id: c2
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - recess
+  check:
+    method: measure
+    ref: null
+    description: Once seated, the nut's top is below the knob face (about 0.6 mm)
+- id: c3
+  part: knob
+  feature: floor and bolt hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - bolt_d
+  - bolt_clear
+  check:
+    method: measure
+    ref: null
+    description: An M3 bolt slides freely through the 3.4 mm hole. The nut can't go
+      through it.
+manual:
+- n: '1'
+  text: Print rib_coupon first (PLA, 0.2 mm layers, no supports). The notches next
+    to each pocket mark it 1, 2 or 3, and the ribs get tighter from 1 to 3. Press
+    an M3 nut into each pocket. Pick the loosest pocket where the nut still stays
+    in when you hold it upside down and shake. If that's pocket 1, set rib_h to 0.15.
+    Pocket 2 is 0.25 (the default) and pocket 3 is 0.35.
+  parts:
+  - rib_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the knob with the flat underside on the bed and the hex pocket facing
+    up. No supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Line the nut's flats up with the pocket and push it straight down until it
+    bottoms on the floor. Use your thumb or press with a flat bolt head. The nut ends
+    up just below the knob face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Put your M3 bolt in from the underside of the knob, through the floor hole,
+    and thread it through the nut so it comes out the pocket side. The bolt must be
+    longer than about 7 mm plus whatever it's clamping.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

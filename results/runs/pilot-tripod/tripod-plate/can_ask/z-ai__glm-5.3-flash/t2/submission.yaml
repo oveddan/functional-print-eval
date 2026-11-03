@@ -1,0 +1,376 @@
+task: tripod-plate
+note: Temporary quick-release plate for a knob-jaw tripod clamp, using the salvaged
+  1/4"-20 webcam bolt as the metal camera screw, captured by the 1/4"-20 nut in a
+  snap-in pocket so nothing can fall off. The tripod channel and camera socket depth
+  could not be measured (three rounds, no numbers), so the plate is sized for the
+  most common knob-jaw clamp (34 mm top width, 7 mm thick, 45° flanks) and the fit_wedge
+  coupon verifies/sands-in the profile before the plate is printed; M6 washer shims
+  cover a shallow camera socket. PLA is fine as a temporary stand-in for a light camera
+  - do not hang a heavy telephoto rig on it.
+questions:
+- text: What brand/model is the tripod head? (for the record - the design already
+    accounts for the unknown)
+  answer: null
+- text: Did the fit_wedge drop into the clamp without sanding?
+  answer: null
+params:
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: person measured 'about 15 mm across the head'
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: person measured about 5 mm
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 20 TPI
+  bolt_shank_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4 inch nominal shank diameter
+  bolt_shank_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: person measured about 10 mm under the head
+  cam_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: asked twice (toothpick and turn-count), never got a number; handled by washer
+      shims under the plate
+  cb_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'head counterbore depth: head sits 1.8 mm proud for grip, and it shortens
+      the exposed bolt to 6.2 mm below the plate'
+  clamp_opening_w:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: asked three times; only style description came back, no number
+  clamp_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: asked three times; never got a number
+  flank_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: height of the 45 deg side flanks, matched to the clamp's angled jaw lips
+  nut_af:
+    value: 10.92
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ASME B18.2.2 1/4-20, measured across flats 10.92
+  nut_h:
+    value: 5.56
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ASME B18.2.2 1/4-20 height
+  plate_bot_w:
+    value: 26
+    unit: mm
+    kind: design
+    source: design
+    note: 26 at the bottom, 45 deg flanks up to 34 at the top over 4 mm
+  plate_len:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: fits typical channel lengths; ends can be sanded if the channel is shorter
+  plate_th:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: minimum for the 5.56 nut pocket plus a strong ceiling; fits typical channel
+      depths >= 7.5
+  plate_top_w:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: clamp could not be measured; sized for common knob-jaw QR clamps, fit_wedge
+      coupon verifies before committing
+  washer6_id:
+    value: 6.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M6
+  washer6_od:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M6
+  washer6_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M6, used as shims if the bolt bottoms out in the camera
+parts:
+- id: qr_plate
+  role: final
+  material: PLA (black)
+  code: "import math\n\ndef build(p):\n    L = p.plate_len            # 34: length\n\
+    \    TW = p.plate_top_w         # 34: width at the top (camera face)\n    BW =\
+    \ p.plate_bot_w         # 26: width at the underside\n    FH = p.flank_h     \
+    \        # 4: height of the 45 deg flanks\n    T = p.plate_th             # 7:\
+    \ total thickness\n    cb_d = p.bolt_head_d + 1.4 # 16.4: head counterbore (head\
+    \ 15 + spin clearance)\n    cb_dep = p.cb_depth        # 3.2: head sits 1.8 proud\
+    \ for fingers/plier grip\n    hole_d = p.bolt_shank_d + 0.35  # 6.7: 1/4\" shank\
+    \ + free-spin clearance\n    pk_af = p.nut_af + 0.33    # 11.25: nut pocket across\
+    \ flats (nut 10.92)\n    pk_dep = p.nut_h + 0.19    # 5.75: pocket depth (nut\
+    \ 5.56), nut ends flush\n\n    # Print frame: z=0 is the TOP face (camera side)\
+    \ on the bed; plate spans z 0..T.\n    # Cross-section: 34 wide at z=0, 45 deg\
+    \ flanks narrowing to 26 at z=FH, vertical after.\n    body = (\n        cq.Workplane(\"\
+    XY\")\n        .rect(TW, L)\n        .workplane(offset=FH)\n        .rect(BW,\
+    \ L)\n        .workplane(offset=T - FH)\n        .rect(BW, L)\n        .loft(ruled=True)\n\
+    \    )\n    # head counterbore, opens at the bed face (the top face)\n    body\
+    \ = body.cut(cq.Workplane(\"XY\").circle(cb_d / 2.0).extrude(cb_dep))\n    # bolt\
+    \ shank hole, straight through\n    body = body.cut(cq.Workplane(\"XY\").circle(hole_d\
+    \ / 2.0).extrude(T))\n    # nut pocket: hex across flats pk_af, opens at the underside\
+    \ (print top)\n    r = pk_af / math.sqrt(3.0)\n    pts = [(r * math.cos(math.radians(a)),\
+    \ r * math.sin(math.radians(a)))\n           for a in range(30, 390, 60)]\n  \
+    \  body = body.cut(\n        cq.Workplane(\"XY\", origin=(0, 0, T - pk_dep))\n\
+    \        .polyline(pts).close().extrude(pk_dep)\n    )\n    # two snap nubs at\
+    \ the pocket mouth: bite the nut's flats so it cannot fall out\n    cx = pk_af\
+    \ / 2.0 - 0.28 + 0.3025   # nub centre: 0.28 proud of the pocket flat\n    for\
+    \ s in (1.0, -1.0):\n        body = body.union(\n            cq.Workplane(\"XY\"\
+    , origin=(s * cx, 0, T - 0.4))\n            .box(0.605, 4.0, 0.8)\n        )\n\
+    \    return body\n"
+  print_orientation: top face (camera side) down on the bed
+  use_orientation: top face up, bolt head up, underside flat on the camera
+- id: fit_wedge
+  role: coupon
+  material: PLA (black)
+  code: "def build(p):\n    L = 14.0                   # short section, just for the\
+    \ drop-in test\n    TW = p.plate_top_w         # same cross-section as qr_plate\n\
+    \    BW = p.plate_bot_w\n    FH = p.flank_h\n    T = p.plate_th\n    # bottom\
+    \ face (26 wide) on the bed, 45 deg flanks widening to 34, then vertical\n   \
+    \ w = (\n        cq.Workplane(\"XY\")\n        .rect(BW, L)\n        .workplane(offset=FH)\n\
+    \        .rect(TW, L)\n        .workplane(offset=T - FH)\n        .rect(TW, L)\n\
+    \        .loft(ruled=True)\n    )\n    # thumb scoop so it can be fished out of\
+    \ the clamp\n    w = w.cut(cq.Workplane(\"XY\", origin=(0, 0, T)).rect(18.0, 8.0).extrude(-1.5))\n\
+    \    return w\n"
+  print_orientation: narrow bottom face (26 mm) down on the bed
+  use_orientation: 'same as printed: bottom face down, like the plate sits in the
+    clamp'
+- id: nut_test_block
+  role: coupon
+  material: PLA (black)
+  code: "import math\n\ndef build(p):\n    T = p.plate_th\n    hole_d = p.bolt_shank_d\
+    \ + 0.35\n    pk_af = p.nut_af + 0.33\n    pk_dep = p.nut_h + 0.19\n    b = cq.Workplane(\"\
+    XY\").box(16.0, 16.0, T, centered=(True, True, False))\n    b = b.cut(cq.Workplane(\"\
+    XY\").circle(hole_d / 2.0).extrude(T))\n    r = pk_af / math.sqrt(3.0)\n    pts\
+    \ = [(r * math.cos(math.radians(a)), r * math.sin(math.radians(a)))\n        \
+    \   for a in range(30, 390, 60)]\n    b = b.cut(\n        cq.Workplane(\"XY\"\
+    , origin=(0, 0, T - pk_dep))\n        .polyline(pts).close().extrude(pk_dep)\n\
+    \    )\n    cx = pk_af / 2.0 - 0.28 + 0.3025\n    for s in (1.0, -1.0):\n    \
+    \    b = b.union(\n            cq.Workplane(\"XY\", origin=(s * cx, 0, T - 0.4))\n\
+    \            .box(0.605, 4.0, 0.8)\n        )\n    return b\n"
+  print_orientation: plain face down on the bed, pocket side up
+  use_orientation: pocket side up for the nut and bolt test
+hardware:
+- id: bolt_1
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+- id: nut_1
+  ref: ASME B18.2.2 1/4-20
+  qty: 1
+- id: washer_m6
+  ref: ISO 7089 M6
+  qty: 2
+joints:
+- id: camera_screw
+  fastener: bolt_1
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 3.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: head_cb
+    role: head_seat
+  - part: qr_plate
+    feature: shank_hole
+    role: clearance
+  - part: qr_plate
+    feature: nut_pocket
+    role: nut_pocket
+  nut: nut_1
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c1_nut_retained
+  part: qr_plate
+  feature: nut_pocket
+  relation: contains
+  hardware: nut_1
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  check:
+    method: coupon
+    ref: nut_test_block
+    description: Press the 1/4-20 nut into the coupon's pocket until it clicks past
+      the two nubs; shake the block upside down - the nut must stay in.
+- id: c2_bolt_clears
+  part: qr_plate
+  feature: shank_hole
+  relation: clears
+  hardware: bolt_1
+  clearance_mm: 0.35
+  params:
+  - bolt_shank_d
+  check:
+    method: coupon
+    ref: nut_test_block
+    description: 'Thread the bolt through the coupon: it must turn freely and must
+      not pull out once threaded into the nut.'
+- id: c3_head_seats
+  part: qr_plate
+  feature: head_cb
+  relation: seats
+  hardware: bolt_1
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: none
+    ref: null
+    description: 'At assembly: head drops into the counterbore, sits about 1.8 mm
+      proud of the plate top, and spins freely.'
+- id: c4_profile_fits_clamp
+  part: qr_plate
+  feature: trapezoid_side_flanks
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_top_w
+  - plate_bot_w
+  - flank_h
+  - plate_th
+  check:
+    method: coupon
+    ref: fit_wedge
+    description: 'Drop the wedge into the clamp before printing the plate: it must
+      pass the lips and grip/wedge. If it does not fit, sand both angled flanks evenly
+      and repeat the same sanding on the plate.'
+- id: c5_bolt_reaches_camera
+  part: qr_plate
+  feature: underside_on_camera
+  relation: seats
+  hardware: washer_m6
+  clearance_mm: null
+  params:
+  - bolt_shank_len
+  - cb_depth
+  - washer6_t
+  check:
+    method: none
+    ref: null
+    description: Screw the plate onto the camera; if the bolt spins free before the
+      plate sits flush, the 10 mm shank bottoms out - add M6 washers under the plate
+      and retighten.
+manual:
+- n: '1'
+  text: Print the two small test pieces (fit_wedge and nut_test_block) first - about
+    15 minutes total.
+  parts:
+  - fit_wedge
+  - nut_test_block
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop fit_wedge into the tripod's clamp. It should pass the angled lips and
+    either rest on the channel floor or wedge between the jaws - both are fine. If
+    it will not drop in, sand or file BOTH angled flanks evenly until it does, and
+    note roughly how much you removed.
+  parts:
+  - fit_wedge
+  hardware: []
+  tool: sandpaper or a fine file
+- n: '3'
+  text: 'Press the 1/4"-20 nut into nut_test_block''s pocket until it clicks past
+    the two nubs; turn the block upside down and shake - the nut must stay in. Then
+    thread the bolt through the hole: it must turn freely and must not pull out.'
+  parts:
+  - nut_test_block
+  hardware:
+  - nut_1
+  - bolt_1
+  tool: null
+- n: '4'
+  text: Print qr_plate.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: 'Press the nut into the plate''s pocket (in the underside) until it clicks.
+    Drop the bolt head into the top counterbore - it should sit about 1.8 mm proud.
+    From below, start the bolt into the nut and turn a few turns until snug. Check:
+    the bolt spins freely but cannot be pulled out. Do not unscrew it past the nut.'
+  parts:
+  - qr_plate
+  hardware:
+  - nut_1
+  - bolt_1
+  tool: null
+- n: '6'
+  text: 'Mount on the camera: hold the plate flat on the camera''s base and turn the
+    bolt until the plate is snug. If the bolt spins free before the plate sits flush,
+    the bolt is bottoming out: put one M6 washer on the bolt between the plate and
+    the camera and retighten; add the second washer if still not snug.'
+  parts:
+  - qr_plate
+  hardware:
+  - bolt_1
+  - washer_m6
+  tool: null
+- n: '7'
+  text: Drop the plate into the tripod's clamp (sand its flanks by the same amount
+    you removed from the wedge, if that was needed), then tighten the knob. Tug-test
+    the camera before letting go, and re-tighten the knob after a few shots.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '8'
+  text: 'Care: this is a PLA stand-in - fine for a light mirrorless or compact camera,
+    not for a heavy body with a long lens. Keep the bolt snug in the camera and check
+    the knob occasionally.'
+  parts: []
+  hardware: []
+  tool: null

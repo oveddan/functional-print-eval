@@ -1,0 +1,214 @@
+task: bearing-wheel
+note: Generic flat-tread roller; the closet track profile could not be measured, so
+  track compatibility is unverified. The 50 mm diameter and 16 mm width follow the
+  reported old-wheel size. Print the fit coupon first and use a snug, non-damaging
+  bearing-seat fit. Before installation, verify that the actual M8 bolt passes freely
+  through both bearing inner races; a smooth shank is preferable to threads running
+  in the bearings. Test alignment and free rotation with the door safely supported
+  before loading it.
+questions: []
+params:
+  wheel_od_mm:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel diameter, reported by user
+  wheel_width_mm:
+    value: 16.0
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel width, reported by user
+  bearing_od_mm:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal outside diameter
+  bearing_width_mm:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal width
+  bearing_seat_d_mm:
+    value: 21.9
+    unit: mm
+    kind: design
+    source: guessed
+    note: Initial PLA press-fit trial; verify with coupon and adjust for printer/material
+  bearing_seat_depth_mm:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: Bearing recess from each face, leaving a 1.6 mm center web
+  hub_clear_d_mm:
+    value: 10.2
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance through central web for spacer
+  bolt_clear_d_mm:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Spacer bore clearance for M8 bolt; bearing bore itself is nominally 8 mm
+  spacer_od_mm:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: Fits through wheel's 10.2 mm hub clearance
+  spacer_length_mm:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: Wheel width less two 7.2 mm seat depths and two 7 mm bearing widths
+  coupon_d1_mm:
+    value: 21.7
+    unit: mm
+    kind: design
+    source: design
+    note: Fit coupon hole, left
+  coupon_d2_mm:
+    value: 21.9
+    unit: mm
+    kind: design
+    source: design
+    note: Fit coupon hole, middle
+  coupon_d3_mm:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: Fit coupon hole, right
+  coupon_thickness_mm:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: Test coupon thickness
+parts:
+- id: roller
+  role: final
+  material: PLA high-speed black
+  code: "def build(p):\n    w = p.wheel_width_mm\n    d = p.bearing_seat_depth_mm\n\
+    \    body = cq.Workplane('XY').circle(p.wheel_od_mm / 2).extrude(w)\n    lower\
+    \ = cq.Workplane('XY').circle(p.bearing_seat_d_mm / 2).extrude(d)\n    upper =\
+    \ cq.Workplane('XY').workplane(offset=w-d).circle(p.bearing_seat_d_mm / 2).extrude(d)\n\
+    \    hub = cq.Workplane('XY').circle(p.hub_clear_d_mm / 2).extrude(w)\n    return\
+    \ body.cut(lower).cut(upper).cut(hub)"
+  print_orientation: Lay one flat circular side on the bed (bearing bores vertical,
+    z=0 on the bed). No supports.
+  use_orientation: Install with the wheel axis horizontal on the door bolt; the flat
+    cylindrical tread runs on the track.
+- id: inner_spacer
+  role: final
+  material: PLA high-speed black
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od_mm/2).circle(p.bolt_clear_d_mm/2).extrude(p.spacer_length_mm)"
+  print_orientation: Lay annular end on the bed, z=0. No supports.
+  use_orientation: Place between the two bearing inner races on the M8 axle; it should
+    not bind against the wheel hub.
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA high-speed black
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(70, 26, p.coupon_thickness_mm,\
+    \ centered=(True, True, False))\n    xs = [-23, 0, 23]\n    ds = [p.coupon_d1_mm,\
+    \ p.coupon_d2_mm, p.coupon_d3_mm]\n    for x, dia in zip(xs, ds):\n        hole\
+    \ = cq.Workplane('XY').center(x, 0).circle(dia/2).extrude(p.coupon_thickness_mm)\n\
+    \        plate = plate.cut(hole)\n    return plate"
+  print_orientation: Flat on the bed, z=0. No supports.
+  use_orientation: Test one 608 bearing in each coupon hole; left-to-right diameters
+    are 21.7, 21.9, and 22.1 mm.
+hardware: []
+joints: []
+criteria:
+- id: bearing_seat_fit
+  part: roller
+  feature: two opposed 608 bearing seats
+  relation: seats
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - bearing_od_mm
+  - bearing_seat_d_mm
+  - bearing_seat_depth_mm
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: Test the bearing left-to-right in the coupon's 21.7, 21.9, and 22.1
+      mm holes. Choose a snug fit that installs without damaging the bearing; adjust
+      bearing_seat_d_mm to the chosen diameter before printing the roller.
+- id: axle_passage
+  part: inner_spacer
+  feature: M8 bolt bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_clear_d_mm
+  check:
+    method: measure
+    ref: null
+    description: Check that the actual M8 bolt passes freely through the spacer and
+      both bearing inner races; do not force it.
+- id: track_contact
+  part: roller
+  feature: flat outer tread
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od_mm
+  - wheel_width_mm
+  check:
+    method: measure
+    ref: null
+    description: With the door safely supported, verify the tread contacts the track
+      across its width and does not ride on an edge or interfere with the track.
+manual:
+- n: '1'
+  text: Print the fit coupon first. Test a 608 bearing in each hole and select a snug
+    fit that installs without damaging the bearing. If needed, change bearing_seat_d_mm
+    to the tested diameter before printing the roller.
+  parts:
+  - bearing_fit_coupon
+  hardware: []
+  tool: Calipers
+- n: '2'
+  text: Print the roller and inner_spacer in PLA. Inspect the bearing seats and remove
+    only small burrs.
+  parts:
+  - roller
+  - inner_spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608 bearing into each side until it bottoms in its seat. Do not
+    hammer on the inner race. Confirm the inner races are exposed and the spacer fits
+    between them.
+  parts:
+  - roller
+  hardware: []
+  tool: Hand press or vise with flat protective faces
+- n: '4'
+  text: Pass the M8 bolt through the bearing inner races and spacer, then mount it
+    in the existing door hardware. The spacer belongs between the inner races, not
+    against the wheel. Tighten the axle hardware without pinching the roller or bearing
+    outer races.
+  parts:
+  - roller
+  - inner_spacer
+  hardware: []
+  tool: Existing door hardware
+- n: '5'
+  text: Spin the wheel by hand and check track alignment and free rotation before
+    lowering the door's weight onto it. Do not use this flat-tread version if the
+    track has a groove, rail, or curved running surface that it does not fit.
+  parts: []
+  hardware: []
+  tool: null

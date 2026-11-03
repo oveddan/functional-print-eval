@@ -1,0 +1,146 @@
+task: bearing-wheel
+note: ''
+questions:
+- text: How far apart are the inside faces of the bracket arms where the wheel sits?
+    The wheel is 16 mm wide and must fit with a little play.
+  answer: null
+- text: 'What is the track: a flat top or a groove? If it''s a groove, what is its
+    width and depth? The tread is a plain cylinder and may need a crown or a flange
+    to match.'
+  answer: null
+- text: How long is your M8 bolt? The hardware list only offers M8x30 as a placeholder;
+    use your actual bolt, making sure it clears the bracket and wheel and is secured
+    at the end.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel diameter, from your description
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel width, from your description. Must fit between the bracket arms,
+      which I could not measure
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 OD, measured about 22 mm
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal width
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: M8 bolt shank, the axle
+  press_under:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket is this much under bearing OD so the bearing press-fits in PLA
+  bore_clear:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole through the centre web for the M8 bolt
+parts:
+- id: wheel
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    R = p.wheel_od / 2.0\n    body = cq.Workplane('XY').circle(R).extrude(p.wheel_w)\n\
+    \    pk = p.bearing_od - p.press_under\n    top = cq.Workplane('XY').workplane(offset=p.wheel_w\
+    \ - p.bearing_w).circle(pk / 2.0).extrude(p.bearing_w)\n    bot = cq.Workplane('XY').circle(pk\
+    \ / 2.0).extrude(p.bearing_w)\n    body = body.cut(top).cut(bot)\n    bore = cq.Workplane('XY').circle(p.bore_clear\
+    \ / 2.0).extrude(p.wheel_w)\n    return body.cut(bore)\n"
+  print_orientation: Flat, axle vertical (wheel lying on its face, bearing pockets
+    at top and bottom)
+  use_orientation: Rolling on its tread, axle horizontal
+hardware:
+- id: axle
+  ref: ISO 4762 M8x30
+  qty: 1
+joints: []
+criteria:
+- id: bearing-seat-top
+  part: wheel
+  feature: top bearing pocket
+  relation: seats
+  hardware: null
+  clearance_mm: -0.1
+  params:
+  - bearing_od
+  - press_under
+  check:
+    method: measure
+    ref: null
+    description: Measure the printed pocket diameter; a bearing should press in with
+      light resistance
+- id: bearing-seat-bottom
+  part: wheel
+  feature: bottom bearing pocket
+  relation: seats
+  hardware: null
+  clearance_mm: -0.1
+  params:
+  - bearing_od
+  - press_under
+  check:
+    method: measure
+    ref: null
+    description: Same as top pocket
+- id: axle-clearance
+  part: wheel
+  feature: centre bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - bore_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt slides through the centre bore with clearance
+manual:
+- n: '1'
+  text: Print the wheel with its axle vertical (flat face on the bed). Check the printed
+    pockets take your 608 bearings with a light press fit before continuing.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing (your own, not in the hardware list) into the top pocket
+    and one into the bottom pocket, seated flush with the wheel faces. Press on the
+    outer race only, using a vise with a flat plate.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Slide the M8 bolt through the bearing bores and the centre hole, so the bearings
+    ride on the bolt and the wheel turns freely on it.
+  parts:
+  - wheel
+  hardware:
+  - axle
+  tool: null
+- n: '4'
+  text: Mount the wheel on the door bracket in place of the broken one. Spin it by
+    hand to check it runs freely and clears the track.
+  parts: []
+  hardware: []
+  tool: null

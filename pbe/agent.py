@@ -13,7 +13,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from pbe import checks, llm, requirements
+from pbe import checks, llm, nuts, requirements
 from pbe.build import build_parts
 from pbe.measure import Person
 from pbe.submission import Submission
@@ -128,10 +128,11 @@ KNOW_HOW = {
 }
 
 
-def observe(sub, built):
+def observe(task, sub, built):
     """Behaviour worth seeing across models, not graded: per final part with a through hole,
     the hole's tightest clear width and how much its two ends flare (a lead-in chamfer
-    or counterbore); and which printing know-how the submission's text mentions."""
+    or counterbore); every nut pocket, and whether the task's coupon says it holds; and
+    which printing know-how the submission's text mentions."""
     import re
     out = {"holes": {}, "mentions": []}
     for p in sub.parts:
@@ -144,14 +145,27 @@ def observe(sub, built):
     text = " ".join([sub.note] + [v.note for v in sub.params.values()] + [s.text for s in sub.manual]
                     + [p.print_orientation for p in sub.parts] + [c.check.description for c in sub.criteria]).lower()
     out["mentions"] = [name for name, pat in KNOW_HOW.items() if re.search(pat, text)]
+    for r in task.requirements:
+        if r["grader"] == "nut.fit":
+            out["nut_pockets"] = nuts.summarize(sub, built, **r["args"])
     return out
 
 
 def evaluate(task, sub, out_dir):
     """Build the parts, run every check, and record observations: (findings, observations)."""
     built = build_parts(sub, Path(out_dir) / "parts")
-    findings = [f for check in checks.ALL for f in check(built)] + requirements.grade(task, sub, built)
-    return findings, observe(sub, built)
+    findings = []
+    for check in checks.ALL:
+        try:
+            findings += check(built)
+        except Exception as e:  # as in requirements.grade: model geometry can break a check
+            findings.append(checks.Finding(check.__name__, "-", False, f"check error: {type(e).__name__}: {e}", "C6-printability"))
+    findings += requirements.grade(task, sub, built)
+    try:
+        observations = observe(task, sub, built)
+    except Exception as e:  # observations aren't scored, so one that breaks mustn't cost the trial
+        observations = {"error": f"{type(e).__name__}: {e}"}
+    return findings, observations
 
 
 def grade(task, sub, out_dir):
@@ -192,7 +206,10 @@ def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, c
                 repairs += name == "submit_design"
                 result = f"Couldn't read your arguments as JSON ({e}). Call {name} again."
             else:
-                if name == "measure":
+                if not isinstance(args, dict):
+                    repairs += name == "submit_design"
+                    result = f"Your arguments have to be a JSON object. Call {name} again."
+                elif name == "measure":
                     result = person.measure(str(args.get("item", "")), str(args.get("what", "")))
                 elif name == "report_limitation":
                     limitations.append(args)

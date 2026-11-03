@@ -2,11 +2,10 @@
 wrong designs fail the check aimed at them."""
 import pytest
 
-from pbe import checks, requirements, submission, tasks
-from pbe.build import build_parts
+from pbe import agent, requirements, submission, tasks
 
 TASK = tasks.load("m5-spacer")
-REF = submission.load(TASK.reference)
+REF = submission.parse(TASK.reference)
 
 BLIND_HOLE = '''
 def build(p):
@@ -42,15 +41,24 @@ def build(p):
     body = cq.Workplane("XY").circle(p.od / 2).extrude(p.length)
     return body.cut(cq.Workplane("XY").slot2D(8, p.hole_d).extrude(p.length))
 '''
-
-
+NECKED = '''
+def build(p):
+    body = cq.Workplane("XY").circle(p.od / 2).circle(4).extrude(p.length)
+    neck = cq.Workplane("XY").workplane(offset=p.length / 2).circle(4.1).circle(p.hole_d / 2).extrude(0.4)
+    return body.union(neck)
+'''
+LONG_COUNTERBORE = '''
+def build(p):
+    # 5.5 mm for 40% of the length, then a 8.6 mm head counterbore
+    body = cq.Workplane("XY").circle(p.od / 2).circle(p.hole_d / 2).extrude(p.length)
+    return body.cut(cq.Workplane("XY").workplane(offset=0.4 * p.length).circle(4.3).extrude(0.6 * p.length))
+'''
 def grade(sub, tmp_path):
-    built = build_parts(sub, tmp_path)
-    return [f for check in checks.ALL for f in check(built)] + requirements.grade(TASK, sub, built)
+    return agent.grade(TASK, sub, tmp_path)
 
 
 def failed(findings):
-    return {f.check for f in findings if not f.ok}
+    return {f.check for f in findings if f.ok is False}
 
 
 def variant(hole_d=None, length=None, code=None, extra_part=False):
@@ -95,14 +103,19 @@ def test_reference_and_range_edges_pass(tmp_path, hole_d):
     (variant(code=SLOT), {"R3"}),         # 5.5 clear but 8 long: the bolt isn't located
     (variant(code=BLIND_HOLE), {"R3"}),   # stops halfway
     (variant(code=PLUGGED), {"R3"}),      # a 1 mm plug across the bore
+    (variant(code=NECKED), {"R3"}),       # an 8 mm bore with one 0.4 mm neck at 5.5
     (variant(code=SQUARE), {"R4"}),       # the request says round
     (variant(length=18), {"R2"}),
     (variant(length=10), {"R2"}),         # shorter than it is wide; the hole is still found
-    (variant(extra_part=True), {"R1", "R2", "R3", "R4"}),
-], ids=["hole-5.0", "hole-5.81", "hole-6.5", "oval-hole", "slot", "blind-hole", "plugged", "square",
+    (variant(extra_part=True), {"R1"}),   # the checks that need one part report not graded
+], ids=["hole-5.0", "hole-5.81", "hole-6.5", "oval-hole", "slot", "blind-hole", "plugged", "necked", "square",
         "length-18", "length-10", "two-parts"])
 def test_wrong_designs_fail_only_their_check(tmp_path, sub, expect):
     assert failed(grade(sub, tmp_path)) == expect
+
+
+def test_a_counterbore_can_take_most_of_the_hole(tmp_path):
+    assert failed(grade(variant(code=LONG_COUNTERBORE), tmp_path)) == set()
 
 
 def test_lead_in_chamfers_pass(tmp_path):

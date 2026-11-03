@@ -3,6 +3,7 @@
 The key is read from 1Password at run time, or from OPENROUTER_API_KEY for anyone
 reproducing the runs with their own key. It is never printed or saved.
 """
+import http.client
 import json
 import os
 import subprocess
@@ -54,7 +55,7 @@ def chat(model, messages, tools=None, retries=4, timeout=900, **params) -> dict:
                 time.sleep(wait)
                 continue
             raise LLMError(f"HTTP {e.code} from {model}: {detail}") from None
-        except (urllib.error.URLError, TimeoutError) as e:
+        except (OSError, http.client.HTTPException, ValueError) as e:  # a dropped connection, or a cut-off body
             if attempt < retries:
                 time.sleep(wait)
                 continue

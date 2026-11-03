@@ -32,7 +32,10 @@ CHANGELOG.md      every iteration, tied to evidence
 
 ```
 pbe/              submission format (submission.py), hardware lookup (catalog.py),
-                  sandboxed CadQuery build (build.py), geometry checks (checks.py), CLI (run.py)
+                  sandboxed CadQuery build (build.py), geometry checks (checks.py), CLI (run.py),
+                  the model runner (agent.py, eval.py), task checks (requirements.py, nuts.py, bolted.py)
+tasks/            each task's request, hidden facts, checks and reference
+results/          saved runs (runs/) and recorded print measurements (predictions/)
 examples/         submissions; arca-plate/ has the original design and the fix (backtest inputs)
 report/atlas/     the failure atlas page, built from the seeds
 tests/
@@ -45,7 +48,11 @@ uv run python -m pbe.run examples/arca-plate/original.yaml examples/arca-plate/f
 uv run pytest
 ```
 
-Planned and not yet built: the model runner, the assembly simulation, the printer simulator, the report, `results/`.
+Tests run in parallel (pytest-xdist). Model code builds under macOS `sandbox-exec`, with no network; elsewhere it won't run unless you set `PBE_NO_SANDBOX=1`, which is for a throwaway container or VM.
+
+A check has three answers: pass, fail and not graded (`ok = None`). Not graded means the recorded prints can't decide the case. It's never a pass, and `summary.csv` lists it in its own column.
+
+Planned and not yet built: the assembly simulation, the printer simulator, the report.
 
 ## Prior art
 

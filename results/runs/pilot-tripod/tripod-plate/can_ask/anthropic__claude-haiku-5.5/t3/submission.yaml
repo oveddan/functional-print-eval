@@ -1,0 +1,144 @@
+task: tripod-plate
+note: ''
+questions: []
+params:
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: plate length along the jaw slide direction
+  plate_w:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: thick enough for a PLA print to hold a light camera
+  bolt_clear_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for a 1/4-20 shank
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: user's webcam bolt head across, rough reading; verify with calipers before
+      printing
+  bolt_head_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: guessed
+    note: pocket depth; check against the actual bolt
+  tongue_w:
+    value: 25
+    unit: mm
+    kind: world
+    source: unknown
+    note: jaw gap unknown; user did not supply it. Must be measured
+  tongue_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: unknown
+    note: lip thickness unknown
+  tongue_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: lip angle guessed
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    t = p.plate_t\n    body = cq.Workplane('XY').box(p.plate_l,\
+    \ p.plate_w, t).translate((0, 0, t / 2))\n    # tongue on the use-bottom (print\
+    \ top), trapezoid section, angled sides\n    half_top = p.tongue_w / 2 - p.tongue_h\
+    \ / 1.0 * 0\n    off = p.tongue_h * 0.0\n    import math\n    inset = p.tongue_h\
+    \ / math.tan(math.radians(p.tongue_angle))\n    tongue = (cq.Workplane('XZ').polyline([(-p.tongue_w/2,\
+    \ t), (p.tongue_w/2, t), (p.tongue_w/2 - inset, t + p.tongue_h), (-p.tongue_w/2\
+    \ + inset, t + p.tongue_h)]).close().extrude(p.plate_w/2, both=True))\n    part\
+    \ = body.union(tongue)\n    # 1/4-20 clearance hole through the plate, centred\n\
+    \    hole = cq.Workplane('XY').circle(p.bolt_clear_d / 2).extrude(t + p.tongue_h\
+    \ + 2).translate((0, 0, -1))\n    part = part.cut(hole)\n    # bolt head pocket\
+    \ on the tongue-facing side (use-bottom = print top at z=t)\n    pocket = cq.Workplane('XY').circle(p.bolt_head_d\
+    \ / 2 + 0.3).extrude(p.bolt_head_h).translate((0, 0, t - p.bolt_head_h))\n   \
+    \ part = part.cut(pocket)\n    return part"
+  print_orientation: camera face down on bed
+  use_orientation: camera face up, tongue down into the jaws
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: bolt_pocket
+  part: plate
+  feature: bolt head pocket
+  relation: seats
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: Confirm the bolt head sits flush in the pocket with the shank centred
+      in the 6.6 mm hole.
+- id: jaw_fit
+  part: plate
+  feature: tongue
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - tongue_w
+  - tongue_h
+  - tongue_angle
+  check:
+    method: coupon
+    ref: null
+    description: Print a small test piece of the tongue and check it slides into the
+      jaws and holds. Required before the full print.
+manual:
+- n: '1'
+  text: Measure the tripod jaws (gap and lip thickness) and the bolt head with calipers.
+    Update tongue_w, tongue_h and bolt_head_d before printing.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the plate with the camera face on the bed. Use 40% infill or more and
+    at least 4 walls.
+  parts: []
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the salvaged 1/4-20 bolt head into the pocket on the tongue side so
+    the shank points up through the plate.
+  parts: []
+  hardware: []
+  tool: null
+- n: '4'
+  text: Screw the camera onto the protruding shank by hand. Do not overtighten.
+  parts: []
+  hardware: []
+  tool: null
+- n: '5'
+  text: Slide the tongue into the tripod jaws from above and tighten the knob only
+    firmly by hand.
+  parts: []
+  hardware: []
+  tool: null

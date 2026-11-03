@@ -1,0 +1,185 @@
+<title>Print Build Results</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a build plate per task, each model's trials laid on it in a row, the verdict stamped under the part. */
+:root{--bg:#eef1f3;--panel:#fbfcfc;--plate:#d4dbe0;--grid:#c3ccd3;--fg:#17202a;--dim:#55636f;--line:#c9d2d8;--accent:#c4480f;
+--pass:#16713f;--pass-bg:#d8efe0;--fail:#a4221c;--fail-bg:#f8dcd9;--ng:#6c5a10;--ng-bg:#f2e9c2;
+--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:"Barlow",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12181d;--panel:#1a2229;--plate:#232d35;--grid:#2d3942;--fg:#e7ecef;--dim:#9dabb5;--line:#33404a;--accent:#f0803f;
+--pass:#70d79a;--pass-bg:#183a27;--fail:#f39a93;--fail-bg:#47201d;--ng:#e2cf7c;--ng-bg:#3a3314;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12181d;--panel:#1a2229;--plate:#232d35;--grid:#2d3942;--fg:#e7ecef;--dim:#9dabb5;--line:#33404a;--accent:#f0803f;
+--pass:#70d79a;--pass-bg:#183a27;--fail:#f39a93;--fail-bg:#47201d;--ng:#e2cf7c;--ng-bg:#3a3314;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:36px}
+h1,h2{font-family:var(--display);font-weight:600;line-height:1.05;text-wrap:balance;margin:0}
+h1{font-size:44px}h2{font-size:30px}
+p{margin:0;max-width:68ch}
+.dim{color:var(--dim)}.mono{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+header{display:grid;gap:10px}
+.filters{display:flex;flex-wrap:wrap;gap:8px}
+button{font:500 14px var(--body);color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 11px;cursor:pointer}
+button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+button:focus-visible,summary:focus-visible,.shot:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{display:grid;gap:14px}
+blockquote{margin:0;padding-left:14px;border-left:3px solid var(--accent);max-width:75ch;font-size:17px}
+.rates{display:flex;flex-wrap:wrap;gap:6px 22px}
+.rates b{font:600 26px var(--display);display:block;line-height:1}
+.scroll{overflow-x:auto}
+.row{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.row>div:first-child{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.trials{display:flex;flex-wrap:wrap;gap:12px;min-width:0}
+.card{width:230px;max-width:100%;display:grid;gap:6px;align-content:start}
+.shot{all:unset;display:block;cursor:pointer;width:100%;aspect-ratio:5/4;border-radius:4px;background-color:var(--plate);
+background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:20px 20px;position:relative;overflow:hidden}
+.shot img{width:100%;height:100%;object-fit:contain;display:block}
+.shot.none{display:grid;place-items:center;color:var(--dim);cursor:default;font-size:14px}
+.stamp{display:inline-block;font:600 13px var(--body);padding:1px 8px;border-radius:3px}
+.pass{color:var(--pass);background:var(--pass-bg)}.fail,.error{color:var(--fail);background:var(--fail-bg)}.not_graded{color:var(--ng);background:var(--ng-bg)}
+.head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+details{font-size:14px;line-height:1.4}summary{cursor:pointer;color:var(--dim)}
+ul{margin:6px 0 0;padding-left:16px;display:grid;gap:5px;overflow-wrap:anywhere}
+.parts{display:flex;flex-wrap:wrap;gap:4px}.parts button{font-size:12px;padding:1px 6px}
+dialog{border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0;width:min(860px,94vw);border-radius:6px}
+dialog::backdrop{background:rgb(0 0 0 / .55)}
+#view{width:100%;height:min(66vh,560px);display:block;background:var(--plate);touch-action:none}
+.dlghead{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px 14px}
+@media (max-width:640px){.row{grid-template-columns:1fr}h1{font-size:36px}.card{width:100%}}
+</style>
+<div class="wrap">
+<header>
+<h1>What each model designed</h1>
+<p>Every design here came from one request and was graded by code against the prints on record. These are renders of what the models handed in. <b>No model's design has been printed.</b> Click a render to spin it.</p>
+<p class="dim">Not graded means the records can't decide that case. It isn't a pass, and only decided results count as evidence of a limitation.</p>
+<div class="filters" id="filters"></div>
+</header>
+<section><h2>How the loop runs</h2>
+<p class="dim">Dan sets the rules and reviews. The session that started this one holds the key and relays his decisions. The loop session does one ladder step at a time, and every failure it reads either counts as a model's mistake or sends a fix back into the checks.</p>
+<div class="scroll"><pre class="mermaid">
+flowchart TD
+  Dan(["Dan: rules, request wording, train review"]) -->|decisions| Start["Starting session: writes the charter, holds the key process"]
+  Start -->|"charter and relayed decisions"| Loop["Loop session: one ladder step at a time"]
+  Loop --> Build["Build the task: request, why it's hard, checks, reference, wrong designs"]
+  Build --> Tests{"Tests: reference passes, each wrong design fails only its check"}
+  Tests -->|no| Build
+  Tests -->|yes| Review["Code review and readability"]
+  Review -->|real findings| Build
+  Review --> Queue["Model queue: only route to the key, budget capped"]
+  Queue --> Models["12 models, each trial saved to results/runs"]
+  Models --> Grade["Graders: pass, fail or not graded"]
+  Grade --> Digest["scripts/digest.py: every trial's reasons"]
+  Digest --> Readers["Sonnet subagents: read what the digest can't settle"]
+  Digest --> Decide{"Model's mistake or the check's?"}
+  Readers --> Decide
+  Decide -->|"the check's: fix, test, changelog"| Regrade["Regrade saved trials, no new model calls"]
+  Regrade --> Grade
+  Decide -->|"the model's: real evidence"| Scoring["Walk the scoring criteria"]
+  Scoring --> Log[".loop/LOG.md and a commit on this branch"]
+  Grade --> Page["scripts/gallery.py: this page"]
+  Log -->|next step| Loop
+  Log --> Train(["Train review with Dan"])
+  Page --> Train
+  Train -->|"new rules and wording"| Dan
+</pre></div></section>
+<div id="tasks" class="wrap"></div>
+</div>
+<dialog id="dlg"><div class="dlghead"><span id="dlgtitle"></span><button id="close">Close</button></div><canvas id="view"></canvas></dialog>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const DATA = /*DATA*/null;
+const LABEL = {pass:"Pass", fail:"Fail", not_graded:"Not graded", error:"Didn't finish"};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let filter = "all";
+
+function rates(ts) {
+  const n = k => ts.filter(t => t.verdict === k).length, total = ts.length, pct = x => total ? Math.round(100 * x / total) + "%" : "–";
+  const decided = n("pass") + n("fail");
+  return `<div class="rates">
+    <div><b>${pct(n("pass"))}</b><span class="dim">passed (${n("pass")} of ${total})</span></div>
+    <div><b>${pct(n("fail"))}</b><span class="dim">failed</span></div>
+    <div><b>${pct(n("not_graded"))}</b><span class="dim">not graded</span></div>
+    <div><b>${decided ? Math.round(100 * n("pass") / decided) + "%" : "–"}</b><span class="dim">passed, of ${decided} decided</span></div>
+    ${n("error") ? `<div><b>${n("error")}</b><span class="dim">didn't finish</span></div>` : ""}
+    <div><b>$${ts.reduce((a, t) => a + t.cost, 0).toFixed(2)}</b><span class="dim">spent</span></div></div>`;
+}
+
+function card(t) {
+  const main = t.parts[0];
+  const shot = main && main.thumb
+    ? `<button class="shot" data-name="${main.viewer ? esc(main.name) : ""}" data-title="${esc(t.model)} t${t.trial}: ${esc(main.id)}" aria-label="Spin ${esc(t.model)} trial ${t.trial}"><img loading="lazy" src="${esc(main.thumb)}" alt="Render of ${esc(main.id)}"></button>`
+    : `<div class="shot none">No part built</div>`;
+  const others = t.parts.slice(1).filter(p => p.viewer).map(p =>
+    `<button data-name="${esc(p.name)}" data-title="${esc(t.model)} t${t.trial}: ${esc(p.id)}">${esc(p.id)}</button>`).join("");
+  const why = t.findings.map(f => `<li><b>${f.ok === false ? "Failed" : "Not graded"} ${esc(f.check)}</b> ${f.part !== "-" ? esc(f.part) + ": " : ""}${esc(f.detail)}</li>`).join("");
+  const asked = t.asked.map((q, i) => `<li>Asked: ${esc(q)}<br><span class="dim">${esc(t.answers[i])}</span></li>`).join("");
+  return `<div class="card" data-verdict="${t.verdict}">${shot}
+    <div class="head"><span class="stamp ${t.verdict}">${LABEL[t.verdict]}</span><span class="mono dim">t${t.trial} · $${t.cost.toFixed(3)}</span></div>
+    ${others ? `<div class="parts">${others}</div>` : ""}
+    ${why || asked ? `<details><summary>${t.findings.length ? "Why" : "What it asked"}</summary><ul>${why}${asked}</ul></details>` : ""}</div>`;
+}
+
+function draw() {
+  const byTask = {};
+  DATA.trials.forEach(t => (byTask[t.task] ??= []).push(t));
+  document.getElementById("tasks").innerHTML = Object.keys(byTask).sort().map(task => {
+    const ts = byTask[task], brief = DATA.tasks[task], models = [...new Set(ts.map(t => t.model))];
+    const rank = m => { const i = DATA.frontier.indexOf(m); return i < 0 ? 99 : i; };
+    models.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+    const rows = models.map(m => {
+      const cards = ts.filter(t => t.model === m && (filter === "all" || t.verdict === filter)).sort((a, b) => a.trial - b.trial);
+      return cards.length ? `<div class="row"><div>${esc(m.split("/")[1])}</div><div class="trials">${cards.map(card).join("")}</div></div>` : "";
+    }).join("");
+    return `<section><h2>${esc(task)}</h2><blockquote>${esc(brief.request)}</blockquote>
+      ${brief.why ? `<p class="dim">${esc(brief.why)}</p>` : ""}${rates(ts)}<div>${rows || '<p class="dim">No trials match this filter.</p>'}</div></section>`;
+  }).join("");
+}
+
+document.getElementById("filters").innerHTML = [["all","All"],["pass","Pass"],["fail","Fail"],["not_graded","Not graded"],["error","Didn't finish"]]
+  .map(([k, l]) => `<button data-f="${k}" aria-pressed="${k === "all"}">${l}</button>`).join("");
+document.getElementById("filters").addEventListener("click", e => {
+  const k = e.target.dataset.f; if (!k) return; filter = k;
+  document.querySelectorAll("[data-f]").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === k)); draw();
+});
+
+// The 3D viewer: one renderer, made on first use, loading a part's STL only when it's opened.
+let three;
+function setup() {
+  const canvas = document.getElementById("view"), renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha: true});
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(35, 1, 0.1, 5000), controls = new THREE.OrbitControls(camera, canvas);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.85));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(1, -0.8, 1.6); scene.add(sun);
+  camera.up.set(0, 0, 1);
+  const loop = () => { requestAnimationFrame(loop); if (document.getElementById("dlg").open) { controls.update(); renderer.render(scene, camera); } };
+  loop();
+  three = {canvas, renderer, scene, camera, controls, mesh: null};
+}
+function parseStl(buf) {
+  const view = new DataView(buf), n = view.getUint32(80, true), pos = new Float32Array(n * 9);
+  for (let i = 0; i < n; i++) for (let j = 0; j < 9; j++) pos[i * 9 + j] = view.getFloat32(84 + i * 50 + 12 + j * 4, true);
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
+}
+async function open3d(name, title) {
+  const dlg = document.getElementById("dlg");
+  document.getElementById("dlgtitle").textContent = title;
+  dlg.showModal();
+  if (!window.THREE) { document.getElementById("dlgtitle").textContent = title + " (the 3D viewer didn't load)"; return; }
+  if (!three) setup();
+  const {canvas, renderer, scene, camera, controls} = three;
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+  camera.aspect = canvas.clientWidth / canvas.clientHeight; camera.updateProjectionMatrix();
+  const r = await fetch(`stl/${name}.txt`); if (!r.ok) { document.getElementById("dlgtitle").textContent = title + " (couldn't load this part)"; return; }
+  const g = parseStl(Uint8Array.from(atob(await r.text()), c => c.charCodeAt(0)).buffer); g.computeBoundingSphere();
+  if (three.mesh) { scene.remove(three.mesh); three.mesh.geometry.dispose(); }
+  three.mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({color: 0x9fb0bf, roughness: 0.55, side: THREE.DoubleSide}));
+  scene.add(three.mesh);
+  const {center, radius} = g.boundingSphere;
+  controls.target.copy(center);
+  camera.position.set(center.x + radius * 1.8, center.y - radius * 2.2, center.z + radius * 2);
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-name]"); if (b && b.dataset.name) open3d(b.dataset.name, b.dataset.title);
+});
+document.getElementById("close").addEventListener("click", () => document.getElementById("dlg").close());
+draw();
+</script>

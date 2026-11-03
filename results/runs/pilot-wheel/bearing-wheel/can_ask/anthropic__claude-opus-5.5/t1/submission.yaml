@@ -1,0 +1,232 @@
+task: bearing-wheel
+note: Flat tread assumed because the track profile couldn't be measured. If the track
+  has a ridge, the tread needs a matching groove. If your own bolt is longer, use
+  it, as long as the threads don't sit inside the bearings.
+questions:
+- text: Does the old wheel have a groove in its rim (for a ridged track) or a flat
+    tread?
+  answer: null
+- text: What is the gap between the bracket plates, and how long is your M8 bolt?
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 50 mm across'
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 16 mm wide'
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 nominal 22.000
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 nominal 7
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_clear_d:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  press_fit_allow:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: PLA holes print slightly undersize; tune with coupon
+  lip_bore:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: clears the inner race and inner spacer, supports the outer races
+  inner_race_contact_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: 608 inner race OD ~12; keep spacers off the shields
+  tread_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  side_spacer_t:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: bracket gap unknown; adjust
+  track_profile:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: could not measure; flat tread assumed
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    r = p.wheel_od/2\n    w = p.wheel_w\n    lip_t = w - 2*p.bearing_w\n\
+    \    pd = p.bearing_od + p.press_fit_allow\n    body = cq.Workplane('XY').circle(r).extrude(w).edges('%CIRCLE').chamfer(p.tread_chamfer)\n\
+    \    pocket = cq.Workplane('XY').circle(pd/2).extrude(p.bearing_w)\n    body =\
+    \ body.cut(pocket).cut(pocket.translate((0,0,w-p.bearing_w)))\n    cone = cq.Solid.makeCone(pd/2,\
+    \ p.lip_bore/2, lip_t, pnt=cq.Vector(0,0,p.bearing_w))\n    body = body.cut(cq.Workplane('XY').add(cone))\n\
+    \    body = body.cut(cq.Workplane('XY').circle(p.lip_bore/2).extrude(w))\n   \
+    \ m1 = cq.Solid.makeCone(pd/2+0.5, pd/2, 0.5, pnt=cq.Vector(0,0,0))\n    m2 =\
+    \ cq.Solid.makeCone(pd/2, pd/2+0.5, 0.5, pnt=cq.Vector(0,0,w-0.5))\n    body =\
+    \ body.cut(cq.Workplane('XY').add(m1)).cut(cq.Workplane('XY').add(m2))\n    return\
+    \ body\n"
+  print_orientation: flat face on bed, axis vertical
+  use_orientation: axis horizontal on the M8 bolt
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    t = p.wheel_w - 2*p.bearing_w\n    return cq.Workplane('XY').circle(p.inner_race_contact_od/2).circle(p.bolt_clear_d/2).extrude(t)\n"
+  print_orientation: flat
+  use_orientation: on the bolt between the two bearing inner races
+- id: side_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.inner_race_contact_od/2).circle(p.bolt_clear_d/2).extrude(p.side_spacer_t)\n"
+  print_orientation: flat
+  use_orientation: on the bolt between each bearing inner race and the bracket plate
+    (print 2)
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    pd = p.bearing_od + p.press_fit_allow\n    return cq.Workplane('XY').circle(pd/2+4).circle(pd/2).extrude(4)\n"
+  print_orientation: flat
+  use_orientation: test press-fit of a 608 bearing
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: side_spacer
+    feature: bore
+    role: clearance
+  - part: inner_spacer
+    feature: bore
+    role: clearance
+  - part: side_spacer
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: press
+  part: wheel
+  feature: bearing pockets
+  relation: contains
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_od
+  - press_fit_allow
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Bearing presses in firmly by thumb/vise, doesn't fall out, ring doesn't
+      crack
+- id: spin
+  part: inner_spacer
+  feature: faces
+  relation: supports
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - inner_race_contact_od
+  check:
+    method: none
+    ref: null
+    description: With nut snug, wheel still spins freely
+- id: size
+  part: wheel
+  feature: tread
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: Compare to old wheel pieces/track
+manual:
+- n: '1'
+  text: 'Print fit_coupon (~5 min). Press a bearing in. Should take firm pressure,
+    no wobble. Falls out: lower press_fit_allow to 0.05. Won''t go in or cracks: raise
+    it to 0.25. Then print the wheel.'
+  parts:
+  - fit_coupon
+  hardware:
+  - bearing
+  tool: null
+- n: '2'
+  text: Print wheel lying flat, 4 walls, 40% infill. Print inner_spacer once and side_spacer
+    twice. No supports needed.
+  parts:
+  - wheel
+  - inner_spacer
+  - side_spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one bearing into one side until it seats on the center lip. Use a vise
+    or a flat block, and push only on the bearing's outer ring. Drop inner_spacer
+    into the bore, then press the second bearing in from the other side.
+  parts:
+  - wheel
+  - inner_spacer
+  hardware:
+  - bearing
+  tool: vise or flat block
+- n: '4'
+  text: Slide the bolt through the bracket plate, a side_spacer, the wheel, the second
+    side_spacer and the other plate. Thread on the lock nut and snug it. Stop when
+    it's tight enough that the wheel doesn't wobble but still spins freely. If the
+    bracket gap is too narrow for the spacers, leave them out or sand them thinner.
+  parts:
+  - side_spacer
+  - wheel
+  hardware:
+  - bolt
+  - locknut
+  tool: 6 mm hex key, 13 mm wrench

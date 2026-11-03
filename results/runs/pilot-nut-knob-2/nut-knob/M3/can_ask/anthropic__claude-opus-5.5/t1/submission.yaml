@@ -1,0 +1,192 @@
+task: nut-knob/M3
+note: 20 mm scalloped knob, 8 mm tall. The hex pocket holds the M3 nut 0.4 mm below
+  the face, on a 5.3 mm floor with a 3.4 mm bolt hole, so the nut can't come out the
+  far side. The press fit is set from the coupon.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 width across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 height
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 nominal
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: free clearance for M3 through the floor
+  fit_delta:
+    value: 0.0
+    unit: mm
+    kind: design
+    source: design
+    note: added to nut_af for the press-fit pocket; set from the coupon slot that
+      grips best
+  pocket_recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits this far below the knob face, fully inside
+  leadin:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: depth of the slightly wider lead-in at the pocket mouth
+  knob_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d/2\n    k = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    for i in range(int(p.scallop_n)):\n        a = 2*math.pi*i/p.scallop_n\n\
+    \        c = cq.Workplane('XY').center((R+0.6)*math.cos(a),(R+0.6)*math.sin(a)).circle(p.scallop_r).extrude(p.knob_h)\n\
+    \        k = k.cut(c)\n    k = k.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(p.knob_h))\n\
+    \    af = p.nut_af + p.fit_delta\n    depth = p.nut_h + p.pocket_recess\n    ac\
+    \ = af/math.cos(math.radians(30))\n    pocket = cq.Workplane('XY').workplane(offset=p.knob_h-depth).polygon(6,\
+    \ ac).extrude(depth)\n    k = k.cut(pocket)\n    ac2 = (af+0.4)/math.cos(math.radians(30))\n\
+    \    lead = cq.Workplane('XY').workplane(offset=p.knob_h-p.leadin).polygon(6,\
+    \ ac2).extrude(p.leadin)\n    k = k.cut(lead)\n    return k\n"
+  print_orientation: Flat bottom face on the bed, nut pocket opening facing up
+  use_orientation: Any; bolt enters the bottom face, passes through the floor and
+    the nut
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    deltas = [-0.1, 0.0, 0.1, 0.2]\n    pitch\
+    \ = 10.0\n    L = pitch*len(deltas)\n    t = p.nut_h + p.pocket_recess + 1.2\n\
+    \    b = cq.Workplane('XY').center(L/2-pitch/2,0).rect(L,12).extrude(t)\n    b\
+    \ = b.cut(cq.Workplane('XY').center(-pitch/2,6).rect(1.5,2).extrude(t))\n    depth\
+    \ = p.nut_h + p.pocket_recess\n    for i,d in enumerate(deltas):\n        x =\
+    \ i*pitch\n        ac = (p.nut_af+d)/math.cos(math.radians(30))\n        b = b.cut(cq.Workplane('XY').center(x,0).circle(p.bolt_clear_d/2).extrude(t))\n\
+    \        b = b.cut(cq.Workplane('XY').workplane(offset=t-depth).center(x,0).polygon(6,\
+    \ ac).extrude(depth))\n    return b\n"
+  print_orientation: Flat face on the bed, pockets open upward
+  use_orientation: Held in hand to test nut press fit
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - fit_delta
+  - nut_h
+  - pocket_recess
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut presses in by thumb, sits below the face, and stays in when the
+      piece is shaken upside down
+- id: c2
+  part: knob
+  feature: pocket floor
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Floor hole (3.4) is far smaller than nut flats (5.5), so the nut
+      can't be pushed out the far side
+- id: c3
+  part: knob
+  feature: through hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: M3 bolt passes through floor freely into nut
+manual:
+- n: '1'
+  text: Print fit_coupon (pockets open side up). The notch marks the first pocket.
+    Pockets from the notch end are nut_af -0.1, +0.0, +0.1, +0.2 mm.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M3 nut into each pocket with your thumb. Pick the tightest one you
+    can still push fully in by hand, where the nut also stays in when you shake the
+    coupon upside down. Set fit_delta to that pocket's value (-0.1, 0, 0.1 or 0.2).
+    It starts at 0.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Print the knob flat on the bed, pocket facing up. No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Line the nut up with the hex pocket and press it in until it sits below the
+    top face, against the floor. If it's very stiff, press it against the table.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the bolt in from the bottom (the flat face without the hex) so it goes
+    through the floor hole, through the nut, and out the pocket side. Turn the knob
+    by hand.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

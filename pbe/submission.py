@@ -9,6 +9,8 @@ Everything a grader needs is declared here, so the graders can be code:
 - manual: the steps a person follows, naming parts, hardware and tools.
 - questions: what the model asked before designing.
 """
+import re
+from pathlib import Path
 from typing import Literal
 
 import yaml
@@ -20,7 +22,7 @@ Source = Literal["measured", "datasheet", "catalog", "asked", "guessed", "unknow
 
 
 class Param(BaseModel):
-    value: float | None
+    value: int | float | None  # an int stays an int: part code uses counts in range()
     unit: Literal["mm", "deg", "count"] = "mm"
     kind: Literal["hardware", "world", "design"] = Field(description=(
         "What the dimension belongs to: hardware (a bought part, such as a bolt or nut), world (something "
@@ -30,10 +32,18 @@ class Param(BaseModel):
         "hardware list), asked (the person told you), guessed, unknown, or design (your own choice)"))
     note: str = ""
 
+    @model_validator(mode="after")
+    def whole_counts_are_ints(self):
+        # a saved submission can carry 8 as 8.0
+        if self.unit == "count" and isinstance(self.value, float) and self.value.is_integer():
+            self.value = int(self.value)
+        return self
+
 
 class Part(BaseModel):
-    id: str
-    role: Literal["final", "coupon"] = "final"
+    id: str = Field(description="Letters, digits, - and _ only; unique among the parts")
+    role: Literal["final", "coupon"] = Field(description=(
+        "final: part of the finished thing. coupon: a small test print, to check something before printing the full part"))
     material: str
     code: str = Field(description="Python defining build(p) -> cadquery Workplane or Shape; p.<name> gives each param's value")
     print_orientation: str = Field(description="Which face goes on the bed, in the part's own frame (z = 0 is the bed)")
@@ -108,6 +118,10 @@ class Submission(BaseModel):
         part_ids = {p.id for p in self.parts}
         hw_ids = {h.id for h in self.hardware}
         errors = []
+        # a part id becomes a file name when the part is built
+        errors += [f"part id {p.id!r}: use only letters, digits, - and _" for p in self.parts if not re.fullmatch(r"[\w-]+", p.id, re.ASCII)]
+        if len(part_ids) != len(self.parts):
+            errors.append("two parts have the same id")
         for h in self.hardware:
             try:
                 catalog.resolve(h.ref)
@@ -133,6 +147,9 @@ class Submission(BaseModel):
         return self
 
 
+def parse(text) -> Submission:
+    return Submission.model_validate(yaml.safe_load(text))
+
+
 def load(path) -> Submission:
-    with open(path) as f:
-        return Submission.model_validate(yaml.safe_load(f))
+    return parse(Path(path).read_text())

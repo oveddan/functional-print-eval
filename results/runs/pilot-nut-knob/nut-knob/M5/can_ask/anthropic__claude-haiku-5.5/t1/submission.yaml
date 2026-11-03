@@ -1,0 +1,166 @@
+task: nut-knob/M5
+note: 'Design is a single printed knob. The nut is trapped between a solid floor (3
+  mm) and a 0.5 mm-undersized lip, with three slits to let the lip flex for the snap-in.
+  The fit is a design guess: the lip and pocket dimensions are the parts most likely
+  to need tuning on their printer. Test the nut fit before relying on it.'
+questions:
+- text: Can you measure the actual across-flats of your M5 nut (ISO 4032) with calipers,
+    and report it? I would tighten the lip opening to match your nut and printer.
+  answer: null
+params:
+  knob_od:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: Knob outside diameter
+  knob_h:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'Total knob height: floor + nut pocket + retaining lip'
+  floor_t:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: Solid floor under the nut; the bolt-side stop
+  pocket_h:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: Nut height 4.7 plus 0.3 mm slack
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  pocket_af:
+    value: 8.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'Nut pocket across flats: nut 8.0 plus 0.2 clearance so it fits without
+      binding'
+  lip_af:
+    value: 7.5
+    unit: mm
+    kind: design
+    source: design
+    note: Retaining lip opening across flats, 0.5 mm smaller than the nut so the nut
+      snaps past it and cannot fall out. Tune by test fit
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole for M5 bolt
+  slit_w:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Width of the three slits that let the lip flex for the nut snap-in
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "import math\n\ndef build(p):\n    h = p.knob_h\n    body = cq.Workplane('XY').circle(p.knob_od\
+    \ / 2).extrude(h)\n    body = body.faces('>Z').edges().chamfer(0.8)\n    # hex\
+    \ nut pocket, open at top up to the lip\n    dpk = p.pocket_af / math.cos(math.radians(30))\n\
+    \    z0 = p.floor_t\n    pocket = cq.Workplane('XY').workplane(offset=z0).polygon(6,\
+    \ dpk).extrude(p.pocket_h)\n    body = body.cut(pocket)\n    # retaining lip opening,\
+    \ smaller than the nut\n    dl = p.lip_af / math.cos(math.radians(30))\n    lip_top\
+    \ = z0 + p.pocket_h\n    lip_open = cq.Workplane('XY').workplane(offset=lip_top\
+    \ - 0.01).polygon(6, dl).extrude(h - lip_top + 1)\n    body = body.cut(lip_open)\n\
+    \    # bolt clearance through floor\n    bolt = cq.Workplane('XY').circle(p.bolt_clear_d\
+    \ / 2).extrude(h)\n    body = body.cut(bolt)\n    # three slits through the lip\
+    \ so it can flex for the nut snap-in\n    for ang in (0, 120, 240):\n        slit\
+    \ = (cq.Workplane('XY').box(9.0, p.slit_w, h - lip_top + 1, centered=(False, True,\
+    \ False))\n                .translate((3.5, 0, lip_top - 0.01))\n            \
+    \    .rotate((0, 0, 0), (0, 0, 1), ang))\n        body = body.cut(slit)\n    return\
+    \ body\n"
+  print_orientation: bolt-side floor flat on the bed (z=0 at the floor underside),
+    nut opening pointing up
+  use_orientation: bolt-side floor down, nut opening up
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket with retaining lip
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - pocket_h
+  - lip_af
+  - nut_af
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Press the nut in by hand and check it stays when the knob is inverted.
+- id: bolt_clear
+  part: knob
+  feature: bolt clearance hole through floor
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: M5 bolt passes freely through the floor hole.
+manual:
+- n: '1'
+  text: Print the knob with the bolt-side floor on the bed. No supports are needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Clean any stringing from the hex pocket and the lip opening.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M5 hex nut into the hex pocket from the top, through the lip opening.
+    The lip flexes a little to let the nut snap past, then the nut sits between the
+    floor and the lip. If it does not go in by hand, the lip is too tight; ream it
+    lightly with a 5 mm drill bit.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Turn the knob upside down and check that the nut stays put. Do not use glue.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the M5 bolt up through the floor hole and into the nut, then tighten
+    by turning the knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

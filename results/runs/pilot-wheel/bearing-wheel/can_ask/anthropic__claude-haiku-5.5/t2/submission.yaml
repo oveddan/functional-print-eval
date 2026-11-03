@@ -1,0 +1,152 @@
+task: bearing-wheel
+note: ''
+questions:
+- text: Does your M8 bolt slide freely through a 608 bearing bore (7.94 mm measured)?
+    If not, the bolt needs reaming or a different axle.
+  answer: null
+- text: What is the gap between the bracket arms, and the bolt length? The design
+    assumes the old wheel's spacing, which I have not verified.
+  answer: null
+- text: Is the track a flat strip or a groove? This design assumes a flat tread; a
+    rounded tread needs a different profile.
+  answer: null
+params:
+  od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Original wheel about 50 mm across
+  width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Original wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD nominal; measured 21.22 read low at the jaws
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 width nominal
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: M8 bolt shank, about 8 mm
+  pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance so bearing press-fits into printed pocket
+  bore_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance of centre hole over the bolt shank
+  pocket_depth:
+    value: 7.3
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket depth from each face, a little deeper than the 7 mm bearing
+parts:
+- id: wheel
+  role: final
+  material: PLA high-speed black
+  code: "def build(p):\n    r = p.od / 2.0\n    w = p.width\n    body = cq.Workplane('XY').circle(r).extrude(w)\n\
+    \    pr = p.bearing_od / 2.0 + p.pocket_clear / 2.0\n    depth = p.pocket_depth\n\
+    \    bottom = cq.Workplane('XY').circle(pr).extrude(depth)\n    top = cq.Workplane('XY').workplane(offset=w\
+    \ - depth).circle(pr).extrude(depth)\n    hole = cq.Workplane('XY').circle(p.bolt_d\
+    \ / 2.0 + p.bore_clear / 2.0).extrude(w)\n    return body.cut(bottom).cut(top).cut(hole)\n"
+  print_orientation: Flat on the bed, wheel axis vertical (z up), no supports needed
+  use_orientation: Axis horizontal on the bolt, rolling on the track
+hardware:
+- id: axle
+  ref: ISO 4762 M8x40
+  qty: 1
+joints: []
+criteria:
+- id: bearing_pocket_a
+  part: wheel
+  feature: bearing pocket on one face
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - pocket_clear
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: 608 bearing sits fully in its pocket with its outer face flush or
+      slightly recessed
+- id: bearing_pocket_b
+  part: wheel
+  feature: bearing pocket on the other face
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - pocket_clear
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Second 608 bearing sits fully in its pocket
+- id: axle_clearance
+  part: wheel
+  feature: centre hole
+  relation: clears
+  hardware: axle
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bore_clear
+  check:
+    method: measure
+    ref: null
+    description: Axle slides through the centre hole and bearing bores without binding
+manual:
+- n: '1'
+  text: Print the wheel flat on the bed with the axis vertical. Clear any stringing
+    from the bearing pockets and the centre hole.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Test-fit your M8 bolt through one 608 bearing bore (7.94 mm). If it does not
+    slide freely, ream the bore or use a different axle before continuing. The catalog
+    M8x40 screw is a stand-in for your own bolt and is only needed if yours does not
+    work.
+  parts: []
+  hardware:
+  - axle
+  tool: null
+- n: '3'
+  text: Press one 608 bearing into each end pocket of the wheel, flush or slightly
+    recessed. The centre web between the pockets separates the two bearings.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Slide the axle through the wheel's centre hole and both bearings, then mount
+    the assembly in the door roller bracket where the old wheel was mounted.
+  parts:
+  - wheel
+  hardware:
+  - axle
+  tool: null

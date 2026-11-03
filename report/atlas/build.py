@@ -8,6 +8,7 @@ since the photos are private).
 """
 import html
 import shutil
+import struct
 import subprocess
 from collections import Counter
 from pathlib import Path
@@ -39,6 +40,39 @@ def load():
     return classes, seeds, examples
 
 
+def _orientation(exif):
+    """The Orientation tag from an APP1 Exif payload, or None."""
+    if not exif.startswith(b"Exif\0\0"):
+        return None
+    tiff = exif[6:]
+    end = "<" if tiff[:2] == b"II" else ">"
+    ifd = struct.unpack(end + "I", tiff[4:8])[0]
+    for i in range(struct.unpack(end + "H", tiff[ifd:ifd + 2])[0]):
+        entry = tiff[ifd + 2 + 12 * i:ifd + 14 + 12 * i]
+        if struct.unpack(end + "H", entry[:2])[0] == 0x0112:
+            return struct.unpack(end + "H", entry[8:10])[0]
+    return None
+
+
+def strip_metadata(jpeg):
+    """A JPEG with the same image data and none of the photo's metadata: phone photos carry
+    GPS tags, and sips keeps them. Only the colour profile stays, plus the orientation,
+    since the pixels are stored sideways and would display that way without it."""
+    keep, pos = [b"\xff\xd8"], 2
+    while jpeg[pos + 1] != 0xDA:  # start of scan: everything after it is image data
+        marker, size = jpeg[pos + 1], struct.unpack(">H", jpeg[pos + 2:pos + 4])[0]
+        payload = jpeg[pos + 4:pos + 2 + size]
+        is_metadata = (0xE1 <= marker <= 0xEF and marker != 0xEE) or marker == 0xFE
+        if not is_metadata or (marker == 0xE2 and payload.startswith(b"ICC_PROFILE")):
+            keep.append(jpeg[pos:pos + 2 + size])
+        elif marker == 0xE1 and (orientation := _orientation(payload)) not in (None, 1):
+            tiff = b"II*\0" + struct.pack("<IHHHIHHI", 8, 1, 0x0112, 3, 1, orientation, 0, 0)
+            keep.append(b"\xff\xe1" + struct.pack(">H", len(tiff) + 8) + b"Exif\0\0" + tiff)
+        pos += 2 + size
+    eoi = jpeg.index(b"\xff\xd9", pos) + 2  # anything after the end of the image goes too
+    return b"".join(keep) + jpeg[pos:eoi]
+
+
 def copy_image(src, name):
     src = Path(src).expanduser()
     (OUT / "img").mkdir(parents=True, exist_ok=True)
@@ -49,6 +83,7 @@ def copy_image(src, name):
         dst = OUT / "img" / f"{name}.jpg"
         subprocess.run(["sips", "-s", "format", "jpeg", "-s", "formatOptions", "72", "-Z", "1100",
                         str(src), "--out", str(dst)], check=True, capture_output=True)
+        dst.write_bytes(strip_metadata(dst.read_bytes()))
     return f"img/{dst.name}"
 
 

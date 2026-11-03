@@ -2,6 +2,76 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-03: Second wheel round; two more verdicts the records didn't back
+
+`pilot-wheel` now has t2 for 11 models: 22 trials, $2.07 in all. 3 pass, 13 fail, 6 not graded. Without `bridges`, 9 pass, 7 fail, 6 not graded. Seats and coupons of both rounds measured from the saved meshes. Spend stops here: $8.74 used of the $9.00 limit.
+
+`pbe/wheel.py`, both the eval's fault:
+- Depth is read in whole layers, so Opus's 6.5 mm seat read 6.4 and just missed the 0.5 mm allowance. The allowance now takes a layer's rounding into account. 0.5 mm is itself my choice, not a record.
+- "Nothing stops the bearings" failed Qwen's and GLM's through bores. Round 2's seats had floors, so no print speaks to a through bore. Now not graded. The brief's table has the row.
+
+## 2026-11-03: Bearing wheel pilot; a bearing a little proud isn't a failure
+
+Run `pilot-wheel`, 11 models, one trial each, $0.93, wording unreviewed. Pass: Opus, Sol. Not graded: Argon (22.05 mm seat, 8.2 mm hole). 8 fail. Every seat and coupon measured from the saved meshes.
+
+`pbe/wheel.py`: GPT-6 Luna's R2 failed for 6.8 mm seats, which leave the bearing 0.2 mm proud. No record says that's wrong, so up to 0.5 mm short is now not graded: the eval's fault. On regrade Luna fails only `bridges`, with R2 not graded and R3 passing.
+
+## 2026-11-03: Tripod with the facts given; a bearing wheel task, wording unreviewed
+
+Run `pilot-tripod-given`, `all_given`, one trial each, $1.11 in all. The $1.10 cap stopped it before DeepSeek Pro. Pass: Argon. Not graded: Sonnet. 8 fail, 6 of them on `bridges`. Every failure read: none is the check's fault. Gemini 3.8 Flash's and GLM's "no hole" are real (its extrude moved the plate 40 mm away from the cuts; GLM's pocket stops short of the far face). The facts given hold the bolt's and socket's numbers only, since nobody recorded the clamp's size.
+
+`tasks/bearing-wheel/`, `pbe/wheel.py`: a printed wheel for two 608 bearings on an M8 bolt, graded against round 2's seats. 22.0 won't go in, 22.1 to 22.3 hold, above 22.3 and between 22.0 and 22.1 aren't graded. **The request is mine and Dan hasn't seen it**, so the runs are exploratory. Checks work on a seat each side, a stack from one side, two halves, hub bosses, and a coupon of through or blind seats. A review by Sonnet found 6 things: fixed trimmed hub bosses, a skipped printed sleeve, and blind coupons; the other 3 are written down as known limits in the brief.
+
+`pbe/catalog.py`: `resolve` now reads "608ZZ" and "608". A submission naming the bearing would otherwise have been rejected. The prompt isn't changed.
+
+`tasks/nut-knob/brief.md`: removed "until Dan does", a leftover physical ask. No verdict changes.
+
+## 2026-11-03: Tripod repeats on 11 models; the review's fixes to the tripod checks
+
+`pilot-tripod` now has t2 and t3 for every model but Grok: 34 trials, $3.18 in all. 6 pass, 27 fail, 1 not graded. Without `bridges`, 12 pass, 18 fail, 4 not graded. I read every failure and measured the doubtful ones: none is the check's fault, including Gemini 3.8 Flash t2's 12 mm recess (its code asks for 17, but swapped `slot2D`'s arguments).
+
+Fixes from the code review, in `pbe/bolted.py`, each with a test:
+- A recess is the width held over its depth, up to a tapered or stepped roof, and it's the widest real seat of the two ends, not the deepest.
+- R5 reads the bolt's path through the plate's main thickness, so a lip or pad elsewhere doesn't count; pads, lips and marks are trimmed from the end layers.
+- The plate's main hole is the closed hole the bolt fits, else the open gap it fits.
+- A bevel on one edge fails R2 (both edges must narrow). A plate may be shorter than it is wide. R2's message uses the width range, not 38.
+- A final part that didn't build isn't replaced by another: `exists` says not graded, because `builds` has already failed.
+- With no plate, R3 to R5 say so rather than blaming a screw.
+- R3's and R4's limits allow for reading depth in whole layers; R4 and R5 now get `bolt_across: 6.35`.
+
+Verdicts that changed on regrade: Haiku t3 no longer fails R5; Qwen t2 no longer fails R1 and Qwen t3 no longer fails R3 on top of `builds` (one mistake counts once); GLM t2 goes from failed (R2, R4) to not graded. No pass changed.
+
+Known limits: a raised pad around the hole on the camera side overstates reach. A side notch can read as a bore if no closed hole fits. A large counterbored lightening hole could be picked over the bolt's. A sealed recess the head can't reach (Haiku t3) reads as a recess, though `bridges` fails it.
+
+## Tripod plate on all 12 models; the bolt check follows a recess open at the side
+- Run `pilot-tripod`, one trial each, `can_ask`, $1.41 in all: pass Gemini 3.8 Flash, Gemini 4 Argon, Grok 4.7; 9 fail, 8 of them on `bridges`. All 12 read by hand or through the digest, and each failure below checked against the part's code.
+- `pbe/bolted.py`: if no closed hole runs through a plate, the bolt check now follows gaps in the outline. GPT-6 Luna's plate has a 6.8 mm hole with a channel so the head slides in from the end, and it read "no hole runs through the plate". The eval's fault. Regraded: Luna's R3, R4, R5 now pass, and it still fails `bridges`. Every other trial keeps its verdict. Test in `tests/test_tripod_plate.py`.
+- Message only, no verdict changes: the which-face failure now says "the head is on the camera's side, or the dovetail is upside down". Opus's and Sonnet's heads are on the clamp side, as they should be; their dovetails are upside down compared with `arca_plate.scad`.
+- Checked and left alone: Qwen's "no hole" is correct (its cuts went away from the part, so the plate is solid). DeepSeek Pro's "straight sides" is correct (its bevel cuts missed the plate). Sol shipped only a coupon, so R1 fails. Haiku and Gemini 3.8 Flash's t1 ran before the person knew the camera's socket thread.
+
+## Tripod plate task, from Dan's real first prompt; a coupon can be several pieces
+- `tasks/tripod-plate/`, `pbe/bolted.py`: Dan's first message from session c941d075, approved by him for model runs on 2026-11-02. The request states the problem and leaves the mechanism open. Checks grade the plate's clamp fit, bolt hole, head recess and bolt reach. Every limit comes from the plate he printed (`arca_plate.scad`, seed `arca-counterbore-guessed`): a 13 mm recess fails, 15 passes, in between is not graded. Plate width (37 to 39 mm around the printed 38) is a labelled estimate. The bolt's 10 mm length is a labelled assumption, because no record gives it. A printed screw isn't graded on the bolt checks. See the brief's table.
+- `catalog/hardware.yaml`: the webcam bolt's description no longer says "(the Arca plate, Oct 12)". It told every model the answer to the tripod task, and it's in the prompt every task gets. Nothing else in the prompt changed.
+- `connected_bodies`: a test coupon may be separate pieces, as long as each rests on the bed. Opus's M3 t2 was failed for a coupon of three separate pockets, which prints fine: the eval's fault. Test in `tests/test_runner.py`; `pilot-nut-knob` and `pilot-nut-knob-2` regraded.
+- `scripts/digest.py` (one screen per run, with each failure's reason) and `scripts/gallery.py` (a page of renders beside verdicts). Neither calls a model or affects a grade.
+- Constraint recorded in `PLAN.md`: nothing physical before publishing. Not graded is final for this release and is reported as a limitation of the eval.
+
+## Nut-knob task family (M3, M5, M8): tests, checks hardened over four review rounds
+- Runs `pilot-nut-knob` and `pilot-nut-knob-2`: M5 on 12 models and M3 on 11, one trial each, $1.64. Passes: M5 Opus, Sonnet, Gemini 3.8 Flash; M3 Opus and GPT-6.1 Sol, both through a coupon. The M3 failures haven't been read yet, so those verdicts are unverified.
+- `tasks/nut-knob/`, `pbe/nuts.py`: a hand knob with a hex nut pressed in, graded against what held on coupon B. No clearance suits all three nuts, and the right one can't be looked up, so a design passes on landing where the prints say it holds, or on a test coupon that would have found a size that holds, with a pocket that follows a param. `tests/test_nut_knob.py`: all three references pass, 24 wrong designs fail only their check (or report not graded where no print can say), and 15 correct designs unlike the reference pass (coupons, bed-opening pockets, chamfers, relief, cone roof, drill-out). Two sentences added to the request so everything graded is stated: "It's one printed piece" and "can't be pushed out through the far side".
+- **"Not graded" (`ok = None`, never a pass) now has three more uses, and `summary.csv` has a `not_graded` column.**
+  - Coupon B's "loose" rows were never turned upside down, and the request asks whether the nut stays in upside down. So M5 +0.2, M8 +0.1 and +0.2 are not graded, and for this release that's a limitation of the eval. +0.3 fails because nuts fell out there on the tripod build (`FELL_OUT`, a different filament, so evidence rather than proof).
+  - A plain nut pocket opening at the bed: its roof is a ring 1.7 to 2.9 mm wide around the bolt hole. It fails the strand test, but the narrowest roof seen to tangle is the Arca plate's at 3.1 mm (`narrowest_tangled_mm`, rounded down to 3.0; coupon A's H reached 7.8), and the 1.5 mm overhang allowance is unmeasured. So `bridges` reports not measured. A one-sided shelf that narrow does too: no print measured that either, and coupon C's 10.7 mm cantilever still fails.
+  - A check that needs a part or pocket that isn't there reports not graded, so one mistake counts once in failures by class. On the spacer, two parts now reads R1 failed and the rest not graded, where it was four failures. `all_pass` is unchanged.
+- **Grader fixes from code review, each with a test.** False passes: a filleted square and a pentagon read as hexagons, because the shape test was area only (it now asks whether a nut's corners fit, using ISO 4032's minimum across-corners, about 95% of a sharp hexagon); a round collar a nut can't pass counted as the pocket's mouth; a hex lightening cell was taken for the pocket; a sleeve inside a pocket vanished, because `holes()` ignored solids standing in a hole; a hex right through the knob passed; a coupon a nut can't get into or can barely enter rescued a design; any mention of "drill" or "clear" counted as an instruction to open a closed layer (it now needs a verb and a hole or layer in one sentence, with no negation just before, and quotes the sentence, since it's a text match). False fails: a 45 degree cone roof and a round relief under the pocket were read as "not a hexagon"; a deeper round hole elsewhere failed R3; a 1 mm chamfered mouth was subtracted from the depth; a knob on its side failed where the check can't read it (now not graded); a coupon sized between measured steps counted as a failure (now not graded). `connected_bodies` counted a sealed void as a second body.
+- Spacer R3's upper limit now applies over a quarter of the hole's length, not at its single tightest slice: an 8 mm bore with one 0.4 mm neck passed. A 60% counterbore still passes. Regraded `pilot-spacer`: all 12 still pass every check; only the detail text changed.
+- **The runner.** Part code written by models inherited the environment holding the API key. It now gets none, and on macOS it runs under `sandbox-exec` (no network, no child processes, writes only to its own folders; it can still read files). Without a sandbox it refuses to run unless `PBE_NO_SANDBOX=1`. A part id can no longer be a path (`../../x` wrote outside the run); the schema's `id` description says so, which is a change to what models see. Also: a dropped connection, a cut-off body, tool arguments that aren't a JSON object, undecodable output, or a crash in a check no longer stops a run; a trial stopped while grading finishes on resume without paying again; a rerun counts the failed attempt's cost; `-dirty` now means the code or the coupon table changed, not the run's own output. `--regrade` accepts a family name.
+- Tests go through `agent.grade`, the real pipeline, and run in parallel (`pytest-xdist`, `-n auto`): 4 minutes down to about 35 s.
+- **The fit table now speaks only for plain hex pockets.** Coupon B measured plain pockets, and models use crush ribs, clips, snap rings and lips too (run `pilot-nut-knob-2`). On M3 the table read those as "won't go in", with nothing to back that up. A pocket that isn't plain is now not graded, and so is a coupon pocket that isn't. Corner relief counts as not plain: it's the same test, and no print measured it. Also found in that run: GPT-6 Luna's slits ran out through the wall, leaving no closed hole at that height, and it read "no hex pocket" (now not graded).
+- **The hexagon test aimed the nut at a slot.** Found reading run `pilot-nut-knob`: GPT-6.1 Sol's spring fingers read "no hex pocket" and Grok 4.7's spring clips read "+0.50, falls out". Both have a real hex socket, with slots behind the fingers or clips. The test pointed the nut's corner at the hole's farthest point, which was a slot's end, so the nut didn't fit, and the clip layers were skipped. It now tries every 5 degrees, centred where the widest circle fits. Both were the eval's fault; both now read as not measured, because no print has measured a clip.
+- **A coupon left without a role counted as a printed part.** Found in the same run: DeepSeek V4.1 Flash left `role` out, it defaulted to `final`, and its design read as two printed parts, which failed R1 and left the rest not graded. `role` is now required, so a schema error goes back for repair. A change to what models see. That trial can't be regraded, because the saved `role` is wrong, so it's rerun in `pilot-nut-knob-2`.
+- **A count reached part code as a float.** Found reading run `pilot-nut-knob`: GPT-6 Luna set `lobe_count` to 8 and wrote `range(p.lobe_count)`, the schema's `value: float` turned it into 8.0, and the build failed with a `TypeError`. The eval's fault. `value` now keeps an int as an int, which changes the tool schema models see (integer or number, not only number), and a whole-numbered `count` param is an int however it was saved.
+
 ## Spacer on 12 models: all pass; every repair was a format problem
 - Run `pilot-spacer`, one trial each, `can_ask`, $0.26 in all: Claude Haiku 5.5, Sonnet 5.5 and Opus 5.5; GPT-6 Luna and GPT-6.1 Sol; Gemini 3.8 Flash and 4 Argon; Grok 4.7; DeepSeek V4.1 Flash and V4 Pro; Qwen 3.8 Flash; GLM-5.3 Flash. All 12 pass every check after the R3 fix below (Opus, Qwen and GLM failed the first version, all for chamfered hole ends). Cost per trial ranged from $0.0017 (GPT-6 Luna) to $0.059 (Grok 4.7). All six providers' tool calls worked through OpenRouter.
 - Repairs (schema errors sent back): GPT-6 Luna, GPT-6.1 Sol and Grok 4.7 two each, all from the param field `kind`, which had no description (they left it out, then filled it with a `source` value). `kind` and `source` are now described in the schema. GLM's one repair was a hardware reference to "the user's own M5 bolt": the catalog can't name hardware the person already has, which the real tasks will need.

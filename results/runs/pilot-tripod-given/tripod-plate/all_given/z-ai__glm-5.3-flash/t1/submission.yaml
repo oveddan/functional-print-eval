@@ -1,0 +1,276 @@
+task: tripod-plate
+note: Temporary quick-release plate for a jaw-and-lip knob clamp. The "part that screws
+  in" is your salvaged webcam bolt (1/4-20 — the camera thread); printing that thread
+  in PLA would strip, so the plate just pockets its head. Clamp/camera dimensions
+  couldn't be measured, so the plate is built to the RC2-family standard width (39
+  mm) and a printed fit comb dials in the real jaw width — sand the plate down or
+  tape it up to match. Pocket depth (11 mm) is sized so the camera base rests on the
+  plate for any socket at least ~4 mm deep; the hex pocket takes a hex or a round
+  head.
+questions:
+- text: Which comb step fitted your clamp, and did the plate need sanding or tape?
+  answer: null
+- text: Did the bolt head seat in the pocket and the camera rest flat on the plate?
+  answer: null
+params:
+  clamp_floor_length:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: no number came back; plate kept 45 mm long, ends sanded to fit if the channel
+      is shorter
+  clamp_jaw_gap_closed:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: measure round returned no number; plate width set from RC2-family standard
+      and verified with the fit comb
+  clamp_jaw_gap_open:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: unknown; comb tests drop-in directly
+  bolt_head_across:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: your first message, 'about 15 mm across its head'
+  bolt_head_height:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: your first message, 'about 5 mm'
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under the head, your first message
+  plate_width:
+    value: 39
+    unit: mm
+    kind: design
+    source: design
+    note: RC2-family standard for jaw+lip knob clamps; fit comb confirms, sand/tape
+      to match
+  plate_length:
+    value: 45
+    unit: mm
+    kind: design
+    source: design
+    note: fits typical clamp channels; sand ends down if yours is shorter
+  plate_thickness:
+    value: 13.5
+    unit: mm
+    kind: design
+    source: design
+    note: pocket_depth 11 + 2.5 mm floor wall
+  pocket_depth:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: 'head 5 + 0.5 clearance + ~5.5 spare: camera base rests on the plate for
+      any socket >= ~4 mm deep, >=6 mm of thread engaged when seated'
+  pocket_af:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: head 'about 15' + 1.0 margin; hex pocket also accepts a round head
+  bottom_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in so the angled lips wedge the plate down as the knob closes
+  corner_round:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: clears rounded channel corners, nicer to handle
+  comb_w_narrow:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: compact-clamp probe
+  comb_w_mid:
+    value: 35
+    unit: mm
+    kind: design
+    source: design
+    note: intermediate probe
+  comb_w_wide:
+    value: 43
+    unit: mm
+    kind: design
+    source: design
+    note: wide-clamp probe
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W = p.plate_width\n    L = p.plate_length\n    T = p.plate_thickness\n\
+    \    D = p.pocket_depth\n    AF = p.pocket_af\n    CH = p.bottom_chamfer\n   \
+    \ R = p.corner_round\n    body = cq.Workplane(\"XY\").rect(W, L).extrude(T)\n\
+    \    body = body.edges(\"|Z\").fillet(R)\n    body = body.edges(\"<Z\").chamfer(CH)\n\
+    \    dc = AF * 2.0 / (3.0 ** 0.5)\n    cutter = (cq.Workplane(\"XY\", origin=(0,\
+    \ 0, T - D))\n              .polygon(6, dc)\n              .extrude(D))\n    cutter\
+    \ = cutter.edges(\">Z\").chamfer(0.6)\n    return body.cut(cutter)"
+  print_orientation: bottom face on the bed (the face that sits on the clamp floor),
+    hex pocket opening upward
+  use_orientation: flat under the camera, pocket opening up
+- id: fit_comb
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    T = p.plate_thickness\n    CH = p.bottom_chamfer\n   \
+    \ steps = [p.comb_w_narrow, p.comb_w_mid, p.plate_width, p.comb_w_wide]\n    ln\
+    \ = 20.0\n    gap = 2.0\n    res = None\n    for i, w in enumerate(steps):\n \
+    \       b = (cq.Workplane(\"XY\")\n             .center(0, i * (ln + gap) + ln\
+    \ / 2.0)\n             .rect(w, ln)\n             .extrude(T))\n        res =\
+    \ b if res is None else res.union(b)\n    return res.edges(\"<Z\").chamfer(CH)"
+  print_orientation: bottom faces on the bed (as modeled)
+  use_orientation: each step dropped into the clamp jaws, knob closed, to find the
+    grip width
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_to_plate
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 2.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: hex head pocket (floor at z = 2.5 in the plate frame)
+    role: head_seat
+  nut: null
+  external: camera 1/4-20 tripod socket — the bolt threads into it and carries the
+    camera
+criteria:
+- id: jaw_fit
+  part: qr_plate
+  feature: grip sides at plate width
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - plate_thickness
+  - bottom_chamfer
+  check:
+    method: coupon
+    ref: fit_comb
+    description: Find which comb step drops in and grips with the knob closed; that
+      step's width is the target. Sand the plate's grip sides down evenly (keep faces
+      parallel) or add tape layers to match.
+- id: head_captured
+  part: qr_plate
+  feature: hex head pocket
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - pocket_af
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: The bolt's head must drop into the pocket, sit fully below the plate
+      top, and turn with only slight slop (~1 mm across flats).
+- id: camera_seated
+  part: qr_plate
+  feature: top face under the camera base
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: With the bolt threaded into the camera and the assembly seated, the
+      camera base rests on the plate with no visible float (<= 0.5 mm).
+manual:
+- n: '1'
+  text: 'Print both parts, no supports: the plate flat on its bottom face (hex pocket
+    opening up) and the comb flat on its bottom faces.'
+  parts:
+  - qr_plate
+  - fit_comb
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Test the comb: drop each step into the clamp from above and close the knob.
+    The widest step that drops in AND grips without rocking is your clamp''s width.
+    If a step grips but can be lifted straight out while tight, the lips only squeeze
+    the sides — fine, just handle the rig by the plate, not by the camera.'
+  parts:
+  - fit_comb
+  hardware: []
+  tool: null
+- n: '3'
+  text: Fit the plate width. If the matching step is narrower than 39 mm, sand both
+    grip sides of the plate evenly (caliper-check as you go, keep the faces parallel).
+    If the plate is loose in the clamp, add painter's-tape layers to both grip sides.
+    If you're off by more than ~1.5 mm, stop and tell me rather than fight it.
+  parts:
+  - qr_plate
+  - fit_comb
+  hardware: []
+  tool: sandpaper + calipers
+- n: '4'
+  text: 'Check length: seat the plate fully in the clamp. If its ends hit the clamp''s
+    end walls before the plate bottoms on the floor, sand the two ends equally until
+    it seats flat.'
+  parts:
+  - qr_plate
+  hardware: []
+  tool: sandpaper
+- n: '5'
+  text: 'Thread the bolt into the camera: grip the bolt''s shank with pliers (or drive
+    it from the head if it has a slot or hex in it) and turn the camera clockwise
+    until snug.'
+  parts: []
+  hardware:
+  - bolt
+  tool: pliers
+- n: '6'
+  text: 'Mount: lower the camera+bolt onto the plate so the head enters the hex pocket,
+    wiggling slightly until the head seats; the camera''s base should rest flat on
+    the plate top.'
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '7'
+  text: 'Clamp: drop the plate into the tripod clamp and turn the knob until the lips
+    just grip — snug, not gorilla-tight (PLA crushes).'
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '8'
+  text: 'Removal & care: back the knob off, lift the plate+camera out together, then
+    unscrew the camera from the bolt (or lift the camera off and pinch the bolt head
+    out of the pocket). Don''t leave the rig in a hot car — PLA softens.'
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null

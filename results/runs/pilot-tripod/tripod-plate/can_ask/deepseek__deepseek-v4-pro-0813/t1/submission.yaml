@@ -1,0 +1,224 @@
+task: tripod-plate
+note: ''
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: datasheet
+    note: Arca-Swiss standard dovetail width; fits most clamps. Adjust if the friend's
+      clamp is narrower.
+  plate_l:
+    value: 55
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length; generous but shorter than most camera bases
+  plate_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Overall plate height; side walls tall enough for lips to grab
+  lip_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: datasheet
+    note: Arca-Swiss dovetail lip angle, approximately 45 degrees
+  lip_w:
+    value: 5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Depth of the angled lip footprint on the plate edge
+  base_t:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Floor thickness of the plate under the bolt
+  bolt_hole_d:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Clearance hole for 1/4-20 bolt; 1/4 inch is 6.35 mm
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: asked
+    note: 'Measured by person: webcam bolt head across'
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: asked
+    note: 'Measured by person: webcam bolt head height'
+  bolt_thread_l:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: asked
+    note: 'Measured by person: thread length under head'
+  counterbore_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket for the bolt head, slightly larger than 15 mm head
+  counterbore_h:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket depth so head sits below plate top
+  clearance:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: General clearance for printed fits
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    # Main plate body: a slab plate_l\
+    \ x plate_w, plate_h tall\n    body = (cq.Workplane('XY')\n            .box(p.plate_l,\
+    \ p.plate_w, p.plate_h, centered=(True, True, False)))\n\n    # Dovetail: taper\
+    \ both side walls inward with a 45-degree lip.\n    # Cut away the upper outer\
+    \ corners of each side wall.\n    lip_dx = p.lip_w  # horizontal footprint of\
+    \ the angled lip\n    top_w = p.plate_w - 2 * lip_dx  # width at the very top\
+    \ after chamfer\n\n    # Build a chamfered cross-section by cutting the top corners.\n\
+    \    chamfer = (cq.Workplane('XZ')\n               .moveTo(-p.plate_l / 2, p.plate_h)\n\
+    \               .lineTo(p.plate_l / 2, p.plate_h)\n               .lineTo(p.plate_l\
+    \ / 2 - lip_dx, p.plate_h - lip_dx)\n               .lineTo(p.plate_l / 2 - lip_dx,\
+    \ 0)\n               .lineTo(-p.plate_l / 2 + lip_dx, 0)\n               .lineTo(-p.plate_l\
+    \ / 2 + lip_dx, p.plate_h - lip_dx)\n               .close()\n               .extrude(p.plate_w))\n\
+    \    # Instead: chamfer the two long edges at the top with a 45 deg by cutting\
+    \ boxes.\n    # Simpler and robust: cut triangular prisms from the top long edges.\n\
+    \    cut_left = (cq.Workplane('XY')\n                .center(0, p.plate_w / 2\
+    \ - lip_dx / 2, p.plate_h - lip_dx / 2 - p.base_t)\n                .polygon(3,\
+    \ lip_dx)\n                .extrude(p.plate_l + 1, both=True) if False else None)\n\
+    \    from cadquery import Vector, Plane\n    # Triangular prism cut along left\
+    \ edge\n    tri_left = (cq.Workplane('XZ')\n                .polyline([(-lip_dx,\
+    \ 0), (0, 0), (0, lip_dx)])\n                .close()\n                .extrude(p.plate_l))\n\
+    \    tri_left = tri_left.translate((0, -p.plate_w / 2, p.plate_h - p.base_t))\n\
+    \    tri_right = tri_left.mirror('YZ')\n    body = body.cut(tri_left).cut(tri_right)\n\
+    \n    # Top rectangular platform for the camera to sit on (flat, wide)\n    #\
+    \ Counterbore for the bolt head from underneath: the plate mounts to camera\n\
+    \    # via the bolt going up through the center.\n    cb = (cq.Workplane('XY')\n\
+    \          .circle(p.counterbore_d / 2 + p.clearance)\n          .extrude(p.counterbore_h))\n\
+    \    body = body.cut(cb)\n\n    # Through hole for the 1/4-20 bolt shank, centered,\
+    \ going up.\n    through = (cq.Workplane('XY')\n               .circle(p.bolt_hole_d\
+    \ / 2 + p.clearance)\n               .extrude(p.plate_h + 1, both=True))\n   \
+    \ body = body.cut(through)\n\n    return body\n"
+  print_orientation: Dovetail side down (long flat top on the bed) — actually print
+    with the flat bottom/top face down so the dovetail chamfers are overhangs at 45
+    deg, which print fine; z=0 is the bottom face
+  use_orientation: Dovetail drops into the tripod clamp; camera's flat base sits on
+    the top face; bolt goes up through the plate into the camera socket
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    # Small dovetail coupon: a short\
+    \ length of the same cross-section\n    body = (cq.Workplane('XY')\n         \
+    \   .box(20, p.plate_w, p.plate_h, centered=(True, True, False)))\n    lip_dx\
+    \ = p.lip_w\n    tri_left = (cq.Workplane('XZ')\n                .polyline([(-lip_dx,\
+    \ 0), (0, 0), (0, lip_dx)])\n                .close()\n                .extrude(20))\n\
+    \    tri_left = tri_left.translate((0, -p.plate_w / 2, p.plate_h - p.base_t))\n\
+    \    tri_right = tri_left.mirror('YZ')\n    body = body.cut(tri_left).cut(tri_right)\n\
+    \    return body\n"
+  print_orientation: Dovetail side down, z=0 on the bottom face
+  use_orientation: Drop it into the tripod clamp and check the lips grab before printing
+    the full plate
+hardware:
+- id: mount_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_mount
+  fastener: mount_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: counterbore
+    role: head_seat
+  - part: qr_plate
+    feature: through_hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 socket
+criteria:
+- id: dovetail_fits
+  part: fit_coupon
+  feature: dovetail profile
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Drop the coupon into the tripod clamp; the angled lips must grab
+      the chamfered sides and hold when the knob is tightened.
+- id: plate_sits_in_camera
+  part: qr_plate
+  feature: top face
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: Camera base sits flat on the plate top; bolt threads into the 1/4-20
+      socket.
+manual:
+- n: '1'
+  text: Print fit_coupon first. Drop it into the tripod clamp and tighten the knob.
+    If the lips grab and hold it securely, continue. If it's loose or won't drop in,
+    tell me and I'll adjust plate_w.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print qr_plate.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Place qr_plate so the dovetail drops into the tripod clamp. Tighten the clamp
+    knob.
+  parts: []
+  hardware: []
+  tool: null
+- n: '4'
+  text: Set the camera on the plate so its 1/4-20 socket lines up with the center
+    hole.
+  parts: []
+  hardware: []
+  tool: null
+- n: '5'
+  text: Push the salvaged webcam bolt up through the counterbore and thread it into
+    the camera socket. Hand-tighten.
+  parts: []
+  hardware:
+  - mount_bolt
+  tool: null
+- n: '6'
+  text: Temporary until you find the original plate — PLA is not rated for heavy loads,
+    so avoid leaving a heavy lens hanging.
+  parts: []
+  hardware: []
+  tool: null

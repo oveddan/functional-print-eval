@@ -53,3 +53,16 @@ def test_arca_overrides_change_geometry(tmp_path):
     small = build_parts(sub, tmp_path / "a")["plate"].mesh.volume
     big = build_parts(sub, tmp_path / "b", overrides={"recess_d": 16})["plate"].mesh.volume
     assert big < small
+
+
+BLOCK = 'cq.Workplane("XY").box(20, 20, 10, centered=False)'
+HOLLOW = f'{BLOCK}.cut(cq.Workplane("XY").box(6, 6, 4, centered=False).translate((7, 7, 3)))'
+FLOATING_PEG = f'{HOLLOW}.union(cq.Workplane("XY").box(2, 2, 2, centered=False).translate((9, 9, 4)))'
+
+
+@pytest.mark.parametrize("shape, bodies", [(BLOCK, 1), (HOLLOW, 1), (FLOATING_PEG, 2)], ids=["solid", "sealed-void", "floating-peg"])
+def test_connected_bodies_counts_solids_not_voids(tmp_path, shape, bodies):
+    part = submission.Part(id="p", role="final", material="PLA", code=f"def build(p):\n    return {shape}\n", print_orientation="flat", use_orientation="flat")
+    sub = submission.Submission(task="t", params={}, parts=[part])
+    [finding] = checks.connected_bodies(build_parts(sub, tmp_path))
+    assert finding.ok is (bodies == 1) and finding.detail == f"{bodies} bodies"
