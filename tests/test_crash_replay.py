@@ -39,8 +39,10 @@ def with_import_math(sub, part_id):
 
 
 def test_the_trials_are_every_saved_crash_but_the_one_that_stops_itself():
+    """Every crash saved when the replay ran (issue 27). Trials saved since issue 34 record
+    settings.prompt_caching, and aren't part of it."""
     crashed = {str(folder.relative_to(RUNS)) for folder, record in TrialRecord.all_in(RUNS)
-               if crash_replay.saved_build_errors(record)}
+               if crash_replay.saved_build_errors(record) and record.settings.prompt_caching is None}
     assert crashed == {*crash_replay.CRASHED_TRIALS, crash_replay.DECLINED_ON_PURPOSE}
     assert len(crash_replay.CRASHED_TRIALS) == 10
 

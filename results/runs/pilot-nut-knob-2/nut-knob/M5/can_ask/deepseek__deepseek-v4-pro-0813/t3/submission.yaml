@@ -1,0 +1,229 @@
+task: nut-knob/M5
+note: A single-piece 30 mm hand knob for an M5 bolt. The ISO 4032 M5 nut presses by
+  hand into a blind hex socket sized slightly undersized (press fit, no glue), with
+  small corner reliefs so the nut's sharp corners seat without binding. A 5.5 mm through-hole
+  lets the M5 bolt pass through the nut and exit the far side; the socket floor retains
+  the nut so it cannot be pushed through. A small coupon with the identical socket
+  geometry verifies the press fit (press in, invert, must stay) before printing the
+  full knob.
+questions:
+- text: When you press the nut into the coupon socket by hand and invert it, does
+    it stay in? If it falls out, we need a tighter socket (reduce socket_af, e.g.
+    to 7.7).
+  answer: null
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  socket_af:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: press-fit undersize vs nut_af 8.0; verified via coupon
+  corner_relief_d:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: relief at each socket corner so the nut's sharp corners seat
+  lead_in_af:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: slightly larger shallow hex at the mouth to guide the nut in
+  lead_in_depth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 1.0 so the nut sits fully inside, top 1 mm below face
+  bolt_clearance_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for M5 bolt (d 5.0)
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  groove_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: finger scallop radius on the rim
+  num_grooves:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: number of grip scallops
+  top_bevel:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bottom_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  block_w:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: coupon block size
+  block_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: coupon block height
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    dc = p.socket_af\
+    \ * 2.0 / math.sqrt(3.0)\n\n    knob = cq.Workplane('XY').circle(p.knob_d / 2.0).extrude(p.knob_h)\n\
+    \n    # lead-in: slightly larger shallow hex at the mouth\n    dc_lead = p.lead_in_af\
+    \ * 2.0 / math.sqrt(3.0)\n    lead = (cq.Workplane('XY', origin=(0, 0, p.knob_h\
+    \ - p.lead_in_depth))\n            .polygon(6, dc_lead).extrude(p.lead_in_depth))\n\
+    \    knob = knob.cut(lead)\n\n    # main hex socket\n    z0 = p.knob_h - p.pocket_depth\n\
+    \    depth_main = p.pocket_depth - p.lead_in_depth\n    socket = (cq.Workplane('XY',\
+    \ origin=(0, 0, z0))\n              .polygon(6, dc).extrude(depth_main))\n   \
+    \ knob = knob.cut(socket)\n\n    # corner reliefs so the nut's sharp corners seat\
+    \ without binding\n    R = dc / 2.0\n    for k in range(6):\n        ang = math.radians(60\
+    \ * k)\n        x = R * math.cos(ang)\n        y = R * math.sin(ang)\n       \
+    \ rlf = (cq.Workplane('XY', origin=(0, 0, z0))\n               .center(x, y).circle(p.corner_relief_d\
+    \ / 2.0).extrude(depth_main))\n        knob = knob.cut(rlf)\n\n    # bolt clearance\
+    \ hole through the floor and out the far side\n    knob = knob.cut(cq.Workplane('XY').circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(p.knob_h))\n\n    # grip scallops around the rim\n    for k in\
+    \ range(p.num_grooves):\n        ang = 2.0 * math.pi * k / p.num_grooves\n   \
+    \     x = (p.knob_d / 2.0) * math.cos(ang)\n        y = (p.knob_d / 2.0) * math.sin(ang)\n\
+    \        g = (cq.Workplane('XY').center(x, y).circle(p.groove_r).extrude(p.knob_h))\n\
+    \        knob = knob.cut(g)\n\n    knob = knob.edges('>Z').chamfer(p.top_bevel)\n\
+    \    knob = knob.edges('<Z').chamfer(p.bottom_chamfer)\n\n    return knob"
+  print_orientation: flat bottom face on the bed, hex socket opening up (no supports)
+  use_orientation: nut pressed into the hex pocket on top; M5 bolt threads in from
+    the top and exits through the bottom
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    dc = p.socket_af\
+    \ * 2.0 / math.sqrt(3.0)\n    block = cq.Workplane('XY').box(p.block_w, p.block_w,\
+    \ p.block_h)\n    z0 = p.block_h - p.pocket_depth\n    block = block.cut(cq.Workplane('XY',\
+    \ origin=(0, 0, z0)).polygon(6, dc).extrude(p.pocket_depth))\n    R = dc / 2.0\n\
+    \    for k in range(6):\n        ang = math.radians(60 * k)\n        rlf = (cq.Workplane('XY',\
+    \ origin=(0, 0, z0))\n               .center(R * math.cos(ang), R * math.sin(ang))\n\
+    \               .circle(p.corner_relief_d / 2.0).extrude(p.pocket_depth))\n  \
+    \      block = block.cut(rlf)\n    return block"
+  print_orientation: flat bottom on the bed, socket opening up
+  use_orientation: socket opening up
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_seat
+  part: knob
+  feature: hex_socket
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Press the M5 nut into the coupon's hex socket by hand and invert
+      it; it must stay in without glue.
+- id: nut_retained
+  part: knob
+  feature: pocket_floor
+  relation: faces
+  hardware: m5_nut
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: The bolt clearance hole (5.5 mm) is smaller than the nut's across-flats
+      (8.0 mm), so the floor retains the nut and it cannot be pushed through.
+- id: bolt_clear
+  part: knob
+  feature: bolt_hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: 5.5 mm bolt clearance hole passes an M5 bolt (d 5.0 mm) with ~0.25
+      mm radial clearance.
+manual:
+- n: '1'
+  text: Print the fit coupon.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M5 nut into the coupon's hex socket by hand, then turn it upside
+    down. It must stay in. If it falls out, reprint with a tighter socket (smaller
+    socket_af).
+  parts:
+  - fit_coupon
+  hardware:
+  - m5_nut
+  tool: hands
+- n: '3'
+  text: Print the knob.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press the M5 nut fully into the knob's hex pocket by hand until it bottoms
+    out. The nut sits fully inside and cannot be pushed through the far side.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: hands
+- n: '5'
+  text: Thread your M5 bolt in from the top, through the nut, so it exits the bottom
+    of the knob.
+  parts:
+  - knob
+  hardware: []
+  tool: null

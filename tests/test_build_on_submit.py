@@ -273,9 +273,9 @@ def test_the_other_conditions_accept_a_design_without_building_it(condition, mon
 
 
 def test_saved_trials_load_and_save_unchanged():
-    """Every saved record has no build_on_submit, and saving it again gives the same fields."""
+    """Only a can_run_code record has build_on_submit, and saving any record again gives the same fields."""
     for path in sorted((ROOT / "results/runs").rglob("grades.json")):
         saved = json.loads(path.read_text())
-        assert "build_on_submit" not in saved
+        assert ("build_on_submit" in saved) == (saved["condition"] == "can_run_code"), path
         record = agent.TrialRecord.model_validate(copy.deepcopy(saved))
         assert record.as_saved() == saved, path

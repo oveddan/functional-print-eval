@@ -1,0 +1,317 @@
+task: tripod-plate
+note: 'Temporary tripod quick-release plate + camera screw. The camera thread is the
+  standard 1/4"-20 (confirmed). The plate is an Arca-Swiss-style 38 mm / 45-degree
+  dovetail, but note this is a guess: the tripod channel dimensions came back unmeasured,
+  so the print-a-coupon-first step is important. For the "part that screws in", you
+  can print the stud, but I strongly recommend the salvaged metal webcam-mount bolt
+  instead — it''s the exact same 1/4-20 thread and far stronger (PLA threads will
+  strip under a heavy camera). Both the stud and the bolt fit the same recess in the
+  plate.'
+questions:
+- text: What is the width across the top opening of the channel your plate drops into
+    (the narrow gap), in millimetres? I used 38 mm as a standard guess; tell me the
+    real number and I can adjust plate_width.
+  answer: null
+params:
+  thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 UNC pitch, from the hardware list
+  major_d_14_20:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 (UNC) major diameter
+  major_fit_clear:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: subtracted from major diameter so the printed PLA thread does not bind
+  minor_d_14_20:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 external thread root (minor) diameter ~4.76 mm, slightly under for
+      print
+  bolt_head_d:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam-mount-bolt head across
+  bolt_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head height
+  bolt_len:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt length under the head
+  plate_length:
+    value: 40.0
+    unit: mm
+    kind: design
+    source: design
+    note: overall plate length along the channel
+  plate_width:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Arca-Swiss-style dovetail top width; the tripod channel width was not measured
+  plate_thickness:
+    value: 9.0
+    unit: mm
+    kind: design
+    source: design
+    note: chosen so the stud protrudes ~6 mm above the plate into the camera
+  dovetail_chamfer:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree dovetail bevel height
+  clearance_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: clearance slot for the 1/4-20 shank (6.35 mm) + 0.25 mm
+  head_recess_d:
+    value: 15.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt head 15 mm + 0.5 mm clearance
+  head_recess_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt head height 5 mm + 0.5 mm clearance
+  slot_length:
+    value: 26.0
+    unit: mm
+    kind: design
+    source: design
+    note: fore-aft travel for balancing the camera
+  flange_d:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: printed stud flange matches salvaged bolt head diameter
+  flange_h:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: printed stud flange height matches salvaged bolt head height
+  thread_len:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: stud thread length above flange, matches salvaged bolt under-head length
+  coupon_len:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: thickness of the dovetail fit-test coupon along the channel
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    X, Y, Z = p.plate_length, p.plate_width,\
+    \ p.plate_thickness\n    pl = (cq.Workplane(\"XY\")\n          .box(X, Y, Z, centered=(True,\
+    \ True, False))\n          .faces(\"<Z\").edges(\"|X\").chamfer(p.dovetail_chamfer))\n\
+    \    pl = (pl.faces(\">Z\").workplane()\n          .slot2D(p.slot_length, p.clearance_d,\
+    \ 0)\n          .cutBlind(-Z))\n    pl = (pl.faces(\"<Z\").workplane()\n     \
+    \     .slot2D(p.slot_length, p.head_recess_d, 0)\n          .cutBlind(p.head_recess_depth))\n\
+    \    return pl\n"
+  print_orientation: Narrow dovetail face (30 mm) flat on the bed; the 45-degree bevels
+    angle up and outward (no supports needed).
+  use_orientation: 38 mm face up under the camera; dovetail downward into the tripod
+    clamp.
+- id: stud
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    R = (p.major_d_14_20\
+    \ - p.major_fit_clear) / 2.0\n    r = p.minor_d_14_20 / 2.0\n    depth = R - r\n\
+    \    half = depth * math.tan(math.radians(30.0))\n\n    def thread(length, zoff):\n\
+    \        rod = (cq.Workplane(\"XY\").circle(R).extrude(length)\n             \
+    \  .faces(\">Z\").edges().chamfer(0.6))\n        helix = cq.Wire.makeHelix(pitch=p.thread_pitch,\
+    \ height=length + 2.0 * p.thread_pitch, radius=R)\n        prof = (cq.Workplane(\"\
+    XZ\")\n                .polyline([(depth, 0.0), (-0.12, -half), (-0.12, half)])\n\
+    \                .close().val())\n        face = cq.Face.makeFromWires(prof)\n\
+    \        cutter = cq.Workplane(\"XY\").add(face).sweep(helix, isFrenet=True).val()\n\
+    \        return rod.val().cut(cutter).translate((0, 0, zoff))\n\n    flange =\
+    \ cq.Workplane(\"XY\").circle(p.flange_d / 2.0).extrude(p.flange_h)\n    rod =\
+    \ cq.Workplane(\"XY\").add(thread(p.thread_len, p.flange_h))\n    return flange.union(rod)\n"
+  print_orientation: Flange flat on the bed; threaded shaft vertical, pointing up.
+  use_orientation: Flange sits in the plate's underside recess; 1/4-20 thread points
+    up into the camera.
+- id: coupon_dovetail
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    return (cq.Workplane(\"XY\")\n\
+    \            .box(p.coupon_len, p.plate_width, p.plate_thickness, centered=(True,\
+    \ True, False))\n            .faces(\"<Z\").edges(\"|X\").chamfer(p.dovetail_chamfer))\n"
+  print_orientation: Narrow dovetail face flat on the bed.
+  use_orientation: Dropped into the tripod channel to test fit.
+- id: coupon_thread
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    R = (p.major_d_14_20\
+    \ - p.major_fit_clear) / 2.0\n    r = p.minor_d_14_20 / 2.0\n    depth = R - r\n\
+    \    half = depth * math.tan(math.radians(30.0))\n    L = 12.0\n    rod = (cq.Workplane(\"\
+    XY\").circle(R).extrude(L)\n           .faces(\">Z\").edges().chamfer(0.6))\n\
+    \    helix = cq.Wire.makeHelix(pitch=p.thread_pitch, height=L + 2.0 * p.thread_pitch,\
+    \ radius=R)\n    prof = (cq.Workplane(\"XZ\")\n            .polyline([(depth,\
+    \ 0.0), (-0.12, -half), (-0.12, half)])\n            .close().val())\n    face\
+    \ = cq.Face.makeFromWires(prof)\n    cutter = cq.Workplane(\"XY\").add(face).sweep(helix,\
+    \ isFrenet=True).val()\n    return cq.Workplane(\"XY\").add(rod.val().cut(cutter))\n"
+  print_orientation: One flat end on the bed; thread pointing up.
+  use_orientation: Screwed into the camera's 1/4-20 socket to test the thread.
+hardware:
+- id: salvaged_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_mount
+  fastener: salvaged_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: head_recess
+    role: head_seat
+  - part: plate
+    feature: through_hole
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: dovetail_fit
+  part: plate
+  feature: dovetail
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - dovetail_chamfer
+  - plate_thickness
+  check:
+    method: coupon
+    ref: coupon_dovetail
+    description: Drop the dovetail coupon into the tripod clamp; it should drop in
+      and be gripped when the jaws are tightened.
+- id: thread_fit
+  part: stud
+  feature: thread
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - thread_pitch
+  - major_d_14_20
+  - major_fit_clear
+  - minor_d_14_20
+  check:
+    method: coupon
+    ref: coupon_thread
+    description: Screw the thread coupon into the camera's 1/4-20 socket by hand;
+      it should thread in smoothly without forcing.
+- id: flange_seat
+  part: stud
+  feature: flange
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - flange_d
+  - flange_h
+  - head_recess_d
+  - head_recess_depth
+  check:
+    method: measure
+    ref: null
+    description: The 15 mm flange should sit in the plate's 15.5 mm underside recess
+      without binding.
+manual:
+- n: '1'
+  text: Print coupon_dovetail and drop it into the tripod clamp. It should drop in
+    from above and be gripped when the jaws tighten. If it is too wide/narrow, sand
+    the angled sides or tell me the channel width (answer the question below) and
+    I will adjust plate_width.
+  parts:
+  - coupon_dovetail
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Print coupon_thread and screw it into the camera's 1/4-20 socket by hand.
+    It should go in smoothly. If it binds or is too loose, tell me and I will adjust
+    the thread diameters.
+  parts:
+  - coupon_thread
+  hardware: []
+  tool: 3D printer
+- n: '3'
+  text: Print the plate (narrow dovetail face down, no supports).
+  parts:
+  - plate
+  hardware: []
+  tool: 3D printer
+- n: '4'
+  text: Print the stud (flange down) OR skip this and use the salvaged metal webcam-mount
+    bolt instead - it is the same 1/4-20 thread and much stronger. I recommend the
+    metal bolt.
+  parts:
+  - stud
+  hardware:
+  - salvaged_bolt
+  tool: 3D printer
+- n: '5'
+  text: 'Fit the screw: push the salvaged bolt''s head (or the printed stud''s flange)
+    into the plate''s underside recess so the 1/4-20 thread pokes up through the slot.
+    Slide it along the slot for camera balance. A dab of super glue on the flange/head
+    stops it spinning when you remove the camera later.'
+  parts:
+  - plate
+  - stud
+  hardware:
+  - salvaged_bolt
+  tool: null
+- n: '6'
+  text: Place the camera on the plate and rotate it to thread onto the protruding
+    1/4-20 stud until firm. Keep light downward pressure as you turn. If the camera
+    will not tighten fully, the stud is bottoming out - shorten the thread or add
+    a small washer between camera and plate.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '7'
+  text: Drop the plate (camera attached) into the tripod clamp and tighten the clamp's
+    knob. Done - it is a temporary stand-in until you find the original plate.
+  parts:
+  - plate
+  hardware: []
+  tool: null

@@ -154,27 +154,28 @@ Every condition also has `report_limitation`, which changes nothing and records 
 ## Results
 
 <!-- results:start (written by scripts/results_table.py; don't edit by hand) -->
-104 trials of 12 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 3 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
+151 trials of 12 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 3 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
 
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
-| `can_ask` | 94 | 26 | 43 | 21 | 4 | 0 | $7.48 |
-| **all** | **104** | 27 | 50 | 22 | 5 | 0 | $8.60 |
+| `can_ask` | 134 | 40 | 54 | 36 | 4 | 0 | $10.24 |
+| `can_run_code` | 7 | 2 | 3 | 0 | 2 | 0 | $1.16 |
+| **all** | **151** | 43 | 64 | 37 | 7 | 0 | $12.51 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 2 | 0 | 2 | 0 | 0 | 0 | $0.02 |
-| `can_ask` | anthropic/claude-opus-5.5 | 2 | 1 | 0 | 1 | 0 | 0 | $0.52 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 2 | 0 | 2 | 0 | 0 | 0 | $0.25 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 2 | 0 | 2 | 0 | 0 | 0 | $0.03 |
+| `can_ask` | anthropic/claude-haiku-5.5 | 3 | 0 | 3 | 0 | 0 | 0 | $0.02 |
+| `can_ask` | anthropic/claude-opus-5.5 | 3 | 1 | 1 | 1 | 0 | 0 | $0.69 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 3 | 0 | 2 | 1 | 0 | 0 | $0.36 |
+| `can_ask` | deepseek/deepseek-v4-pro-0813 | 3 | 0 | 3 | 0 | 0 | 0 | $0.04 |
 | `can_ask` | deepseek/deepseek-v4.1-flash | 2 | 0 | 2 | 0 | 0 | 0 | $0.12 |
 | `can_ask` | google/gemini-3.8-flash | 2 | 1 | 1 | 0 | 0 | 0 | $0.19 |
-| `can_ask` | google/gemini-4-argon | 2 | 0 | 0 | 2 | 0 | 0 | $0.37 |
+| `can_ask` | google/gemini-4-argon | 3 | 0 | 0 | 3 | 0 | 0 | $0.57 |
 | `can_ask` | openai/gpt-6-luna | 2 | 0 | 2 | 0 | 0 | 0 | $0.01 |
-| `can_ask` | openai/gpt-6.1-sol | 2 | 1 | 0 | 1 | 0 | 0 | $0.34 |
+| `can_ask` | openai/gpt-6.1-sol | 3 | 1 | 1 | 1 | 0 | 0 | $0.48 |
 | `can_ask` | qwen/qwen3.8-flash | 2 | 0 | 1 | 1 | 0 | 0 | $0.10 |
 | `can_ask` | z-ai/glm-5.3-flash | 2 | 0 | 1 | 1 | 0 | 0 | $0.12 |
 
@@ -182,32 +183,33 @@ Every condition also has `report_limitation`, which changes nothing and records 
 
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 1 | 1 | 0 | 0 | 0 | 0 | $0.00 |
-| `can_ask` | anthropic/claude-opus-5.5 | 1 | 1 | 0 | 0 | 0 | 0 | $0.06 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 1 | 1 | 0 | 0 | 0 | 0 | $0.05 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 1 | 1 | 0 | 0 | 0 | 0 | $0.00 |
+| `can_ask` | anthropic/claude-haiku-5.5 | 3 | 3 | 0 | 0 | 0 | 0 | $0.01 |
+| `can_ask` | anthropic/claude-opus-5.5 | 3 | 3 | 0 | 0 | 0 | 0 | $0.17 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 3 | 3 | 0 | 0 | 0 | 0 | $0.09 |
+| `can_ask` | deepseek/deepseek-v4-pro-0813 | 3 | 3 | 0 | 0 | 0 | 0 | $0.01 |
 | `can_ask` | deepseek/deepseek-v4.1-flash | 1 | 1 | 0 | 0 | 0 | 0 | $0.01 |
 | `can_ask` | google/gemini-3.8-flash | 1 | 1 | 0 | 0 | 0 | 0 | $0.02 |
-| `can_ask` | google/gemini-4-argon | 1 | 1 | 0 | 0 | 0 | 0 | $0.02 |
+| `can_ask` | google/gemini-4-argon | 3 | 3 | 0 | 0 | 0 | 0 | $0.07 |
 | `can_ask` | openai/gpt-6-luna | 1 | 1 | 0 | 0 | 0 | 0 | $0.00 |
-| `can_ask` | openai/gpt-6.1-sol | 1 | 1 | 0 | 0 | 0 | 0 | $0.03 |
+| `can_ask` | openai/gpt-6.1-sol | 3 | 3 | 0 | 0 | 0 | 0 | $0.09 |
 | `can_ask` | qwen/qwen3.8-flash | 1 | 1 | 0 | 0 | 0 | 0 | $0.01 |
 | `can_ask` | x-ai/grok-4.7 | 1 | 1 | 0 | 0 | 0 | 0 | $0.06 |
 | `can_ask` | z-ai/glm-5.3-flash | 1 | 1 | 0 | 0 | 0 | 0 | $0.01 |
+| `can_run_code` | anthropic/claude-haiku-5.5 | 1 | 1 | 0 | 0 | 0 | 0 | $0.00 |
 
 ### `nut-knob/M3` (draft, not approved by Dan: exploratory)
 
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 1 | 0 | 1 | 0 | 0 | 0 | $0.01 |
+| `can_ask` | anthropic/claude-haiku-5.5 | 3 | 0 | 3 | 0 | 0 | 0 | $0.02 |
 | `can_ask` | anthropic/claude-opus-5.5 | 3 | 1 | 0 | 2 | 0 | 0 | $0.43 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 1 | 0 | 1 | 0 | 0 | 0 | $0.06 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 1 | 0 | 1 | 0 | 0 | 0 | $0.01 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 3 | 0 | 1 | 2 | 0 | 0 | $0.19 |
+| `can_ask` | deepseek/deepseek-v4-pro-0813 | 3 | 0 | 3 | 0 | 0 | 0 | $0.17 |
 | `can_ask` | deepseek/deepseek-v4.1-flash | 1 | 0 | 0 | 1 | 0 | 0 | $0.01 |
 | `can_ask` | google/gemini-3.8-flash | 1 | 0 | 1 | 0 | 0 | 0 | $0.08 |
-| `can_ask` | google/gemini-4-argon | 1 | 0 | 0 | 1 | 0 | 0 | $0.10 |
+| `can_ask` | google/gemini-4-argon | 3 | 0 | 0 | 3 | 0 | 0 | $0.24 |
 | `can_ask` | openai/gpt-6-luna | 1 | 0 | 0 | 1 | 0 | 0 | $0.01 |
-| `can_ask` | openai/gpt-6.1-sol | 1 | 1 | 0 | 0 | 0 | 0 | $0.12 |
+| `can_ask` | openai/gpt-6.1-sol | 3 | 1 | 0 | 2 | 0 | 0 | $0.37 |
 | `can_ask` | qwen/qwen3.8-flash | 1 | 0 | 1 | 0 | 0 | 0 | $0.03 |
 | `can_ask` | z-ai/glm-5.3-flash | 1 | 0 | 0 | 1 | 0 | 0 | $0.00 |
 
@@ -215,15 +217,15 @@ Every condition also has `report_limitation`, which changes nothing and records 
 
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 1 | 0 | 0 | 1 | 0 | 0 | $0.01 |
-| `can_ask` | anthropic/claude-opus-5.5 | 1 | 1 | 0 | 0 | 0 | 0 | $0.15 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 1 | 1 | 0 | 0 | 0 | 0 | $0.07 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 1 | 0 | 0 | 1 | 0 | 0 | $0.03 |
+| `can_ask` | anthropic/claude-haiku-5.5 | 3 | 0 | 0 | 3 | 0 | 0 | $0.01 |
+| `can_ask` | anthropic/claude-opus-5.5 | 3 | 2 | 0 | 1 | 0 | 0 | $0.45 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 3 | 1 | 0 | 2 | 0 | 0 | $0.22 |
+| `can_ask` | deepseek/deepseek-v4-pro-0813 | 3 | 0 | 2 | 1 | 0 | 0 | $0.36 |
 | `can_ask` | deepseek/deepseek-v4.1-flash | 2 | 0 | 1 | 1 | 0 | 0 | $0.04 |
 | `can_ask` | google/gemini-3.8-flash | 1 | 1 | 0 | 0 | 0 | 0 | $0.09 |
-| `can_ask` | google/gemini-4-argon | 1 | 0 | 0 | 1 | 0 | 0 | $0.07 |
+| `can_ask` | google/gemini-4-argon | 3 | 1 | 1 | 1 | 0 | 0 | $0.19 |
 | `can_ask` | openai/gpt-6-luna | 1 | 0 | 0 | 1 | 0 | 0 | $0.01 |
-| `can_ask` | openai/gpt-6.1-sol | 1 | 0 | 0 | 1 | 0 | 0 | $0.14 |
+| `can_ask` | openai/gpt-6.1-sol | 3 | 0 | 0 | 3 | 0 | 0 | $0.38 |
 | `can_ask` | qwen/qwen3.8-flash | 1 | 0 | 1 | 0 | 0 | 0 | $0.03 |
 | `can_ask` | x-ai/grok-4.7 | 1 | 0 | 0 | 1 | 0 | 0 | $0.48 |
 | `can_ask` | z-ai/glm-5.3-flash | 1 | 0 | 0 | 1 | 0 | 0 | $0.00 |
@@ -254,6 +256,12 @@ Every condition also has `report_limitation`, which changes nothing and records 
 | `can_ask` | qwen/qwen3.8-flash | 3 | 0 | 3 | 0 | 0 | 0 | $0.17 |
 | `can_ask` | x-ai/grok-4.7 | 1 | 1 | 0 | 0 | 0 | 0 | $0.46 |
 | `can_ask` | z-ai/glm-5.3-flash | 3 | 0 | 2 | 1 | 0 | 0 | $0.13 |
+| `can_run_code` | anthropic/claude-haiku-5.5 | 1 | 0 | 0 | 0 | 1 | 0 | $0.01 |
+| `can_run_code` | anthropic/claude-opus-5.5 | 1 | 1 | 0 | 0 | 0 | 0 | $0.25 |
+| `can_run_code` | anthropic/claude-sonnet-5.5 | 1 | 0 | 1 | 0 | 0 | 0 | $0.14 |
+| `can_run_code` | deepseek/deepseek-v4-pro-0813 | 1 | 0 | 1 | 0 | 0 | 0 | $0.40 |
+| `can_run_code` | google/gemini-4-argon | 1 | 0 | 1 | 0 | 0 | 0 | $0.27 |
+| `can_run_code` | openai/gpt-6.1-sol | 1 | 0 | 0 | 0 | 1 | 0 | $0.08 |
 <!-- results:end -->
 
 Every trial's transcript, design and grades are in `results/runs/`; the results page (step 5) shows each one with its parts in 3D. `scripts/digest.py <run> --why` prints each failure's evidence.
@@ -275,9 +283,9 @@ These are treated as true without a print that shows them for that exact case. T
 <!-- assumptions:start (written by scripts/results_table.py; don't edit by hand) -->
 | Assumption | Check | What rests on it in the saved runs |
 |---|---|---|
-| The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (31 pass, 1 fail), so all 7 tripod passes |
-| One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (24 pass, 6 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 17 trials that fail on `bridges` alone (Dan's call: they fail) |
+| The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (34 pass, 2 fail), so all 8 tripod passes |
+| One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (28 pass, 6 fail) |
+| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 21 trials that fail on `bridges` alone (Dan's call: they fail) |
 <!-- assumptions:end -->
 
 ### Whose calls these are

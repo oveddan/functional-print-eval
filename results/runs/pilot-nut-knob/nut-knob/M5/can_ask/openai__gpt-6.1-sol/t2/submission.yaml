@@ -1,0 +1,337 @@
+task: nut-knob/M5
+note: One-piece 30 mm knob with recessed hex nut, integral snap retainers and bottom
+  stop. Optional coupon tests hand insertion and upside-down retention before the
+  final print. Catalog nut dimensions used because measurement was unavailable.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 30
+    unit: mm
+    kind: world
+    source: asked
+    note: ''
+  height:
+    value: 10.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_allowance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_allowance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  axial_play:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  latch_interference:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_land:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  ramp_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_width:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_wall:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_width:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_overlap:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  root_z:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_top:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_d:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    af = p.nut_af+p.pocket_allowance\n  \
+    \  h = p.height\n    b = cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n  \
+    \  for i in range(int(p.grip_count)):\n        a = 2*math.pi*i/p.grip_count\n\
+    \        b = b.cut(cq.Workplane('XY').center(p.knob_d/2*math.cos(a),p.knob_d/2*math.sin(a)).circle(p.grip_cut_d/2).extrude(h))\n\
+    \    verts = [(af/math.sqrt(3)*math.cos(math.pi*i/3),af/math.sqrt(3)*math.sin(math.pi*i/3))\
+    \ for i in range(6)]\n    b = b.cut(cq.Workplane('XY').workplane(offset=p.floor).polyline(verts).close().extrude(h))\n\
+    \    b = b.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_allowance)/2).extrude(h))\n\
+    \    inner = af/2\n    outer = inner+p.finger_wall\n    w = p.finger_width\n \
+    \   s = p.slot_width\n    zlip = p.floor+p.nut_h+p.axial_play\n    for sign in\
+    \ (-1,1):\n        b = b.cut(cq.Workplane('XY').box(w+2*s,s,h-p.root_z,centered=(True,True,False)).translate((0,sign*(outer+s/2),p.root_z)))\n\
+    \        y0 = inner-p.slot_overlap\n        y1 = outer+s\n        for side in\
+    \ (-1,1):\n            b = b.cut(cq.Workplane('XY').box(s,y1-y0,h-p.root_z,centered=(True,True,False)).translate((side*(w/2+s/2),sign*(y0+y1)/2,p.root_z)))\n\
+    \        b = b.cut(cq.Workplane('XY').box(w,y1-y0,h-p.finger_top,centered=(True,True,False)).translate((0,sign*(y0+y1)/2,p.finger_top)))\n\
+    \        tip = (p.nut_af-p.latch_interference)/2\n        profile = [(sign*inner,zlip),(sign*tip,zlip),(sign*tip,zlip+p.lip_land),(sign*inner,zlip+p.lip_land+p.ramp_h)]\n\
+    \        b = b.union(cq.Workplane('YZ').polyline(profile).close().extrude(w).translate((-w/2,0,0)))\n\
+    \    return b"
+  print_orientation: Flat underside on bed at z=0; opening upward. No supports.
+  use_orientation: Nut enters top pocket. Bolt runs along z axis. Solid underside
+    faces clamped work.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import math\n    af = p.nut_af+p.pocket_allowance\n  \
+    \  h = p.height\n    b = cq.Workplane('XY').circle(p.coupon_d/2).extrude(h)\n\
+    \    verts = [(af/math.sqrt(3)*math.cos(math.pi*i/3),af/math.sqrt(3)*math.sin(math.pi*i/3))\
+    \ for i in range(6)]\n    b = b.cut(cq.Workplane('XY').workplane(offset=p.floor).polyline(verts).close().extrude(h))\n\
+    \    b = b.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_allowance)/2).extrude(h))\n\
+    \    inner = af/2\n    outer = inner+p.finger_wall\n    w = p.finger_width\n \
+    \   s = p.slot_width\n    zlip = p.floor+p.nut_h+p.axial_play\n    for sign in\
+    \ (-1,1):\n        b = b.cut(cq.Workplane('XY').box(w+2*s,s,h-p.root_z,centered=(True,True,False)).translate((0,sign*(outer+s/2),p.root_z)))\n\
+    \        y0 = inner-p.slot_overlap\n        y1 = outer+s\n        for side in\
+    \ (-1,1):\n            b = b.cut(cq.Workplane('XY').box(s,y1-y0,h-p.root_z,centered=(True,True,False)).translate((side*(w/2+s/2),sign*(y0+y1)/2,p.root_z)))\n\
+    \        b = b.cut(cq.Workplane('XY').box(w,y1-y0,h-p.finger_top,centered=(True,True,False)).translate((0,sign*(y0+y1)/2,p.finger_top)))\n\
+    \        tip = (p.nut_af-p.latch_interference)/2\n        profile = [(sign*inner,zlip),(sign*tip,zlip),(sign*tip,zlip+p.lip_land),(sign*inner,zlip+p.lip_land+p.ramp_h)]\n\
+    \        b = b.union(cq.Workplane('YZ').polyline(profile).close().extrude(w).translate((-w/2,0,0)))\n\
+    \    return b"
+  print_orientation: Flat underside on bed at z=0; opening upward. No supports.
+  use_orientation: Test only; duplicates final nut pocket, shoulder, fingers and bolt
+    passage.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: bolt_joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: Central 5.6 mm through passage; illustrative bench-check bolt location
+    role: clearance
+  nut: null
+  external: 'Captured hardware nut: ISO 4032 M5 at z=2.4 to 7.1 mm. In service bolt
+    head seats on external work.'
+criteria:
+- id: hex_fit
+  part: knob
+  feature: 8.4 mm across-flats hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.4
+  params:
+  - nut_af
+  - pocket_allowance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut must press fully home using fingers only.
+- id: retention
+  part: knob
+  feature: Two snap fingers, 7.5 mm opposed tip gap, 0.4 mm nominal axial play
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - latch_interference
+  - axial_play
+  - floor
+  - finger_wall
+  - finger_width
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Both fingers spring back over nut; nut stays captured when inverted
+      and gently shaken without bolt. No cracks or permanent deformation.
+- id: stop
+  part: knob
+  feature: 2.4 mm bottom shoulder around 5.6 mm passage
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor
+  - bolt_d
+  - bolt_allowance
+  - nut_af
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut rests on shoulder and cannot pass through bottom opening.
+- id: recess
+  part: knob
+  feature: Nut top at nominal z=7.1 mm below 10.4 mm rim
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor
+  - nut_h
+  - height
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut is entirely below rim.
+- id: bolt_path
+  part: knob
+  feature: Central through passage
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.6
+  params:
+  - bolt_d
+  - bolt_allowance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Bolt threads through nut by hand and tip exits opposite face without
+      binding on plastic.
+manual:
+- n: '1'
+  text: 'Print fit_coupon first: PLA, 0.2 mm layers, flat underside down, 4 walls,
+    5 top/bottom layers and 30% infill. Disable supports, including in slots. Use
+    identical settings for knob.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Cool fully and remove stray strings. Align nut flats with pocket and push
+    straight down with your thumb until both fingers spring back above it. Do not
+    hammer or use the bolt to force insertion. Nut must be entirely below rim.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Invert and gently shake over a tray without bolt. Nut must stay in and fingers
+    must be intact and returned. Thread bolt through by hand to confirm its tip exits
+    the other face. If latch force is excessive, reduce latch_interference from 0.5
+    to 0.3 mm and reprint coupon. If hex walls bind, increase pocket_allowance by
+    0.1 mm and retest. If retention fails, increase latch_interference by 0.1 mm and
+    retest. Do not proceed with failed tests.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '4'
+  text: Print knob with validated parameters and identical settings. To recover test
+    nut, remove bolt, gently spread coupon fingers with fingertips and push nut out
+    from underneath with a fingertip. If it will not release by hand, sacrifice coupon
+    or use another identical nut; do not pry against fingers intended for reuse.
+  parts:
+  - knob
+  - fit_coupon
+  hardware:
+  - nut
+  tool: 3D printer
+- n: '5'
+  text: Press nut into knob as tested. Verify both latches return, nut sits fully
+    inside and inversion retention passes. No glue or extra printed pieces are needed.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '6'
+  text: Turn knob onto M5 bolt by hand. Face solid underside toward clamped work so
+    tightening loads the shoulder, not snap fingers. M5x30 is listed for fit checking;
+    available projection must suit your application. Tighten only by hand without
+    pliers or levers. Avoid heat and safety-critical use.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
