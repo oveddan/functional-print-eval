@@ -1,0 +1,239 @@
+task: nut-knob/M5
+note: The knob is 30 mm across and 12 mm tall, with 6 grip scallops. The nut pocket
+  is hexagonal and opens on the bed face. A 5.5 mm through-hole runs all the way up,
+  so the nut cannot pass out the far side. I couldn't measure your nut, so the pocket
+  uses the catalog AF of 8.0 mm. Printed hex holes vary, so print the 4-pocket coupon
+  first. It has pockets at AF 7.9, 8.0, 8.1 and 8.2. Then set pocket_clearance to
+  the one that grips best. I didn't add a bolt to the hardware list because you didn't
+  say which length you're using. The bolt just needs to be M5, long enough to engage
+  the nut, and its tip may stick out of the top.
+questions:
+- text: Could you measure the across-flats width and thickness of your M5 nut? You
+    couldn't, so I used catalog values (8.0 mm AF, 4.7 mm thick) and added a fit coupon.
+  answer: null
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats; user could not measure their nut
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 bolt major diameter
+  bolt_hole_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: through hole, clearance for M5 bolt; must be well under nut AF so the nut
+      cannot pass
+  knob_d:
+    value: 30
+    unit: mm
+    kind: world
+    source: asked
+    note: about 30 mm across
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_clearance:
+    value: 0.0
+    unit: mm
+    kind: design
+    source: design
+    note: added to nut AF for the printed hex pocket; 0 = light press fit on a 0.4
+      nozzle (printed holes usually come out slightly small). Confirm with the coupon
+      and adjust.
+  pocket_recess:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: extra pocket depth so the nut sits fully inside, below the knob's open face
+  lead_in:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer at the pocket mouth to guide the nut and hide elephant foot
+  lobes:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_d:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_depth:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: how far each grip scallop cuts into the rim
+  edge_fillet:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: AF increment between coupon pockets
+  coupon_cell:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d/2\n    body = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    body = body.faces('>Z').edges().fillet(p.edge_fillet)\n    cr = R - p.scallop_depth\
+    \ + p.scallop_d/2\n    for i in range(int(p.lobes)):\n        a = 2*math.pi*(i+0.5)/p.lobes\n\
+    \        c = (cq.Workplane('XY').center(cr*math.cos(a), cr*math.sin(a))\n    \
+    \         .circle(p.scallop_d/2).extrude(p.knob_h))\n        body = body.cut(c)\n\
+    \    af = p.nut_af + p.pocket_clearance\n    dia = af/math.cos(math.radians(30))\n\
+    \    pocket = cq.Workplane('XY').polygon(6, dia).extrude(p.nut_h + p.pocket_recess)\n\
+    \    body = body.cut(pocket)\n    lead = (cq.Workplane('XY').polygon(6, dia +\
+    \ 2*p.lead_in/math.cos(math.radians(30)))\n            .extrude(p.lead_in, taper=45))\n\
+    \    body = body.cut(lead)\n    hole = cq.Workplane('XY').circle(p.bolt_hole_d/2).extrude(p.knob_h)\n\
+    \    body = body.cut(hole)\n    return body\n"
+  print_orientation: Nut-pocket opening face flat on the bed (z=0), knob top up. The
+    hex pocket is bridged over by a ~9 mm span, well under the 50 mm limit.
+  use_orientation: Pocket face against the work, bolt end threaded in from the pocket
+    side; the bolt tip comes out through the top hole.
+- id: nut-fit-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    n = 4\n    t = p.nut_h + p.pocket_recess\
+    \ + 2.0\n    plate = cq.Workplane('XY').box(n*p.coupon_cell, p.coupon_cell, t,\
+    \ centered=(False, False, False))\n    for k in range(n):\n        af = p.nut_af\
+    \ - p.coupon_step + k*p.coupon_step\n        dia = af/math.cos(math.radians(30))\n\
+    \        x = p.coupon_cell*(k+0.5)\n        y = p.coupon_cell/2\n        pocket\
+    \ = cq.Workplane('XY').center(x, y).polygon(6, dia).extrude(p.nut_h + p.pocket_recess)\n\
+    \        plate = plate.cut(pocket)\n        lead = (cq.Workplane('XY').center(x,\
+    \ y).polygon(6, dia + 2*p.lead_in/math.cos(math.radians(30)))\n              \
+    \  .extrude(p.lead_in, taper=45))\n        plate = plate.cut(lead)\n        hole\
+    \ = cq.Workplane('XY').center(x, y).circle(p.bolt_hole_d/2).extrude(t)\n     \
+    \   plate = plate.cut(hole)\n    return plate\n"
+  print_orientation: Pocket openings face down on the bed, same as the knob.
+  use_orientation: 'Test piece only: press an M5 nut into each pocket from below.'
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clearance
+  - pocket_recess
+  check:
+    method: coupon
+    ref: nut-fit-coupon
+    description: Press an M5 nut into the coupon pockets (AF 7.9, 8.0, 8.1, 8.2).
+      Pick the one that needs firm thumb pressure and does not fall out when inverted
+      and shaken; set pocket_clearance to that AF minus 8.0 before printing the knob.
+      Nut must sit fully below the mouth.
+- id: c2
+  part: knob
+  feature: bolt through hole
+  relation: clears
+  hardware: nut
+  clearance_mm: 0.25
+  params:
+  - bolt_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: An M5 bolt passes freely through the 5.5 mm hole and threads into
+      the seated nut.
+- id: c3
+  part: knob
+  feature: pocket ceiling
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_hole_d
+  - nut_af
+  - knob_h
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: The 5.5 mm hole is smaller than the 8 mm nut flats, so the nut cannot
+      be pushed out of the far side; about 7 mm of solid wall above the nut.
+manual:
+- n: '1'
+  text: Print the nut-fit coupon first (pocket openings facing down, PLA, 0.2 mm layers).
+    It takes a few minutes.
+  parts:
+  - nut-fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press an M5 nut into each coupon pocket by hand. Choose the smallest pocket
+    where the nut goes in with firm thumb pressure, sits fully inside, and stays in
+    when you turn the coupon upside down and shake it. If you pick something other
+    than the AF 8.0 pocket, set pocket_clearance in the design to (that AF − 8.0)
+    and regenerate the knob.
+  parts:
+  - nut-fit-coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Print the knob with the nut-pocket face on the bed and the top up. No supports
+    needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press an M5 nut into the pocket from the open face, flats aligned with the
+    hex, until it is fully seated against the ceiling. Use a flat surface or your
+    thumb to push it in square.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread your M5 bolt into the nut from the pocket side; the tip comes out through
+    the hole in the top. Turn the knob to tighten.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

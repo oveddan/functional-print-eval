@@ -1,0 +1,325 @@
+task: nut-knob/M3
+note: One-piece 20 mm knob. A hex seat resists nut rotation, three integral spring
+  catches retain the hand-pressed nut upside down, and a bottom shoulder prevents
+  passage through the far side. Central bore allows bolt passage. Actual nut dimensions
+  unavailable; coupon testing is required. Small axial play is intentional. Coupon
+  is not part of the finished assembly.
+questions:
+- text: Can you measure nut across flats and thickness?
+  answer: Cannot measure; use best judgment.
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: world
+    source: asked
+    note: ''
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  hex_clearance_af:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clearance_d:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_h:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_root_z:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_t:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_w:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_gap:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  catch_throat_af:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_axial_play:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  catch_land_h:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  catch_ramp_h:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 11.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    a = (p.nut_af+p.hex_clearance_af)/2\n\
+    \    h = p.knob_h\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \    for i in range(int(p.scallop_count)):\n        ang = 2*math.pi*i/p.scallop_count\n\
+    \        body = body.cut(cq.Workplane('XY').center(p.scallop_center_r*math.cos(ang),p.scallop_center_r*math.sin(ang)).circle(p.scallop_r).extrude(h))\n\
+    \    rr = a/math.cos(math.pi/6)\n    pts = [(rr*math.cos(math.radians(30+60*i)),rr*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    body = body.cut(cq.Workplane('XY').workplane(offset=p.floor_h).polyline(pts).close().extrude(h-p.floor_h))\n\
+    \    body = body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance_d)/2).extrude(h))\n\
+    \    t,w,g = p.finger_t,p.finger_w,p.slot_gap\n    z0 = p.finger_root_z\n    def\
+    \ box(x0,x1,y0,y1):\n        return cq.Workplane('XY').box(x1-x0,y1-y0,h-z0,centered=(False,False,False)).translate((x0,y0,z0))\n\
+    \    for deg in (0,120,240):\n        slots = box(a+t,a+t+g,-w/2-g,w/2+g).union(box(a-g,a+t+g,w/2,w/2+g)).union(box(a-g,a+t+g,-w/2-g,-w/2))\n\
+    \        body = body.cut(slots.rotate((0,0,0),(0,0,1),deg))\n        z = p.floor_h+p.nut_h+p.nut_axial_play\n\
+    \        tip = p.catch_throat_af/2\n        profile = [(a,z),(tip,z),(tip,z+p.catch_land_h),(a,z+p.catch_land_h+p.catch_ramp_h),(a+t,z+p.catch_land_h+p.catch_ramp_h),(a+t,z)]\n\
+    \        catch = cq.Workplane('XZ').polyline(profile).close().extrude(w).translate((0,w/2,0)).rotate((0,0,0),(0,0,1),deg)\n\
+    \        body = body.union(catch)\n    return body.clean()\n"
+  print_orientation: Flat bottom on bed at z=0, pocket up; no supports.
+  use_orientation: Nut enters recessed pocket. Flat bottom is bearing face in thumb-nut
+    use. Bolt passes through nut and central bore.
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    a = (p.nut_af+p.hex_clearance_af)/2\n\
+    \    h = p.knob_h\n    body = cq.Workplane('XY').circle(p.coupon_d/2).extrude(h)\n\
+    \    rr = a/math.cos(math.pi/6)\n    pts = [(rr*math.cos(math.radians(30+60*i)),rr*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    body = body.cut(cq.Workplane('XY').workplane(offset=p.floor_h).polyline(pts).close().extrude(h-p.floor_h))\n\
+    \    body = body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance_d)/2).extrude(h))\n\
+    \    t,w,g = p.finger_t,p.finger_w,p.slot_gap\n    z0 = p.finger_root_z\n    def\
+    \ box(x0,x1,y0,y1):\n        return cq.Workplane('XY').box(x1-x0,y1-y0,h-z0,centered=(False,False,False)).translate((x0,y0,z0))\n\
+    \    for deg in (0,120,240):\n        slots = box(a+t,a+t+g,-w/2-g,w/2+g).union(box(a-g,a+t+g,w/2,w/2+g)).union(box(a-g,a+t+g,-w/2-g,-w/2))\n\
+    \        body = body.cut(slots.rotate((0,0,0),(0,0,1),deg))\n        z = p.floor_h+p.nut_h+p.nut_axial_play\n\
+    \        tip = p.catch_throat_af/2\n        profile = [(a,z),(tip,z),(tip,z+p.catch_land_h),(a,z+p.catch_land_h+p.catch_ramp_h),(a+t,z+p.catch_land_h+p.catch_ramp_h),(a+t,z)]\n\
+    \        catch = cq.Workplane('XZ').polyline(profile).close().extrude(w).translate((0,w/2,0)).rotate((0,0,0),(0,0,1),deg)\n\
+    \        body = body.union(catch)\n    return body.clean()\n"
+  print_orientation: Flat bottom at z=0, pocket up; same settings as knob, no supports.
+  use_orientation: Tests identical internal nut seat and spring catches.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: test_bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: threaded_connection
+  fastener: test_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: Recessed hex nut seat, spring catches and bottom shoulder
+    role: nut_pocket
+  - part: knob
+    feature: Central through bore below nut
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: retention
+  part: knob
+  feature: Three integral spring catches
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - catch_throat_af
+  - finger_t
+  - finger_w
+  - finger_root_z
+  - slot_gap
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Press nut past all catches using firm thumb pressure only. No cracks
+      or permanently bent fingers. Invert and gently shake: nut must remain captive.'
+- id: seat
+  part: knob
+  feature: Recessed hex seat and bottom shoulder
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - hex_clearance_af
+  - floor_h
+  - knob_h
+  - nut_axial_play
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut must sit flat entirely inside pocket and not spin freely when
+      gently turning a threaded bolt. Small axial play is intentional.
+- id: passage
+  part: knob
+  feature: Central through bore
+  relation: clears
+  hardware: test_bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Thread bolt through nut by fingers until it emerges from bottom;
+      plastic must not bind.
+- id: stop
+  part: knob
+  feature: Bottom shoulder surrounding through bore
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_h
+  - nut_af
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Firm hand pressure must not push nut through bottom. No hammer or
+      press.
+manual:
+- n: '1'
+  text: Print fit_coupon in PLA with 0.4 mm nozzle, 0.2 mm layers, 4 walls, 100% infill
+    and no supports. Enable variable-width walls if available. Preview that all three
+    0.8 mm fingers print continuously and relief slots remain open. Allow to cool
+    fully.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Align nut flats with pocket; press evenly with your thumb until nut passes
+    all three catches and rests on shoulder. Do not hammer. Check for cracks and permanently
+    bent fingers. Invert and gently shake: nut must remain captive. Small axial movement
+    is intentional.'
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: If too stiff to press in by hand, increase catch_throat_af from 5.2 to 5.3
+    mm and reprint coupon. If retention is insufficient, decrease to 5.1 mm and retest.
+    If nut binds in the hex pocket itself, increase hex_clearance_af by 0.1 mm and
+    repeat all tests. Use only parameters that pass.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread test_bolt through nut by fingers until it exits bottom. Verify nut
+    does not spin and bolt does not bind on plastic. Remove bolt. To reclaim nut,
+    push it gently out from below with the bolt's blunt end, keeping fingers clear;
+    coupon catches may be damaged. Alternatively use a second ISO 4032 M3 nut in the
+    final knob and repeat fit checks.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  - test_bolt
+  tool: null
+- n: '5'
+  text: Print knob with successful parameters, same settings and pocket-up orientation.
+    Cool fully. Press nut in by hand, then repeat inversion, seating and bolt-passage
+    checks. Finished assembly consists only of knob and captive nut; no glue or separate
+    retainer.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - test_bolt
+  tool: null
+- n: '6'
+  text: Use as a captive-nut hand fastener on an M3 bolt. Start threads gently; bolt
+    can extend out the opposite face. Flat bottom is the bearing face when used as
+    a thumb nut. Tighten by hand only, never pliers. Avoid heat, structural or safety-critical
+    loads and repeated nut removal. Replace if cracked or retention fails.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

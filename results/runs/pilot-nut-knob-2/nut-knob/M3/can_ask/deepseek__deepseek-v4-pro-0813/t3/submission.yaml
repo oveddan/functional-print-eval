@@ -1,0 +1,207 @@
+task: nut-knob/M3
+note: Single-piece 20 mm PLA hand knob with a captive M3 nut pressed in from the top;
+  M3 bolt threads through the nut and exits the bottom face. A small coupon calibrates
+  the hex press-fit before printing the full knob.
+questions: []
+params:
+  knob_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: Overall knob diameter
+  knob_h:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: Overall knob height
+  n_grooves:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: Number of grip grooves around the rim
+  groove_w:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: Width of each grip groove
+  groove_d:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Radial depth of each grip groove
+  chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on top and bottom rims
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut across-flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height
+  m3_clear:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance bore for M3 bolt (major dia ~3.0)
+  press_af:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across-flats, undersized for hand press fit
+  pocket_d:
+    value: 2.7
+    unit: mm
+    kind: design
+    source: design
+    note: Nut pocket depth = nut_h + 0.3 recess
+  press_af_tight:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'Coupon: tighter press option'
+  press_af_loose:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: 'Coupon: looser press option'
+  plate_l:
+    value: 34.0
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon plate length
+  plate_w:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon plate width
+  plate_t:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon plate thickness
+  pitch:
+    value: 11.0
+    unit: mm
+    kind: design
+    source: design
+    note: Spacing between coupon pockets
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    R = p.knob_d / 2.0\n    body\
+    \ = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\n    for i in range(p.n_grooves):\n\
+    \        ang = 360.0 * i / p.n_grooves\n        g = (cq.Workplane('XY')\n    \
+    \         .transformed(rotate=(0, 0, ang))\n             .center(R - p.groove_d,\
+    \ 0)\n             .rect(p.groove_d * 2, p.groove_w, centered=(True, True))\n\
+    \             .extrude(p.knob_h))\n        body = body.cut(g)\n\n    body = body.edges('>Z').chamfer(p.chamfer)\n\
+    \    body = body.edges('<Z').chamfer(p.chamfer)\n\n    body = (body.faces('>Z').workplane()\n\
+    \            .polygon(6, p.press_af)\n            .cutBlind(-p.pocket_d))\n\n\
+    \    body = body.faces('>Z').workplane().hole(p.m3_clear)\n\n    return body\n"
+  print_orientation: Bottom (bolt-exit) face on the bed, hex nut pocket facing up
+  use_orientation: Hex nut pocket up; bolt threads in from the pocket side and exits
+    through the bottom face
+- id: coupon_pressfit
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    result = cq.Workplane('XY').box(p.plate_l,\
+    \ p.plate_w, p.plate_t)\n    afs = [p.press_af_tight, p.press_af, p.press_af_loose]\n\
+    \    xs = [-p.pitch, 0.0, p.pitch]\n    for x, af in zip(xs, afs):\n        result\
+    \ = (result.faces('>Z').workplane()\n                  .center(x, 0)\n       \
+    \           .polygon(6, af)\n                  .cutBlind(-p.nut_h))\n    return\
+    \ result\n"
+  print_orientation: Flat on the bed, hex pockets facing up
+  use_orientation: Pockets up; press a nut into each to test fit
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_retention
+  part: knob
+  feature: hex pocket
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: coupon_pressfit
+    description: Nut presses in by hand and stays put when inverted and shaken; pick
+      the coupon pocket size that works and use that press_af.
+- id: nut_captive
+  part: knob
+  feature: pocket floor
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: 'Nut sits on the pocket floor and cannot be pushed through the far
+      side: the through-bore (3.4 mm) is smaller than the nut across-flats (5.5 mm).'
+- id: bolt_clearance
+  part: knob
+  feature: bore
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: The 3.4 mm bore clears the user's M3 bolt, which threads through
+      the nut and exits the bottom face.
+manual:
+- n: '1'
+  text: Print the coupon (coupon_pressfit) and the knob (knob) in PLA. No supports
+    needed; flat faces on the bed, pockets up.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M3 nut into each of the three coupon hex pockets by hand, then invert
+    and shake. Choose the pocket where the nut goes in by hand but does not fall out.
+  parts:
+  - coupon_pressfit
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Align an M3 nut's flats with the knob's hex pocket and press it in by hand
+    until it seats; it should sit flush or just below the top face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread your M3 bolt into the nut from the pocket side until the tip pokes
+    out the bottom face; turn the knob by hand to tighten.
+  parts:
+  - knob
+  hardware: []
+  tool: null

@@ -1,0 +1,209 @@
+task: nut-knob/M5
+note: Single-piece 30 mm scalloped M5 hand knob with a recessed friction-fit ISO 4032
+  M5 hex nut pocket and full through-bore. Prints flat on the stem base (z = 0) with
+  no supports required.
+questions: []
+params:
+  stem_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the lower boss/stem section
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut thickness
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut width across flats
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip scallops around circumference
+  flute_cut_depth:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Radial depth of each finger grip scallop
+  flute_r:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of scallop cutter cylinder
+  grip_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the 30 mm upper grip section
+  nut_recess:
+    value: 1.3
+    unit: mm
+    kind: design
+    source: design
+    note: Extra pocket depth beyond nut height so nut sits fully below top face
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of M5 bolt
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Overall outer diameter of the hand knob (~30 mm requested)
+  stem_od:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the lower boss/stem section
+  nut_fit_clearance:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats interference/snug press-fit allowance for PLA hand press-fit
+  bolt_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for the M5 bolt through-hole
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    total_h = p.stem_h + p.grip_h\n    knob_r\
+    \ = p.knob_od / 2.0\n    stem_r = p.stem_od / 2.0\n\n    # Base stem on bed (z\
+    \ = 0 to stem_h) and upper grip disk (z = stem_h to total_h)\n    part = (\n \
+    \       cq.Workplane(\"XY\")\n        .circle(stem_r)\n        .extrude(p.stem_h)\n\
+    \        .union(\n            cq.Workplane(\"XY\")\n            .workplane(offset=p.stem_h)\n\
+    \            .circle(knob_r)\n            .extrude(p.grip_h)\n        )\n    )\n\
+    \n    # Cut finger grip scallops around the upper grip section\n    flute_center_r\
+    \ = knob_r + p.flute_r - p.flute_cut_depth\n    for i in range(int(p.flute_count)):\n\
+    \        angle = 2.0 * math.pi * i / p.flute_count\n        cx = flute_center_r\
+    \ * math.cos(angle)\n        cy = flute_center_r * math.sin(angle)\n        cutter\
+    \ = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=p.stem_h)\n\
+    \            .center(cx, cy)\n            .circle(p.flute_r)\n            .extrude(p.grip_h)\n\
+    \        )\n        part = part.cut(cutter)\n\n    # Central M5 bolt clearance\
+    \ through-hole (all the way through z = 0 to total_h)\n    bolt_hole_r = (p.bolt_d\
+    \ + p.bolt_clearance) / 2.0\n    part = (\n        part.cut(\n            cq.Workplane(\"\
+    XY\")\n            .circle(bolt_hole_r)\n            .extrude(total_h)\n     \
+    \   )\n    )\n\n    # Recessed hexagonal pocket from top face (z = total_h) down\
+    \ by (nut_h + nut_recess)\n    # Stops against internal floor at z = total_h -\
+    \ (nut_h + nut_recess) so nut cannot push through\n    pocket_af = p.nut_af +\
+    \ p.nut_fit_clearance\n    pocket_circum_d = 2.0 * pocket_af / math.sqrt(3.0)\n\
+    \    pocket_depth = p.nut_h + p.nut_recess\n    hex_pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=total_h - pocket_depth)\n        .polygon(6,\
+    \ pocket_circum_d)\n        .extrude(pocket_depth)\n    )\n    part = part.cut(hex_pocket)\n\
+    \n    return part\n"
+  print_orientation: Bottom stem face flat on the build plate (z = 0), with the hex
+    nut pocket opening upward at z = 15 mm so no supports are needed.
+  use_orientation: Hex nut pressed into the top pocket; M5 bolt passes through the
+    nut and central through-bore out the opposite end.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: knob_bolt_joint
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 15.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_bore
+    role: clearance
+  nut: m5_nut
+  external: null
+criteria:
+- id: nut_press_fit
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: 0.05
+  params:
+  - nut_af
+  - nut_h
+  - nut_fit_clearance
+  - nut_recess
+  check:
+    method: measure
+    ref: nut_pocket
+    description: Press the M5 hex nut into the hex pocket by hand; confirm it seats
+      below the top face and does not fall out when inverted.
+- id: nut_fully_enclosed_and_stopped
+  part: knob
+  feature: nut_pocket
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: 1.3
+  params:
+  - nut_h
+  - nut_recess
+  - stem_h
+  - grip_h
+  check:
+    method: measure
+    ref: nut_pocket
+    description: Verify the seated M5 nut sits fully recessed inside the pocket below
+      the top surface and is stopped by the internal floor on the far side.
+- id: bolt_through_clearance
+  part: knob
+  feature: bolt_bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: measure
+    ref: bolt_bore
+    description: Pass the M5 bolt through the central through-bore and thread it through
+      the seated M5 nut and out the far side.
+manual:
+- n: '1'
+  text: Align the ISO 4032 M5 hex nut with the hexagonal pocket on the top face of
+    the printed knob and press it firmly in by hand until it seats against the internal
+    floor below the rim. Turn the knob upside down to confirm the press-fit holds
+    the nut securely in place.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '2'
+  text: Thread the M5 bolt through the captured nut and central through-bore so it
+    passes out the far side of the knob, ready for hand-tightening.
+  parts:
+  - knob
+  hardware:
+  - m5_bolt
+  tool: null

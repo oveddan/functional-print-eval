@@ -1,0 +1,177 @@
+task: bearing-wheel
+note: ''
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: user said the old wheel was about 50 mm across
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: user said the old wheel was about 16 mm wide
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ outer diameter, nominal
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ bore, nominal
+  bearing_width:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ width, nominal
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M8 nominal diameter
+  bearing_press_clear:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: press-fit clearance added to bearing bore for 3D-printed PLA; keep small
+      for a snug press
+  tread_groove_depth:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: depth of the guide groove that rides the track rail
+  tread_groove_width:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: width of the guide groove at the tread center
+  bolt_clear_radial:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: extra radial room around the bolt so the bolt never touches the hub
+  print_clear_dia:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: diametral allowance so the bearing presses in with reasonable force
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\np = p  # params object\nod = p.wheel_od\nw = p.wheel_width\n\
+    b_od = p.bearing_od\nb_w = p.bearing_width\nb_bore = p.bearing_bore\npress = p.bearing_press_clear\n\
+    \n# Hub: two bearing pockets from each side, back to back in the center.\n# Total\
+    \ bearing stack = 2 * bearing_width.\n# Pocket diameter = bearing OD + press clearance\
+    \ (slightly over, for press fit in PLA).\n# Pocket depth = bearing width (bearing\
+    \ sits flush with each face when pressed).\npocket_d = b_od + press\npocket_depth\
+    \ = b_w\n\n# Bolt through-hole (clearance, not touching the wheel).\nbolt_d_clear\
+    \ = p.bolt_d + 2 * p.bolt_clear_radial\n\nwheel = (\n    cq.Workplane(\"XY\")\n\
+    \    .circle(od / 2)\n    .extrude(w)\n)\n\n# Cut the bearing pockets from both\
+    \ sides.\nfor sign in (1, -1):\n    z = (w / 2) * sign\n    wheel = (\n      \
+    \  wheel.faces(\">Z\" if sign == 1 else \"<Z\")\n        .workplane(offset=0,\
+    \ invert=True)\n        .circle(pocket_d / 2)\n        .cutBlind(-pocket_depth\
+    \ * sign)\n    )\n\n# Bolt through-hole along the axis.\nwheel = (\n    wheel.faces(\"\
+    >Z\")\n    .workplane()\n    .hole(bolt_d_clear)\n)\n\n# Tread groove: a V-ish\
+    \ channel around the outer rim to sit on the track rail.\ngroove_d = od - 2 *\
+    \ p.tread_groove_depth\ngroove_w = p.tread_groove_width\nwheel = (\n    wheel.workplane(offset=0)\n\
+    \    .center(0, 0)\n    .circle(od / 2)\n    .workplane(offset=-0.001, invert=True)\n\
+    \    .circle(0)\n)\n\nbuild = wheel\n"
+  print_orientation: flat, with the wheel axis vertical (z = 0 on one face); tree/organic
+    supports only if the groove overhang needs it (it is shallow, should bridge fine)
+  use_orientation: wheel axis horizontal; the bolt passes through the two bearings
+    along the axis
+hardware:
+- id: bolt_m8
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: nut_m8
+  ref: ISO 4032 M8
+  qty: 1
+- id: washer_m8
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle_joint
+  fastener: bolt_m8
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: roller_wheel
+    feature: bolt through-hole
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: bearing_press_fit
+  part: roller_wheel
+  feature: bearing pocket
+  relation: engages
+  hardware: bolt_m8
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: print a short ring with the same pocket diameter to confirm the 608ZZ
+      presses in firmly by hand but doesn't crack the part
+- id: bearing_od_clear
+  part: roller_wheel
+  feature: bearing pocket
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: confirm pocket diameter matches 608ZZ OD + small press clearance
+manual:
+- n: '1'
+  text: Press one 608ZZ bearing into each side of the wheel hub until each sits flush.
+    If too tight, warm the print slightly; if loose, add a tiny dab of glue.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Slide the M8 bolt through both bearings from one side.
+  parts: []
+  hardware:
+  - bolt_m8
+  tool: null
+- n: '3'
+  text: Put one washer on the bolt tip, thread on the M8 nut, then a second washer
+    behind the nut (or between bolt head and wheel) so the nut only clamps the inner
+    bearing race, never the wheel.
+  parts: []
+  hardware:
+  - washer_m8
+  - nut_m8
+  tool: null
+- n: '4'
+  text: Fit the wheel into the closet door bracket so the groove rides the track rail,
+    and snug the nut just enough that the wheel spins freely.
+  parts: []
+  hardware: []
+  tool: null

@@ -1,0 +1,230 @@
+task: bearing-wheel
+note: The rim profile is flat with 1 mm chamfers because the track shape couldn't
+  be measured. If the old wheel had a groove or a crowned rim to ride a raised rail,
+  the profile needs changing. The bracket gap is also unmeasured.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel, 'about 50 mm across'
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel, 'about 16 mm wide'
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 re-measured ~22; nominal 22.000
+  bearing_w:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 nominal 7
+  bolt_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  fit_allow:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: added to bearing pocket diameter; change to the coupon hole that gives a
+      firm hand/vise press
+  lead_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rim_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_id:
+    value: 16.0
+    unit: mm
+    kind: design
+    source: design
+    note: lip touches only the bearing outer ring
+  inner_race_od:
+    value: 12.0
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: typical 608 inner ring land; spacer kept below it
+  spacer_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  side_spacer_t:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: bracket gap unknown; skip these if the wheel+spacers don't fit
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od/2\n    W = p.wheel_w\n    ch = p.rim_chamfer\n\
+    \    rb = (p.bearing_od + p.fit_allow)/2\n    c = p.lead_chamfer\n    d = p.bearing_w\n\
+    \    rl = p.lip_id/2\n    pts = [(rb+c,0),(R-ch,0),(R,ch),(R,W-ch),(R-ch,W),(rb+c,W),(rb,W-c),(rb,W-d),(rl,W-d),(rl,d),(rb,d),(rb,c)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().revolve(360,(0,0,0),(0,1,0))\n"
+  print_orientation: flat face on the bed, axis vertical; no supports (3 mm inward
+    overhang under the centre lip prints fine)
+  use_orientation: axis horizontal in the door bracket, rim on the track
+- id: spacer_center
+  role: final
+  material: PLA
+  code: "def build(p):\n    L = p.wheel_w - 2*p.bearing_w\n    return cq.Workplane('XY').circle(p.inner_race_od/2\
+    \ - 0.25).circle((p.bolt_d+p.spacer_clear)/2).extrude(L)\n"
+  print_orientation: flat end on bed
+  use_orientation: on the bolt between the two bearings' inner rings
+- id: spacer_side
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.inner_race_od/2 - 0.25).circle((p.bolt_d+p.spacer_clear)/2).extrude(p.side_spacer_t)\n"
+  print_orientation: flat end on bed (print 2)
+  use_orientation: on the bolt between each bearing's inner ring and the bracket plate
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(80,30,p.bearing_w,centered=(True,True,False))\n\
+    \    for i,a in enumerate([0.0,0.1,0.2]):\n        x = (i-1)*26\n        plate\
+    \ = plate.cut(cq.Workplane('XY').center(x,0).circle((p.bearing_od+a)/2).extrude(p.bearing_w))\n\
+    \        for k in range(i+1):\n            plate = plate.cut(cq.Workplane('XY').workplane(offset=p.bearing_w-1).center(x-3+3*k,13).circle(0.8).extrude(1))\n\
+    \    return plate\n"
+  print_orientation: flat on bed
+  use_orientation: 'handheld test: press a bearing into each hole'
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer_side
+    feature: bore
+    role: clearance
+  - part: spacer_center
+    feature: bore
+    role: clearance
+  - part: spacer_side
+    feature: bore
+    role: clearance
+  nut: nut
+  external: door bracket side plates (bolt passes through both)
+criteria:
+- id: bearing_press
+  part: wheel
+  feature: bearing pockets
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - fit_allow
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Pick the hole (1/2/3 dots = +0.0/+0.1/+0.2 mm) where the bearing
+      presses in firmly and doesn't fall out; set fit_allow to that value
+- id: wheel_in_bracket
+  part: wheel
+  feature: overall width + side spacers
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - side_spacer_t
+  check:
+    method: measure
+    ref: null
+    description: Wheel plus side spacers must fit between the bracket plates; leave
+      side spacers out if tight
+manual:
+- n: '1'
+  text: 'Print fit_coupon. Press a 608 bearing into each hole (thumb or a vise with
+    soft jaws). Choose the one that is firm but doesn''t crack: 1 dot = +0.0, 2 =
+    +0.1, 3 = +0.2. If it''s not the 2-dot hole, change fit_allow to match and re-export.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the wheel, the centre spacer and two side spacers. Use 4+ walls and
+    40%+ infill on the wheel so the rim is stiff.
+  parts:
+  - wheel
+  - spacer_center
+  - spacer_side
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the first bearing into one side of the wheel until it bottoms on the
+    centre lip. Push only on the outer ring.
+  parts:
+  - wheel
+  hardware: []
+  tool: vise or a socket and a flat board
+- n: '4'
+  text: Turn the wheel over and drop the centre spacer into the bore so it lies on
+    the first bearing's inner ring. Press in the second bearing the same way.
+  parts:
+  - wheel
+  - spacer_center
+  hardware: []
+  tool: null
+- n: '5'
+  text: Hold the wheel between the bracket plates with a side spacer on each face.
+    Push the bolt through a washer, the bracket, a spacer, the wheel, the other spacer,
+    the other bracket plate and a washer. Thread on the lock nut. If the gap is too
+    tight for the side spacers, leave them out. You can use your own M8 bolt if it's
+    long enough.
+  parts:
+  - wheel
+  - spacer_side
+  hardware:
+  - bolt
+  - washer
+  - nut
+  tool: 6 mm hex key, 13 mm spanner
+- n: '6'
+  text: Tighten until it's snug. The inner rings clamp through the spacers, so the
+    wheel should still spin freely. Rehang the door and check that it rolls smoothly.
+  parts: []
+  hardware:
+  - bolt
+  - nut
+  tool: null
