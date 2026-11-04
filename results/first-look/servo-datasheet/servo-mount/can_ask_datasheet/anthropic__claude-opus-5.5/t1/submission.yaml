@@ -1,0 +1,342 @@
+task: servo-mount
+note: I used M4 hardware instead of M5 because the tab holes are 4.58 mm wide. The
+  spacing between the two holes on one tab wasn't measured, so the plate holes are
+  slotted to fit spacings from 10 to 13 mm. Using no washer under the heads keeps
+  them clear of the rib on the tabs. The side walls only run along the long sides
+  of the case, so the cable end and the nuts stay clear.
+questions:
+- text: What is the centre-to-centre spacing between the two holes on one tab? It's
+    covered for now by slotting the holes for 10-13 mm.
+  answer: null
+params:
+  body_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case end to end, below tabs
+  body_wid:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  body_clear:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: per side clearance around case
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: U-slot width in tabs
+  hole_inner_gap:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge to inside edge, tab to tab; centre spacing = gap + hole d =
+      49.19
+  hole_y_min:
+    value: 5.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: half of across-width hole spacing; not measured. Typical MG996R is 10 mm;
+      plate holes are slotted from 5.0 to 6.5 mm off centre to cover 10-13 mm
+  hole_y_max:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  tab_drop:
+    value: 26.6
+    unit: mm
+    kind: world
+    source: datasheet
+    note: case bottom to tabs; walls only go 10 mm down so value is not critical
+  m4_clear_d:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: M4 clearance
+  m4_head_d:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  plate_len:
+    value: 64
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_wid:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  wall_t:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  wall_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: how far the side locating walls go down along the case
+  wall_len:
+    value: 38
+    unit: mm
+    kind: design
+    source: design
+    note: kept shorter than the case so the walls stay clear of the nuts/washers
+  coupon_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: servo_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    L=p.plate_len; W=p.plate_wid; T=p.plate_t\n    cl=p.body_len+2*p.body_clear;\
+    \ cw=p.body_wid+2*p.body_clear\n    plate=cq.Workplane('XY').box(L,W,T,centered=(True,True,False))\n\
+    \    plate=plate.cut(cq.Workplane('XY').box(cl,cw,T,centered=(True,True,False)))\n\
+    \    for s in (1,-1):\n        wall=cq.Workplane('XY').box(p.wall_len,p.wall_t,p.wall_h,centered=(True,True,False)).translate((0,s*(cw/2+p.wall_t/2),T))\n\
+    \        plate=plate.union(wall)\n    hx=(p.hole_inner_gap+p.tab_hole_d)/2\n \
+    \   yc=(p.hole_y_min+p.hole_y_max)/2\n    sl=(p.hole_y_max-p.hole_y_min)+p.m4_clear_d\n\
+    \    for sx in (1,-1):\n        for sy in (1,-1):\n            cut=cq.Workplane('XY').center(sx*hx,sy*yc).slot2D(sl,p.m4_clear_d,90).extrude(T)\n\
+    \            plate=plate.cut(cut)\n    return plate\n"
+  print_orientation: Tab-seating face (top of the plate in use) flat on the bed; the
+    side walls point up
+  use_orientation: 'Flip it over: flat face up, walls hang down. Servo drops in from
+    the top, shaft up'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    L=p.plate_len; W=p.plate_wid; T=p.coupon_t\n    cl=p.body_len+2*p.body_clear;\
+    \ cw=p.body_wid+2*p.body_clear\n    c=cq.Workplane('XY').box(L,W,T,centered=(True,True,False))\n\
+    \    c=c.cut(cq.Workplane('XY').box(cl,cw,T,centered=(True,True,False)))\n   \
+    \ hx=(p.hole_inner_gap+p.tab_hole_d)/2\n    yc=(p.hole_y_min+p.hole_y_max)/2\n\
+    \    sl=(p.hole_y_max-p.hole_y_min)+p.m4_clear_d\n    for sx in (1,-1):\n    \
+    \    for sy in (1,-1):\n            c=c.cut(cq.Workplane('XY').center(sx*hx,sy*yc).slot2D(sl,p.m4_clear_d,90).extrude(T))\n\
+    \    return c\n"
+  print_orientation: Flat on the bed
+  use_orientation: Push the servo into it to check the fit before printing the plate
+hardware:
+- id: screw
+  ref: ISO 4762 M4x16
+  qty: 4
+- id: washer
+  ref: ISO 7089 M4
+  qty: 4
+- id: locknut
+  ref: ISO 10511 M4
+  qty: 4
+joints:
+- id: j1
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - 5.75
+  - -2.28
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: servo_plate
+    feature: slot +x+y
+    role: clearance
+  - part: servo_plate
+    feature: underside at slot +x+y
+    role: washer
+  nut: locknut
+  external: null
+- id: j2
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - -5.75
+  - -2.28
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: servo_plate
+    feature: slot +x-y
+    role: clearance
+  - part: servo_plate
+    feature: underside at slot +x-y
+    role: washer
+  nut: locknut
+  external: null
+- id: j3
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - 5.75
+  - -2.28
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: servo_plate
+    feature: slot -x+y
+    role: clearance
+  - part: servo_plate
+    feature: underside at slot -x+y
+    role: washer
+  nut: locknut
+  external: null
+- id: j4
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - -5.75
+  - -2.28
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: servo_plate
+    feature: slot -x-y
+    role: clearance
+  - part: servo_plate
+    feature: underside at slot -x-y
+    role: washer
+  nut: locknut
+  external: null
+criteria:
+- id: c1
+  part: fit_coupon
+  feature: body cutout
+  relation: contains
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - body_len
+  - body_wid
+  - body_clear
+  check:
+    method: coupon
+    ref: null
+    description: Servo case slides into the cutout with no play you can feel and without
+      forcing it. If it's tight, raise body_clear to 0.35. If it's loose, drop it
+      to 0.15
+- id: c2
+  part: fit_coupon
+  feature: slotted holes
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - hole_inner_gap
+  - tab_hole_d
+  - hole_y_min
+  - hole_y_max
+  check:
+    method: coupon
+    ref: null
+    description: With the servo in the coupon, all four tab U-holes line up with the
+      plate slots, so an M4 screw passes through each one
+- id: c3
+  part: servo_plate
+  feature: side walls
+  relation: clears
+  hardware: washer
+  clearance_mm: null
+  params:
+  - wall_len
+  - body_len
+  - hole_inner_gap
+  check:
+    method: measure
+    ref: null
+    description: Washers and nuts sit flat on the underside and don't touch the walls
+- id: c4
+  part: servo_plate
+  feature: screw heads vs tab rib
+  relation: clears
+  hardware: screw
+  clearance_mm: null
+  params:
+  - m4_head_d
+  - hole_y_min
+  check:
+    method: measure
+    ref: null
+    description: Each M4 head sits flat on the tab and doesn't ride up on the 1.8
+      mm rib between the holes
+manual:
+- n: '1'
+  text: Print fit_coupon (about 10 minutes). Push the servo case down into it, shaft
+    up, until the tabs rest on it. Check the case is snug and that all four tab holes
+    line up with the slots. If the fit is off, change body_clear and print the coupon
+    again.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print servo_plate with the flat face on the bed and the walls pointing up.
+    Use no supports, 4 walls and 30% infill. Turn on elephant-foot compensation so
+    the cutout edge on the bed side isn't undersized.
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Flip the plate so the flat face is up and the walls hang down. Lower the servo
+    in, shaft up, until the tabs sit flat on the plate. The cable end can face either
+    way.
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Push an M4x16 screw down through each of the four tab holes and the plate
+    slots. From underneath, put on an M4 washer and then an M4 nylon lock nut. Tighten
+    them in a cross pattern until they're firm. Don't overtighten, or the plastic
+    tabs will crack.
+  parts:
+  - servo_plate
+  hardware:
+  - screw
+  - washer
+  - locknut
+  tool: 3 mm hex key, 7 mm spanner or pliers
+- n: '5'
+  text: Check the servo doesn't rock. The side walls stop it tilting sideways and
+    the clamped tabs stop it rocking end to end.
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null

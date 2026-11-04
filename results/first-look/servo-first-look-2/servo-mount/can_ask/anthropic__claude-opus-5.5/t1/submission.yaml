@@ -1,0 +1,351 @@
+task: servo-mount
+note: The servo drops through a close-fitting opening, which stops it moving sideways,
+  and four M4 screws clamp the tabs down onto a 9 mm plate. The nuts sit in captive
+  pockets underneath. The spacing between the two holes on each tab wasn't measured,
+  so the plate has slots that cover 7–13 mm. Nothing is provided yet for fixing the
+  plate to the base.
+questions:
+- text: How far below the tabs does the cable leave the case? The plate assumes it's
+    more than 9 mm below them.
+  answer: null
+- text: How do you want the plate fixed to the base? Edge holes or a bolt pattern
+    can be added later.
+  answer: null
+params:
+  body_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case end to end, excluding tabs
+  body_wid:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  body_clr:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: per side; snug drop-in fit gives the no-wobble location
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: U-slot width in tabs
+  hole_inner_span:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge to inside edge across the two tabs; c-c = this + tab_hole_d
+      = 49.19
+  hole_across:
+    value: 10.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: spacing between the two holes on one tab, typical MG996R value; plate slots
+      allow +/-1.5 mm
+  slot_travel:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  screw_clr_d:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: M4 clearance
+  nut_af:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M4
+  nut_h:
+    value: 3.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_clr:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  washer_t:
+    value: 0.8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M4
+  screw_len:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 'ISO 4762 M4x12: 0.8 washer + 2.28 tab + 9 plate; tip ends 8.92 below plate
+      top, past nut, not past plate bottom'
+  plate_len:
+    value: 70.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_wid:
+    value: 36.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 9.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.4
+  template_t:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: servo_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    L=p.plate_len; W=p.plate_wid; T=p.plate_t\n    ox=p.body_len+2*p.body_clr;\
+    \ oy=p.body_wid+2*p.body_clr\n    hx=(p.hole_inner_span+p.tab_hole_d)/2\n    plate=cq.Workplane('XY').box(L,W,T,centered=(True,True,False)).edges('|Z').fillet(3)\n\
+    \    plate=plate.cut(cq.Workplane('XY').box(ox,oy,T,centered=(True,True,False)))\n\
+    \    nut_fx=p.nut_af+2*p.nut_clr\n    corner=p.nut_af/(3**0.5)\n    py=p.hole_across+2*p.slot_travel+2*corner+2*p.nut_clr\n\
+    \    for sx in (-1,1):\n        for sy in (-1,1):\n            s=(cq.Workplane('XY').center(sx*hx,\
+    \ sy*p.hole_across/2)\n               .slot2D(p.screw_clr_d+2*p.slot_travel, p.screw_clr_d,\
+    \ angle=90).extrude(T))\n            plate=plate.cut(s)\n        pk=cq.Workplane('XY').box(nut_fx,py,p.pocket_depth,centered=(True,True,False)).translate((sx*hx,0,0))\n\
+    \        plate=plate.cut(pk)\n    return plate\n"
+  print_orientation: bottom face (nut pocket side) on the bed, z=0
+  use_orientation: 'same as printed: flat on the base, servo dropped in from the top,
+    shaft up'
+- id: fit_template
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    L=p.plate_len; W=p.plate_wid; T=p.template_t\n    ox=p.body_len+2*p.body_clr;\
+    \ oy=p.body_wid+2*p.body_clr\n    hx=(p.hole_inner_span+p.tab_hole_d)/2\n    t=cq.Workplane('XY').box(L,W,T,centered=(True,True,False)).edges('|Z').fillet(3)\n\
+    \    t=t.cut(cq.Workplane('XY').box(ox,oy,T,centered=(True,True,False)))\n   \
+    \ for sx in (-1,1):\n        for sy in (-1,1):\n            s=(cq.Workplane('XY').center(sx*hx,\
+    \ sy*p.hole_across/2)\n               .slot2D(p.screw_clr_d+2*p.slot_travel, p.screw_clr_d,\
+    \ angle=90).extrude(T))\n            t=t.cut(s)\n    return t\n"
+  print_orientation: flat on the bed
+  use_orientation: lay on the servo tabs to check hole and body positions
+hardware:
+- id: screw
+  ref: ISO 4762 M4x12
+  qty: 4
+- id: nut
+  ref: ISO 4032 M4
+  qty: 4
+- id: washer
+  ref: ISO 7089 M4
+  qty: 4
+joints:
+- id: j1
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - 5.0
+  - 12.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: tab hole slot +x+y
+    role: clearance
+  - part: servo_plate
+    feature: nut pocket +x
+    role: nut_pocket
+  nut: nut
+  external: null
+- id: j2
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - -5.0
+  - 12.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: tab hole slot +x-y
+    role: clearance
+  - part: servo_plate
+    feature: nut pocket +x
+    role: nut_pocket
+  nut: nut
+  external: null
+- id: j3
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - 5.0
+  - 12.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: tab hole slot -x+y
+    role: clearance
+  - part: servo_plate
+    feature: nut pocket -x
+    role: nut_pocket
+  nut: nut
+  external: null
+- id: j4
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - -5.0
+  - 12.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: tab hole slot -x-y
+    role: clearance
+  - part: servo_plate
+    feature: nut pocket -x
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria:
+- id: c1
+  part: servo_plate
+  feature: body opening
+  relation: contains
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - body_len
+  - body_wid
+  - body_clr
+  check:
+    method: template
+    ref: fit_template
+    description: Servo case slides through the template opening with no rattle and
+      no forcing
+- id: c2
+  part: servo_plate
+  feature: tab hole slots
+  relation: clears
+  hardware: screw
+  clearance_mm: null
+  params:
+  - hole_inner_span
+  - tab_hole_d
+  - hole_across
+  - slot_travel
+  check:
+    method: template
+    ref: fit_template
+    description: With the template on the tabs, all four tab U-slots line up within
+      the plate slots
+- id: c3
+  part: servo_plate
+  feature: nut pockets
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: M4 nuts drop into the underside pockets flush or below the bottom
+      face and cannot spin
+- id: c4
+  part: servo_plate
+  feature: top face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  - tab_t
+  check:
+    method: none
+    ref: null
+    description: Servo tabs sit flat on the top face; cable exit must sit more than
+      9 mm below the tabs (not measured)
+manual:
+- n: '1'
+  text: Print fit_template (2 mm thick, takes a few minutes). Push the servo case
+    down through the opening until the template rests on the tabs. It should be snug,
+    with no rattle. Check that all four tab U-slots line up with the template's slots.
+    If the case won't go in, or the holes don't line up, stop and report the numbers
+    before you print the plate.
+  parts:
+  - fit_template
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print servo_plate flat, with the side that has the pockets on the bed. Use
+    4+ walls and about 40% infill so the clamping is stiff.
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Turn the plate over and press one M4 nut into each of the four underside pocket
+    positions, two nuts per end pocket. The pocket walls keep them from turning.
+  parts:
+  - servo_plate
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: 'Turn the plate right side up. Lower the servo in with the shaft up, so the
+    case passes through the opening and the tabs rest flat on the top face. Feed the
+    cable down through the opening first. If the cable grommet catches on the plate,
+    stop: it exits higher than 9 mm below the tabs.'
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Put an M4 washer on each M4x12 screw. Drop the screws through the tab slots
+    and plate slots, find the nuts, and tighten evenly in a cross pattern until the
+    tabs are firmly clamped. Don't crush the tabs.
+  parts:
+  - servo_plate
+  hardware:
+  - screw
+  - washer
+  - nut
+  tool: 3 mm hex key

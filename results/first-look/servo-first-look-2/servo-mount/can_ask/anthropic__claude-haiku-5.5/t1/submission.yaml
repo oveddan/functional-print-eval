@@ -1,0 +1,172 @@
+task: servo-mount
+note: ''
+questions:
+- text: What is the center-to-center distance between the two holes on the same tab?
+    The design assumes one bolt per tab at the plate centerline and this spacing was
+    not measured.
+  answer: null
+- text: Does the molded rib between the two tab holes stop an M4 washer from seating?
+    Test fit before final tightening.
+  answer: null
+- text: Where is the shaft center along the servo length? The plate has no shaft hole,
+    so this only matters for the horn and arm design.
+  answer: null
+params:
+  body_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: MG996R case length, end to end
+  body_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: MG996R case width
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: MG996R tab thickness
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo tab hole diameter (reference only)
+  hole_edge_span:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge to inside edge between holes on the two tabs; center spacing
+      = this + tab_hole_d = 49.19
+  hole_span:
+    value: 49.19
+    unit: mm
+    kind: world
+    source: measured
+    note: 'derived: center-to-center of the bolt holes across the two tabs (44.61
+      + 4.58). Interpretation of the measurement is assumed.'
+  clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: clearance added to body pocket
+  plate_len:
+    value: 64
+    unit: mm
+    kind: design
+    source: design
+    note: plate length along servo length axis
+  plate_w:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: plate width, tabs must sit on top of the plate
+  plate_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: plate thickness
+  bolt_clear_d:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for M4 bolt
+  nut_af:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M4 across flats
+  nut_h:
+    value: 3.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M4 height
+  nut_pocket_af:
+    value: 7.4
+    unit: mm
+    kind: design
+    source: design
+    note: nut pocket across flats with 0.4 clearance
+parts:
+- id: servo-plate
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    L = p.plate_len\n    W = p.plate_w\n  \
+    \  T = p.plate_t\n    plate = cq.Workplane('XY').box(L, W, T, centered=(True,\
+    \ True, False))\n    # window for servo body to hang through\n    win = cq.Workplane('XY').box(p.body_len\
+    \ + p.clear, p.body_w + p.clear, T * 3, centered=(True, True, True))\n    plate\
+    \ = plate.cut(win)\n    R = (p.nut_pocket_af / 2) / math.cos(math.radians(30))\n\
+    \    for x in [-p.hole_span / 2, p.hole_span / 2]:\n        # M4 clearance hole\
+    \ through plate\n        hole = cq.Workplane('XY').center(x, 0).circle(p.bolt_clear_d\
+    \ / 2).extrude(T * 3).translate((0, 0, -T))\n        plate = plate.cut(hole)\n\
+    \        # hex nut pocket open at the bottom, flats normal to X so it clears the\
+    \ window\n        pts = [(x + R * math.cos(math.radians(30 + 60 * k)), R * math.sin(math.radians(30\
+    \ + 60 * k))) for k in range(6)]\n        pocket = cq.Workplane('XY').polyline(pts).close().extrude(p.nut_h\
+    \ + 0.3)\n        plate = plate.cut(pocket)\n    return plate\n"
+  print_orientation: plate bottom on bed (z=0 is plate underside)
+  use_orientation: plate horizontal, servo shaft pointing up, servo body hanging down
+    through the window
+hardware:
+- id: bolt-m4
+  ref: ISO 4762 M4x12
+  qty: 2
+- id: nut-m4
+  ref: ISO 4032 M4
+  qty: 2
+- id: washer-m4
+  ref: ISO 7089 M4
+  qty: 2
+joints: []
+criteria: []
+manual:
+- n: '1'
+  text: Print the servo plate flat, bottom on the bed. Remove supports from the nut
+    pockets and the window.
+  parts:
+  - servo-plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M4 nuts into the hex pockets on the underside of the plate. They
+    should sit flush and be captured.
+  parts:
+  - servo-plate
+  hardware:
+  - nut-m4
+  tool: null
+- n: '3'
+  text: Set the servo into the window from the top with the shaft pointing up and
+    the tabs resting on the plate top at each end. Check the tab holes line up with
+    the plate holes. If the case binds, enlarge the window slightly.
+  parts:
+  - servo-plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Place a washer on each tab hole and push an M4x12 socket screw down through
+    the tab and plate. Thread it into the nut in the underside pocket and tighten
+    snugly. Do not overtighten the plastic tabs.
+  parts:
+  - servo-plate
+  hardware:
+  - bolt-m4
+  - washer-m4
+  - nut-m4
+  tool: null
+- n: '5'
+  text: Check there is no wobble. If the washer does not sit flat on the tab because
+    of the molded rib, carefully trim the rib with a knife before final tightening.
+  parts: []
+  hardware: []
+  tool: null

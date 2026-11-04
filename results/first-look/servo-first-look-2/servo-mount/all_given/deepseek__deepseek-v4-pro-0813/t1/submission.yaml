@@ -1,0 +1,423 @@
+task: servo-mount
+note: 'Assumptions made from the measurements given: the two holes on each tab are
+  symmetric about the rib, so their centers are 21.2 mm apart along the tab length,
+  and that pattern is centered on the case; the cross-tab hole centers are 49.19 mm
+  apart (44.61 mm inside edges + 4.58 mm). The total tab outer span was not available,
+  so the plate is 70 mm wide to cover the tabs with margin; the fit-check coupon lets
+  you confirm the hole positions before printing the full plate. The case top pokes
+  up through the central opening because the tabs sit about 5.66 mm below the top
+  of the case. Screw length check: 3.0 mm plate below the counterbore + 2.28 mm tab
+  + 0.8 mm washer + 5.0 mm lock nut = 11.08 mm, so M4x16 leaves ~4.9 mm of thread
+  past the nut.'
+questions: []
+params:
+  case_len:
+    value: 40.58
+    unit: mm
+    kind: hardware
+    source: measured
+    note: servo case, end to end
+  case_wid:
+    value: 19.82
+    unit: mm
+    kind: hardware
+    source: measured
+    note: servo case, side to side
+  case_h:
+    value: 40.4
+    unit: mm
+    kind: hardware
+    source: measured
+    note: servo case, top to bottom
+  hole_d:
+    value: 4.58
+    unit: mm
+    kind: hardware
+    source: measured
+    note: tab U-slot width
+  hole_cross_inner:
+    value: 44.61
+    unit: mm
+    kind: hardware
+    source: measured
+    note: across the two tabs, inside edge to inside edge
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: hardware
+    source: measured
+    note: mounting tab thickness
+  tab_to_top:
+    value: 5.66
+    unit: mm
+    kind: hardware
+    source: measured
+    note: tab top face to top of case; the case top pokes up through the plate opening
+  rib_w:
+    value: 1.51
+    unit: mm
+    kind: hardware
+    source: measured
+    note: rib width on tab top face
+  rib_h:
+    value: 1.8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: rib height above tab top face
+  rib_pos:
+    value: 8.31
+    unit: mm
+    kind: hardware
+    source: measured
+    note: hole edge to rib middle, along tab length
+  m4_head_h:
+    value: 4.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M4 head height
+  m4_washer_t:
+    value: 0.8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M4 washer thickness
+  m4_washer_od:
+    value: 9.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M4 washer outside diameter
+  plate_t:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_w:
+    value: 70.0
+    unit: mm
+    kind: design
+    source: design
+    note: generous width because total tab span was not measured
+  plate_len:
+    value: 52.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  open_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: clearance per side between case top and central opening
+  m4_clear_d:
+    value: 4.6
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for M4 screw
+  cb_d:
+    value: 9.6
+    unit: mm
+    kind: design
+    source: design
+    note: counterbore diameter, fits M4 washer od 9.0 + 0.6
+  cb_depth:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: M4 head 4.0 + washer 0.8 + 0.2 clearance
+  groove_w:
+    value: 2.6
+    unit: mm
+    kind: design
+    source: design
+    note: rib clearance groove width, rib 1.51 + clearance
+  groove_depth:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: rib 1.8 + 0.2 clearance
+  groove_start:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: groove begins this far outboard of the case side
+  groove_end_margin:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: groove ends this far inside the plate edge
+  corner_r:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  open_r:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: central opening corner radius
+  coupon_t:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: fit-check coupon thickness
+parts:
+- id: servo_mount_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    hole_x = p.hole_cross_inner\
+    \ / 2.0 + p.hole_d / 2.0\n    hole_y = (2.0 * p.rib_pos + p.hole_d) / 2.0\n\n\
+    \    plate = (cq.Workplane(\"XY\")\n             .rect(p.plate_w, p.plate_len)\n\
+    \             .vertices().fillet(p.corner_r)\n             .extrude(p.plate_t))\n\
+    \n    opening = (cq.Workplane(\"XY\")\n               .rect(p.case_len + 2.0 *\
+    \ p.open_clear,\n                     p.case_wid + 2.0 * p.open_clear)\n     \
+    \          .vertices().fillet(p.open_r)\n               .extrude(p.plate_t + 2.0))\n\
+    \    plate = plate.cut(opening)\n\n    pts = [(hole_x, hole_y), (hole_x, -hole_y),\n\
+    \           (-hole_x, hole_y), (-hole_x, -hole_y)]\n    plate = (plate.faces(\"\
+    >Z\").workplane()\n             .pushPoints(pts)\n             .cboreHole(p.m4_clear_d,\
+    \ p.cb_d, p.cb_depth))\n\n    gx0 = p.case_wid / 2.0 + p.groove_start\n    gx1\
+    \ = p.plate_w / 2.0 - p.groove_end_margin\n    gxc = (gx0 + gx1) / 2.0\n    gxl\
+    \ = gx1 - gx0\n    for s in (-1.0, 1.0):\n        plate = plate.cut(\n       \
+    \     cq.Workplane(\"XY\")\n            .center(s * gxc, 0.0)\n            .rect(gxl,\
+    \ p.groove_w)\n            .extrude(p.groove_depth + 1.0)\n            .translate((0.0,\
+    \ 0.0, -0.5)))\n\n    return plate"
+  print_orientation: grooved face (tab-contact side) flat on the bed, counterbored
+    face up
+  use_orientation: grooved face down against the servo's mounting tabs; counterbored
+    face up; output shaft points up through the central opening
+- id: fit_check_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    hole_x = p.hole_cross_inner\
+    \ / 2.0 + p.hole_d / 2.0\n    hole_y = (2.0 * p.rib_pos + p.hole_d) / 2.0\n\n\
+    \    coupon = (cq.Workplane(\"XY\")\n              .rect(p.plate_w, p.plate_len)\n\
+    \              .vertices().fillet(p.corner_r)\n              .extrude(p.coupon_t))\n\
+    \n    coupon = coupon.cut(\n        cq.Workplane(\"XY\")\n        .rect(p.case_len\
+    \ + 2.0 * p.open_clear,\n              p.case_wid + 2.0 * p.open_clear)\n    \
+    \    .vertices().fillet(p.open_r)\n        .extrude(p.coupon_t + 2.0))\n\n   \
+    \ pts = [(hole_x, hole_y), (hole_x, -hole_y),\n           (-hole_x, hole_y), (-hole_x,\
+    \ -hole_y)]\n    coupon = (coupon.faces(\">Z\").workplane()\n              .pushPoints(pts)\n\
+    \              .hole(p.m4_clear_d))\n\n    gx0 = p.case_wid / 2.0 + p.groove_start\n\
+    \    gx1 = p.plate_w / 2.0 - p.groove_end_margin\n    gxc = (gx0 + gx1) / 2.0\n\
+    \    gxl = gx1 - gx0\n    for s in (-1.0, 1.0):\n        coupon = coupon.cut(\n\
+    \            cq.Workplane(\"XY\")\n            .center(s * gxc, 0.0)\n       \
+    \     .rect(gxl, p.groove_w)\n            .extrude(p.groove_depth + 1.0)\n   \
+    \         .translate((0.0, 0.0, -0.5)))\n\n    return coupon"
+  print_orientation: grooved face flat on the bed
+  use_orientation: grooved face down on the servo's mounting tabs, shaft side up
+hardware:
+- id: scr
+  ref: ISO 4762 M4x16
+  qty: 4
+- id: washer
+  ref: ISO 7089 M4
+  qty: 8
+- id: locknut
+  ref: ISO 10511 M4
+  qty: 4
+joints:
+- id: j1
+  fastener: scr
+  axis_origin:
+  - 24.595
+  - 10.6
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: counterbore
+    role: head_seat
+  - part: servo_mount_plate
+    feature: through hole
+    role: clearance
+  nut: locknut
+  external: MG996R servo mounting tab U-slot
+- id: j2
+  fastener: scr
+  axis_origin:
+  - 24.595
+  - -10.6
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: counterbore
+    role: head_seat
+  - part: servo_mount_plate
+    feature: through hole
+    role: clearance
+  nut: locknut
+  external: MG996R servo mounting tab U-slot
+- id: j3
+  fastener: scr
+  axis_origin:
+  - -24.595
+  - 10.6
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: counterbore
+    role: head_seat
+  - part: servo_mount_plate
+    feature: through hole
+    role: clearance
+  nut: locknut
+  external: MG996R servo mounting tab U-slot
+- id: j4
+  fastener: scr
+  axis_origin:
+  - -24.595
+  - -10.6
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: counterbore
+    role: head_seat
+  - part: servo_mount_plate
+    feature: through hole
+    role: clearance
+  nut: locknut
+  external: MG996R servo mounting tab U-slot
+criteria:
+- id: opening_clears_case
+  part: servo_mount_plate
+  feature: central opening
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - case_len
+  - case_wid
+  - open_clear
+  check:
+    method: template
+    ref: servo case top section
+    description: ''
+- id: holes_align_tab_slots
+  part: servo_mount_plate
+  feature: mounting holes
+  relation: clears
+  hardware: scr
+  clearance_mm: 0.3
+  params:
+  - hole_cross_inner
+  - hole_d
+  - rib_pos
+  - m4_clear_d
+  check:
+    method: coupon
+    ref: servo tab U-slots
+    description: ''
+- id: rib_grooves_clear_ribs
+  part: servo_mount_plate
+  feature: rib grooves
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - rib_w
+  - rib_h
+  - groove_w
+  - groove_depth
+  check:
+    method: coupon
+    ref: tab top-face ribs
+    description: ''
+- id: counterbore_seats_head
+  part: servo_mount_plate
+  feature: counterbores
+  relation: seats
+  hardware: scr
+  clearance_mm: 0.2
+  params:
+  - cb_d
+  - cb_depth
+  - m4_head_h
+  - m4_washer_t
+  check:
+    method: template
+    ref: M4 screw head + washer
+    description: ''
+- id: plate_supports_tabs
+  part: servo_mount_plate
+  feature: tab contact face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_len
+  check:
+    method: measure
+    ref: servo mounting tabs
+    description: ''
+manual:
+- n: '1'
+  text: Print the fit-check coupon (fit_check_coupon) first. Lay it on the servo's
+    mounting tabs with the grooved face down. Check that the case top slips through
+    the central opening and all four holes line up with the tab U-slots. If a hole
+    is off, note which way and by how much before printing the full plate.
+  parts:
+  - fit_check_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the servo mount plate (servo_mount_plate) with the grooved face flat
+    on the print bed and the counterbored face up.
+  parts:
+  - servo_mount_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Hold the plate over the servo so the grooved face is against the mounting
+    tabs (shaft side). The case top and output shaft come up through the central opening,
+    and the two ribs on the tabs sit in the two grooves.
+  parts:
+  - servo_mount_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'At each of the four holes: drop an M4 washer into the counterbore, then push
+    an M4x16 screw down through the plate and the tab''s U-slot. Under the tab, add
+    an M4 washer and then an M4 lock nut.'
+  parts:
+  - servo_mount_plate
+  hardware:
+  - scr
+  - washer
+  - locknut
+  tool: 3 mm hex key and 7 mm spanner
+- n: '5'
+  text: Tighten all four lock nuts evenly until the plate sits firm with no rocking.
+    Do not overtighten the plastic tabs.
+  parts:
+  - servo_mount_plate
+  hardware:
+  - locknut
+  tool: 3 mm hex key and 7 mm spanner

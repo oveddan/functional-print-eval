@@ -1,0 +1,166 @@
+task: servo-mount
+note: ''
+questions: []
+params:
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured mounting tab hole diameter
+  cross_tab_inside:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: Inside-edge to inside-edge distance across the two tabs, along the holes
+  tab_thickness:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: Mounting tab thickness
+  tab_to_top:
+    value: 5.66
+    unit: mm
+    kind: world
+    source: measured
+    note: Tab top face to top of case (shaft side)
+  rib_width:
+    value: 1.51
+    unit: mm
+    kind: world
+    source: measured
+    note: Rib width on tab top face
+  rib_height:
+    value: 1.8
+    unit: mm
+    kind: world
+    source: measured
+    note: Rib height above tab top face
+  rib_center_from_hole:
+    value: 8.31
+    unit: mm
+    kind: world
+    source: measured
+    note: From side of hole to middle of rib
+  body_width:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: Case width side to side
+  body_length:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  shaft_boss_od:
+    value: 11.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: MG996R shaft boss OD, guessed from typical datasheet ~11.4mm, left with
+      clearance
+  plate_thickness:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_length:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the slotted mounting holes to absorb tab-hole spacing uncertainty
+parts:
+- id: servo_mount_plate
+  role: final
+  material: PLA
+  code: "cross_ctc = p.cross_tab_inside + p.tab_hole_d  # ~49.19 mm center-to-center\
+    \ across tabs\nhalf = cross_ctc/2.0\n\nplate = (cq.Workplane('XY')\n    .box(p.body_width\
+    \ + 24, cross_ctc + 20, p.plate_thickness)\n    .edges('|Z').fillet(4.0)\n)\n\n\
+    screw_slot_w = 3.4  # clearance for M3\nslots = []\nfor sx in (-half, half):\n\
+    \    for sy in (-p.rib_center_from_hole + p.tab_hole_d/2, p.rib_center_from_hole\
+    \ - p.tab_hole_d/2):\n        slots.append((sx, -sy))\n\nfor (x, y) in slots:\n\
+    \    plate = (plate\n        .faces('>Z').workplane(centerOption='CenterPoint')\n\
+    \        .moveTo(x, y)\n        .slot2D(p.slot_length, screw_slot_w, 0)\n    \
+    \    .cutBlind(-p.plate_thickness))\n\n# rib clearance pockets on the underside\
+    \ so the plate sits flush on the tab tops\nfor sx in (-half, half):\n    plate\
+    \ = (plate\n        .faces('<Z').workplane(centerOption='CenterPoint')\n     \
+    \   .moveTo(sx, 0)\n        .box(p.slot_length + 4, p.rib_width + 1.0, p.rib_height\
+    \ + 0.3, centered=(True, True, False))\n        .cutBlind(p.rib_height + 0.3))\n\
+    \n# central shaft + boss clearance hole\nplate = (plate\n    .faces('>Z').workplane(centerOption='CenterPoint')\n\
+    \    .hole(p.shaft_boss_od + 2.0))\n\nresult = plate\n"
+  print_orientation: Large bottom face on the bed (z=0 is the underside that contacts
+    the servo tabs)
+  use_orientation: Underside (with rib pockets) faces down toward the servo; shaft
+    side up
+hardware:
+- id: screw_tab
+  ref: ISO 4762 M3x16
+  qty: 4
+- id: washer_tab
+  ref: ISO 7089 M3
+  qty: 4
+- id: nut_tab
+  ref: ISO 10511 M3
+  qty: 4
+joints:
+- id: tab_screw_1
+  fastener: screw_tab
+  axis_origin:
+  - 19.0
+  - -23.0
+  - 4.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: mount_slot
+    role: clearance
+  - part: servo_mount_plate
+    feature: mount_slot
+    role: head_seat
+  nut: null
+  external: null
+criteria: []
+manual:
+- n: '1'
+  text: Print servo_mount_plate flat, underside (the side with the rib-clearance pockets)
+    on the bed.
+  parts:
+  - servo_mount_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the plate onto the servo with the rib-clearance pockets over the tab
+    ribs, shaft pointing up through the central hole. The slotted holes should sit
+    over the tab's four U-holes.
+  parts:
+  - servo_mount_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: For each of the four tab holes, push an M3x16 screw down through the plate
+    slot, a washer, then the servo tab, and start an M3 lock nut on the underside.
+    Leave slightly loose.
+  parts:
+  - servo_mount_plate
+  hardware:
+  - screw_tab
+  - washer_tab
+  - nut_tab
+  tool: null
+- n: '4'
+  text: Shift the plate so it is centered and square over the servo, then tighten
+    all four nuts evenly. The plate should now sit firm with no wobble.
+  parts:
+  - servo_mount_plate
+  hardware:
+  - nut_tab
+  tool: null

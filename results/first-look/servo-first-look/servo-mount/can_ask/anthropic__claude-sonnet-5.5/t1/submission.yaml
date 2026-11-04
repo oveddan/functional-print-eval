@@ -1,0 +1,366 @@
+task: servo-mount
+note: I couldn't get the spacing between the two holes on each tab. So I didn't fix
+  it. Each tab has one slot across its width, and its two nuts slide in a tunnel under
+  the slot. The two screws can then sit wherever the holes are. The servo is located
+  by the cutout and clamped by the screws. The cutout and the x position of the screw
+  line come from your measurements. The x position of the screws is the hole centre
+  spacing (44.61 + 4.58 = 49.19), moved 0.2 mm outward. Your servo has a rib (1.8
+  mm high) on each tab's top face between the holes. I used M4 screws without washers
+  so the heads (7 mm) stay clear of the rib. The tab underside is 32.5 mm above the
+  case bottom (40.4 − 5.66 − 2.28), so the servo hangs about 32 mm below the plate.
+  Leave room there for the cable. I haven't checked the cutout against the case. Print
+  the coupons first, since the case may be wider or have a radius near the tabs. The
+  joint y positions (±5) are nominal. The real screw position slides in the slot.
+questions:
+- text: What is the centre-to-centre spacing between the two holes on one tab? The
+    measurements I got back didn't include it.
+  answer: null
+- text: How do you plan to fix the plate to the base? The servo body hangs about 32
+    mm below the plate, so the base needs a window or standoffs.
+  answer: null
+params:
+  body_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case end to end, excluding tabs
+  body_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: case width; also taken as tab width
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: tab hole diameter (U-shaped, open to tab end)
+  tab_hole_gap:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge of hole on one tab to inside edge of hole on the other tab.
+      Centre spacing = this + hole diameter = 49.19
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: tab thickness
+  screw_d:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M4 socket head screw
+  nut_af:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M4 hex nut across flats
+  nut_h:
+    value: 3.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M4 hex nut height
+  fit_clear:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: clearance per side between servo case and cutout
+  slot_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: slot width = screw d + this
+  slot_shift:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: screw line moved outward from the measured hole centre so the nut tunnel
+      keeps a wall next to the cutout; still inside the tab hole
+  nut_clear_w:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: nut tunnel width = across flats + this
+  nut_clear_h:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: extra tunnel height over nut height
+  floor_t:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: material under the nut tunnel
+  ceiling_t:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: material between tunnel and plate top
+  plate_l:
+    value: 70
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_w:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  corner_r:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_wall:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: frame wall width on the fit coupon
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    t = p.floor_t + p.nut_h + p.nut_clear_h + p.ceiling_t\n\
+    \    hole_cc = p.tab_hole_gap + p.tab_hole_d\n    sx = hole_cc / 2.0 + p.slot_shift\n\
+    \    plate = cq.Workplane('XY').box(p.plate_l, p.plate_w, t, centered=(True, True,\
+    \ False)).edges('|Z').fillet(p.corner_r)\n    cut = cq.Workplane('XY').box(p.body_len\
+    \ + 2 * p.fit_clear, p.body_w + 2 * p.fit_clear, t + 2, centered=(True, True,\
+    \ False)).translate((0, 0, -1))\n    plate = plate.cut(cut)\n    slot_w = p.screw_d\
+    \ + p.slot_clear\n    ymax = p.body_w / 2.0 - p.tab_hole_d / 2.0\n    nut_corner\
+    \ = p.nut_af * 1.1547\n    ty0 = -(ymax + nut_corner / 2.0 + 0.2)\n    ty1 = p.plate_w\
+    \ / 2.0 + 1.0\n    tw = p.nut_af + p.nut_clear_w\n    th = p.nut_h + p.nut_clear_h\n\
+    \    for s in (1, -1):\n        slot = cq.Workplane('XY').center(s * sx, 0).slot2D(2\
+    \ * ymax + slot_w, slot_w, 90).extrude(t + 2).translate((0, 0, -1))\n        plate\
+    \ = plate.cut(slot)\n        tun = cq.Workplane('XY').box(tw, ty1 - ty0, th, centered=(True,\
+    \ False, False)).translate((s * sx, ty0, p.floor_t))\n        plate = plate.cut(tun)\n\
+    \    return plate\n"
+  print_orientation: Underside (the face with the nut tunnels) flat on the bed
+  use_orientation: Horizontal, servo shaft pointing up. The servo body hangs down
+    through the cutout and the tabs rest on the top face.
+- id: fit-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    h = 2.0\n    l = p.body_len + 2 * p.fit_clear\n    w =\
+    \ p.body_w + 2 * p.fit_clear\n    f = cq.Workplane('XY').box(l + 2 * p.coupon_wall,\
+    \ w + 2 * p.coupon_wall, h, centered=(True, True, False))\n    c = cq.Workplane('XY').box(l,\
+    \ w, h + 2, centered=(True, True, False)).translate((0, 0, -1))\n    return f.cut(c)\n"
+  print_orientation: Flat on the bed
+  use_orientation: 'Test only: press it onto the servo case to check the cutout fit'
+- id: nut-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    t = p.floor_t + p.nut_h + p.nut_clear_h + p.ceiling_t\n\
+    \    ymax = p.body_w / 2.0 - p.tab_hole_d / 2.0\n    slot_w = p.screw_d + p.slot_clear\n\
+    \    nut_corner = p.nut_af * 1.1547\n    ty0 = -(ymax + nut_corner / 2.0 + 0.2)\n\
+    \    L = 2 * (-ty0) + 4\n    blk = cq.Workplane('XY').box(16, 2 * (-ty0) + 8,\
+    \ t, centered=(True, True, False))\n    ytop = (2 * (-ty0) + 8) / 2.0\n    slot\
+    \ = cq.Workplane('XY').slot2D(2 * ymax + slot_w, slot_w, 90).extrude(t + 2).translate((0,\
+    \ 0, -1))\n    blk = blk.cut(slot)\n    tw = p.nut_af + p.nut_clear_w\n    th\
+    \ = p.nut_h + p.nut_clear_h\n    tun = cq.Workplane('XY').box(tw, ytop + 1 - ty0,\
+    \ th, centered=(True, False, False)).translate((0, ty0, p.floor_t))\n    return\
+    \ blk.cut(tun)\n"
+  print_orientation: Tunnel side flat on the bed
+  use_orientation: 'Test only: check the M4 nut slides in and the M4 screw passes
+    the slot'
+hardware:
+- id: screw
+  ref: ISO 4762 M4x8
+  qty: 4
+- id: nut
+  ref: ISO 4032 M4
+  qty: 4
+joints:
+- id: j1
+  fastener: screw
+  axis_origin:
+  - 24.8
+  - 5.0
+  - 9.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: slot_pos_x
+    role: clearance
+  - part: plate
+    feature: nut_tunnel_pos_x
+    role: nut_pocket
+  nut: nut
+  external: null
+- id: j2
+  fastener: screw
+  axis_origin:
+  - 24.8
+  - -5.0
+  - 9.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: slot_pos_x
+    role: clearance
+  - part: plate
+    feature: nut_tunnel_pos_x
+    role: nut_pocket
+  nut: nut
+  external: null
+- id: j3
+  fastener: screw
+  axis_origin:
+  - -24.8
+  - 5.0
+  - 9.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: slot_neg_x
+    role: clearance
+  - part: plate
+    feature: nut_tunnel_neg_x
+    role: nut_pocket
+  nut: nut
+  external: null
+- id: j4
+  fastener: screw
+  axis_origin:
+  - -24.8
+  - -5.0
+  - 9.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: slot_neg_x
+    role: clearance
+  - part: plate
+    feature: nut_tunnel_neg_x
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria:
+- id: c1
+  part: plate
+  feature: servo cutout
+  relation: contains
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - body_len
+  - body_w
+  - fit_clear
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Frame should slip over the servo case with a small, even gap and
+      no rocking.
+- id: c2
+  part: plate
+  feature: screw slots
+  relation: clears
+  hardware: screw
+  clearance_mm: 0.4
+  params:
+  - screw_d
+  - slot_clear
+  - tab_hole_d
+  - tab_hole_gap
+  - slot_shift
+  check:
+    method: coupon
+    ref: nut-coupon
+    description: M4 screw passes through the slot and slides along it.
+- id: c3
+  part: plate
+  feature: nut tunnels
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - nut_clear_w
+  - nut_clear_h
+  check:
+    method: coupon
+    ref: nut-coupon
+    description: M4 nut slides into the tunnel from the open edge, flats aligned,
+      and cannot spin.
+- id: c4
+  part: plate
+  feature: top face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - tab_t
+  check:
+    method: measure
+    ref: null
+    description: Both tabs rest flat on the plate top with no rocking before the screws
+      are tightened.
+manual:
+- n: '1'
+  text: Print the plate with the underside (the face with the open nut tunnels) down.
+    Optionally print the two small coupons first. Check that the fit-coupon frame
+    slips over the servo case and that an M4 nut slides into the nut-coupon tunnel.
+  parts:
+  - plate
+  - fit-coupon
+  - nut-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Slide an M4 nut into each of the four tunnel positions from the open edge
+    of the plate (the +y long edge). Put two nuts in each tunnel, flats aligned with
+    the tunnel walls. Push them roughly under where the tab holes will land.
+  parts:
+  - plate
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Lower the servo into the cutout, shaft up, until both tabs rest on the top
+    face of the plate. The case should sit snug in the cutout.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Push an M4x8 screw through each of the four tab holes and the slots below.
+    Slide each nut under its screw by moving it along the tunnel, then turn the screw
+    into it. Tighten evenly, diagonally across the four, until the tabs are clamped
+    flat. Don't overtighten the PLA.
+  parts:
+  - plate
+  hardware:
+  - screw
+  - nut
+  tool: 2.5 mm hex key
