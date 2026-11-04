@@ -2,6 +2,13 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-04: The submission ZIP, and machine-local citations rewritten (issue 6)
+
+No verdict changes, no model calls, and the prompt models see is byte-identical (checked by hashing the hardware list, the setup facts and a request before and after).
+- **`scripts/build_submission.py <ref>`** packages the files tracked at a git ref into a ZIP written outside the repo, with README.md at its root. It writes nothing, and exits 1 with every reason, if the ZIP would be 50 MB or more, or has no README.md at its root, or holds a video, `docs/context/`, `.git`, a secret (API keys, AWS and GitHub tokens, private keys, bearer tokens) or a machine-local path (home folders, LAN and tailnet addresses). Image metadata isn't checked: Dan said EXIF is fine. `tests/test_build_submission.py` has a test for each refusal and for lookalikes that must pass (an `sk-` inside an encrypted blob, a three-part version number), and builds a ZIP from the commit under test.
+- **Left out of the ZIP**, each with its reason in `LEFT_OUT`: `docs/context/` (private), the two overnight logs (whether they ship is Dan's call, issue 36; `docs/overnight-runs.md` names the home network), `report/atlas/` (it builds only on Dan's Mac from local photos), and the Estoa datasheet (estoa-public doesn't ship the vendor's drawing either; fetch it from Adafruit, product 2477, at setup).
+- **Citations rewritten to name the source** instead of a local path or a file in `docs/context/`: `PLAN.md`, `CLAUDE.md`, `CHANGELOG.md` (one line), `docs/lessons.md`, `docs/limitations.md`, the three seed files' headers, `tasks/tripod-plate/brief.md` (a provenance note, not the request), and comments or unread fields in `catalog/printer.yaml` and `catalog/hardware.yaml`. Nothing under `docs/context/` or `results/` was edited.
+
 ## 2026-11-04: README rewritten to match `main`; results from a script; regrading a replay run keeps its summary (issues 35, 32)
 
 No verdict changes and no model calls.
@@ -369,7 +376,7 @@ Known limits: a raised pad around the hole on the camera side overstates reach. 
 
 ## Seeds from Estoa and two side projects; general failure classes
 - `seeds/classes.yaml`: ten task-independent failure classes (C1–C10), each mapped to planned graders. Every seed now carries a `class:`. Electronics and power failures are out of scope and left out.
-- `seeds/estoa-failures.yaml` (34 seeds: 22 failed, 11 near-miss, 1 unconfirmed) and `seeds/side-project-failures.yaml` (8: a lamp mount and a Gridfinity organizer). Mined from 37 archived agent-session transcripts in `~/claude-archive` by four reader agents. Eight key quotes were checked against the transcripts by hand, and all matched.
+- `seeds/estoa-failures.yaml` (34 seeds: 22 failed, 11 near-miss, 1 unconfirmed) and `seeds/side-project-failures.yaml` (8: a lamp mount and a Gridfinity organizer). Mined from 37 agent-session transcripts in Dan's private session archive by four reader agents. Eight key quotes were checked against the transcripts by hand, and all matched.
 - Evidence: the most common class across all three projects is C1, designing from unmeasured dimensions (12 of 52 seeds, by primary class). In both the tripod and Estoa, the agent asked for measurements only after a failed print.
 
 ## Repo created

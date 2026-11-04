@@ -4,7 +4,7 @@ What each check and test can and can't claim, and how it could be extended. The 
 
 ## Where the eval falls short, by rubric criterion
 
-The rubric is the 100-point one in section 5 of the eval design guide (`docs/context/2026-10-30-guide-eval-design-guide-find-what-ai-cant-do-yet.md`). The report's self-assessment names these shortcomings instead of awarding points.
+The rubric is the 100-point one in section 5 of the hackathon's eval design guide, "Find what AI can't do yet". The report's self-assessment names these shortcomings instead of awarding points.
 
 | Criterion | Shortcoming |
 |---|---|
