@@ -13,7 +13,7 @@ A rigorous, reproducible eval showing where frontier models fail at consumer mec
 
 ## The design
 
-- **Failure classes drive the eval.** `seeds/classes.yaml` groups 56 real failures (tripod, Estoa, two side projects, the eval's own coupons) into ten task-independent classes. Tasks are chosen to exercise several classes, and results are reported by class. The most common class is C1, designing from unmeasured dimensions: in every project the agent guessed first and asked only after a failed print.
+- **Failure classes drive the eval.** `seeds/classes.yaml` groups 56 real failures (tripod, Estoa, two side projects, the eval's own test prints) into ten task-independent classes. Tasks are chosen to exercise several classes, and results are reported by class. The most common class is C1, designing from unmeasured dimensions: in every project the agent guessed first and asked only after a failed print.
 - **The submission format makes code grading possible:** a params block (every hardware and real-world dimension as a named input, with its source: measured, datasheet or guessed); CadQuery code per part built only from those params, with print and use orientation; a BOM from the hardware bin; a joint table (bolt, stacked parts and thicknesses, nut or insert position); manual steps naming their parts; typed acceptance criteria, each with how it's checked before the full print; the questions asked.
 - **Assembly simulation is the core grader (Dan's idea).** It carries out the manual's steps on the real geometry, with real hardware (bolts with their partial thread, nuts, inserts, washers) and each insertion as a move along the part's axis. A step fails if a part collides before it seats, a bolt doesn't reach its nut with enough thread, or a part was already used. Fit and reach come out of one simulation instead of rules written from past failures. It's kinematic: no forces or friction.
 - **Hardware-fit invariant (Dan's idea).** Every hardware-receiving feature must be derived from the hardware's named dimensions. A metamorphic check varies each hardware param, rebuilds and re-simulates: a feature that doesn't follow its input is hard-coded and flagged, so the verdict doesn't depend on the true measurement. Every fit also has an upper bound (oversized pockets let the nut fall out, the tripod's +0.3 mm).
@@ -54,7 +54,7 @@ In order. Cut breadth before rigor.
 - Each with a parametric reference, a dimension table, brief templates, hidden facts and requirements.
 - The design guide: one page of common printing techniques, written so it names techniques without pointing at any task's answer.
 - Second-coder check: an independent agent re-classifies the seeds blind; report agreement.
-- Then revisit the classes with the pilot's failures and that agreement in hand. Known weak spots: C1 and C8 are about behavior (didn't ask, didn't plan a coupon) while the rest are about the design, so the report may group them separately; C2 and C5 overlap (both are "this doesn't fit that"); C10 is mostly outside code grading.
+- Then revisit the classes with the pilot's failures and that agreement in hand. Known weak spots: C1 and C8 are about behavior (didn't ask, didn't plan a test print) while the rest are about the design, so the report may group them separately; C2 and C5 overlap (both are "this doesn't fit that"); C10 is mostly outside code grading.
 
 ### Printability, regression suite, reward hacking
 - Printability: minimum wall, holes through bridges without stepped layers, bed fit.
@@ -81,13 +81,13 @@ Per-check limits and extensions are in `docs/limitations.md`; the report's limit
 - Builder agent (Dan's idea) and its personas.
 - Strength: a hand-calculation check, then FEA (gmsh + CalculiX).
 - Judge alignment, if any check needs an LLM judge.
-- Physical work: the calibration coupon, the real hardware bin, filming the failed parts.
+- Physical work: the calibration test print, the real hardware bin, filming the failed parts.
 
 ## Before publishing
 
 No photo is committed, and nothing in the repo should point at a file that only exists on one machine. Run this list before the first push:
 
-1. **Images stay out of git, and out of its history.** Deleting a photo from the tree is not enough: EXIF (capture date, GPS, camera) stays recoverable from the old blob, so any image ever committed has to be purged from history. The coupon and servo photos are hosted on R2 and indexed in `docs/media/photos.md`. One exception (Dan, 2026-11-03): a vendor drawing a task hands the model, such as `tasks/estoa-light/files/datasheet.png`, may be committed. It carries no camera metadata, and it's saved with none. Photos still may not.
+1. **Images stay out of git, and out of its history.** Deleting a photo from the tree is not enough: EXIF (capture date, GPS, camera) stays recoverable from the old blob, so any image ever committed has to be purged from history. The test print and servo photos are hosted on R2 and indexed in `docs/media/photos.md`. One exception (Dan, 2026-11-03): a vendor drawing a task hands the model, such as `tasks/estoa-light/files/datasheet.png`, may be committed. It carries no camera metadata, and it's saved with none. Photos still may not.
 2. **Atlas assets** (`report/atlas/examples.yaml`) still point at 13 files on this machine: 7 Estoa HEICs in `~/Source/local-lights/private/photos/estoa/`, 3 tripod HEICs in `~/Downloads/`, 2 images from `estoa-public`, 2 phone-stand renders. Convert, scrub the metadata, upload to R2 and replace the paths with URLs — without committing the images. The `~/Downloads/` pointers go first: that folder is the least durable place a cited file could live.
 3. **`docs/context/` is private source material.** Purge it from the tree before publishing, and rewrite its citations (`PLAN.md`, `catalog/printer.yaml`, `README.md`, `seeds/tripod-failures.yaml`) to name the source instead of a local path.
 4. **Other machine-local pointers**: the ground-truth and Estoa paths above, the explorations-inbox filename in `catalog/hardware.yaml`, and the `~/claude-archive` session ids — those can stay as opaque provenance, but the README should say the archive is private.
@@ -111,7 +111,7 @@ No photo is committed, and nothing in the repo should point at a file that only 
 Decided:
 - CAD language: CadQuery (matches BenchCAD; install size is no concern, Dan). OpenSCAD stays available for the tripod's ground-truth files.
 - Electronics out of scope (Dan). Enclosure geometry around electronic parts stays in.
-- One printer and one filament (Dan, 2026-10-30): the eval is scoped to the X1C with the PLA the coupons were printed in, every task states that setup, and the report says its fit and bridge numbers hold for that setup only. More setups are future work (`docs/limitations.md`).
+- One printer and one filament (Dan, 2026-10-30): the eval is scoped to the X1C with the PLA the test prints were printed in, every task states that setup, and the report says its fit and bridge numbers hold for that setup only. More setups are future work (`docs/limitations.md`).
 - Commit straight to `main`.
 - The OpenRouter key is in 1Password at `op://kb-sync/OpenRouter/credential` (Dan), capped at $100 per key.
 - A plain roof with the bolt's hole cut through it fails `bridges` (Dan, 2026-11-03). The first plate's roof didn't work, and the stepped roof is the known fix. The report states that the verdict rests on two tangled prints (`docs/limitations.md`).

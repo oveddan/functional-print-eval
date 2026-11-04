@@ -2,6 +2,15 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-04: README rewritten to match `main`; results from a script; regrading a replay run keeps its summary (issues 35, 32)
+
+No verdict changes and no model calls.
+- **README** rewritten from the saved runs and the repo (issue 35): how to run everything from a clean clone without a key, each step's expected result and time on a clean Ubuntu 24.04 container, the tasks and their wording status, how grading works, the limits, what's built and what isn't, a map to the guide's folders, provenance and AI use. Claims about things that don't exist (the hidden-error printer score, design for assembly, a hand ranking, the assembly simulation) are gone. The parts only Dan can write are marked `TODO(Dan):`.
+- **Results from a script.** `scripts/results_table.py` writes the README's results (pass, fail, not graded, declined and cost per task, condition and model) and the counts behind the three leading assumptions, from every `grades.json` under `results/runs/` (smoke tests left out). `tests/test_results_table.py` fails when the README and the saved runs disagree, so CI catches drift. Counts on `main`: 104 trials, 27 pass, 50 fail, 22 not graded, 5 declined, the same as the issue 15 regrade.
+- **`scripts/reproduce.sh`** runs install, tests, every reference, a regrade of every saved trial on a copy (comparing each run's `summary.csv`), the results page and the README check.
+- **`--runs-dir`** lets `pbe.eval --regrade` work on a copy of `results/runs/`.
+- **Issue 32:** `summarize` leaves a run's `summary.csv` alone when the run has no `grades.json` (the crash replay and the two test-print loop samples), so `--regrade` no longer wipes it. Test: `test_regrading_a_run_without_grades_keeps_its_own_summary`.
+- "Test print" replaces generic "coupon" in `PLAN.md`, `docs/limitations.md`, `docs/scoring.md` and `docs/lessons.md`. Names keep the old word (coupon A, the coupon loop, `role: coupon`), and `docs/coupon-loop.md` is left as written, since it records measures committed before its runs.
 ## 2026-11-04: Prompt caching for Claude models (issue 34)
 
 Every saved Claude call showed 0% cached, because `pbe/runner/llm.py` never asked for it. Most other providers cache on their own, so the saved runs compared Claude's uncached cost with everyone else's cached cost.

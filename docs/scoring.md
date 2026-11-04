@@ -43,7 +43,7 @@ runtime and cost. Never include API keys.
    requirement"), say where models are strong and weak, and report cost per task per model.
    Report all-pass rate, mean requirement pass, strongest and weakest check type.
 3. **Long tasks where new facts arrive.** The hidden-error printer reports "the nut falls out"
-   after the first coupon, and the model has to adjust in the right direction by a sensible
+   after the first test print, and the model has to adjust in the right direction by a sensible
    amount.
 4. **Grader reliability is its own result.** Grading rules can reject valid answers, miss real
    mistakes or allow reward hacking. Deterministic graders plus reference solutions are the

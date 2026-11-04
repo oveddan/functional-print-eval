@@ -10,9 +10,9 @@ Raw material for Dan to rewrite. One lesson per entry, each with its evidence. N
 
 **One pilot found two eval faults for 20 cents.** The tripod's "which face goes down" check assumed the widest face sits in the clamp, and failed Gemini 3.8 Flash's correct plate with a groove in its side. The person answered a question about the camera's socket with facts about the clamp. Evidence: `results/runs/pilot-tripod`, Haiku's and Gemini's t1.
 
-**A generic check can be wrong for one role of part.** `connected_bodies` failed Opus's M3 t2 for a test coupon of three separate pockets, which prints fine. Evidence: `results/runs/pilot-nut-knob-2/nut-knob/M3/can_ask/anthropic__claude-opus-5.5/t2`, fixed in be8b718.
+**A generic check can be wrong for one role of part.** `connected_bodies` failed Opus's M3 t2 for a test print of three separate pockets, which prints fine. Evidence: `results/runs/pilot-nut-knob-2/nut-knob/M3/can_ask/anthropic__claude-opus-5.5/t2`, fixed in be8b718.
 
-**Model code breaks a grader in more ways than a person's would.** Eight came back as 8.0 and crashed `range()`, an omitted `role` defaulted a coupon to the final part, split fingers read as "no hex pocket". Each looked like a model failure until read. Evidence: commit d656f47 and 18ecc26.
+**Model code breaks a grader in more ways than a person's would.** Eight came back as 8.0 and crashed `range()`, an omitted `role` defaulted a test print to the final part, split fingers read as "no hex pocket". Each looked like a model failure until read. Evidence: commit d656f47 and 18ecc26.
 
 **Harness failures have to look different from model failures.** A dropped connection, a stuck call or a crash in a check can otherwise read as a model's mistake or lose a paid trial. Evidence: an Opus call sat open 15 minutes and blocked the queue on 2026-11-02; trials are saved before grading so a crash doesn't lose them (`pbe/eval.py`).
 
