@@ -2,6 +2,15 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-04: Crash replay (issue 27): one retry builds 5 of 10 saved crashes, and none of them passes
+
+Run `crash-replay`: the 10 saved trials that failed `builds` from a real crash, each continued once with its saved build error and nothing else, then graded with the normal checks, test prints in. Code in `pbe/runner/crash_replay.py` and `scripts/crash_replay.py` (reusing `coupon_loop.second_turn`), tests in `tests/test_crash_replay.py`. The measures in `docs/crash-replay.md` were committed and pushed before any model call (`d749302`). $0.3309, no infrastructure stop.
+- **5 of 10 now pass `builds`**: Qwen 3.8 Flash's M3 knob and plate t2, DeepSeek V4 Pro's M5 knob and wheel t1, Gemini 3.8 Flash's wheel.
+- Of those 5, **none passes every check**: 4 fail another check (`bridges` in 3, R2, R3 or R4 in 2) and DeepSeek's M5 knob is not graded on R4.
+- The other 5 all got past the error they were shown, and none repeated it, but each crashed on a different error behind it.
+- So on these trials one build error sent back fixed half the crashes but none of the pass count. No existing result changes: the saved trials and their verdicts stay as they are.
+- After Codex's review, the script saves a paid retry before grading it and keeps an earlier attempt's cost on a retry, as `scripts/coupon_loop.py` does. Neither case came up in the run, and regrading through the new path reproduces all 10 verdicts.
+
 ## 2026-11-04: Coupon loop script hardened after Codex review
 
 No result changes. From Codex's review of PR #19, each finding checked against the code first:

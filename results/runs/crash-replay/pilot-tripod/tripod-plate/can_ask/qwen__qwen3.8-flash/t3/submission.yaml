@@ -1,0 +1,654 @@
+task: tripod-plate
+note: 'Two fixes, design unchanged: `neck_w` was listed as a param on one criterion
+  but it''s derived in the build code (neck_w = foot_w - 2*flank_run), so that criterion
+  now names foot_w_1/foot_w_3 and rim_t instead; and I removed a second joint that
+  modelled the clamp jaws as a bolted joint - the jaws grip the dovetail, there''s
+  no fastener there.
+
+
+  So, plainly: this is a two-piece quick-release. The flat plate prints beautifully
+  and is a sensible temporary fix. The screw is the one I''d argue with - a PLA thread
+  inside a steel camera socket strips and can jam - so the plate''s head seat is sized
+  around your borrowed 1/4"-20 bolt (15 mm head x 5 mm, 10 mm of thread) and that
+  bolt is the primary fastener. The printed thumb screw is handed in anyway, with
+  a head envelope of 14.5 x 5 mm so it works in the same seat, plus a coin slot.
+
+
+  Unavoidable caveat: the measure tool would only ever give me back two cached answers,
+  so your jaw gap (open and closed), the lip depth and angle, and the slot depth are
+  all still unknown. That''s what `gauge_coupon` is for - it carries all three foot
+  widths (29 / 32 / 35 mm across, notched 1/2/3) plus a copy of the bolt hole and
+  head seat. Print it first, find the foot the jaws pinch, and set `grip_step` to
+  that number before printing the plate. If none of the three works, edit `foot_w_1/2/3`,
+  or `flank_run` to change the dovetail angle instead of the width.
+
+
+  Assumed and worth checking: camera socket at least 6 mm deep (10 mm bolt less the
+  4 mm deck web), and a load of roughly 1 kg or less.'
+questions:
+- text: With the knob wound fully open, how wide is the clear gap between the two
+    jaw lips? That's the widest foot that can drop in.
+  answer: null
+- text: With the knob fully closed, how wide is the gap between the lips? Which of
+    the coupon's three feet did the lips actually pinch - the one with 1, 2 or 3 notches?
+  answer: null
+- text: How deep is the slot from the top of the clamp down, and how tall are the
+    lips? The plate is 10.5 mm thick overall, with a 6.5 mm neck band for them to
+    reach under.
+  answer: null
+- text: Are the jaw faces parallel, or angled in to a dovetail - roughly what angle?
+    My flank is 22 degrees from vertical on purpose so a straight-lipped clamp still
+    grips on a line near the foot's mouth.
+  answer: null
+- text: Did the salvaged bolt's head sit below the coupon's surface with its tip about
+    6 mm proud? If the tip stands less than 5 mm proud, the camera won't get a proper
+    bite.
+  answer: null
+- text: How wide is the flat patch on the camera's underside around the socket, and
+    how heavy is the camera with a lens on? Deck is 40 x 54 mm for a load I've assumed
+    at about 1 kg.
+  answer: null
+params:
+  bolt_clear_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: through-hole for the 1/4-20 bolt, major dia + 0.25
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam bolt, across the head - sizes the head seat and the cavity
+      it has to drop into
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: the foot's cavity is grip_depth = 6.5 mm deep, so this 5 mm head is clear
+      of the plate's outer face by 1.5 mm
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: unused alias kept for clarity; the geometry reads cam_thread_pitch
+  bolt_thread_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under the head. Engagement into the camera = this - deck_t = 6 mm
+  cam_load_kg:
+    value: 1
+    unit: count
+    kind: world
+    source: guessed
+    note: assumed light camera + small lens. PLA creeps; keep it under about 1 kg
+  cam_socket_depth:
+    value: 6
+    unit: mm
+    kind: world
+    source: guessed
+    note: not measured. Needs to be >= bolt_thread_len - deck_t = 6 mm, typical is
+      8-10 mm
+  cam_thread_od:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 major diameter, confirmed on the camera socket
+  cam_thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 = 20 tpi; sets the printed thread's ring spacing
+  coupon_deck_w:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: the coupon's land width - same as the plate's deck so the ledge geometry
+      matches
+  deck_corner_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: rounds the deck's four plan corners; best-effort cosmetic op
+  deck_len:
+    value: 54
+    unit: mm
+    kind: design
+    source: design
+    note: camera-side face along the plate's travel
+  deck_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: thickness the bolt passes through - the only plastic in the load path, kept
+      thin to give the 10 mm bolt its reach
+  deck_w:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: camera-side face across the jaws; the ledge it forms over the foot is what
+      stops pull-out
+  flank_run:
+    value: 2.63
+    unit: mm
+    kind: design
+    source: design
+    note: how far each flank leans inward over the foot's height = grip_depth x tan(22
+      deg). Replaces the tan() call that broke the first build; neck_w = foot_w -
+      2*flank_run. Change this to change the dovetail angle rather than the width.
+  foot_w_1:
+    value: 29
+    unit: mm
+    kind: design
+    source: design
+    note: narrow step, for a clamp that barely closes
+  foot_w_2:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: nominal middle step
+  foot_w_3:
+    value: 35
+    unit: mm
+    kind: design
+    source: design
+    note: wide step for a loose clamp; needs the slot mouth to accept 35 mm
+  grip_depth:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: foot depth below the deck web, 6.5 mm, so the plate is 10.5 mm thick overall.
+      Doubles as the depth of the cavity the bolt head lives in.
+  grip_flank_deg:
+    value: 22
+    unit: deg
+    kind: design
+    source: design
+    note: 'documentation of the flank angle used: atan(flank_run / grip_depth) = 22
+      deg from vertical. Deliberately steeper than the lips'' likely angle, so contact
+      starts as a line near the foot''s mouth and jams tighter as the knob closes.'
+  grip_step:
+    value: 2
+    unit: count
+    kind: design
+    source: design
+    note: 1, 2 or 3 selects foot_w_1/2/3. Set it from the coupon test before printing
+      the plate.
+  head_pocket_clear:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: diametral room around the bolt head, used on the coupon's seat and as the
+      check on the plate's cavity
+  head_seat_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'not used to build: in the plate the head seats on the cavity ledge, so
+      the available depth is grip_depth = 6.5 mm, which must exceed bolt_head_h'
+  jaw_closed_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: never obtained - drives which grip_step you pick
+  jaw_open_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: never obtained - the gauge_coupon stands in for this
+  lead_in:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on the foot's mouth so the plate starts into the jaws; best-effort
+      cosmetic op
+  rim_t:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: 'wall the jaws squeeze: 3.6 mm = 9 lines at a 0.4 nozzle, prints solid.
+      Also what leaves room for the bolt head inside the foot: neck_w - 2*rim_t must
+      clear the 15 mm head.'
+  screw_crest_d:
+    value: 6.3
+    unit: mm
+    kind: design
+    source: design
+    note: 0.05 mm under 1/4-20 major so it can start by hand
+  screw_head_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: printed head sits this much under the metal 15 mm head, so it drops into
+      the same seat
+  screw_ridge_t:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: axial thickness of each thread ridge, spaced at cam_thread_pitch
+  screw_root_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: core of the printed spare screw, near the 1/4-20 minor dia
+  screw_slot_depth:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: slot depth, ending 0.5 mm below the head's top face so it never severs the
+      shank
+  screw_slot_w:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: coin or small blader slot cut in the head
+  screw_thread_len:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: matches the salvaged bolt's 10 mm so it works in the same plate
+  slot_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: never obtained. Must be >= deck_t + grip_depth = 10.5 mm or the deck won't
+      close onto the clamp
+parts:
+- id: gauge_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    # three candidate dovetail foot profiles in a row on a\
+    \ thin land, plus a copy of the\n    # bolt clearance hole and the head seat,\
+    \ so both checks come off one small print.\n    # Built only from boxes, rect-to-rect\
+    \ lofts, circles and cuts - no trig needed.\n    z1 = p.deck_t               \
+    \       # land = same thickness as the plate's deck web\n    gd = p.grip_depth\n\
+    \    top = z1 + gd                      # same overall height as the plate's foot\n\
+    \    steps = (p.foot_w_1, p.foot_w_2, p.foot_w_3)\n    fl = 14.0\n    gap = 3.0\n\
+    \    pad = 22.0\n    total = pad + len(steps) * fl + (len(steps) + 1) * gap\n\n\
+    \    body = (cq.Workplane(\"XY\")\n            .box(p.coupon_deck_w, total, z1,\
+    \ centered=(True, True, False)))\n\n    # pad at one end: repeats the plate's\
+    \ 4 mm web and its head seat\n    y = -total / 2.0\n    pc = y + pad / 2.0\n \
+    \   blk = (cq.Workplane(\"XY\").center(0, pc, 0).workplane(offset=z1)\n      \
+    \     .rect(p.coupon_deck_w - 2.0, pad).extrude(gd))\n    body = body.union(blk)\n\
+    \n    y = y + pad + gap\n    for i, foot_w in enumerate(steps):\n        neck_w\
+    \ = foot_w - 2.0 * p.flank_run\n        yc = y + fl / 2.0\n        foot = (cq.Workplane(\"\
+    XY\").center(0, yc, 0).workplane(offset=z1)\n                .rect(neck_w, fl)\n\
+    \                .workplane(offset=gd)\n                .rect(foot_w, fl)\n  \
+    \              .loft())\n        body = body.union(foot)\n        # notch each\
+    \ foot (i + 1 of them) so you can read which step is gripping\n        for j in\
+    \ range(i + 1):\n            ny = yc + (j - i / 2.0) * 4.0\n            notch\
+    \ = (cq.Workplane(\"XY\").center(0, ny, 0).workplane(offset=top - 1.5)\n     \
+    \                .box(p.coupon_deck_w, 2.0, 3.0, centered=(True, True, False)))\n\
+    \            body = body.cut(notch)\n        y = y + fl + gap\n\n    # fastener\
+    \ checks: clearance hole through the web, head seat opened up above it\n    body\
+    \ = body.cut(cq.Workplane(\"XY\").center(0, pc, 0).workplane(offset=-1.0)\n  \
+    \                  .circle(p.bolt_clear_d / 2.0).extrude(top + 2.0))\n    body\
+    \ = body.cut(cq.Workplane(\"XY\").center(0, pc, 0).workplane(offset=z1)\n    \
+    \                .circle(p.bolt_head_d / 2.0 + p.head_pocket_clear / 2.0)\n  \
+    \                  .extrude(gd + 1.0))\n    return body"
+  print_orientation: 'as modelled: the 4 mm land flat on the bed at z=0, the three
+    test feet and the pad standing up in +Z to 10.5 mm'
+  use_orientation: not used - a gauge; keep it as a spare to re-check the clamp later
+- id: camera_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    # Printed deck-down: z=0 is the face the camera sits on,\
+    \ the dovetail foot stands up.\n    # The foot gets wider with height, so nothing\
+    \ overhangs and there are no supports.\n    # The middle is hollow, which is what\
+    \ lets the 15 mm bolt head live inside the foot\n    # instead of sticking out\
+    \ of the plate and stopping it seating in the clamp.\n    step = int(p.grip_step)\n\
+    \    foot_w = (p.foot_w_1, p.foot_w_2, p.foot_w_3)[step - 1]\n    neck_w = foot_w\
+    \ - 2.0 * p.flank_run\n    z1 = p.deck_t                      # top of the web\
+    \ the bolt passes through, 4 mm\n    gd = p.grip_depth                  # foot\
+    \ depth below it, 6.5 mm -> 10.5 mm overall\n    rt = p.rim_t                \
+    \       # wall the jaws squeeze, 3.6 mm = 9 perimeter lines\n    W = p.deck_w\n\
+    \    L = p.deck_len\n\n    deck = (cq.Workplane(\"XY\")\n            .box(W, L,\
+    \ z1, centered=(True, True, False)))\n    rim = (cq.Workplane(\"XY\").workplane(offset=z1)\n\
+    \           .rect(neck_w, L)\n           .workplane(offset=gd)\n           .rect(foot_w,\
+    \ L)\n           .loft())\n    cav = (cq.Workplane(\"XY\").workplane(offset=z1)\n\
+    \           .rect(neck_w - 2.0 * rt, L - 2.0 * rt)\n           .workplane(offset=gd\
+    \ + 1.0)\n           .rect(foot_w - 2.0 * rt, L - 2.0 * rt)\n           .loft())\n\
+    \    body = deck.union(rim.cut(cav))\n\n    # bolt clearance straight through\
+    \ the web; the cavity above it is the head seat,\n    # its ledge is the deck's\
+    \ top face, which is what the bolt head bears on.\n    body = body.cut(cq.Workplane(\"\
+    XY\").workplane(offset=-1.0)\n                    .circle(p.bolt_clear_d / 2.0).extrude(z1\
+    \ + 2.0))\n\n    try:\n        body = body.edges(\"|Z\").fillet(p.deck_corner_r)\
+    \   # round the deck's plan corners\n    except Exception:\n        pass\n   \
+    \ try:\n        body = body.edges(\">Z\").chamfer(p.lead_in)        # lead-in\
+    \ on the foot's mouth\n    except Exception:\n        pass\n    return body"
+  print_orientation: 'as modelled: the flat camera-side face of the deck is the first
+    layer on the bed (z=0), the hollow dovetail foot stands up in +Z to 10.5 mm. No
+    supports.'
+  use_orientation: 'flipped for use: the deck face (print z=0) goes against the camera''s
+    base, the foot (print +Z) drops into the clamp slot between the jaws, bolt head
+    down into the cavity, thread up into the camera'
+- id: camera_screw
+  role: final
+  material: PLA
+  code: "def build(p):\n    # Printed 1/4-20 thumbscrew - the fallback fastener. Head\
+    \ on the bed, stud pointing up.\n    # Head is kept just under the metal bolt's\
+    \ 15 x 5 mm envelope so it seats in the same\n    # pocket as the bolt. The thread\
+    \ is ridges at the true pitch, not a swept helix.\n    pitch = p.cam_thread_pitch\n\
+    \    head_d = p.bolt_head_d - p.screw_head_clear\n    head_h = p.bolt_head_h\n\
+    \    root_r = p.screw_root_d / 2.0\n    crest_r = p.screw_crest_d / 2.0\n    thread_len\
+    \ = p.screw_thread_len\n    ridge_t = p.screw_ridge_t\n    lead = 2.0        \
+    \    # plain run at the start so the ridge can find the existing turns\n\n   \
+    \ body = cq.Workplane(\"XY\").circle(head_d / 2.0).extrude(head_h)\n    body =\
+    \ body.union(cq.Workplane(\"XY\").workplane(offset=head_h)\n                 \
+    \     .circle(root_r).extrude(thread_len))\n\n    n = int((thread_len - lead -\
+    \ ridge_t) / pitch) + 1\n    for i in range(n):\n        z = head_h + lead + i\
+    \ * pitch\n        r = crest_r if 0 < i < n - 1 else crest_r - 0.2   # slightly\
+    \ smaller first and last\n        body = body.union(cq.Workplane(\"XY\").workplane(offset=z)\n\
+    \                          .circle(r).extrude(ridge_t))\n\n    # coin / small-blade\
+    \ slot, wholly inside the head so it never cuts the shank\n    slot_bot = head_h\
+    \ - 0.5 - p.screw_slot_depth\n    body = body.cut(cq.Workplane(\"XY\").workplane(offset=slot_bot)\n\
+    \                    .box(head_d + 4.0, p.screw_slot_w, p.screw_slot_depth,\n\
+    \                         centered=(True, True, False)))\n    return body"
+  print_orientation: 'head down on the bed: the flat face that bears on the plate''s
+    seat is print z=0, the threaded stud points up in +Z to about 15 mm'
+  use_orientation: same axis as the salvaged bolt - head on the plate's cavity ledge,
+    thread up into the camera's 1/4-20 socket
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt_joint
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: camera_plate
+    feature: head_seat_ledge
+    role: head_seat
+  - part: camera_plate
+    feature: bolt_clearance
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: grip_step_test
+  part: gauge_coupon
+  feature: test_foot_2
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - grip_step
+  - foot_w_1
+  - foot_w_2
+  - foot_w_3
+  - flank_run
+  - jaw_open_gap
+  - jaw_closed_gap
+  check:
+    method: coupon
+    ref: gauge_coupon
+    description: 'drop each foot of the coupon into the jaws in turn and tighten the
+      knob: the right step is the one the lips pinch so you can''t pull it out by
+      hand'
+- id: fastener_fit
+  part: gauge_coupon
+  feature: bolt_clearance
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_clear_d
+  - bolt_head_d
+  - bolt_head_h
+  - bolt_thread_len
+  - deck_t
+  check:
+    method: coupon
+    ref: gauge_coupon
+    description: the bolt must pass the 6.6 mm hole and sink its head into the seat
+      with its tip standing about 6 mm proud
+- id: plate_bolt_clearance
+  part: camera_plate
+  feature: bolt_clearance
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_clear_d
+  - cam_thread_od
+  - deck_t
+  check:
+    method: none
+    ref: null
+    description: ''
+- id: head_seats_in_cavity
+  part: camera_plate
+  feature: head_seat_ledge
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - foot_w_1
+  - foot_w_3
+  - flank_run
+  - rim_t
+  - grip_depth
+  - head_pocket_clear
+  check:
+    method: measure
+    ref: null
+    description: the foot's hollow cavity is 16.5 mm wide at grip_step 1 and 6.5 mm
+      deep; the 15 x 5 mm head has to drop in and stay 1.5 mm below the foot's outer
+      face so the plate seats flat on the clamp
+- id: thread_engage
+  part: camera_plate
+  feature: bolt_clearance
+  relation: engages
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - bolt_thread_len
+  - deck_t
+  - cam_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: bolt_thread_len - deck_t = 6 mm of thread must be inside the camera's
+      socket, not inside the plate
+- id: foot_seats_in_slot
+  part: camera_plate
+  feature: grip_foot
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - slot_depth
+  - deck_t
+  - grip_depth
+  check:
+    method: coupon
+    ref: null
+    description: slide the foot into the slot and close the deck down onto the clamp's
+      top face; the foot must be fully in with the deck flat
+- id: deck_faces_camera
+  part: camera_plate
+  feature: deck_face
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - deck_w
+  - deck_len
+  check:
+    method: measure
+    ref: null
+    description: the 40 x 54 mm deck must land inside the flat patch on the camera's
+      base, clear of the lens, grip and any contacts
+- id: spare_screw_thread
+  part: camera_screw
+  feature: thread
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - screw_crest_d
+  - screw_ridge_t
+  - screw_thread_len
+  - cam_thread_od
+  - cam_thread_pitch
+  - cam_socket_depth
+  check:
+    method: coupon
+    ref: gauge_coupon
+    description: 'start by hand into the plate first, then into the camera: it must
+      turn in with no force. If it binds, back out and use the metal bolt.'
+- id: spare_screw_in_seat
+  part: camera_screw
+  feature: head
+  relation: seats
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - screw_head_clear
+  - bolt_head_d
+  - rim_t
+  - foot_w_1
+  - flank_run
+  check:
+    method: none
+    ref: null
+    description: head is 15 - 0.5 = 14.5 mm, so it drops into the same ledge the bolt
+      head seats on
+manual:
+- n: '1'
+  text: 'Print `gauge_coupon` first. It''s the long flat piece with three standing
+    feet and a frame-shaped pad at one end. Lay it flat on the bed as modelled, no
+    supports, 3 perimeters, 20% infill, 0.2 mm layers. Roughly 15 minutes. The feet
+    are cut with 1, 2 and 3 notches across the top: narrowest (29 mm) to widest (35
+    mm).'
+  parts:
+  - gauge_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Find the grip size. Drop the coupon in so each foot in turn sits between the
+    jaws, and tighten the knob by hand. The right foot is the one the lips pinch hard
+    enough that you can't pull the coupon straight out. If foot 1 is the only one
+    that enters at all, or foot 3 is still loose with the knob closed, stop and tell
+    me - those are the two numbers I couldn't measure on your tripod.
+  parts:
+  - gauge_coupon
+  hardware: []
+  tool: tripod knob
+- n: '3'
+  text: 'Same coupon, fastener check: drop the salvaged 1/4-20 bolt into the frame-shaped
+    pad so its head seats on the bottom ledge. The head must stay below the pad''s
+    top face, and the tip must stand about 6 mm proud of the underside. That 6 mm
+    is all the thread your camera gets - if it''s less, tell me before printing the
+    plate.'
+  parts:
+  - gauge_coupon
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '4'
+  text: 'Set `grip_step` in the params to the number of the foot that worked: 1 =
+    29 mm, 2 = 32 mm, 3 = 35 mm across the foot. Then print `camera_plate`, exactly
+    as modelled: the flat camera-side face down on the bed, the hollow dovetail foot
+    standing up. No supports - the foot gets wider as it goes up, so there is nothing
+    to hold. 4 perimeters, 20-25% infill, 0.2 mm layers.'
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Print `camera_screw` only if you can't use the metal bolt. Head down on the
+    bed, threaded stud pointing up, no supports, 4 perimeters, 25% infill. Read step
+    8 first.
+  parts:
+  - camera_screw
+  hardware: []
+  tool: null
+- n: '6'
+  text: 'Dry-fit to the tripod with no camera: drop the foot into the slot and tighten
+    the knob. The deck must close down flat onto the clamp''s top face with the foot
+    in as far as it goes. If it won''t start, the foot''s mouth is chamfered 1 mm
+    to help, but you may still need to draw a file across the two sloped flanks -
+    PLA files easily. If it goes in but rattles, turn the knob right up; if it''s
+    still loose, that''s a foot_w_3-or-bigger problem, tell me.'
+  parts:
+  - camera_plate
+  hardware: []
+  tool: coarse file
+- n: '7'
+  text: 'Attach to the camera. Stand the plate foot-up on the table, drop the salvaged
+    1/4-20 bolt into the cavity so its head sits down on the ledge around the hole,
+    then drive it up into the camera''s socket by hand for the first turns and tighten
+    with whatever suits the head. All 10 mm of thread should be in use: 4 mm through
+    the deck web leaves 6 mm biting the camera. Don''t overtighten - you are clamping
+    a plastic ledge, and there is no metal shoulder here.'
+  parts:
+  - camera_plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '8'
+  text: 'The printed spare screw, if you must: first run the metal bolt through its
+    thread to form the crests, then start it in the camera by hand with no force and
+    back it out if it binds at any point. It is not a real helical thread, it''s ridges
+    at the correct 1.27 mm pitch, so it cuts rather than rolls. A stripped PLA stud
+    jammed inside a camera socket is a far worse job than a missing plate - metal
+    bolt first, always.'
+  parts:
+  - camera_screw
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '9'
+  text: 'Mount: seat the plate in the jaws, tighten the knob, then tug the camera
+    along all three axes and watch the deck for tilt or slide. Keep the camera strap
+    round your neck until you''re confident.'
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '10'
+  text: It's temporary on purpose. Re-check the knob and the plate after the first
+    hour and whenever it gets warm - PLA softens near 55 C and creeps under a standing
+    load, which slowly turns a tight grip into a loose one. Take it off when you find
+    the real plate, and don't hang anything over it you'd cry about.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null

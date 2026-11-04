@@ -1,0 +1,742 @@
+task: tripod-plate
+note: 'Fixes in this pass: (1) qr_plate and jaw_gauge no longer use cq.selectors.DirectionSelector
+  - that call raised the tuple/getAngle error because it wants a Vector, and worse,
+  had it merely matched nothing the plate would have printed as a square-edged slab
+  that skates out of angled jaw lips. The 45 deg jaw chamfers are now part of an explicit
+  polygonal cross-section in the YZ plane, extruded along the plate length, so the
+  taper is guaranteed to exist. (2) thumb_screw and jaw_gauge no longer call Workplane.cone,
+  which does not exist in this build; the thread lead-in is now three stacked cylinders
+  of rising radius, all plain circle/extrude/union calls.
+
+
+  Handoff: I still cannot run CadQuery here, so I cannot see the solids. The one untestable
+  piece left is the actual helical thread: it is a 0.84 mm circle swept along a 1.27
+  mm pitch helix at radius 2.73 mm with Wire.makeHelix plus makePipeShell, which is
+  the part of the code I am least sure this build accepts. It is wrapped in try/except:
+  on failure thumb_screw and the gauge stub fall back to stacked annular ridges and
+  the code prints a NEEDS-EYEBALL flag. Do not force the fallback version into your
+  camera - ridges are not a helix, they would have to crush their way in. The gauge''s
+  4-turn stub is the cheap way to find out: if the stub starts and turns in by hand,
+  the sweep worked and the full screw is safe to print. If the preview shows a plain
+  core with no ridge at all, or a wedge of material where the thread should be, the
+  sweep half-failed and you should use the salvaged steel bolt only.
+
+
+  The numbers still guessed: plate_grip_t = 8.0 mm, because you could not measure
+  the jaw gap - the coupon exists to replace it. If the gauge says the jaws only grip
+  6 mm or less, the code prints the plate with no head recess and the bolt head hangs
+  about 5 mm below the plate, so confirm the jaws have that room before trusting it.
+  thr_wire_dia and thr_root_dia are tuned so the ridge sits on the insert''s 5.35
+  mm minor dia and is just over one full perimeter wide; crest held 0.05 under nominal
+  so it starts by hand. And the whole thing assumes a light camera.'
+questions: []
+params:
+  cam_thread_major_dia:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 UNC external major dia; your camera socket is 1/4-20
+  cam_thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 = 20 tpi
+  cam_thread_min_engage:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: engagement I require in the camera socket, about 4 full turns
+  bolt_head_dia:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam bolt head across - you measured about 15 mm
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head thickness - you measured about 5 mm
+  bolt_thread_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: thread under the head - you measured about 10 mm
+  plate_len:
+    value: 52
+    unit: mm
+    kind: design
+    source: design
+    note: along the jaws
+  plate_width:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: across the pinch axis; wider than any small tripod jaw opening
+  plate_grip_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: guessed
+    note: thickness the jaws pinch. Default 8.0 GUESSED - the jaw gap could not be
+      measured. Set it to the thickest gauge step the jaws grip firmly and re-slice
+  grip_chamfer:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg chamfer on both faces of the two pinched edges, to meet the angled
+      jaw lips
+  grip_flat_band:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: flat band the code always leaves between the two jaw chamfers, so the lips
+      have something to sit on; the chamfer is clamped down if the plate is too thin
+      to keep it
+  web_min:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: least PLA left over the buried fastener head before the head recess is dropped
+  shank_clear_dia:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: 'through hole for the shank or printed thread: 6.35 + 0.55'
+  pocket_radial_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_axial_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  screw_head_dia:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: printed screw head, matched to the bolt head so one recess fits both
+  screw_head_t:
+    value: 4.6
+    unit: mm
+    kind: design
+    source: design
+    note: kept under bolt_head_h + pocket_axial_clear so it seats in the same recess
+  thr_crest_dia:
+    value: 6.3
+    unit: mm
+    kind: design
+    source: design
+    note: printed thread crest, 0.05 under the 6.35 nominal so it starts by hand in
+      the steel insert
+  thr_root_dia:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: core dia of the printed shank
+  thr_wire_dia:
+    value: 0.84
+    unit: mm
+    kind: design
+    source: design
+    note: dia of the circle swept along the helix. Lands the ridge on the insert minor
+      dia of about 5.35 at just over one full 0.4 mm perimeter; raise 0.1 at a time
+      if it prints as a hairline
+  thr_len:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: gives about 8 mm proud of the camera-side face with the head on the recess
+      floor
+  thr_lead_in:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: height of the faceted lead-in at the tip, built as three stacked cylinders
+      since this CadQuery has no cone
+  thr_lead_in_step:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: radius gained per lead-in step
+  thread_side_clear:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  thread_top_clear:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  thread_root_margin:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_len:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: driver slot across the printed head; stays inside the recess mouth
+  slot_w:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  gauge_len:
+    value: 44
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  gauge_width:
+    value: 26
+    unit: mm
+    kind: design
+    source: design
+    note: narrower than the plate so it slides inboard of the head recess
+  gauge_step_len:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  gauge_n_steps:
+    value: 5
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  gauge_t_min:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  gauge_t_max:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: keep equal to plate_grip_t once known
+  gauge_stub_turns:
+    value: 4
+    unit: count
+    kind: design
+    source: design
+    note: 'test thread on the coupon: same diameters and pitch as the printed screw,
+      to see if a PLA thread starts in your camera'
+parts:
+- id: qr_plate
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    L = p.plate_len\n    W = p.plate_width\n    T = p.plate_grip_t\n\
+    \    ch = p.grip_chamfer\n    hole_r = p.shank_clear_dia / 2.0\n    pocket_r =\
+    \ (p.bolt_head_dia + 2.0 * p.pocket_radial_clear) / 2.0\n    pocket_t = p.bolt_head_h\
+    \ + p.pocket_axial_clear\n    flags = []\n    band = p.grip_flat_band\n    if\
+    \ 2.0 * ch > T - band:\n        ch = (T - band) / 2.0\n        flags.append('grip_chamfer_clamped_to_keep_a_flat_band_for_the_jaw_lips')\n\
+    \    if ch > W / 2.0 - 0.5:\n        ch = W / 2.0 - 0.5\n        flags.append('grip_chamfer_clamped_to_plate_width')\n\
+    \    if p.shank_clear_dia < p.cam_thread_major_dia + 0.2:\n        flags.append('shank_clear_hole_would_cut_thread_crests')\n\
+    \    if p.bolt_head_dia > W:\n        flags.append('bolt_head_wider_than_the_plate')\n\
+    \    pocket_ok = (T - pocket_t) >= p.web_min\n    if not pocket_ok:\n        flags.append('head_recess_dropped_fastener_head_will_hang_below_the_plate')\n\
+    \    elif hole_r > pocket_r:\n        flags.append('shank_hole_larger_than_head_recess')\n\
+    \    hw = W / 2.0\n    pts = [(hw - ch, 0.0), (-(hw - ch), 0.0), (-hw, ch), (-hw,\
+    \ T - ch), (-(hw - ch), T), (hw - ch, T), (hw, T - ch), (hw, ch)]\n    body =\
+    \ cq.Workplane('YZ').polyline(pts).close().extrude(L).translate(cq.Vector(-L /\
+    \ 2.0, 0.0, 0.0))\n    solid = body.cut(cq.Workplane('XY', origin=(0.0, 0.0, -1.0)).circle(hole_r).extrude(T\
+    \ + 2.0))\n    if pocket_ok:\n        solid = solid.cut(cq.Workplane('XY', origin=(0.0,\
+    \ 0.0, T - pocket_t)).circle(pocket_r).extrude(pocket_t + 1.0))\n    for f in\
+    \ flags:\n        print('NEEDS-EYEBALL: ' + f + ' - confirm against the jaw_gauge\
+    \ coupon before printing')\n    return solid"
+  print_orientation: 'Flat, camera-side face down on the bed: z=0 is the face the
+    camera base rests on, the section is extruded along X. The 6.9 mm shank hole and
+    the head recess both open upward, so no bridging and no supports; the only non-vertical
+    faces are the 45 deg jaw chamfers built into the cross-section. Length 52 along
+    X, width 34 along Y (the pinch axis), thickness 8 up Z.'
+  use_orientation: The bed face (z=0 side) points UP to the camera base; the head-recess
+    side (z=plate_grip_t) points DOWN into the jaws, so the plate is used rotated
+    180 deg about X from how it prints. The fastener head sits in that recess and
+    its shank stands up out of the camera-side face into the camera socket.
+- id: thumb_screw
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    pitch = p.cam_thread_pitch\n    c = p.thr_crest_dia /\
+    \ 2.0\n    r = p.thr_root_dia / 2.0\n    r_w = p.thr_wire_dia / 2.0\n    tl =\
+    \ p.thr_len\n    lead = p.thr_lead_in\n    head_t = p.screw_head_t\n    head_r\
+    \ = p.screw_head_dia / 2.0\n    pocket_t = p.bolt_head_h + p.pocket_axial_clear\n\
+    \    pocket_ok = (p.plate_grip_t - pocket_t) >= p.web_min\n    map_z = (p.plate_grip_t\
+    \ - pocket_t) if pocket_ok else p.plate_grip_t\n    flags = []\n    if tl - map_z\
+    \ < p.cam_thread_min_engage:\n        flags.append('thread_too_short_for_this_plate_thickness_use_the_salvaged_bolt')\n\
+    \    if not pocket_ok:\n        flags.append('plate_has_no_head_recess_this_screw_will_not_sit_flush')\n\
+    \    if p.screw_head_t > pocket_t + 0.05:\n        flags.append('screw_head_thicker_than_the_recess')\n\
+    \    if p.screw_head_dia > p.bolt_head_dia + 2.0 * p.pocket_radial_clear - 0.4:\n\
+    \        flags.append('screw_head_needs_the_recess_widened')\n    if p.slot_len\
+    \ > p.bolt_head_dia + 2.0 * p.pocket_radial_clear - 1.0:\n        flags.append('driver_slot_needs_the_recess_widened_or_shortened')\n\
+    \    solid = cq.Workplane('XY', origin=(0.0, 0.0, lead)).circle(r).extrude(tl\
+    \ - lead)\n    steps = 3\n    step_h = lead / float(steps)\n    for i in range(steps):\n\
+    \        rr = r - (steps - i) * p.thr_lead_in_step\n        if rr < 0.8:\n   \
+    \         rr = 0.8\n        solid = solid.union(cq.Workplane('XY', origin=(0.0,\
+    \ 0.0, i * step_h)).circle(rr).extrude(step_h + 0.002))\n    helix_h = tl - lead\
+    \ - p.thread_top_clear\n    try:\n        import math\n        r_h = c - r_w\n\
+    \        w = math.sqrt(r_h * r_h + (pitch / (2.0 * math.pi)) ** 2)\n        n\
+    \ = max(int((helix_h / pitch) * 28.0), 2)\n        wires = []\n        for i in\
+    \ range(n + 1):\n            t = 2.0 * math.pi * i / float(n)\n            px\
+    \ = r_h * math.cos(t)\n            py = r_h * math.sin(t)\n            pz = lead\
+    \ + (pitch / (2.0 * math.pi)) * t\n            tx = -r_h * math.sin(t) / w\n \
+    \           ty = r_h * math.cos(t) / w\n            tz = (pitch / (2.0 * math.pi))\
+    \ / w\n            wires.append(cq.Wire.makeCircle(r_w, cq.Vector(px, py, pz),\
+    \ cq.Vector(tx, ty, tz)))\n        helix = cq.Wire.makeHelix(pitch, helix_h, r_h)\n\
+    \        band = helix.makePipeShell(wires[1:], makeSolid=True, isFrenet=True)\n\
+    \        solid = solid.union(wires[0]).union(band)\n    except Exception:\n  \
+    \      n_r = max(int(round(helix_h / pitch)), 2)\n        stp = helix_h / float(n_r)\n\
+    \        for i in range(n_r):\n            z0 = lead + i * stp\n            ring\
+    \ = cq.Workplane('XY', origin=(0.0, 0.0, z0 - 0.001)).circle(c + p.thread_root_margin).extrude(stp\
+    \ * 0.52 + 0.002)\n            up = cq.Workplane('XY', origin=(0.0, 0.0, z0 +\
+    \ stp * 0.52)).circle(r - p.thread_root_margin).extrude(stp * 0.48)\n        \
+    \    solid = solid.union(ring).union(up)\n        flags.append('helical_thread_fell_back_to_straight_ridges_do_not_force_it_in')\n\
+    \    solid = solid.union(cq.Workplane('XY', origin=(0.0, 0.0, tl)).circle(head_r).extrude(head_t))\n\
+    \    solid = solid.cut(cq.Workplane('XY', origin=(-p.slot_len / 2.0, -p.slot_w\
+    \ / 2.0, tl + head_t - p.slot_depth)).box(p.slot_len, p.slot_w, p.slot_depth +\
+    \ 0.6))\n    solid = solid.translate(cq.Vector(0.0, 0.0, map_z - tl))\n    for\
+    \ f in flags:\n        print('NEEDS-EYEBALL: ' + f + ' - confirm against the jaw_gauge\
+    \ coupon before printing')\n    return solid"
+  print_orientation: 'Stands on its faceted lead-in tip, axis vertical: tip at z=0,
+    head at the top, so the thread crest ridges face up and the driver slot opens
+    upward and needs no bridge. The tip is three stacked cylinders (3.2, 3.8, 4.4
+    mm dia over 1.5 mm) giving a solid 3.2 mm first-layer circle. No supports.'
+  use_orientation: 'Installed the other way round from how it prints: in the plate
+    frame the head drops into the recess on the clamp side of the plate and the thread
+    points up through the 6.9 mm hole into the camera, so the head driver face ends
+    up about 1 mm below the plate underside, reachable through the 15.8 mm recess
+    mouth with a small driver held at a slight angle.'
+- id: jaw_gauge
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    c = p.thr_crest_dia / 2.0\n    r_w = p.thr_wire_dia /\
+    \ 2.0\n    pitch = p.cam_thread_pitch\n    ch = p.grip_chamfer\n    n_st = int(p.gauge_n_steps)\n\
+    \    step_len = p.gauge_step_len\n    W = p.gauge_width\n    hw = W / 2.0\n  \
+    \  t_min = p.gauge_t_min\n    t_max = p.gauge_t_max\n    flags = []\n    if n_st\
+    \ * step_len > p.gauge_len:\n        flags.append('gauge_steps_overrun_gauge_length')\n\
+    \    if p.bolt_head_dia > W:\n        flags.append('gauge_narrower_than_the_fastener_head')\n\
+    \    solid = None\n    for i in range(n_st):\n        t_i = t_min + (t_max - t_min)\
+    \ * i / float(max(n_st - 1, 1))\n        ch_g = ch\n        if 2.0 * ch_g > t_i\
+    \ - 1.0:\n            ch_g = (t_i - 1.0) / 2.0\n        if ch_g > hw - 0.5:\n\
+    \            ch_g = hw - 0.5\n        x_i = (i - (n_st - 1) / 2.0) * step_len\n\
+    \        pts = [(hw - ch_g, 0.0), (-(hw - ch_g), 0.0), (-hw, ch_g), (-hw, t_i\
+    \ - ch_g), (-(hw - ch_g), t_i), (hw - ch_g, t_i), (hw, t_i - ch_g), (hw, ch_g)]\n\
+    \        blk = cq.Workplane('YZ').polyline(pts).close().extrude(step_len).translate(cq.Vector(x_i\
+    \ - step_len / 2.0, 0.0, 0.0))\n        solid = blk if solid is None else solid.union(blk)\n\
+    \    t_hi = t_max\n    x0 = -(n_st - 1) / 2.0 * step_len\n    stub_h = p.gauge_stub_turns\
+    \ * pitch\n    try:\n        import math\n        r_h = c - r_w\n        w = math.sqrt(r_h\
+    \ * r_h + (pitch / (2.0 * math.pi)) ** 2)\n        n = max(int(p.gauge_stub_turns\
+    \ * 28), 2)\n        wires = []\n        for i in range(n + 1):\n            t\
+    \ = 2.0 * math.pi * i / float(n)\n            px = x0 + r_h * math.cos(t)\n  \
+    \          py = r_h * math.sin(t)\n            pz = t_hi + (pitch / (2.0 * math.pi))\
+    \ * t\n            tx = -r_h * math.sin(t) / w\n            ty = r_h * math.cos(t)\
+    \ / w\n            tz = (pitch / (2.0 * math.pi)) / w\n            wires.append(cq.Wire.makeCircle(r_w,\
+    \ cq.Vector(px, py, pz), cq.Vector(tx, ty, tz)))\n        helix = cq.Wire.makeHelix(pitch,\
+    \ stub_h, r_h)\n        band = helix.translate(cq.Vector(x0, 0.0, t_hi)).makePipeShell(wires[1:],\
+    \ makeSolid=True, isFrenet=True)\n        solid = solid.union(cq.Workplane('XY',\
+    \ origin=(x0, 0.0, t_hi)).circle(c - p.thread_side_clear).extrude(stub_h))\n \
+    \       solid = solid.union(wires[0]).union(band)\n    except Exception:\n   \
+    \     solid = solid.union(cq.Workplane('XY', origin=(x0, 0.0, t_hi)).circle(c\
+    \ - p.thread_side_clear - p.thread_root_margin).extrude(stub_h))\n        flags.append('stub_thread_fell_back_to_a_plain_plug_diameter_check_only')\n\
+    \    for f in flags:\n        print('NEEDS-EYEBALL: ' + f + ' - adjust the gauge\
+    \ or plate params and re-slice')\n    return solid"
+  print_orientation: Flat, all steps sharing one bottom plane on the bed (z=0), each
+    step an extruded chamfered cross-section along X. Five blocks from 4 mm to 8 mm
+    thick, 6 mm long, with 45 deg jaw chamfers top and bottom on the long edges; a
+    4-turn test thread stands upright on the tallest step. No supports, no bridging.
+  use_orientation: Not a load-bearing part. It goes into the tripod jaws exactly the
+    way the plate does - chamfered long edges against the angled lips, steps along
+    the jaw axis - and its upright thread stub is pressed into the camera socket to
+    test a printed PLA thread.
+hardware:
+- id: webcam-mount-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+- id: iso4762-m5x12
+  ref: ISO 4762 M5x12
+  qty: 2
+joints:
+- id: camera_fastener
+  fastener: webcam-mount-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 2.7
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: qr_plate
+    feature: head_pocket
+    role: head_seat
+  - part: qr_plate
+    feature: shank_hole
+    role: clearance
+  - part: thumb_screw
+    feature: head_seat
+    role: head_seat
+  nut: null
+  external: camera base 1/4-20 female tripod socket
+- id: plate_in_jaws
+  fastener: iso4762-m5x12
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: grip_chamfer
+    role: clearance
+  - part: jaw_gauge
+    feature: gauge_steps
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: grip_thickness_fits_jaws
+  part: jaw_gauge
+  feature: gauge_steps
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_grip_t
+  - grip_chamfer
+  - gauge_t_min
+  - gauge_t_max
+  - gauge_n_steps
+  check:
+    method: coupon
+    ref: jaw_gauge
+    description: 'The unknown that governs everything: the gap between the jaw lips.
+      Push each of the five steps (4, 5, 6, 7, 8 mm) into the jaws and tighten the
+      knob. The thickest step that goes in without forcing the knob, and that you
+      cannot pull out with a firm tug, becomes plate_grip_t. Re-slice qr_plate at
+      that value, then print it.'
+- id: grip_faces_wedged_not_skated
+  part: qr_plate
+  feature: grip_chamfer
+  relation: seats
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - grip_chamfer
+  - grip_flat_band
+  - plate_grip_t
+  - plate_width
+  check:
+    method: measure
+    ref: jaw_gauge
+    description: The cross-section carries 45 deg chamfers on both faces of both long
+      edges, so the angled lips bear on a matching taper and pull the plate down instead
+      of skating off a square edge. grip_flat_band keeps at least 2 mm of flat band
+      between them; the code clamps grip_chamfer and prints a flag if the plate is
+      too thin to keep it. If your lips are flat and parallel, keep the chamfer anyway.
+- id: camera_face_bears_on_camera
+  part: qr_plate
+  feature: camera_face
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_len
+  - plate_width
+  - plate_grip_t
+  - shank_clear_dia
+  check:
+    method: none
+    ref: null
+    description: The 52 x 34 face at z=0, the bed face so the flattest one, is what
+      the camera base sits on. Nothing stands proud of it - only the thread passes
+      through.
+- id: shank_hole_clears_fastener
+  part: qr_plate
+  feature: shank_hole
+  relation: clears
+  hardware: webcam-mount-bolt
+  clearance_mm: 0.275
+  params:
+  - shank_clear_dia
+  - cam_thread_major_dia
+  check:
+    method: measure
+    ref: null
+    description: 'Drop the bolt through from the recess side: it must pass freely
+      - 6.9 mm hole against a 6.35 mm thread crest is 0.275 mm radius clearance. Do
+      not close this down to the crest dia or less, or the printed screw crests shear
+      off during assembly.'
+- id: head_pocket_seats_fastener
+  part: qr_plate
+  feature: head_pocket
+  relation: seats
+  hardware: webcam-mount-bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_head_dia
+  - bolt_head_h
+  - pocket_radial_clear
+  - pocket_axial_clear
+  - screw_head_dia
+  - screw_head_t
+  check:
+    method: measure
+    ref: null
+    description: The 15.8 x 5.3 mm recess on the clamp side is sized to the head you
+      measured, 15.0 x 5.0. The head must sink fully below the plate underside so
+      the plate sits normally in the jaws - if it is proud the jaws will not close.
+      Same for the printed screw head at 15.0 x 4.6.
+- id: pocket_floor_has_a_web
+  part: qr_plate
+  feature: pocket_floor
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_grip_t
+  - pocket_axial_clear
+  - bolt_head_h
+  - web_min
+  check:
+    method: measure
+    ref: null
+    description: 'At least 1.6 mm of PLA left over the buried head - 8.0 less 5.3
+      = 2.7 mm with the defaults. If the gauge says the jaws only grip 6 mm or less,
+      the code prints a plain plate with no recess and the bolt head hangs about 5
+      mm below the plate: only acceptable if the jaws have that much room.'
+- id: thread_engages_camera_socket
+  part: thumb_screw
+  feature: printed_thread
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - thr_crest_dia
+  - thr_root_dia
+  - thr_wire_dia
+  - cam_thread_pitch
+  - cam_thread_major_dia
+  - thread_side_clear
+  check:
+    method: coupon
+    ref: jaw_gauge
+    description: Before printing the full screw, press the gauge 4-turn stub into
+      the camera socket and turn it by hand. Same crest, root, wire dia and pitch
+      as the screw. It must start on its own and go in at least 4 mm with no creaking
+      and no force. If it binds, or the stub came out as a plain plug, skip thumb_screw
+      and use the salvaged steel bolt.
+- id: thread_engagement_length
+  part: thumb_screw
+  feature: printed_thread
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - thr_len
+  - cam_thread_min_engage
+  - bolt_thread_len
+  - plate_grip_t
+  - pocket_axial_clear
+  check:
+    method: measure
+    ref: null
+    description: 'With the head seated on the pocket floor, at least 5 mm (about 4
+      turns) of thread must stand proud of the plate camera-side face. Defaults: printed
+      screw 11 - 2.7 = 8.3 mm, bolt 10 - 2.7 = 7.3 mm. A thinner plate eats into both.'
+- id: driver_access_to_screw_head
+  part: thumb_screw
+  feature: driver_slot
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - slot_len
+  - slot_w
+  - slot_depth
+  - bolt_head_dia
+  - pocket_radial_clear
+  check:
+    method: none
+    ref: null
+    description: The 15 x 2 x 3 mm slot stays inside the 15.8 mm recess mouth, so
+      a small screwdriver or hex key reaches it at a slight angle. Tighten while holding
+      the plate in your hand, before it goes into the jaws.
+- id: tip_lead_in_starts_thread
+  part: thumb_screw
+  feature: thread_tip
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - thr_lead_in
+  - thr_lead_in_step
+  - thr_root_dia
+  check:
+    method: none
+    ref: null
+    description: The 1.5 mm faceted lead-in (3.2, 3.8 and 4.4 mm dia steps) is both
+      what makes the part printable standing on its tip and the thing that lets the
+      thread start in the socket without crushing the first turn. Do not shorten it
+      below 1.5 mm.
+manual:
+- n: '1'
+  text: Print jaw_gauge first, on its own, about 8 minutes. Nothing else here can
+    be sized until you know what your jaws will grip, and that gap could not be measured.
+  parts:
+  - jaw_gauge
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Gauge test, no tools: slide the gauge into the jaws the way the plate will
+    go in - chamfered long edges against the angled lips, steps along the jaw axis
+    - and tighten the knob. Work down from the 8 mm step. Write down the thickest
+    step that goes in without forcing the knob, and the thinnest step you cannot pull
+    out with a firm tug. plate_grip_t must land between those two. If even the 4 mm
+    step will not enter, this clamp wants a plate thinner than PLA can hold a camera
+    on - stop and find the real part.'
+  parts:
+  - jaw_gauge
+  hardware: []
+  tool: none
+- n: '3'
+  text: 'Thread test with the same coupon: press the upright 4-turn stub into your
+    camera tripod socket and turn it by hand. It must start on its own and screw in
+    at least 4 mm with no creaking and no force. Pass means a printed PLA thread works
+    in your camera and thumb_screw is a usable spare. Fail, or a stub that came out
+    as a plain plug with no ridge, means forget the printed screw and use the salvaged
+    webcam bolt as the fastener. Camera face-down on a soft cloth, hold the body only,
+    never push axially hard.'
+  parts:
+  - jaw_gauge
+  hardware: []
+  tool: none
+- n: '4'
+  text: 'Set plate_grip_t to a value between the two numbers from step 2 - 8.0 is
+    the default and the strongest, because it lets the fastener head sink completely
+    into the recess. Re-slice qr_plate at that thickness: flat, camera-side face on
+    the bed, no supports, no raft, roughly 35-45 min. Use 3 top and 3 bottom perimeters
+    and about 20 percent infill - the strength is all in the skin around the head
+    recess. If the slicer shows square edges instead of a taper, the plate is too
+    thin for a 2.5 mm chamfer: it has been clamped for you and the build printed a
+    flag, so check that flag.'
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Print thumb_screw only if step 3 passed and you want a printed spare, or if
+    the salvaged bolt head will not sink into the recess and its 10 mm of thread is
+    too short for the plate thickness you landed on. Stand it on its tip, no supports,
+    about 10 minutes. In the preview check the driver slot reads as an opening and
+    not a bridged roof, and that the thread ridge is more than one hairline wide -
+    if it is thin, raise thr_wire_dia by 0.1 mm at a time, not thr_crest_dia, already
+    0.05 under the steel crest for clearance.
+  parts:
+  - thumb_screw
+  hardware: []
+  tool: null
+- n: '6'
+  text: 'Clean up by hand: clear the 6.9 mm shank hole and the 15.8 x 5.3 mm recess
+    of strings, and run an 8 mm socket or a drill bit through the hole once if it
+    feels tight. Then test-fit the fastener - its head must drop into the recess and
+    finish BELOW the plate underside, and the shank must pass freely. This is the
+    one thing that stops the plate sitting in the jaws, so check it before anything
+    goes into your camera.'
+  parts:
+  - qr_plate
+  - thumb_screw
+  hardware:
+  - webcam-mount-bolt
+  tool: craft knife
+- n: '7'
+  text: 'Assemble off the tripod, on a table, camera face-down on a soft cloth with
+    its base towards you. Hold the plate flat against the camera base with one hand
+    and start the fastener from the recess side of the plate, through the hole, into
+    the socket, so the plate is never hanging the camera. With the salvaged bolt:
+    tighten by hand to first real resistance, then a further quarter turn on the head
+    with a driver. With thumb_screw: a screwdriver laid into the recess at an angle
+    onto its slot - finger tight plus a short nudge, about 1 Nm. Back off an eighth
+    of a turn if it squeaks: PLA swells with warmth, and a jammed thread is how people
+    crack a camera insert.'
+  parts:
+  - qr_plate
+  - thumb_screw
+  hardware:
+  - webcam-mount-bolt
+  tool: small screwdriver or hex key
+- n: '8'
+  text: Drop the plate into the jaws from above, chamfered long edges against the
+    lips, and tighten the tripod knob. Then pull hard on the camera by hand; it must
+    not slide or lift out. Skating off a lip means raise grip_chamfer by 0.5 mm and
+    reprint, as long as grip_flat_band still leaves 2 mm of flat between the chamfers.
+    Loose all round means plate_grip_t was too optimistic for the closed gap - go
+    one gauge step thinner and reprint.
+  parts:
+  - qr_plate
+  - thumb_screw
+  hardware:
+  - webcam-mount-bolt
+  tool: null
+- n: '9'
+  text: 'Temporary means temporary. PLA softens around 55-60 C and creeps slowly under
+    a constant load. So: compact or light mirrorless with a pancake lens only, never
+    a DSLR with a zoom; strap round your wrist; take the camera off when you stop
+    rather than leaving it mounted; keep it out of direct sun and a hot car. Look
+    at the recess and the thread before each use and bin the plate if the recess starts
+    to dome or the thread crests go shiny or flat.'
+  parts:
+  - qr_plate
+  - thumb_screw
+  hardware:
+  - webcam-mount-bolt
+  tool: null
+- n: '10'
+  text: The two ISO 4762 M5x12 screws are spares only - nothing in this design threads
+    into them, and the 1/4-20 fastener carries the camera by itself. If you want to
+    stiffen this for a heavier body, print a 10 mm thick plate and add an M5 through-pin
+    beside the 1/4-20 into a hole you drill near the plate edge, then clamp that pin
+    too; but for real weight buy a proper quick-release plate and keep this one for
+    small cameras.
+  parts:
+  - qr_plate
+  hardware:
+  - iso4762-m5x12
+  tool: null
