@@ -56,9 +56,10 @@ MACHINE_LOCAL = {
 
 @dataclass(frozen=True)
 class Entry:
-    """One file as it would go in the ZIP."""
+    """One file as it would go in the ZIP, with its mode in git (0o755 for a script, so it still runs)."""
     path: str
     data: bytes
+    mode: int = 0o644
 
 
 @dataclass(frozen=True)
@@ -87,7 +88,7 @@ def tracked_entries(ref: str) -> list[Entry]:
     with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
         for member in tar.getmembers():
             if member.isfile():
-                entries.append(Entry(member.name, tar.extractfile(member).read()))
+                entries.append(Entry(member.name, tar.extractfile(member).read(), member.mode & 0o777))
     return entries
 
 
@@ -135,11 +136,20 @@ def contents_refusals(entries: list[Entry]) -> list[Refusal]:
     return found
 
 
+def zip_info(entry: Entry) -> zipfile.ZipInfo:
+    """A ZIP entry that keeps the file's Unix mode, so unzip leaves scripts executable (Codex on #45)."""
+    info = zipfile.ZipInfo(entry.path, date_time=(2026, 11, 8, 0, 0, 0))  # fixed, so the same ref gives the same ZIP
+    info.create_system = 3  # Unix, so external_attr holds a mode
+    info.external_attr = (0o100000 | entry.mode) << 16
+    info.compress_type = zipfile.ZIP_DEFLATED
+    return info
+
+
 def zip_bytes(entries: list[Entry]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
         for entry in sorted(entries, key=lambda entry: entry.path):
-            archive.writestr(entry.path, entry.data)
+            archive.writestr(zip_info(entry), entry.data)
     return buffer.getvalue()
 
 

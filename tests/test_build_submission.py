@@ -1,4 +1,5 @@
 """The submission ZIP refuses every kind of file that mustn't be handed in, and today's tree passes."""
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -98,6 +99,20 @@ def test_what_is_left_out():
     assert zipper.left_out_reason("docs/limitations.md") is None
 
 
+def test_scripts_stay_executable_in_the_zip(tmp_path):
+    data = zipper.zip_bytes([README, zipper.Entry("scripts/reproduce.sh", b"#!/bin/sh\n", 0o755)])
+    (tmp_path / "s.zip").write_bytes(data)
+    with zipfile.ZipFile(tmp_path / "s.zip") as archive:
+        modes = {info.filename: (info.external_attr >> 16) & 0o777 for info in archive.infolist()}
+    assert modes == {"README.md": 0o644, "scripts/reproduce.sh": 0o755}
+
+
+def in_a_git_checkout():
+    """False when running from the extracted ZIP, which deliberately has no .git."""
+    return subprocess.run(["git", "rev-parse", "HEAD"], cwd=zipper.ROOT, capture_output=True).returncode == 0
+
+
+@pytest.mark.skipif(not in_a_git_checkout(), reason="the submission ZIP has no .git to build a ZIP from (Codex on #45)")
 def test_this_commit_builds_a_zip_that_can_be_handed_in(tmp_path):
     out = tmp_path / "submission.zip"
     assert [str(refusal) for refusal in zipper.build("HEAD", out)] == []
@@ -106,3 +121,5 @@ def test_this_commit_builds_a_zip_that_can_be_handed_in(tmp_path):
     assert "README.md" in names
     assert not any(name.startswith(("docs/context/", ".git/", "report/atlas/")) for name in names)
     assert out.stat().st_size < zipper.LIMIT_BYTES
+    with zipfile.ZipFile(out) as archive:
+        assert (archive.getinfo("scripts/reproduce.sh").external_attr >> 16) & 0o111
