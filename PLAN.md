@@ -75,7 +75,7 @@ In order. Cut breadth before rigor.
 Per-check limits and extensions are in `docs/limitations.md`; the report's limitations section draws from it. In rough order of value:
 - The backtest on Estoa, from the `local-lights` git history (a commit before each test print).
 - Tool access (driver, hex key, drill) and mating envelopes (plug overmold, cable bend) in the simulation.
-- The hidden-error printer as a loop: a secret offset plus noise, scripted "falls out / too tight" feedback, Monte Carlo yield.
+- The hidden-error printer as a loop: a secret offset plus noise, scripted "falls out / too tight" feedback, Monte Carlo yield. The first step, replies from the recorded prints only, is `docs/coupon-loop.md`.
 - Scoring acceptance-criteria coverage against the simulation's failures and the task author's list.
 - More families from the full dimension tuples; robot-arm families (bearing seat, arm link, gripper finger).
 - Builder agent (Dan's idea) and its personas.
@@ -114,6 +114,8 @@ Decided:
 - One printer and one filament (Dan, 2026-10-30): the eval is scoped to the X1C with the PLA the coupons were printed in, every task states that setup, and the report says its fit and bridge numbers hold for that setup only. More setups are future work (`docs/limitations.md`).
 - Commit straight to `main`.
 - The OpenRouter key is in 1Password at `op://kb-sync/OpenRouter/credential` (Dan), capped at $100 per key.
+- A plain roof with the bolt's hole cut through it fails `bridges` (Dan, 2026-11-03). The first plate's roof didn't work, and the stepped roof is the known fix. The report states that the verdict rests on two tangled prints (`docs/limitations.md`).
+- The coupon loop (Dan, 2026-11-03): a model hears what the records say its test coupon would show, gets one more turn, and both designs are graded, with the second review's changes. Start with a sample of three models, get the method right, then expand. Built (`pbe/runner/coupon_loop.py`, `scripts/coupon_loop.py`) and run on two samples of 12 trials: no change in pass rate, 3 checks fixed by the report and none by a second look. Design and results in `docs/coupon-loop.md`; expanding to more models is Dan's call.
 
 Open (Dan's):
 1. OpenRouter credits: $10 on 2026-10-30 (Dan). The pilot measures cost per run; the full run's budget is set from that.

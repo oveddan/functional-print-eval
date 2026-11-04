@@ -1,0 +1,208 @@
+task: nut-knob/M3
+note: 'Revised after coupon feedback: the 5.50 mm pocket did not accept the nut, so
+  fit was raised from 0 to +0.1 (pocket 5.60 mm). The printed pocket size was not
+  measured, so this is an estimate and the new value is untested. Retention is by
+  hand-press friction; the solid floor with only a 3.4 mm hole stops the nut going
+  through the far side.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 shank
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter on the bolt hole
+  fit:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'added to nut across-flats for pocket. Coupon at 0 (5.50 mm) would not accept
+      the nut, so the printed pocket runs undersized; +0.1 is a best estimate for
+      a firm hand-press fit. Tune: -0.05 tighter, +0.05 looser'
+  nut_recess:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: extra pocket depth so the nut sits fully below the mouth
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: about 20 mm across
+  knob_h:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: grip scallops
+  flute_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on bed edge
+  coupon_d:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_floor:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d/2.0\n    pocket_d = p.nut_h\
+    \ + p.nut_recess\n    floor_t = p.knob_h - pocket_d\n    body = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    body = body.faces('<Z').chamfer(p.edge_chamfer)\n    cut = (cq.Workplane('XY').polarArray(R\
+    \ + p.flute_r - p.flute_depth, 0, 360, int(p.flute_n))\n           .circle(p.flute_r).extrude(p.knob_h))\n\
+    \    body = body.cut(cut)\n    af = p.nut_af + p.fit\n    pocket = (cq.Workplane('XY').workplane(offset=floor_t)\n\
+    \              .polygon(6, af/math.cos(math.radians(30))).extrude(pocket_d + 1))\n\
+    \    body = body.cut(pocket)\n    hole = cq.Workplane('XY').circle((p.bolt_d +\
+    \ p.bolt_clear)/2.0).extrude(p.knob_h + 1)\n    body = body.cut(hole)\n    return\
+    \ body\n"
+  print_orientation: Top (grip) face on the bed, nut pocket opening upward; no supports
+    or bridges
+  use_orientation: 'Flipped: pocket mouth faces the bolted part, bolt tip exits through
+    the top hole'
+- id: nut-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    pocket_d = p.nut_h + p.nut_recess\n    H\
+    \ = p.coupon_floor + pocket_d\n    body = cq.Workplane('XY').circle(p.coupon_d/2.0).extrude(H)\n\
+    \    af = p.nut_af + p.fit\n    pocket = (cq.Workplane('XY').workplane(offset=p.coupon_floor)\n\
+    \              .polygon(6, af/math.cos(math.radians(30))).extrude(pocket_d + 1))\n\
+    \    body = body.cut(pocket)\n    hole = cq.Workplane('XY').circle((p.bolt_d +\
+    \ p.bolt_clear)/2.0).extrude(H + 1)\n    return body.cut(hole)\n"
+  print_orientation: Floor face on the bed, hex pocket opening upward
+  use_orientation: 'Test only: press nut in, turn upside down and shake'
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - fit
+  - nut_recess
+  check:
+    method: coupon
+    ref: nut-coupon
+    description: Nut presses in by hand with firm finger pressure, sits below the
+      mouth, and does not fall out when inverted and shaken
+- id: c2
+  part: knob
+  feature: bolt hole through floor
+  relation: clears
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: coupon
+    ref: nut-coupon
+    description: M3 bolt passes freely through the hole and threads into the seated
+      nut
+- id: c3
+  part: knob
+  feature: closed floor above pocket
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Floor is solid except for the bolt hole, so the nut cannot be pushed
+      out through the far side
+manual:
+- n: '1'
+  text: Reprint the nut-coupon with the new pocket (5.60 mm across flats; the 5.50
+    mm one would not accept the nut). Press an M3 nut in by hand, turn it upside down
+    and shake. If it falls out, set fit to 0.05 and reprint; if it still will not
+    go in by hand, set fit to 0.15.
+  parts:
+  - nut-coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the knob with the grip face on the bed and the hex pocket facing up.
+    No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M3 nut into the hex pocket with your thumb until it bottoms against
+    the floor, flat and below the pocket mouth.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Pass your M3 bolt through the part to be clamped, then thread it into the
+    nut from the pocket side. The tip can come out of the hole in the top of the knob.
+    Turn the knob to tighten.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

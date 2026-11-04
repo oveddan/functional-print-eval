@@ -2,6 +2,51 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-04: Coupon loop script hardened after Codex review
+
+No result changes. From Codex's review of PR #19, each finding checked against the code first:
+- `scripts/coupon_loop.py` saves a paid second turn before grading it, and a rerun finishes the grading without a new model call. A retry after an infrastructure error keeps what the failed attempt cost: all 10 retried arms in `loop-sample-2` had cost $0, so the recorded spend was already right. A selected trial with no submission is skipped. The script's own uncommitted changes now mark a record's code version dirty. Tests in `tests/test_loop.py`.
+- `docs/coupon-loop.md` says roofs are reported only when the bridge check predicts a tangle, which is how both samples ran. It also gives the evidence that each sample's rule was committed before its run (7b30192, a46c56f), since the squash merge keeps only the final commit.
+- Three findings were already fixed by the restack onto the refactor: the sandbox opt-out in the usage line, `null` tool arguments, and retrying errored arms.
+
+## 2026-11-04: Coupon loop, second sample complete
+
+Run `loop-sample-2` finished after credit was added: the 10 arms stopped by HTTP 402 were re-run, nothing else. $1.03 in all.
+- Passes: 1 of 12 in every arm, the same trial as before. No improvement on the pre-registered measure, as in the first sample.
+- Checks fixed: 3 after the report (DeepSeek's two wheel seats, GLM's wheel roof), 0 after a second look, which made two designs worse.
+- Both fixes held: 8 second turns had a call stop at the token limit and all still handed in a design; the "tighter than a record" answers are what DeepSeek's wheel t1 acted on.
+- Write-up in `docs/coupon-loop.md`.
+
+## 2026-11-04: Coupon loop: two fixes before a second sample
+
+`pbe/runner/coupon_loop.py`, from the first sample's findings, approved by Dan:
+- A coupon pocket or seat tighter than the tightest printed size, which wouldn't take the nut or bearing, is now reported as "won't go in", as the checks already read it. In the first sample these got "I can't tell you" in 4 trials.
+- The second turn gets up to 8 calls, as a first turn does, instead of 3. A second turn with no design whose every call stopped at the 32,000-token limit is now `token_limit`, reported apart from pass and fail. In the first sample GLM's wheel t1 lost its most informative report that way.
+
+Tests in `tests/test_loop.py`. The second sample's measures are in `docs/coupon-loop.md`, committed before it ran.
+
+Run `loop-sample-2` stopped when the OpenRouter account ran out of credit: 7 of 12 trials complete, 10 arms ended in HTTP 402. `scripts/coupon_loop.py` now re-runs arms that ended in an infrastructure error, as `pbe/eval.py` does. Status in `docs/coupon-loop.md`.
+
+## 2026-11-03: Coupon loop sample: no improvement on the pre-registered measure
+
+Run `loop-sample`: 12 saved knob and wheel trials from Sonnet 5.5, DeepSeek V4.1 Flash and GLM 5.3 Flash, each replayed with the person's report on its test coupons and with a neutral "take another look". $0.98. Measures were committed before the run (`docs/coupon-loop.md`).
+- Passes: 1 of 12 in every arm (baseline, feedback, neutral), the same trial. Nothing broke.
+- One check fixed by the report: DeepSeek V4.1 Flash's wheel t2 moved its seat from 21.89 to 22.18 mm after being told the 22.19 seat held, and passed R3. It still fails `bridges`. The neutral arm left it at 21.89.
+- In 5 of 12 trials every line of the report was "I can't tell you"; in 2 more the only answer was about a seat that already passed. One feedback replay (GLM wheel t1) produced no design: all three calls hit the 32,000-token limit.
+- A flaw in the report's rules: sizes tighter than a recorded "won't go in" got no answer, though the checks count them as won't go in.
+- The replays ran on commit 7b30192 before the restack. Their records were converted to `loop.json`, and the restacked code reproduces every report and verdict.
+
+## 2026-11-03: Audit of the saved failures (issue 15); no result changes
+
+Every saved trial was rebuilt and regraded on Linux in a scratch copy, with no change to `results/`, `pbe/` or `tasks/` (the audit itself is the comment on issue 15). Evidence:
+- All 106 verdicts reproduce on Linux as recorded on macOS. That answers the open question from the cloud sessions: verdicts match, though detail text doesn't always (13 tied strand angles come out mirrored, one exception has another class name, and Qwen 3.8 Flash's all-given plate counts 9 bad overhangs instead of 13).
+- None of the 24 suspected false failures, or the other trials examined alongside them, came from a check misreading the geometry.
+- The 17 trials that fail only `bridges` all have a roof with the bolt's hole cut through it, the shape that tangled on the Arca plate and coupon A's H cell. Dan decided they fail. Pass count unchanged at 27 of 104.
+- Five trials declined to design a plate because the clamp's width isn't recorded; one of them (GPT-6.1 Sol, all given) is reported as a `builds` crash. Whether declining fails, whether a coupon can fail a trial, a coupon marked `final`, and how M3 +0.1 is coded are still Dan's to decide (issue 15).
+- One reader bug found, not yet fixed, which flips no verdict: in `pbe/graders/nuts.py`, a raised feature above a pocket's mouth makes every pocket read as closed.
+
+Docs: `docs/limitations.md` now opens with the eval's shortcomings by rubric criterion, the assumptions current verdicts rest on, and what prints would settle each. `docs/coupon-loop.md` holds the decided design for letting a model learn from its test coupon. `PLAN.md` records both decisions.
+
 ## 2026-11-03: Second cloud session; the smoke test passes with no hand fixes
 
 A fresh session in the updated environment. `bwrap`, `openscad` and `xvfb-run` were already installed and the `SessionStart` hook had synced `.venv`, so nothing was installed by hand.

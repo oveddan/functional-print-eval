@@ -1,0 +1,230 @@
+task: nut-knob/M3
+note: 'Revised: retention now comes from three small crush ribs on alternate flats
+  of the hex pocket (nut-to-rib interference about 0.15 mm on a nominal nut), with
+  the pocket itself 0.1 mm oversize so it is easy to start. The solid floor with only
+  a 3.4 mm hole stops the nut going through the far side. Check the fit on the coupon
+  first. Bolt length is not specified, so pick one long enough to pass the nut.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats (nominal; allowed min 5.32)
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 shank
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter on the bolt hole
+  fit:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: added to nut across-flats for the pocket. The grip comes from three crush
+      ribs, not from this clearance. Tune with the coupon.
+  rib_h:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: how far each crush rib protrudes from its flat into the pocket (printed
+      ribs squash slightly)
+  rib_w:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: crush rib width, ~1 extrusion line
+  nut_recess:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: extra pocket depth so the nut sits fully below the mouth
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: about 20 mm across
+  knob_h:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: grip scallops
+  flute_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on bed edge
+  coupon_d:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_floor:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d/2.0\n    pocket_d = p.nut_h\
+    \ + p.nut_recess\n    floor_t = p.knob_h - pocket_d\n    body = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    body = body.faces('<Z').chamfer(p.edge_chamfer)\n    cut = (cq.Workplane('XY').polarArray(R\
+    \ + p.flute_r - p.flute_depth, 0, 360, int(p.flute_n))\n           .circle(p.flute_r).extrude(p.knob_h))\n\
+    \    body = body.cut(cut)\n    af = p.nut_af + p.fit\n    ph = pocket_d + 1\n\
+    \    pocket = (cq.Workplane('XY').workplane(offset=floor_t)\n              .polygon(6,\
+    \ af/math.cos(math.radians(30))).extrude(ph))\n    # three crush ribs on alternate\
+    \ flats (normals 30, 150, 270 deg)\n    for ang in (30, 150, 270):\n        L\
+    \ = p.rib_h + 0.3\n        rc = af/2.0 - p.rib_h + L/2.0\n        rib = (cq.Workplane('XY').workplane(offset=floor_t)\n\
+    \               .center(rc, 0).rect(L, p.rib_w).extrude(ph)\n               .rotate((0,\
+    \ 0, 0), (0, 0, 1), ang))\n        pocket = pocket.cut(rib)\n    body = body.cut(pocket)\n\
+    \    hole = cq.Workplane('XY').circle((p.bolt_d + p.bolt_clear)/2.0).extrude(p.knob_h\
+    \ + 1)\n    body = body.cut(hole)\n    return body\n"
+  print_orientation: Top (grip) face on the bed, nut pocket opening upward; no supports
+    or bridges
+  use_orientation: 'Flipped: pocket mouth faces the bolted part, bolt tip exits through
+    the top hole'
+- id: nut-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    pocket_d = p.nut_h + p.nut_recess\n    H\
+    \ = p.coupon_floor + pocket_d\n    body = cq.Workplane('XY').circle(p.coupon_d/2.0).extrude(H)\n\
+    \    af = p.nut_af + p.fit\n    ph = pocket_d + 1\n    pocket = (cq.Workplane('XY').workplane(offset=p.coupon_floor)\n\
+    \              .polygon(6, af/math.cos(math.radians(30))).extrude(ph))\n    for\
+    \ ang in (30, 150, 270):\n        L = p.rib_h + 0.3\n        rc = af/2.0 - p.rib_h\
+    \ + L/2.0\n        rib = (cq.Workplane('XY').workplane(offset=p.coupon_floor)\n\
+    \               .center(rc, 0).rect(L, p.rib_w).extrude(ph)\n               .rotate((0,\
+    \ 0, 0), (0, 0, 1), ang))\n        pocket = pocket.cut(rib)\n    body = body.cut(pocket)\n\
+    \    hole = cq.Workplane('XY').circle((p.bolt_d + p.bolt_clear)/2.0).extrude(H\
+    \ + 1)\n    return body.cut(hole)\n"
+  print_orientation: Floor face on the bed, hex pocket opening upward
+  use_orientation: 'Test only: press nut in, turn upside down and shake'
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket with three crush ribs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - fit
+  - rib_h
+  - rib_w
+  - nut_recess
+  check:
+    method: coupon
+    ref: nut-coupon
+    description: Nut presses in by hand with firm thumb pressure, sits below the mouth,
+      and does not fall out when inverted and shaken
+- id: c2
+  part: knob
+  feature: bolt hole through floor
+  relation: clears
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: coupon
+    ref: nut-coupon
+    description: M3 bolt passes freely through the hole and threads into the seated
+      nut
+- id: c3
+  part: knob
+  feature: closed floor above pocket
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Floor is solid except for the bolt hole, so the nut cannot be pushed
+      out through the far side
+manual:
+- n: '1'
+  text: Print the nut-coupon first (floor down, pocket up). Press an M3 nut in by
+    hand, turn it upside down and shake. If it falls out or is loose, increase rib_h
+    by 0.1 and reprint. If you cannot press it in by hand, decrease rib_h by 0.1.
+  parts:
+  - nut-coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the knob with the grip face on the bed and the hex pocket facing up.
+    No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M3 nut into the hex pocket with your thumb until it bottoms against
+    the floor, flat and below the pocket mouth. The three small ribs grip the nut
+    flats.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Pass your M3 bolt through the part to be clamped, then thread it into the
+    nut from the pocket side. The tip can come out of the hole in the top of the knob.
+    Turn the knob to tighten.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

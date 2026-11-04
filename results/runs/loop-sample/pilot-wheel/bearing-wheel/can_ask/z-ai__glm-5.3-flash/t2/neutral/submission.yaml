@@ -1,0 +1,472 @@
+task: bearing-wheel
+note: 'REVISED after review: the earlier snap-lip retention was unbuildable (the lip
+  could not flex far enough to let a bearing pass). New wheel: Ø50 × 16 one-piece
+  disc, two Ø21.95 × 7 pockets for the 608s separated by a 2 mm web with a Ø12 axle
+  window. Bearings are pressed in with the M8x50 screw itself (press plate + plain
+  nut as a puller) until they bottom on the pocket floors, faces flush; the M8 axle
+  then passes through both bores and clamps the inner races between the bracket-side
+  washer and a printed thrust washer, so the wheel spins on the bearings with nothing
+  rubbing. Coupon first: it doubles as a full rehearsal rig for the press. Wheel OD/width
+  match the old roller (50 x 16), so ride height and track fit are unchanged.'
+questions:
+- text: Does the M8 bolt pass through an opening (>=8.5 mm) in the surviving bracket,
+    or screw into a threaded socket?
+  answer: Unknown - step 6 covers pass-through, shallow threaded socket, and drill-out.
+- text: Is your own M8 bolt at least 40 mm long with a smooth (unthreaded) shank section?
+  answer: Unknown - the supplied ISO 4762 M8x50 is the default axle; the user's bolt
+    is a drop-in alternative if it meets the rule in step 6.
+params:
+  axle_len:
+    value: 50
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 'ISO 4762 M8x50: 22 mm smooth shank keeps both bearings off the threads
+      in every press and in the final assembly'
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 nominal 8.0; sheet's caliper read 7.94
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 nominal 22.0; sheet's 21.22 reading was flagged as a jaw-pinch error
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: nominal 7.0, width not measured
+  bolt_shank_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user's own M8 bolt, 'about 8 mm', confirmed three times; also typical of
+      the catalog M8 shank
+  edge_chamfer:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: kind to the track walls
+  mouth_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in at each pocket mouth for bearing entry
+  plate_id:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: plate centre hole clears the 8.0 shank
+  plate_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: 4 mm so the plates stay well below PLA bending stress under the press load
+  pocket_depth:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: = bearing width 7.0; bearing bottoms on the pocket floor with its face flush
+  pocket_d:
+    value: 21.95
+    unit: mm
+    kind: design
+    source: design
+    note: 0.025/side nominal interference on the 22.0 bearing; FDM hole undersize
+      brings the real press to ~0.05-0.1/side. Coupon reveals the actual fit before
+      the wheel matters
+  press_plate_d:
+    value: 21.5
+    unit: mm
+    kind: design
+    source: design
+    note: enters the 21.95 pocket and spans the bearing face (r 4.3-10.75) so the
+      press loads the outer race, not just the inner race
+  reaction_plate_d:
+    value: 26
+    unit: mm
+    kind: design
+    source: design
+    note: sits on the wheel face around the 21.95 pocket mouth; bigger than the pocket
+      so it cannot drop in
+  thrust_id:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: 0.3 mm clearance on the ~8.0 shank
+  thrust_od:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: contacts only the inner race face (race OD ~15.4), never the shield or outer
+      race
+  thrust_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: thrust washer thickness
+  web_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: web between the pockets; carries the press reaction and separates the two
+      bearing rows
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: 'user''s first message: old wheel ''about 50 mm across'''
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: 'user''s first message: old wheel ''about 16 mm wide'''
+  window_d:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: axle window through the web; clears the 8.0 shank and lets the press reaction
+      anchor on the web floor
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od / 2.0\n    H = p.wheel_w\n    c = p.edge_chamfer\n\
+    \    pr = p.pocket_d / 2.0\n    mc = p.mouth_chamfer\n    wr = p.window_d / 2.0\n\
+    \    t = p.web_t\n    z0 = p.pocket_depth\n    z1 = z0 + t\n    # one revolved\
+    \ profile: rim with chamfered edges, two bearing pockets,\n    # web between them\
+    \ with the axle window - no booleans needed\n    prof = [\n        (wr, z0),\n\
+    \        (pr, z0),\n        (pr, mc),\n        (pr + mc, 0.0),\n        (R - c,\
+    \ 0.0),\n        (R, c),\n        (R, H - c),\n        (R - c, H),\n        (pr\
+    \ + mc, H),\n        (pr, H - mc),\n        (pr, z1),\n        (wr, z1),\n   \
+    \ ]\n    body = (cq.Workplane(\"XZ\")\n            .polyline(prof)\n         \
+    \   .close()\n            .revolve(360.0, (0, 0, 0), (0, 1, 0)))\n    return body\n"
+  print_orientation: 'flat: the z=0 face (one pocket mouth) on the bed; every hole
+    is vertical, no supports'
+  use_orientation: axle horizontal; wheel outboard in the floor track; either flat
+    face toward the door
+- id: thrust_washer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return (cq.Workplane(\"XY\")\n            .circle(p.thrust_od\
+    \ / 2.0)\n            .circle(p.thrust_id / 2.0)\n            .extrude(p.thrust_t))\n"
+  print_orientation: flat on the bed
+  use_orientation: on the axle, printed face against the outboard bearing's inner
+    race
+- id: press_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    return (cq.Workplane(\"XY\")\n            .circle(p.press_plate_d\
+    \ / 2.0)\n            .circle(p.plate_id / 2.0)\n            .extrude(p.plate_t))\n"
+  print_orientation: flat on the bed
+  use_orientation: 'assembly tool: rides on the screw shank against the head, presses
+    the bearing face inside the pocket'
+- id: reaction_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    return (cq.Workplane(\"XY\")\n            .circle(p.reaction_plate_d\
+    \ / 2.0)\n            .circle(p.plate_id / 2.0)\n            .extrude(p.plate_t))\n"
+  print_orientation: flat on the bed
+  use_orientation: 'assembly tool: lies on the wheel face over the pocket mouth as
+    the nut''s anchor during the first press'
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    R = 22.0\n    H = 9.0\n    pr = p.pocket_d / 2.0\n   \
+    \ mc = p.mouth_chamfer\n    wr = p.window_d / 2.0\n    t = p.web_t\n    z0 = p.pocket_depth\n\
+    \    prof = [\n        (wr, 0.0),\n        (wr, t),\n        (pr, t),\n      \
+    \  (pr, H - mc),\n        (pr + mc, H),\n        (R, H),\n        (R, 0.0),\n\
+    \    ]\n    disc = (cq.Workplane(\"XZ\")\n            .polyline(prof)\n      \
+    \      .close()\n            .revolve(360.0, (0, 0, 0), (0, 1, 0)))\n    label\
+    \ = cq.Workplane(\"XY\", origin=(0, -17, H)).text(\"21.95\", 4.5, 0.8)\n    return\
+    \ disc.union(label)\n"
+  print_orientation: flat on the bed, pocket up; pocket and window are vertical holes,
+    no supports
+  use_orientation: bench test and press rehearsal only
+hardware:
+- id: axle-bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: press-nut
+  ref: ISO 4032 M8
+  qty: 1
+- id: axle-nyloc
+  ref: ISO 10511 M8
+  qty: 1
+- id: axle-washer
+  ref: ISO 7089 M8
+  qty: 3
+- id: bearing-608
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: axle
+  fastener: axle-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -3.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: axle path through both 608 bores and the 12 mm window
+    role: clearance
+  - part: thrust_washer
+    feature: centre hole
+    role: washer
+  nut: axle-nyloc
+  external: 'closet-door roller bracket: screw head bears on the bracket face via
+    an ISO 7089 M8 washer; needs a >=8.5 mm plain hole, a shallow M8 threaded socket,
+    or drilling out to 8.5 mm'
+criteria:
+- id: c1
+  part: wheel
+  feature: pockets 21.95 x 7
+  relation: contains
+  hardware: bearing-608
+  clearance_mm: null
+  params:
+  - pocket_d
+  - pocket_depth
+  - bearing_od
+  - bearing_w
+  check:
+    method: coupon
+    ref: null
+    description: 'coupon pocket is identical to the wheel''s: hand-start the bearing,
+      then the full press rehearsal shows the real fit'
+- id: c2
+  part: wheel
+  feature: pocket floors
+  relation: seats
+  hardware: bearing-608
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - bearing_w
+  check:
+    method: coupon
+    ref: null
+    description: press bottoms the bearing on the pocket floor; face ends flush so
+      washers reach the races
+- id: c3
+  part: wheel
+  feature: web window
+  relation: clears
+  hardware: axle-bolt
+  clearance_mm: null
+  params:
+  - window_d
+  - bolt_shank_d
+  check:
+    method: none
+    ref: null
+    description: 12 mm window vs ~8 mm shank; also lets the press-1 reaction anchor
+      on the web floor
+- id: c4
+  part: thrust_washer
+  feature: annulus face
+  relation: seats
+  hardware: bearing-608
+  clearance_mm: null
+  params:
+  - thrust_od
+  - bearing_od
+  check:
+    method: none
+    ref: null
+    description: 15 mm face lands on the inner race face (race OD ~15.4) and passes
+      the 21.95 pocket mouth
+- id: c5
+  part: thrust_washer
+  feature: centre hole
+  relation: clears
+  hardware: axle-bolt
+  clearance_mm: null
+  params:
+  - thrust_id
+  - bolt_shank_d
+  check:
+    method: measure
+    ref: null
+    description: washer slides freely on the shank
+- id: c6
+  part: wheel
+  feature: bearing bores on the axle
+  relation: clears
+  hardware: axle-bolt
+  clearance_mm: null
+  params:
+  - bearing_bore
+  - bolt_shank_d
+  check:
+    method: measure
+    ref: null
+    description: each bearing must spin freely on the shank before assembly
+- id: c7
+  part: wheel
+  feature: rim width
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  check:
+    method: none
+    ref: null
+    description: 16 mm = the old wheel's width, so it seats in the existing track
+      groove
+- id: c8
+  part: wheel
+  feature: rim outside diameter
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  check:
+    method: none
+    ref: null
+    description: 50 mm = the old wheel's OD, so ride height is unchanged
+- id: c9
+  part: wheel
+  feature: axle fit-up
+  relation: supports
+  hardware: axle-bolt
+  clearance_mm: null
+  params:
+  - axle_len
+  - wheel_w
+  - thrust_t
+  check:
+    method: measure
+    ref: null
+    description: 'after fit-up: nyloc engaged, wheel fully on smooth shank, spins
+      free, no axial rattle'
+manual:
+- n: '1'
+  text: 'Print the coupon flat, pocket up, no supports. Three checks. (a) Slip a bearing
+    over the M8x50 screw''s shank - it must slide on and spin freely. (b) Hand-start
+    a bearing into the coupon''s pocket: it should grip within a few mm and not fall
+    out when shaken. (c) Full press rehearsal: slip the press plate onto the screw
+    against the head, push head-first into the pocket so the plate sits on the bearing,
+    lay the reaction plate on the coupon''s back face, run the plain M8 nut on and
+    tighten - the bearing should draw in until its face sits flush. If it takes huge
+    force or the PLA creaks, stop and tell me.'
+  parts:
+  - coupon
+  - press_plate
+  - reaction_plate
+  hardware:
+  - axle-bolt
+  - bearing-608
+  - press-nut
+  tool: null
+- n: '2'
+  text: Print 1 wheel per broken roller - flat, the z=0 face (a pocket mouth) on the
+    bed, no supports, 3+ wall loops for strength. Also print 2 thrust washers, 1 press
+    plate, 1 reaction plate.
+  parts:
+  - wheel
+  - thrust_washer
+  - press_plate
+  - reaction_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: 'First bearing: hold the wheel flat with your chosen door-side face DOWN.
+    Drop a bearing into the downward-facing pocket and push until it grips. Slip the
+    press plate onto the M8x50 screw right against the head. From below, push head-first
+    into the pocket until the plate sits flat on the bearing''s outer face. On top,
+    lay the reaction plate on the wheel face over the pocket mouth, run the plain
+    M8 nut down and tighten - the bearing draws in until it bottoms on the pocket
+    floor, face flush with the wheel face. Unwind, remove the screw and plate.'
+  parts:
+  - wheel
+  - press_plate
+  - reaction_plate
+  hardware:
+  - axle-bolt
+  - press-nut
+  - bearing-608
+  tool: null
+- n: '4'
+  text: 'Second bearing: drop it into the open pocket and push until it grips. This
+    time the screw works from above: press plate against the head, push head-first
+    into the pocket until the plate sits on the bearing. Below the wheel, put an M8
+    washer over the shank where it exits the first bearing''s pocket and run the plain
+    nut up - the washer will rest on the first bearing''s face. Tighten until the
+    second bearing bottoms on its floor, face flush. Unwind, remove.'
+  parts:
+  - wheel
+  - press_plate
+  hardware:
+  - axle-bolt
+  - axle-washer
+  - press-nut
+  - bearing-608
+  tool: null
+- n: '5'
+  text: 'Check both bearings: faces flush with the wheel faces (a fingernail laid
+    across should feel them about level), and both spin freely.'
+  parts:
+  - wheel
+  hardware:
+  - bearing-608
+  tool: null
+- n: '6'
+  text: 'Offer the axle to the roller bracket still on the door. (a) Plain opening
+    >= 8.5 mm: pass the screw through from the track side, washer under the head on
+    the bracket face. (b) Threaded M8 socket: screw in only 4-6 mm so the wheel lands
+    on smooth shank, or drill the socket out to 8.5 mm and use it as a plain hole.
+    (c) Opening smaller than 8.5 mm: drill it to 8.5 mm. Your own M8 bolt (shank measured
+    ~8 mm) replaces the supplied screw if at least 30 mm can protrude past the bracket
+    face with at least 17 mm of smooth shank where the wheel will sit - threads under
+    the bearings would damage them.'
+  parts: []
+  hardware:
+  - axle-bolt
+  - axle-washer
+  tool: 8.5 mm drill bit (only if the bracket opening is undersized)
+- n: '7'
+  text: Slide the wheel onto the axle (either face toward the door), then the thrust
+    washer with its face against the bearing, an M8 washer, and the M8 nyloc. Tighten
+    until the axial play just disappears and the wheel still spins freely; back off
+    an eighth of a turn if it drags. The second thrust washer is a spare, or use it
+    under the head if the bracket opening is much larger than the screw.
+  parts:
+  - wheel
+  - thrust_washer
+  hardware:
+  - axle-bolt
+  - axle-washer
+  - axle-nyloc
+  tool: null
+- n: '8'
+  text: Hang the door and roll it. The wheel is 50 x 16 like the old roller, so ride
+    height and track fit are unchanged; take up any small height error at the bracket
+    if it has adjustment.
+  parts: []
+  hardware: []
+  tool: null

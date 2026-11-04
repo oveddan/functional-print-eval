@@ -1,0 +1,425 @@
+task: bearing-wheel
+note: 'Printed Ø50 × 16 wheel replacing the snapped closet-door roller. A Ø22.1 through-bore
+  carries the two 608 bearings stacked end-to-end (14 of the 16 mm width); each bearing
+  is held by a 3-segment snap lip at its mouth. Coupon check passed: the printed seat
+  measured 22.09 mm, bearing goes in snug and holds upside down, which also confirms
+  the bearings are ~Ø22 (the old 21.22 reading was a jaw-pinch error). The M8 bolt
+  is a stationary axle — the wheel spins on the bearings, positioned by printed thrust
+  washers and an M8 nyloc. The catalog ISO 4762 M8x50 is the default axle because
+  its 22 mm smooth shank keeps the bearings off threads; the user''s own M8 bolt (shank
+  measured ~8.0 mm) is a drop-in alternative if it protrudes ≥30 mm past the bracket
+  face with ≥17 mm of smooth shank under the wheel. Wheel OD and width match the old
+  roller, so ride height and track fit are unchanged.'
+questions:
+- text: Does the M8 bolt pass through an opening (>=8.5 mm) in the surviving bracket,
+    or screw into a threaded socket?
+  answer: Unknown - step 6 of the manual covers pass-through, shallow threaded socket,
+    and drill-out.
+- text: Is your own M8 bolt at least 40 mm long with a smooth (unthreaded) shank section?
+  answer: Unknown - the supplied ISO 4762 M8x50 is the default axle; the user's own
+    bolt is a drop-in alternative if it meets the rule in step 6.
+params:
+  axle_len:
+    value: 50
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 'ISO 4762 M8x50 chosen as axle: the only catalog length whose 22 mm smooth
+      shank keeps a 16 mm wheel fully off the threads'
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 nominal 8.0; the sheet's caliper read 7.94
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 nominal 22.0; the sheet's 21.22 reading was a jaw-pinch error - the
+      coupon check (snug at a 22.09 printed bore) confirms ~22.0 actual
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: nominal 7.0, width not measured
+  bore_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'CONFIRMED BY COUPON: printed bore measured 22.09 mm, bearing goes in snug
+      and holds upside down; retention comes from this light press plus the snap lips'
+  bolt_shank_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 'user''s own M8 bolt, the one measurement that came through: ''about 8 mm'',
+      confirmed three times; also typical of the catalog M8 shank'
+  coupon_bore_measured:
+    value: 22.09
+    unit: mm
+    kind: world
+    source: measured
+    note: 'user measured the coupon''s printed bearing seat: 22.09 mm, ''goes in,
+      pretty snug; holds upside down'''
+  edge_chamfer:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: kind to the track walls
+  lip_flare:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree lead-in at each mouth face; also forms the bearing seat shoulder
+  lip_h:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: lip height at each mouth
+  lip_id:
+    value: 20.9
+    unit: mm
+    kind: design
+    source: design
+    note: 0.6 mm radial interference per side, spread over the flexing segments
+  lip_ramp_h:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in cone under the far lip for the press-home stroke
+  lip_segments:
+    value: 3
+    unit: count
+    kind: design
+    source: design
+    note: segments per lip so they can flex during insertion
+  thrust_id:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: 0.3 mm clearance on the measured ~8.0 shank
+  thrust_od:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: lands on the inner race (race OD ~15.4) and passes through the 20.9 lip
+      hole
+  thrust_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: thrust washer thickness
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: 'user''s first message: old wheel ''about 50 mm across'''
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: 'user''s first message: old wheel ''about 16 mm wide'''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od / 2.0\n    H = p.wheel_w\n    c = p.edge_chamfer\n\
+    \    bore_r = p.bore_d / 2.0\n    lip_r = p.lip_id / 2.0\n    lh = p.lip_h\n \
+    \   fl = p.lip_flare\n    segs = int(p.lip_segments)\n\n    # rim: revolved profile\
+    \ with chamfered outer edges\n    prof = [(0.0, 0.0), (R - c, 0.0), (R, c), (R,\
+    \ H - c), (R - c, H), (0.0, H)]\n    body = cq.Workplane(\"XZ\").polyline(prof).close().revolve(360.0,\
+    \ (0, 0, 0), (0, 1, 0))\n\n    # through bore for two stacked 608s (7 + 7 = 14\
+    \ of the 16 mm width)\n    body = body.cut(cq.Workplane(\"XY\", origin=(0, 0,\
+    \ -1.0)).circle(bore_r).extrude(H + 2.0))\n\n    # segmented snap lip at each\
+    \ mouth\n    rc = (bore_r + lip_r) / 2.0\n    for z0 in (0.0, H - lh):\n     \
+    \   ring = cq.Workplane(\"XY\", origin=(0, 0, z0)).circle(bore_r).circle(lip_r).extrude(lh)\n\
+    \        body = body.union(ring)\n        for i in range(segs):\n            gap\
+    \ = (cq.Workplane(\"XY\")\n                   .box(0.8, 9.0, lh + 2.0)\n     \
+    \              .translate((rc, 0.0, z0 + lh / 2.0))\n                   .rotate((0,\
+    \ 0, 0), (0, 0, 1), i * 360.0 / segs))\n            body = body.cut(gap)\n\n \
+    \   # 45-degree lead-in flares at the two mouth faces\n    body = body.cut(cq.Solid.makeCone(bore_r\
+    \ + 0.12, lip_r, fl + 0.1,\n                                      cq.Vector(0,\
+    \ 0, -0.1), cq.Vector(0, 0, 1)))\n    body = body.cut(cq.Solid.makeCone(lip_r,\
+    \ bore_r + 0.01, fl,\n                                      cq.Vector(0, 0, H\
+    \ - fl), cq.Vector(0, 0, 1)))\n\n    # lead-in ramp under the far lip, for pressing\
+    \ the second bearing home\n    body = body.cut(cq.Solid.makeCone(11.6, lip_r,\
+    \ p.lip_ramp_h,\n                                      cq.Vector(0, 0, H - lh\
+    \ - p.lip_ramp_h), cq.Vector(0, 0, 1)))\n    return body\n"
+  print_orientation: 'flat: the z=0 face (one snap-lip mouth) on the bed, bore axis
+    vertical, no supports'
+  use_orientation: axle horizontal; wheel outboard in the floor track; either flat
+    face toward the door
+- id: thrust_washer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return (cq.Workplane(\"XY\")\n            .circle(p.thrust_od\
+    \ / 2.0)\n            .circle(p.thrust_id / 2.0)\n            .extrude(p.thrust_t))\n"
+  print_orientation: flat on the bed
+  use_orientation: on the axle bolt, printed face against the bearing inner race,
+    outboard of the wheel
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    H = 6.0\n    bore_r = p.bore_d / 2.0\n    lip_r = p.lip_id\
+    \ / 2.0\n    lh = p.lip_h\n    disc = cq.Workplane(\"XY\").circle(22.0).extrude(H)\n\
+    \    disc = disc.cut(cq.Workplane(\"XY\", origin=(0, 0, -1.0)).circle(bore_r).extrude(H\
+    \ + 2.0))\n    # one lip segment, same section as the wheel's lips, on the top\
+    \ face\n    tab = (cq.Workplane(\"XY\")\n           .box(0.6, 13.0, lh)\n    \
+    \       .translate(((bore_r + lip_r) / 2.0, 0.0, H - lh / 2.0)))\n    disc = disc.union(tab)\n\
+    \    # bevel the tab's top edge like the wheel's flare\n    disc = disc.cut(cq.Solid.makeCone(lip_r,\
+    \ bore_r + 0.01, p.lip_flare,\n                                      cq.Vector(0,\
+    \ 0, H - p.lip_flare), cq.Vector(0, 0, 1)))\n    disc = (cq.Workplane(\"XY\",\
+    \ origin=(0, -16, H))\n            .text(\"22.1\", 4.5, 0.8)\n            .union(disc))\n\
+    \    return disc\n"
+  print_orientation: flat on the bed (lip tab on the top face, exactly as the wheel's
+    far lip will print)
+  use_orientation: bench test only
+hardware:
+- id: axle-bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: press-nut
+  ref: ISO 4032 M8
+  qty: 1
+- id: axle-nyloc
+  ref: ISO 10511 M8
+  qty: 1
+- id: axle-washer
+  ref: ISO 7089 M8
+  qty: 3
+- id: bearing-608
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: axle
+  fastener: axle-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -3.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: through bore - both 608 bearing bores
+    role: clearance
+  - part: thrust_washer
+    feature: centre hole
+    role: washer
+  nut: axle-nyloc
+  external: 'closet-door roller bracket: bolt head bears on the bracket face via an
+    ISO 7089 M8 washer; needs a >=8.5 mm plain hole, a shallow M8 threaded socket,
+    or drilling out to 8.5 mm'
+criteria:
+- id: c1
+  part: wheel
+  feature: through bore
+  relation: contains
+  hardware: bearing-608
+  clearance_mm: null
+  params:
+  - bore_d
+  - bearing_od
+  - bearing_w
+  check:
+    method: coupon
+    ref: null
+    description: 'DONE: coupon seat printed at 22.09 mm; bearing goes in snug and
+      holds upside down'
+- id: c2
+  part: wheel
+  feature: snap lips
+  relation: engages
+  hardware: bearing-608
+  clearance_mm: null
+  params:
+  - lip_id
+  - lip_h
+  - lip_segments
+  check:
+    method: coupon
+    ref: null
+    description: 'press a bearing past the coupon''s lip tab: it should flex and snap
+      back without cracking'
+- id: c3
+  part: thrust_washer
+  feature: annulus face
+  relation: seats
+  hardware: bearing-608
+  clearance_mm: null
+  params:
+  - thrust_od
+  - bearing_bore
+  check:
+    method: none
+    ref: null
+    description: the 15 mm face lands on the inner race face (race OD ~15.4) and passes
+      through the 20.9 lip hole
+- id: c4
+  part: thrust_washer
+  feature: centre hole
+  relation: clears
+  hardware: axle-bolt
+  clearance_mm: null
+  params:
+  - thrust_id
+  - bolt_shank_d
+  check:
+    method: measure
+    ref: null
+    description: washer slides freely on the bolt shank
+- id: c5
+  part: wheel
+  feature: bearing bores on the axle
+  relation: clears
+  hardware: axle-bolt
+  clearance_mm: null
+  params:
+  - bearing_bore
+  - bolt_shank_d
+  check:
+    method: measure
+    ref: null
+    description: each bearing must spin freely on the bolt shank before assembly
+- id: c6
+  part: wheel
+  feature: rim width
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  check:
+    method: none
+    ref: null
+    description: 16 mm = the old wheel's width, so it seats in the existing track
+      groove
+- id: c7
+  part: wheel
+  feature: rim outside diameter
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  check:
+    method: none
+    ref: null
+    description: 50 mm = the old wheel's OD, so ride height is unchanged
+- id: c8
+  part: wheel
+  feature: axle fit-up
+  relation: supports
+  hardware: axle-bolt
+  clearance_mm: null
+  params:
+  - axle_len
+  - wheel_w
+  - thrust_t
+  check:
+    method: measure
+    ref: null
+    description: 'after fit-up: nyloc fully engaged, wheel fully on smooth shank,
+      spins free with no axial rattle'
+manual:
+- n: '1'
+  text: 'DONE - your coupon passed: seat 22.09 mm, bearing snug, holds upside down.
+    If you skipped the bolt check: the M8x50 socket-cap screw should slip through
+    the bearing''s bore and the bearing should spin freely on the shank.'
+  parts:
+  - coupon
+  hardware:
+  - bearing-608
+  - axle-bolt
+  tool: null
+- n: '2'
+  text: Print 1 wheel per broken roller - flat, the z=0 face (a snap-lip mouth) on
+    the bed, no supports, 3+ wall loops for strength. Print 3 thrust washers.
+  parts:
+  - wheel
+  - thrust_washer
+  hardware: []
+  tool: null
+- n: '3'
+  text: 'First bearing: the coupon fit is snug, so press straight and steadily. Push
+    the bearing into either mouth of the wheel with your thumb until it stops - it
+    lands on the ledge of the opposite lip, about 7.5 mm down from the mouth you pushed
+    it through.'
+  parts:
+  - wheel
+  hardware:
+  - bearing-608
+  tool: null
+- n: '4'
+  text: 'Second bearing: put an M8 washer and the plain M8 nut onto the M8x50 socket-cap
+    screw a few turns. Push the screw HEAD-first into the other mouth so the head
+    sits just inside the bore, drop the second bearing in on top of the head, then
+    tighten the nut - the head presses the bearing home through the snug bore until
+    its face sits about 0.5-1 mm below flush and the far lip snaps over its rim. Unwind,
+    pull the screw out.'
+  parts:
+  - wheel
+  hardware:
+  - axle-bolt
+  - axle-washer
+  - press-nut
+  - bearing-608
+  tool: null
+- n: '5'
+  text: Check both bearings spin freely with a finger through the bore.
+  parts:
+  - wheel
+  hardware:
+  - bearing-608
+  tool: null
+- n: '6'
+  text: 'Offer the axle to the roller bracket still on the door. (a) Plain opening
+    >= 8.5 mm: pass the screw through from the track side, washer under the head on
+    the bracket face. (b) Threaded M8 socket: screw in only 4-6 mm so the wheel lands
+    on smooth shank, or drill the socket out to 8.5 mm and use it as a plain hole.
+    (c) Opening smaller than 8.5 mm: drill it to 8.5 mm. Your own M8 bolt (shank measured
+    ~8 mm) replaces the supplied screw if at least 30 mm can protrude past the bracket
+    face with at least 17 mm of smooth shank where the wheel will sit - threads under
+    the bearings would damage them.'
+  parts: []
+  hardware:
+  - axle-bolt
+  - axle-washer
+  tool: 8.5 mm drill bit (only if the bracket opening is undersized)
+- n: '7'
+  text: Slide the wheel onto the axle (either flat face outward), then a printed thrust
+    washer with its face against the bearing, an M8 washer, and the M8 nyloc. Tighten
+    until the axial play just disappears and the wheel still spins freely by flicking
+    it; back off an eighth of a turn if it drags. The third thrust washer is a spare,
+    or use it under the bolt head if the bracket opening is much bigger than the bolt.
+  parts:
+  - wheel
+  - thrust_washer
+  hardware:
+  - axle-bolt
+  - axle-washer
+  - axle-nyloc
+  tool: null
+- n: '8'
+  text: Hang the door and roll it. The wheel is 50 x 16 like the old one, so ride
+    height should be unchanged; take up any small height error at the bracket if it
+    has adjustment.
+  parts: []
+  hardware: []
+  tool: null

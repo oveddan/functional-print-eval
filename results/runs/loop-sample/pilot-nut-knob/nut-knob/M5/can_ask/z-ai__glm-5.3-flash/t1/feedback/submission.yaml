@@ -1,0 +1,195 @@
+task: nut-knob/M5
+note: 'Fluted hand knob Ø30 × 15 for an M5 bolt, one piece, no glue. The ISO 4032
+  M5 nut presses by hand into a blind hex pocket in the top face: 45° mouth chamfer,
+  0.10 mm-clearance slip zones, a 17° tapered lead-in, then a 1.0 mm snap band at
+  0.25 mm undersize (7.75 vs 8.0 across flats). Past the band the nut is axially trapped
+  by geometry — its flats can''t pass the band in any position, so it stays in upside-down,
+  and the solid floor means it can''t be pushed out the far side; nut top sits 0.4
+  mm below the face. The centre Ø5.5 hole passes the bolt through the nut and out
+  the other side. Coupon (optional) repeats the pocket at 0.15/0.25/0.35 mm undersize
+  to preview press feel; the knob ships with 0.25 — if the press is too hard for your
+  thumb, set p.pocket_snap_under = 0.15 and reprint.'
+questions:
+- text: 'If you do test the coupon pockets: which one presses in with a firm thumb
+    press and holds the nut upside-down? (left = 0.15, middle = 0.25, right = 0.35
+    mm undersize) — the knob ships with the middle value'
+  answer: null
+params:
+  bolt_hole_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: M5 shank Ø5.0 -> 0.5 mm clearance
+  coupon_dia:
+    value: 44
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_n:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_r:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_stick:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: flute depth = flute_r - flute_stick = 1.6 mm
+  knob_h:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: clears the 5.1 mm pocket with a solid floor for the bolt
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: 'user: ''about 30 mm across'''
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats; actual nut not measurable — coupon covers the
+      delta
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut thickness
+  pocket_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg lead-in at the pocket mouth
+  pocket_recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: nut top sits 0.4 mm below the face -> fully inside
+  pocket_slip_add:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'slip zones: across flats = nut_af + 0.10'
+  pocket_slip_zone:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: height of the slip zone above the taper
+  pocket_snap_under:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: snap band across flats = nut_af - 0.25; hand press fit with geometric capture
+  ring_lead:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: 'tapered lead-in above the band: af1 -> af2 over 0.4 mm (~17 deg wall)'
+  snap_ring_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: snap band height; full band engaged when nut is seated
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "import math\n\ndef build(p):\n    od = p.knob_od\n    h = p.knob_h\n    ch\
+    \ = p.pocket_chamfer\n    C = math.cos(math.pi / 6.0)\n    af1 = p.nut_af + p.pocket_slip_add\
+    \      # slip zones across flats\n    af2 = p.nut_af - p.pocket_snap_under   \
+    \ # snap band across flats\n    depth = p.nut_h + p.pocket_recess       # blind\
+    \ pocket depth\n    s1 = p.pocket_slip_zone\n    lead = p.ring_lead          \
+    \            # tapered lead-in height\n    ring = p.snap_ring_h              \
+    \      # snap band height\n    s2 = depth - ch - s1 - lead - ring      # slip\
+    \ zone below the band\n    assert s2 >= 0.15, \"pocket too shallow for zone stack\"\
+    \n\n    # body: fluted cylinder, bolt-exit face down (z=0)\n    k = cq.Workplane(\"\
+    XY\").circle(od / 2.0).extrude(h)\n    k = k.edges(\">Z\").chamfer(1.0)\n    k\
+    \ = k.edges(\"<Z\").chamfer(0.6)\n\n    # bolt through-hole with countersink on\
+    \ the exit face\n    k = (k.faces(\"<Z\").workplane()\n           .cskHole(p.bolt_hole_d,\
+    \ p.bolt_hole_d + 1.8, 90))\n\n    def hexp(x, af, z0, z1):\n        return (cq.Workplane(\"\
+    XY\", origin=(x, 0.0, z0))\n                .polygon(6, af / C).extrude(z1 - z0))\n\
+    \n    # pocket stack from the mouth (z=h) down to the floor (z=h-depth)\n    z_taper_top\
+    \ = h - ch - s1\n    z_ring_top = z_taper_top - lead\n    z_ring_bot = z_ring_top\
+    \ - ring\n    z_floor = z_ring_bot - s2\n\n    k = k.cut(hexp(0.0, af1, z_taper_top\
+    \ - 0.01, h - ch + 0.01))  # upper slip zone\n    k = k.cut(hexp(0.0, af2, z_ring_bot,\
+    \ z_ring_top + 0.01))      # snap band\n    k = k.cut(hexp(0.0, af1, h - depth,\
+    \ z_ring_bot + 0.01))       # slip zone to floor\n\n    # tapered lead-in: af1\
+    \ at the top easing to af2 at the band\n    taper = (cq.Workplane(\"XY\", origin=(0.0,\
+    \ 0.0, z_ring_top))\n             .polygon(6, af2 / C)\n             .workplane(offset=lead)\n\
+    \             .polygon(6, af1 / C)\n             .loft(ruled=True))\n    k = k.cut(taper)\n\
+    \n    # 45 deg mouth chamfer (lofted hex, extended past the face for a clean cut)\n\
+    \    mouth = (cq.Workplane(\"XY\", origin=(0.0, 0.0, h - ch))\n             .polygon(6,\
+    \ af1 / C)\n             .workplane(offset=ch + 0.5)\n             .polygon(6,\
+    \ (af1 + 2.0 * (ch + 0.5)) / C)\n             .loft(ruled=True))\n    k = k.cut(mouth)\n\
+    \n    # vertical flutes for grip\n    for i in range(int(p.flute_n)):\n      \
+    \  a = 2.0 * math.pi * i / p.flute_n\n        cx = (od / 2.0 + p.flute_stick)\
+    \ * math.cos(a)\n        cy = (od / 2.0 + p.flute_stick) * math.sin(a)\n     \
+    \   k = k.cut(cq.Workplane(\"XY\", origin=(cx, cy, -0.01))\n                 \
+    \ .circle(p.flute_r).extrude(h + 0.02))\n    return k"
+  print_orientation: 'As modeled: bolt-exit face down on the bed, nut pocket opening
+    up — pocket prints support-free (only 0.18 mm ring-undercut bridges)'
+  use_orientation: Bolt-exit face down against the work; flutes gripped by thumb and
+    fingers; nut pocket face up
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "import math\n\ndef build(p):\n    dia = p.coupon_dia\n    t = p.coupon_t\n\
+    \    ch = p.pocket_chamfer\n    C = math.cos(math.pi / 6.0)\n    af1 = p.nut_af\
+    \ + p.pocket_slip_add\n    depth = p.nut_h + p.pocket_recess\n    s1 = p.pocket_slip_zone\n\
+    \    lead = p.ring_lead\n    ring = p.snap_ring_h\n    s2 = depth - ch - s1 -\
+    \ lead - ring\n    assert s2 >= 0.15 and (t - depth) >= 0.8\n\n    c = cq.Workplane(\"\
+    XY\").circle(dia / 2.0).extrude(t)\n    c = c.edges(\">Z\").chamfer(0.5)\n\n \
+    \   undersizes = [0.15, 0.25, 0.35]\n    xs = [-14.0, 0.0, 14.0]\n    for x, u\
+    \ in zip(xs, undersizes):\n        af2 = p.nut_af - u\n\n        def hexp(x0,\
+    \ af, z0, z1):\n            return (cq.Workplane(\"XY\", origin=(x0, 0.0, z0))\n\
+    \                    .polygon(6, af / C).extrude(z1 - z0))\n\n        z_taper_top\
+    \ = t - ch - s1\n        z_ring_top = z_taper_top - lead\n        z_ring_bot =\
+    \ z_ring_top - ring\n\n        c = c.cut(hexp(x, af1, z_taper_top - 0.01, t -\
+    \ ch + 0.01))\n        c = c.cut(hexp(x, af2, z_ring_bot, z_ring_top + 0.01))\n\
+    \        c = c.cut(hexp(x, af1, t - depth, z_ring_bot + 0.01))\n        taper\
+    \ = (cq.Workplane(\"XY\", origin=(x, 0.0, z_ring_top))\n                 .polygon(6,\
+    \ af2 / C)\n                 .workplane(offset=lead)\n                 .polygon(6,\
+    \ af1 / C)\n                 .loft(ruled=True))\n        c = c.cut(taper)\n  \
+    \      mouth = (cq.Workplane(\"XY\", origin=(x, 0.0, t - ch))\n              \
+    \   .polygon(6, af1 / C)\n                 .workplane(offset=ch + 0.5)\n     \
+    \            .polygon(6, (af1 + 2.0 * (ch + 0.5)) / C)\n                 .loft(ruled=True))\n\
+    \        c = c.cut(mouth)\n\n    # engraved dot marks: 1 dot = 0.15, 2 dots =\
+    \ 0.25, 3 dots = 0.35 undersize\n    for i, x in enumerate(xs):\n        for j\
+    \ in range(i + 1):\n            dx = x + (j - i / 2.0) * 3.6\n            c =\
+    \ c.cut(cq.Workplane(\"XY\", origin=(dx, -11.5, t - 0.7))\n                  \
+    \    .circle(1.1).extrude(0.8))\n    return c"
+  print_orientation: Flat on the bed, pockets up, dots up — all features support-free
+  use_orientation: 'Pockets up, dots toward you: left = 1 dot (0.15), middle = 2 dots
+    (0.25), right = 3 dots (0.35) mm undersize'
+hardware: []
+joints: []
+criteria: []
+manual: []
