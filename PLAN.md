@@ -1,11 +1,11 @@
 # Plan
 
-Read this first in a new session, then `docs/scoring.md` (the quality bar and method), `seeds/classes.yaml` (the general failure classes) with the seed files beside it, and `docs/context/INDEX.md`.
+Read this first in a new session, then `docs/scoring.md` (the quality bar and method), `seeds/classes.yaml` (the general failure classes) with the seed files beside it, and the index of Dan's private source notes (`docs/context/INDEX.md`, not in public copies).
 
 Elsewhere:
 - Concept page (published): https://claude.ai/artifact/6oarQD2uJMVVzDVACoU9Xt
-- Ground-truth project files (OpenSCAD, STLs, fit tests, manual pages): `~/Source/local-lights/private/phone_stand/` and `~/Source/local-lights/private/tripod_plate/` (gitignored there; `phone_stand/src/` is a third-party Pork3D model, so don't copy it here)
-- Estoa, the second source of seeds: `~/Source/estoa-public/enclosure/` (TEST-PRINTS, FIXES, DECISIONS) and its agent sessions in `~/claude-archive` (session ids in `seeds/estoa-failures.yaml`)
+- Ground-truth project files (OpenSCAD, STLs, fit tests, manual pages): the `phone_stand/` and `tripod_plate/` folders in Dan's private local-lights repo (gitignored there; `phone_stand/src/` is a third-party Pork3D model, so don't copy it here)
+- Estoa, the second source of seeds: the `enclosure/` docs of Dan's estoa-public repo (TEST-PRINTS, FIXES, DECISIONS) and its agent sessions in Dan's private session archive (session ids in `seeds/estoa-failures.yaml`)
 
 ## Goal
 
@@ -25,7 +25,7 @@ A rigorous, reproducible eval showing where frontier models fail at consumer mec
   - **Design guide (a subset of tasks, once the first two work):** the main condition plus a short guide naming the common techniques. Failing without it but passing with it is a knowledge gap; failing with it is a judgment gap (the model knows the technique but doesn't see when it applies). The Arca agent already knew stepped bridging from Estoa and still drew a plain roof, so judgment gaps are expected.
   - No separate can't-ask condition: every submission labels each dimension's source, so a model that never measures is graded on its labels anyway.
   - **Checks as a tool (later):** the model can run the eval's checks on its own design before handing it in. Whether it uses them and fixes what they flag is another judgment signal.
-- **The person is a lookup table (Dan).** The model talks to no person and no model playing one. `measure(item, what)` returns the value the task records, matched by item and dimension through short alias lists; anything not in the table gets "I can't measure that" and is logged, and a measurement several models ask for gets measured and added. Preferences and use are written in the brief. τ2-bench found LLM-played users erred in 16-47% of conversations, mostly by inventing details (`docs/context/2026-10-30-paper-tau2-bench-dual-control-user-simulator.md`); a table can't, costs nothing, and answers a rerun identically.
+- **The person is a lookup table (Dan).** The model talks to no person and no model playing one. `measure(item, what)` returns the value the task records, matched by item and dimension through short alias lists; anything not in the table gets "I can't measure that" and is logged, and a measurement several models ask for gets measured and added. Preferences and use are written in the brief. τ2-bench found LLM-played users erred in 16-47% of conversations, mostly by inventing details (the τ²-bench paper, "dual-control" user simulator); a table can't, costs nothing, and answers a rerun identically.
 - **Tools:** `measure`; `submit_design`, whose schema errors go back to the model for repair (repairs are counted, not failed); and `report_limitation(wanted, blocked_by, why)` (Dan), which changes nothing and records what the model wanted to use (a technique, tool, part, material or way of handing in) but couldn't, and what stopped it, so a failure caused by the eval's own constraints shows as one. No web search: the public facts are in the catalog, and search results would change between reruns.
 - **Grade the outcome, not the technique.** A check never demands one specific fix. The bridge check asks whether every overhang will print, so stepped layers, flipping the part, declared supports, a drill-out layer or moving the feature all pass.
 - **Grader reliability, shown three ways:** the backtest; a regression suite (references pass, real failed designs fail, simple reward-hacking attempts fail); and Dan's hand ranking of about 10 designs compared with the graders'. Dan is named as the task author and domain expert.
@@ -88,9 +88,9 @@ Per-check limits and extensions are in `docs/limitations.md`; the report's limit
 No photo is committed, and nothing in the repo should point at a file that only exists on one machine. Run this list before the first push:
 
 1. **Images stay out of git, and out of its history.** Deleting a photo from the tree is not enough: EXIF (capture date, GPS, camera) stays recoverable from the old blob, so any image ever committed has to be purged from history. The test print and servo photos are hosted on R2 and indexed in `docs/media/photos.md`. One exception (Dan, 2026-11-03): a vendor drawing a task hands the model, such as `tasks/estoa-light/files/datasheet.png`, may be committed. It carries no camera metadata, and it's saved with none. Photos still may not.
-2. **Atlas assets** (`report/atlas/examples.yaml`) still point at 13 files on this machine: 7 Estoa HEICs in `~/Source/local-lights/private/photos/estoa/`, 3 tripod HEICs in `~/Downloads/`, 2 images from `estoa-public`, 2 phone-stand renders. Convert, scrub the metadata, upload to R2 and replace the paths with URLs — without committing the images. The `~/Downloads/` pointers go first: that folder is the least durable place a cited file could live.
+2. **Atlas assets** (`report/atlas/examples.yaml`) still point at 13 files on this machine: 7 Estoa HEICs in the private local-lights repo's photos, 3 tripod HEICs in Dan's downloads folder, 2 images from `estoa-public`, 2 phone-stand renders. Convert, scrub the metadata, upload to R2 and replace the paths with URLs — without committing the images. The downloads-folder pointers go first: that folder is the least durable place a cited file could live.
 3. **`docs/context/` is private source material.** Purge it from the tree before publishing, and rewrite its citations (`PLAN.md`, `catalog/printer.yaml`, `README.md`, `seeds/tripod-failures.yaml`) to name the source instead of a local path.
-4. **Other machine-local pointers**: the ground-truth and Estoa paths above, the explorations-inbox filename in `catalog/hardware.yaml`, and the `~/claude-archive` session ids — those can stay as opaque provenance, but the README should say the archive is private.
+4. **Other machine-local pointers**: the ground-truth and Estoa paths above, the explorations-inbox filename in `catalog/hardware.yaml`, and the session ids from Dan's private session archive — those can stay as opaque provenance, but the README should say the archive is private.
 5. **`IMG_5438`**, the caliper video behind the servo measurements, was never in the repo. Upload it or drop the citation.
 
 ## Constraints
@@ -104,7 +104,7 @@ No photo is committed, and nothing in the repo should point at a file that only 
 ## Working method
 
 - A cheaper model (Sonnet) writes code, then an adversarial Opus review. Verify claims yourself.
-- Dan's own ideas for the eval are in `docs/context/2026-10-24-dan-3d-print-assembly-eval-idea-dictated.md`; the builder agent, physics/strength simulation, the assembly simulation, the hardware-fit invariant and the robot-arm direction are his. Credit what is his; don't present Claude's ideas as his.
+- Dan's own ideas for the eval are in his dictated note of 2026-10-24, "3D print assembly eval idea" (private notes); the builder agent, physics/strength simulation, the assembly simulation, the hardware-fit invariant and the robot-arm direction are his. Credit what is his; don't present Claude's ideas as his.
 
 ## Decisions
 

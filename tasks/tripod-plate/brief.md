@@ -38,7 +38,7 @@ Whether a model asked is recorded for every trial, and `scripts/digest.py` shows
 ## What the records decide
 
 Nothing here was measured for this task, and no model's design gets printed. Every limit comes from the
-one plate Dan printed (`~/Source/local-lights/private/tripod_plate/arca_plate.scad`) and that session's
+one plate Dan printed (`arca_plate.scad`, in his private local-lights repo) and that session's
 record. What they can't decide is "not graded", which is never a pass.
 
 | Check | Fails | Passes | Not graded | Source |

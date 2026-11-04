@@ -110,6 +110,14 @@ uv run python -m pbe.eval --run my-run --task tripod-plate --model anthropic/cla
 - **Prompt caching:** Claude models ask for OpenRouter's prompt caching; every model gets the same messages and tools, byte for byte (issue 34, `tests/test_caching.py`). Each trial saved since records `settings.prompt_caching`. Trials saved before had no caching, so their Claude costs are full price. `scripts/cost_report.py <run>...` gives cost per trial and per turn by model.
 - **`can_run_code`** lets the model run Python before handing in. That code runs in bubblewrap on Linux, or in Docker with the image from `scripts/build_run_python_image.sh`. Docker on macOS hasn't been tested; a Linux cloud machine is the tested route. No saved run on `main` uses this condition yet.
 
+### Building the submission ZIP
+
+```bash
+uv run python scripts/build_submission.py main
+```
+
+It packages the files tracked at that git ref into `../print-build-eval-<commit>.zip`, beside the repo, with this README at the ZIP's root (`--out` picks another path outside the repo). It writes nothing, and lists every reason, if the ZIP would be 50 MB or more, or would hold a video, `docs/context/`, `.git`, a secret, or a machine-local path such as a home folder or a LAN address. Left out on purpose, each with its reason in the script's `LEFT_OUT`: `docs/context/`, the two overnight logs, the failure atlas (`report/atlas/`) and the Estoa datasheet, which is fetched from Adafruit (product 2477) instead.
+
 ## The tasks
 
 Each task is a folder in `tasks/`: the person's request (`brief.md`), the facts the person can measure if asked (`hidden_facts.yaml`), the checks (`requirements.yaml`), and a reference design that must pass every check (`reference.yaml`). Every task also gets the generic checks: the code builds, each part is one connected body, it fits the bed, and every overhang can be bridged (`bridges`).
@@ -348,4 +356,4 @@ Also:
 
 ## Private material
 
-`docs/context/` holds Dan's own notes and clippings. It's private and stays out of any public copy.
+`docs/context/` holds Dan's own notes and clippings. It's private: the submission ZIP leaves it out, and it stays out of any public copy. Citations elsewhere name their source instead of pointing into it.
