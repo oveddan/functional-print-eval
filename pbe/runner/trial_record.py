@@ -65,10 +65,30 @@ class ModelCall(Saved):
         return (self.usage or {}).get("cost") or 0
 
 
+class CodeSettings(Saved):
+    """How run_python ran the model's code, in the can_run_code condition."""
+    sandbox: str  # which sandbox, and its image or version
+    timeout_s: int  # one call
+    trial_s: int  # every call in the trial together
+    output_chars: int
+
+
 class Settings(Saved):
     max_turns: int
     max_tokens: int
     temperature: str
+    run_python: CodeSettings | None = None  # only when the model could run code
+
+
+class BuildOnSubmit(Saved):
+    """can_run_code only: submit_design builds every part first, and sends a design back if one doesn't build."""
+    sent_back: list[list[str]]  # per call sent back, the ids of the parts that didn't build
+    out_of_turns_while_fixing: bool  # a call was sent back, and turns ran out before a design built
+    accepted_unbuilt: list[str] = []  # the accepted design's parts left unbuilt because the trial's code time ran out
+
+    @property
+    def hit_a_build_error(self) -> bool:
+        return bool(self.sent_back)
 
 
 class EarlierVerdict(Saved):
@@ -89,6 +109,7 @@ class TrialRecord(Saved):
     error: str | None
     turns: int
     repairs: int
+    build_on_submit: BuildOnSubmit | None = None  # only when the model could run code
     measures: list[Measurement]
     revealed: list[str]
     hidden: list[str]
@@ -126,11 +147,16 @@ class TrialRecord(Saved):
 
     def as_saved(self) -> dict:
         """The fields grades.json keeps. Only a regraded trial has `regrades`, only a declined one
-        has `declined`, and a record or an earlier verdict saved before `platform` was recorded
+        has `declined`, only a trial whose model could run code has `settings.run_python` and
+        `build_on_submit`, and a record or an earlier verdict saved before `platform` was recorded
         stays without one."""
         fields = self.model_dump()
         if not self.regrades:
             del fields["regrades"]
+        if self.settings.run_python is None:
+            del fields["settings"]["run_python"]
+        if self.build_on_submit is None:
+            del fields["build_on_submit"]
         if "platform" not in self.model_fields_set:
             del fields["platform"]
         _drop_unset(fields, self)
