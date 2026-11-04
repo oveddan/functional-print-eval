@@ -1,0 +1,422 @@
+task: game-spinner
+note: The wheel is a 70 mm disc, 10 mm thick, printed front-down. The back has a 22.2
+  mm bearing pocket with 6 crush ribs and a hex nut pocket with 6 flat ribs. The front
+  has a 3 mm lip with a 17 mm opening. The lip holds the bearing in. The ribs hold
+  the bearing and nut by friction, with no glue. I haven't tested the press-fit values
+  (+0.2 mm pocket clearance with 0.2 mm ribs, and 0.2 mm hex clearance with 0.15 mm
+  ribs). Print the fit coupon first and adjust if needed. The bearing and nut sizes
+  come from your 'about' measurements, which agree with the standard sizes. The M8
+  bolt length and the board mounting are assumptions.
+questions:
+- text: How thick is the board, and is the M8 hole threaded or a through-hole with
+    a nut behind it? I assumed M8x30 for a board about 12 mm thick, so the length
+    may need changing.
+  answer: null
+- text: I assumed the inner ring of the bearing is about 12 mm across, so a 16 mm
+    M8 washer clears the outer ring. Please check this when you fit the bearing.
+  answer: null
+params:
+  wheel_d:
+    value: 70
+    unit: mm
+    kind: design
+    source: design
+    note: Wheel diameter, from the request ('about 70 mm')
+  wheel_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: 'Total thickness: 3 mm front lip plus 7 mm bearing pocket'
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: world
+    source: measured
+    note: 608 outer diameter. You measured 'about 22', which matches the 22.000 nominal.
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: world
+    source: measured
+    note: 608 width. You measured 'about 7'.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: Bore, measured about 8. The M8 bolt passes through it. It isn't used in
+      the part geometry.
+  bearing_pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket is 0.2 mm over the bearing OD. The crush ribs make the real grip.
+      Tune with the coupon.
+  rib_h:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Crush rib height. Contact circle is OD + 0.2 - 0.4 = 21.8 mm, about 0.2
+      mm interference on the diameter.
+  rib_w:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Crush rib width, two perimeters of a 0.4 mm nozzle
+  rib_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Bearing crush ribs
+  lip_hole_d:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: Front opening. It is smaller than the outer-race inner edge (about 19 mm),
+      so the lip holds the outer race. It is larger than the M8 washer OD, so the
+      washer and head sit inside it.
+  m8_washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 washer OD
+  m8_head_d:
+    value: 13
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8 head diameter
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M5 nut across flats, measured about 8. This matches the ISO 4032 value.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M5 nut thickness, measured about 4.7
+  nut_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket is nut AF + 0.2. Crush ribs on the six flats give the grip.
+  nut_rib_h:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Rib height on each flat. Contact AF is 8.2 - 0.3 = 7.9 mm.
+  nut_rib_w:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Rib width on each flat
+  nut_pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: Nut thickness 4.7 + 0.5, so the nut sits 0.5 mm below the back face
+  m5_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M5 shank, measured about 5
+  m5_hole_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance, so the handle hole is 5.5 mm
+  handle_r:
+    value: 27.5
+    unit: mm
+    kind: design
+    source: design
+    note: Handle bolt distance from the wheel centre. This leaves a wall of about
+      2.8 mm to the rim.
+  coupon_t:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: Fit coupon thickness
+  coupon_bearing_depth:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Bearing pocket depth in the coupon. This is enough to judge the press fit.
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    T = p.wheel_t\n    body = cq.Workplane('XY').circle(p.wheel_d\
+    \ / 2).extrude(T)\n\n    # Bearing pocket, open at the back, with crush ribs\n\
+    \    bd = p.bearing_od + p.bearing_pocket_clear\n    z0 = T - p.bearing_w\n  \
+    \  pocket = cq.Workplane('XY').workplane(offset=z0).circle(bd / 2).extrude(p.bearing_w\
+    \ + 1)\n    for i in range(int(p.rib_count)):\n        a = 360.0 * i / p.rib_count\n\
+    \        L = p.rib_h + 0.05\n        c = bd / 2 + 0.05 - L / 2\n        rib =\
+    \ (cq.Workplane('XY').box(L, p.rib_w, p.bearing_w + 1, centered=(True, True, False))\n\
+    \               .translate((c, 0, z0)).rotate((0, 0, 0), (0, 0, 1), a))\n    \
+    \    pocket = pocket.cut(rib)\n    body = body.cut(pocket)\n\n    # Front lip\
+    \ opening for the M8 bolt, washer and head\n    lip = cq.Workplane('XY').circle(p.lip_hole_d\
+    \ / 2).extrude(T)\n    body = body.cut(lip)\n\n    # Handle: M5 clearance hole\
+    \ plus hex nut pocket from the back\n    hx = p.handle_r\n    hole = cq.Workplane('XY').center(hx,\
+    \ 0).circle((p.m5_d + p.m5_hole_clear) / 2).extrude(T)\n    body = body.cut(hole)\n\
+    \    af = p.nut_af + p.nut_clear\n    hexd = af / math.cos(math.radians(30))\n\
+    \    nz = T - p.nut_pocket_depth\n    npk = cq.Workplane('XY').workplane(offset=nz).polygon(6,\
+    \ hexd).extrude(p.nut_pocket_depth + 1)\n    for k in range(6):\n        a = 30\
+    \ + 60 * k\n        L = p.nut_rib_h + 0.05\n        c = af / 2 + 0.05 - L / 2\n\
+    \        rib = (cq.Workplane('XY').box(L, p.nut_rib_w, p.nut_pocket_depth + 1,\
+    \ centered=(True, True, False))\n               .translate((c, 0, nz)).rotate((0,\
+    \ 0, 0), (0, 0, 1), a))\n        npk = npk.cut(rib)\n    npk = npk.translate((hx,\
+    \ 0, 0))\n    body = body.cut(npk)\n    return body\n"
+  print_orientation: Front face (the side with the handle bolt head) flat on the bed,
+    pockets opening upward. No supports or bridges are needed.
+  use_orientation: Front face toward the player, back face toward the board
+- id: fit-coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    T = p.coupon_t\n    body = cq.Workplane('XY').box(58,\
+    \ 30, T, centered=(True, True, False))\n    bx = -17.0\n    nx = 19.0\n\n    bd\
+    \ = p.bearing_od + p.bearing_pocket_clear\n    dep = p.coupon_bearing_depth\n\
+    \    z0 = T - dep\n    pocket = cq.Workplane('XY').workplane(offset=z0).circle(bd\
+    \ / 2).extrude(dep + 1)\n    for i in range(int(p.rib_count)):\n        a = 360.0\
+    \ * i / p.rib_count\n        L = p.rib_h + 0.05\n        c = bd / 2 + 0.05 - L\
+    \ / 2\n        rib = (cq.Workplane('XY').box(L, p.rib_w, dep + 1, centered=(True,\
+    \ True, False))\n               .translate((c, 0, z0)).rotate((0, 0, 0), (0, 0,\
+    \ 1), a))\n        pocket = pocket.cut(rib)\n    body = body.cut(pocket.translate((bx,\
+    \ 0, 0)))\n    lip = cq.Workplane('XY').center(bx, 0).circle(p.lip_hole_d / 2).extrude(T)\n\
+    \    body = body.cut(lip)\n\n    hole = cq.Workplane('XY').center(nx, 0).circle((p.m5_d\
+    \ + p.m5_hole_clear) / 2).extrude(T)\n    body = body.cut(hole)\n    af = p.nut_af\
+    \ + p.nut_clear\n    hexd = af / math.cos(math.radians(30))\n    nz = T - p.nut_pocket_depth\n\
+    \    npk = cq.Workplane('XY').workplane(offset=nz).polygon(6, hexd).extrude(p.nut_pocket_depth\
+    \ + 1)\n    for k in range(6):\n        a = 30 + 60 * k\n        L = p.nut_rib_h\
+    \ + 0.05\n        c = af / 2 + 0.05 - L / 2\n        rib = (cq.Workplane('XY').box(L,\
+    \ p.nut_rib_w, p.nut_pocket_depth + 1, centered=(True, True, False))\n       \
+    \        .translate((c, 0, nz)).rotate((0, 0, 0), (0, 0, 1), a))\n        npk\
+    \ = npk.cut(rib)\n    body = body.cut(npk.translate((nx, 0, 0)))\n    return body\n"
+  print_orientation: Flat on the bed, pockets opening upward
+  use_orientation: Test piece only
+hardware:
+- id: m8-bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: m8-washer
+  ref: ISO 7089 M8
+  qty: 3
+- id: m5-bolt
+  ref: ISO 4762 M5x12
+  qty: 1
+- id: m5-nut
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: pivot
+  fastener: m8-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: lip_hole
+    role: clearance
+  nut: null
+  external: Threaded M8 hole (or through-hole with nut) in the user's board. The M8x30
+    length is an assumption for a board about 12 mm thick.
+- id: handle
+  fastener: m5-bolt
+  axis_origin:
+  - 27.5
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: front face around handle hole
+    role: head_seat
+  - part: wheel
+    feature: handle_hole
+    role: clearance
+  - part: wheel
+    feature: hex nut pocket
+    role: nut_pocket
+  nut: m5-nut
+  external: null
+criteria:
+- id: c-bearing-pocket
+  part: wheel
+  feature: bearing pocket with crush ribs
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - bearing_w
+  - bearing_pocket_clear
+  - rib_h
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: The 608 should press in by hand and hold firmly, with no rocking,
+      when the coupon is turned upside down. If it is too tight or loose, change rib_h
+      or bearing_pocket_clear by 0.05 mm.
+- id: c-bearing-lip
+  part: wheel
+  feature: front lip
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - lip_hole_d
+  - bearing_w
+  - wheel_t
+  check:
+    method: measure
+    ref: null
+    description: The bearing outer race bottoms against the 3 mm front lip, and its
+      back face is flush with the wheel back.
+- id: c-nut-pocket
+  part: wheel
+  feature: hex nut pocket with crush ribs
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - nut_clear
+  - nut_rib_h
+  - nut_pocket_depth
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: The M5 nut should press in by hand and stay put when the coupon is
+      turned over, with its face 0.5 mm below the surface.
+- id: c-handle-hole
+  part: wheel
+  feature: handle_hole
+  relation: clears
+  hardware: m5-bolt
+  clearance_mm: 0.25
+  params:
+  - m5_d
+  - m5_hole_clear
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: The M5 bolt passes freely through the 5.5 mm hole and threads into
+      the pocketed nut.
+- id: c-lip-clear
+  part: wheel
+  feature: lip_hole
+  relation: clears
+  hardware: m8-washer
+  clearance_mm: 0.5
+  params:
+  - lip_hole_d
+  - m8_washer_od
+  - m8_head_d
+  check:
+    method: measure
+    ref: null
+    description: The 17 mm opening clears the 16 mm washer and the 13 mm head.
+- id: c-handle-tip
+  part: wheel
+  feature: back face standoff
+  relation: clears
+  hardware: m5-bolt
+  clearance_mm: null
+  params:
+  - nut_pocket_depth
+  - wheel_t
+  - nut_h
+  check:
+    method: none
+    ref: null
+    description: The M5x12 tip projects about 2.0 mm past the back face. The two M8
+      washers lift the wheel 3.2 mm off the board, so the tip clears it.
+manual:
+- n: '1'
+  text: Print the fit-coupon first. Use PLA, 0.2 mm layers, the flat side down. Press
+    a 608 bearing into the round pocket and an M5 nut into the hex pocket. Both should
+    need firm hand pressure and stay in when you turn the coupon over. If the fit
+    is too loose or too tight, tell me or change rib_h or the pocket clearance by
+    0.05 mm, then reprint.
+  parts:
+  - fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the wheel with the front face (the side with the 3 mm lip) on the bed
+    and the pockets facing up. No supports are needed.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Turn the wheel so the back faces up. Push the M5 nut into the hex pocket near
+    the rim until it bottoms out. Use a flat surface or the bolt to press it in square.
+  parts:
+  - wheel
+  hardware:
+  - m5-nut
+  tool: null
+- n: '4'
+  text: Press the 608 bearing into the large round pocket from the back. Push it square
+    until it bottoms against the front lip. Its back face should end up flush with
+    the wheel back.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '5'
+  text: Turn the wheel over so the front faces up. Put the M5x12 bolt through the
+    handle hole from the front and tighten it into the nut with a 4 mm hex key. It
+    stays on the wheel as the handle. The tip pokes out about 2 mm at the back.
+  parts:
+  - wheel
+  hardware:
+  - m5-bolt
+  tool: 4 mm hex key
+- n: '6'
+  text: Put two M8 washers on your board's M8 bolt position as a spacer. They lift
+    the wheel off the board and carry the bearing's inner ring. Set the wheel, front
+    up, over them, with the bearing resting on the washers. Put the third M8 washer
+    into the front opening, onto the bearing's inner ring.
+  parts:
+  - wheel
+  hardware:
+  - m8-washer
+  tool: null
+- n: '7'
+  text: Put the M8 bolt through the washer and bearing and into the board's threaded
+    hole. Tighten it with a 6 mm hex key, clamping only the inner ring. The wheel
+    should spin freely and clear the board. Check that it doesn't drag.
+  parts:
+  - wheel
+  hardware:
+  - m8-bolt
+  tool: 6 mm hex key

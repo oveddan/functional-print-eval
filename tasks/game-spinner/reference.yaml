@@ -1,0 +1,71 @@
+task: game-spinner
+note: Reference solution. It knows round 2's and coupon B's answers, which a model can't. The bearing's seat and the nut's pocket both open on the back face, which prints on top, so nothing has to bridge.
+params:
+  across:    {value: 70,   kind: design,   source: asked,    note: from the request}
+  thick:     {value: 10,   kind: design,   source: design,   note: the bearing's 7 mm and a floor under it}
+  seat:      {value: 22.2, kind: design,   source: measured, note: held upside down on this printer (round 2)}
+  seat_h:    {value: 7.2,  kind: design,   source: design,   note: the 7 mm bearing and a little over}
+  relief:    {value: 13,   kind: design,   source: design,   note: the floor touches only the outer ring; the M8 bolt passes}
+  handle_r:  {value: 23,   kind: design,   source: design,   note: the handle bolt's distance from the middle}
+  nut_af:    {value: 8.0,  kind: hardware, source: catalog,  note: ISO 4032 M5}
+  nut_h:     {value: 4.7,  kind: hardware, source: catalog,  note: ISO 4032 M5}
+  clearance: {value: 0.1,  kind: design,   source: measured, note: what held on coupon B}
+  recess:    {value: 0.3,  kind: design,   source: design,   note: the nut sits just below the back face}
+  bolt_hole: {value: 5.5,  kind: design,   source: catalog,  note: ISO 273 medium clearance hole for M5}
+parts:
+  - id: wheel
+    role: final
+    material: PLA
+    print_orientation: Front face on the bed, so the seat and the pocket open upwards and nothing needs a bridge.
+    use_orientation: Back face towards the board, turning on the M8 bolt; the handle stands out of the front.
+    code: |
+      import math
+
+      def build(p):
+          body = cq.Workplane("XY").circle(p.across / 2).extrude(p.thick)
+          seat = cq.Workplane("XY").workplane(offset=p.thick - p.seat_h).circle(p.seat / 2).extrude(p.seat_h)
+          relief = cq.Workplane("XY").circle(p.relief / 2).extrude(p.thick)
+          hole = cq.Workplane("XY").center(p.handle_r, 0).circle(p.bolt_hole / 2).extrude(p.thick)
+          corners = (p.nut_af + p.clearance) / math.cos(math.radians(30))
+          depth = p.nut_h + p.recess
+          pocket = cq.Workplane("XY").workplane(offset=p.thick - depth).center(p.handle_r, 0).polygon(6, corners).extrude(depth)
+          return body.cut(seat).cut(relief).cut(hole).cut(pocket)
+hardware:
+  - {id: bearing, ref: "608ZZ"}
+  - {id: axle, ref: "ISO 4762 M8x40"}
+  - {id: axle_nut, ref: "ISO 4032 M8", qty: 2}
+  - {id: handle, ref: "ISO 4762 M5x30"}
+  - {id: nut, ref: "ISO 4032 M5"}
+criteria:
+  - id: C1
+    part: wheel
+    feature: seat
+    relation: seats
+    hardware: bearing
+    clearance_mm: 0.2
+    params: [seat, seat_h]
+    check: {method: none, description: Printed on this printer in round 2.}
+  - id: C2
+    part: wheel
+    feature: pocket
+    relation: seats
+    hardware: nut
+    clearance_mm: 0.1
+    params: [nut_af, clearance]
+    check: {method: none, description: Printed on this printer on coupon B.}
+manual:
+  - n: "1"
+    text: Print the wheel front face down, with no supports.
+    parts: [wheel]
+  - n: "2"
+    text: Press the M5 nut into its pocket on the back, and the bearing into the middle until it reaches the floor. Turn the wheel over to check both stay.
+    parts: [wheel]
+    hardware: [nut, bearing]
+  - n: "3"
+    text: Put the handle bolt through the front of the wheel and screw it into the nut, leaving about 20 mm standing out as the handle.
+    parts: [wheel]
+    hardware: [handle]
+  - n: "4"
+    text: Put the M8 bolt through the bearing and fix it to the board with the two M8 nuts.
+    parts: [wheel]
+    hardware: [axle, axle_nut]
