@@ -348,4 +348,4 @@ Also:
 
 ## Private material
 
-`docs/context/` holds Dan's own notes and clippings. It's private and doesn't ship: `scripts/build_submission.py` leaves it out of the submission ZIP.
+`docs/context/` holds Dan's own notes and clippings. It's private and stays out of any public copy.
