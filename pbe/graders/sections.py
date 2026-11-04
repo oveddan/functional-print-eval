@@ -26,7 +26,9 @@ def section(mesh, axis, frac):
 
 
 def holes(mesh, axis, frac):
-    """The holes in a cross-section. Anything solid standing inside a hole is cut out of it."""
+    """The holes in a cross-section. Anything solid standing inside a hole is cut out of it, with
+    its own holes: a tube standing in a cavity takes its whole outline from the cavity, and its
+    bore is a hole of its own, not a piece of the cavity's."""
     return holes_in(section(mesh, axis, frac))
 
 
@@ -35,10 +37,10 @@ def holes_in(polys):
     found = []
     for poly in polys:
         for ring in poly.interiors:
-            hole = Polygon(ring)
+            hole = Polygon(ring).buffer(0)  # a section's ring can cross itself; this mends it
             for other in polys:
                 if hole.contains(other):
-                    hole = hole.difference(other)
+                    hole = hole.difference(Polygon(other.exterior))
             found.append(hole)
     return found
 

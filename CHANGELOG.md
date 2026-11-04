@@ -2,6 +2,25 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-04: A hub standing in a recess no longer leaks its bore into the recess; one wheel verdict changes
+
+`pbe/graders/sections.py`, `holes()` (its loop is in `holes_in` since the audit fixes below): something solid standing inside a hole was cut out with `hole.difference(other)`, which leaves the solid's own holes behind. A tube standing in a cavity left its bore as a piece of the cavity's "hole", a MultiPolygon. Every caller follows a hole from layer to layer by overlap or reads its shape (`wheel.py`'s seats and coupons, `nuts.py`'s pockets and bolt path, `bolted.py`'s bores, `requirements.py`'s through hole), so each could follow the cavity instead of the bore inside it. Now the solid's whole outline is cut out, `Polygon(other.exterior)`, and the ring is mended with `.buffer(0)`. This is the same fix the Estoa light grader's `_hole_around_axis` got. The number of holes in a section doesn't change, only the shape of the outer one. `tests/test_sections.py` (a box with a cavity and a tube standing in it) failed before and passes now.
+
+Evidence:
+- A probe ran both versions of `holes()` side by side on every call while grading all 106 saved trials. Only one trial ever meets the case: Gemini 4 Argon's wheel in `pilot-wheel` t2, 40 calls, all in the top 2 mm along z. There, its own code cuts an "annular relief groove between hub and outer tire rim", leaving the hub that holds the 22 mm bearing seat standing free. The old groove "hole" took in the seat: 902 mm², the seat's 383 plus the groove's 518. The wheel grader followed it as part of the seat, and `_is_round` called that not plain.
+- Regrading every run under `results/runs/` changes one verdict. **`pilot-wheel` Gemini 4 Argon t2, R3: not graded ("ribs, lobes or a slot in the seat") → pass ("22.09 mm: it presses in and holds upside down")**. The seat is plain and round: its area matches a 22.09 mm circle in every layer. `all_pass` stays false and its verdict stays not graded, because R4 is still not graded, so the counts stay 27 pass, 50 fail, 22 not graded, 5 declined. The record's `commit` stamp is this branch's pre-squash commit.
+- Regraded again after restacking onto the audit fixes, with the same result (the `crash-replay`, `loop-sample` and `loop-sample-2` runs keep no `grades.json`, so `--regrade` has nothing in them to read; they aren't regraded): the one R3 change, and `bridges` detail text rewritten in the same 9 trials the audit fixes left as they were (Linux's CAD kernel vs the Mac's). No `ok` value changed in those, so they aren't committed. The probe's run predates the restack, but it compares `holes()` on the same meshes, and the restack didn't change `holes()` apart from moving its loop.
+- `uv run pytest`, after restacking onto the audit fixes at `2278ce7`: 278 passed. `--reference`: every check passes for m5-spacer, tripod-plate, bearing-wheel and nut-knob M3, M5 and M8. phone-stand has no reference.
+
+Scoring walk:
+- Real-world relevance: unchanged. A hub boss in a recessed wheel face is a normal design, and a model chose it unprompted.
+- Task design: unchanged. The bearing-wheel brief's table already says plain seats are graded, and this seat is plain.
+- Grader reliability: a false "not graded" removed. It was found only because the Estoa light grader hit the same pattern. Nothing yet tests a solid with a hole standing inside a hole for `nuts.py` or `bolted.py` on their own, only through `holes()`.
+- Evidence of model limitations: unchanged. Argon t2 still can't be fully graded, because no print measured its 8.3 mm bore (R4).
+- Reproducibility: the regrade needs no key. `bridges` details still differ in the last digits between Linux and the Mac.
+- Human expertise and review: Dan hasn't reviewed this change.
+- Insight: none new. The lesson is about the eval: a geometry helper shared by graders can hide a mistake that only one design in 106 trips.
+
 ## 2026-11-04: Audit fixes from issue 15; regraded: 27 pass, 50 fail, 22 not graded, 5 declined
 
 The decided calls from the audit of the 104 pilot trials (issue 15), applied as one change and regraded with `--regrade` (no model calls). Who made each call, as recorded on issue 15:
