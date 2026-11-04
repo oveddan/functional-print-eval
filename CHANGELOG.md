@@ -137,6 +137,12 @@ Every saved trial was rebuilt and regraded on Linux in a scratch copy, with no c
 
 Docs: `docs/limitations.md` now opens with the eval's shortcomings by rubric criterion, the assumptions current verdicts rest on, and what prints would settle each. `docs/coupon-loop.md` holds the decided design for letting a model learn from its test coupon. `PLAN.md` records both decisions.
 
+## 2026-11-03: Estoa light task started: its datasheet, and one seed corrected
+
+`tasks/estoa-light/files/datasheet.png`: the LED disk's one-page datasheet (Adafruit 2477, Soya LED SY-C255-102), rendered at 150 dpi from the PDF Dan attached, saved with no metadata. It gives no dimensions: no mounting holes and no diameter. Dan: the datasheet was used to understand what the disk was, and for the LED positions. Dan measured the board's two 3.3 mm holes with calipers in Estoa session 602ba611 (2026-09-28). The task itself isn't written yet. Committing an image is an exception to the publishing rule, which Dan allowed for vendor drawings (`PLAN.md`).
+
+`seeds/estoa-failures.yaml`, `usb-opening-sized-to-receptacle`: the entry read as if the agent narrowed the opening on its own. Dan asked for it "more to the right, and narrower" (c8cfd18c, 2026-10-04T18:33:02); the agent chose 11.5 mm (18:36:05). The entry still counts against the agent, since the size was its design, but now says who asked. Found by the session that read the Estoa transcripts for this task (issue 17).
+
 ## 2026-11-03: A third condition, `can_run_code`: models can run Python before handing in (issue 17)
 
 Opt-in, and no run uses it yet: no model was called. The 106 saved trials stay the "no code" baseline. `can_ask` and `all_given` send the same prompt and tools as before: a test checks the prompt against pilot-wheel's saved transcript, and the tool list for both conditions, byte for byte, before and after the change.
