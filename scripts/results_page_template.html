@@ -1,0 +1,343 @@
+<title>Print Build Results</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a debugging bench. Where the failures are first, then every trial grouped by what the run could do; each trial opens onto its parts in 3D and every check. */
+:root{--bg:#eef1f3;--panel:#fbfcfc;--plate:#d4dbe0;--grid:#c3ccd3;--fg:#17202a;--dim:#55636f;--line:#c9d2d8;--accent:#c4480f;
+--pass:#16713f;--pass-bg:#d8efe0;--fail:#a4221c;--fail-bg:#f8dcd9;--ng:#6c5a10;--ng-bg:#f2e9c2;
+--display:"Barlow Condensed","Arial Narrow",sans-serif;--body:"Barlow",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12181d;--panel:#1a2229;--plate:#232d35;--grid:#2d3942;--fg:#e7ecef;--dim:#9dabb5;--line:#33404a;--accent:#f0803f;
+--pass:#70d79a;--pass-bg:#183a27;--fail:#f39a93;--fail-bg:#47201d;--ng:#e2cf7c;--ng-bg:#3a3314;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12181d;--panel:#1a2229;--plate:#232d35;--grid:#2d3942;--fg:#e7ecef;--dim:#9dabb5;--line:#33404a;--accent:#f0803f;
+--pass:#70d79a;--pass-bg:#183a27;--fail:#f39a93;--fail-bg:#47201d;--ng:#e2cf7c;--ng-bg:#3a3314;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:32px}
+h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.05;text-wrap:balance;margin:0}
+h1{font-size:44px}h2{font-size:30px}h3{font-size:21px}
+p{margin:0;max-width:72ch}
+.dim{color:var(--dim)}.mono{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+header,section{display:grid;gap:12px;min-width:0}
+button{font:500 14px var(--body);color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 11px;cursor:pointer}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14.5px}
+th,td{text-align:left;padding:7px 10px 7px 0;border-top:1px solid var(--line);vertical-align:top}
+th{font-weight:600;font-size:13px;color:var(--dim)}
+tr.pick{cursor:pointer}tr.pick:hover td{background:var(--plate)}
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;padding-right:16px}
+.stamp,.badge{display:inline-block;font:600 12.5px var(--body);padding:1px 8px;border-radius:3px;white-space:nowrap}
+.pass{color:var(--pass);background:var(--pass-bg)}.fail,.real,.decided{color:var(--fail);background:var(--fail-bg)}
+.not_graded,.gap{color:var(--ng);background:var(--ng-bg)}.open{color:var(--accent);background:var(--panel);border:1px solid var(--accent)}
+.no_design{color:var(--dim);background:var(--plate)}
+.declined{color:var(--dim);background:var(--panel);border:1px solid currentColor}
+.chip{display:inline-block;font:600 11.5px var(--body);letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--dim)}
+.chip.loop{border-color:var(--accent);color:var(--accent)}
+.tabs{display:flex;flex-wrap:wrap;gap:8px}
+.tabs button{display:grid;gap:2px;text-align:left;padding:8px 12px;max-width:290px}
+.tabs button b{font-size:15px}.tabs button span{font-size:13px;color:var(--dim);line-height:1.3}
+.tabs button[aria-pressed="true"],.filters button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.task{display:grid;gap:10px;border-top:2px solid var(--line);padding-top:16px}
+.task summary{cursor:pointer;color:var(--dim);font-size:14px}
+blockquote{margin:6px 0 0;padding-left:12px;border-left:3px solid var(--accent);max-width:75ch}
+.counts{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:14px;color:var(--dim)}
+.counts b{color:var(--fg);font-family:var(--mono)}
+.row{display:grid;grid-template-columns:150px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.row>div:first-child{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.cards{display:flex;flex-wrap:wrap;gap:12px;min-width:0}
+.card{all:unset;box-sizing:border-box;width:220px;max-width:100%;display:grid;gap:6px;align-content:start;cursor:pointer;padding:6px;border-radius:6px;border:1px solid transparent}
+.card:hover{border-color:var(--line);background:var(--panel)}.card:focus-visible{outline:2px solid var(--accent)}
+.shot{display:block;width:100%;aspect-ratio:5/4;border-radius:4px;background-color:var(--plate);
+background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:20px 20px;overflow:hidden}
+.shot img{width:100%;height:100%;object-fit:contain;display:block}
+.shot.none{display:grid;place-items:center;color:var(--dim);font-size:14px}
+.head{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.issue{font-size:13.5px;line-height:1.35;color:var(--dim)}
+dialog{border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:0;width:min(1100px,96vw);max-height:94vh;border-radius:8px}
+dialog::backdrop{background:rgb(0 0 0 / .55)}
+.dhead{display:flex;justify-content:space-between;gap:12px;align-items:start;padding:14px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.dbody{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;padding:16px 18px 22px}
+.dbody>div{min-width:0;display:grid;gap:16px;align-content:start}
+.viewer{position:sticky;top:76px;display:grid;gap:8px}
+#view{width:100%;height:380px;display:block;border-radius:6px;background:var(--plate);touch-action:none}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:grid;gap:8px}
+.issues{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.issues li{display:grid;gap:3px}
+.help{font-size:14px}.help b{color:var(--accent);font-weight:600}
+.partlist{display:flex;flex-wrap:wrap;gap:8px}
+.part{all:unset;box-sizing:border-box;width:112px;display:grid;gap:3px;cursor:pointer;font-size:12.5px;padding:4px;border-radius:5px;border:1px solid var(--line);background:var(--panel)}
+.part[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.part:focus-visible{outline:2px solid var(--accent)}
+.part .shot{aspect-ratio:1}
+.part span{overflow-wrap:anywhere;line-height:1.2}
+.report{font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--plate);border-radius:4px;padding:8px 10px;display:grid;gap:4px;overflow-wrap:anywhere}
+.arms{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.arm{display:grid;gap:6px;align-content:start;min-width:0}
+.arm ul,.plain{margin:0;padding-left:18px;font-size:13.5px;display:grid;gap:3px}
+@media (max-width:820px){.dbody{grid-template-columns:1fr}.viewer{position:static}#view{height:300px}}
+@media (max-width:640px){.row{grid-template-columns:1fr}h1{font-size:36px}.card{width:calc(50% - 6px)}.arms{grid-template-columns:1fr}dialog{width:100vw;max-height:100vh;border-radius:0}}
+</style>
+
+<div class="wrap">
+<header>
+<h1>What each model designed</h1>
+<p>Every design here came from one request and was graded by code against the test prints on record. <b>None of these designs was printed.</b> A "test coupon" is the small test piece a model designed and asked the person to print first. Click a trial to see each part in 3D, every check, and what went wrong.</p>
+<p class="dim">"Not graded" means no recorded print can decide that check. It isn't a fail and it isn't a pass. "Declined" means the model said it couldn't design the part without a measurement nobody recorded; that's neither either. Checks on a test coupon are shown but don't count toward the verdict. The M5 spacer, a control every model passed, isn't shown. Built by <span class="mono">scripts/results_page.py</span> from the saved runs.</p>
+</header>
+
+<section>
+<h2>Where the failures are</h2>
+<p class="dim">Every check that didn't pass, by what would have let the model do better, then by what went wrong and whether it's a real failure. A trial with several problems counts once in each row. Click a row in the second table to show those trials.</p>
+<div class="scroll"><table id="helps"></table></div>
+<div class="scroll"><table id="where"></table></div>
+</section>
+
+<section>
+<h2>What the coupon loop did</h2>
+<p class="dim">12 knob and wheel trials from three cheaper models were each given one more turn, twice over: once after hearing how their test coupon came out (from recorded prints only), once after only "take another look". The second sample added two fixes: sizes tighter than one that wouldn't go in are answered, and the turn gets more calls. Every design is graded with the coupon left out. Open the "Went through the coupon loop" group below to see each trial.</p>
+<div class="scroll"><table id="loopsum"></table></div>
+<p class="dim">In the first sample, GLM 5.3 Flash's wheel t1 handed in no design after the report: every call stopped at the token limit. The second sample's extra calls fixed that.</p>
+</section>
+
+<section>
+<h2>Trials</h2>
+<div class="tabs" id="groups" role="group" aria-label="What the run could do"></div>
+<div class="filters" id="filters"></div>
+<div id="tasks"></div>
+</section>
+</div>
+
+<dialog id="detail" aria-labelledby="dtitle">
+<div class="dhead"><div><h2 id="dtitle"></h2><p id="dsub" class="dim"></p></div><button id="dclose">Close</button></div>
+<div class="dbody">
+<div><div class="viewer"><canvas id="view"></canvas><p id="viewcap" class="dim mono"></p></div></div>
+<div id="dcontent"></div>
+</div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const TRIALS = /*TRIALS*/[];
+const TASKS = /*TASKS*/{};
+const FRONTIER = /*FRONTIER*/[];
+const HELP = /*HELP*/{};
+const KIND = /*KIND*/{};
+const LOOPSUM = /*LOOPSUM*/[];
+const VERDICT = {pass: "Pass", fail: "Fail", not_graded: "Not graded", declined: "Declined", error: "Didn't finish", no_design: "No design"};
+const GROUPS = [
+  ["all", "All trials", "Every trial, whatever it could do"],
+  ["loop", "Went through the coupon loop", "Heard how its test coupon came out, then got one more turn"],
+  ["coupon", "Designed a test coupon", "No coupon loop yet: its coupon was never reported back"],
+  ["none", "No test coupon", "Handed in the design with nothing to test first"],
+];
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const short = m => m.split("/")[1];
+const state = {group: "all", verdict: "all", family: null};
+
+function where() {
+  const rows = {};
+  TRIALS.forEach(t => {
+    const seen = new Set();
+    t.issues.forEach(i => {
+      const k = `${i.family}|${i.kind}|${i.help}`;
+      if (seen.has(k)) return;
+      seen.add(k);
+      (rows[k] ??= {family: i.family, kind: i.kind, help: i.help, n: 0}).n++;
+    });
+  });
+  const sorted = Object.values(rows).sort((a, b) => b.n - a.n);
+  const byHelp = {};
+  TRIALS.forEach(t => new Set(t.issues.map(i => i.help)).forEach(h => (byHelp[h] ??= new Set()).add(t.id)));
+  document.getElementById("helps").innerHTML = `<tr><th>What would help</th><th class="n">Trials it bears on</th></tr>` +
+    Object.entries(byHelp).sort((a, b) => b[1].size - a[1].size).map(([h, ids]) => `<tr><td><b>${esc(HELP[h])}</b></td><td class="n">${ids.size}</td></tr>`).join("");
+  document.getElementById("where").innerHTML = `<tr><th>What went wrong</th><th>Is it real?</th><th class="n">Trials</th><th>What would help</th></tr>` +
+    sorted.map(r => `<tr class="pick" tabindex="0" data-family="${esc(r.family)}"><td>${esc(r.family)}</td><td><span class="badge ${r.kind}">${esc(KIND[r.kind])}</span></td>
+      <td class="n">${r.n}</td><td>${esc(HELP[r.help])}</td></tr>`).join("");
+}
+
+function loopsum() {
+  const list = xs => xs.length ? `<b>${xs.length}</b><br><span class="dim">${xs.map(esc).join("<br>")}</span>` : "<b>0</b>";
+  document.getElementById("loopsum").innerHTML = `<tr><th></th><th>Original design</th><th>After the coupon report</th><th>After a second look</th></tr>` +
+    LOOPSUM.map(r => `<tr><td colspan="4"><b>Sample ${r.sample}</b> <span class="dim">· ${r.trials} trials · $${r.cost.toFixed(2)}</span></td></tr>
+      <tr><td>Trials passing every check</td><td class="mono">${r.baseline} of ${r.trials}</td><td class="mono">${r.feedback} of ${r.trials}</td><td class="mono">${r.neutral} of ${r.trials}</td></tr>
+      <tr><td>Failing checks that now pass</td><td></td><td>${list(r.fixed.feedback)}</td><td>${list(r.fixed.neutral)}</td></tr>
+      <tr><td>Trials made worse</td><td></td><td>${list(r.worse.feedback)}</td><td>${list(r.worse.neutral)}</td></tr>`).join("");
+}
+
+function groupsBar() {
+  document.getElementById("groups").innerHTML = GROUPS.map(([k, label, hint]) => {
+    const ts = TRIALS.filter(t => k === "all" || t.group === k);
+    const pass = ts.filter(t => t.verdict === "pass").length;
+    return `<button data-group="${k}" aria-pressed="${state.group === k}"><b>${esc(label)} · ${ts.length}</b><span>${esc(hint)}. ${pass} pass.</span></button>`;
+  }).join("");
+  document.getElementById("filters").innerHTML = [["all", "Any result"], ["pass", "Pass"], ["fail", "Fail"], ["not_graded", "Not graded"], ["declined", "Declined"]]
+    .map(([k, l]) => `<button data-verdict="${k}" aria-pressed="${state.verdict === k}">${l}</button>`).join("") +
+    (state.family ? `<span class="dim">Showing: ${esc(state.family)}</span> <button data-clear="1">Show all failures</button>` : "");
+}
+
+function issueLine(t) {
+  if (t.verdict === "pass") return "Passed every check";
+  if (!t.issues.length) return "";
+  const first = t.issues[0];
+  const more = t.issues.length > 1 ? ` (+${t.issues.length - 1} more)` : "";
+  return `${first.family}${more}`;
+}
+
+function card(t) {
+  const main = t.parts[0];
+  const shot = main && main.thumb ? `<span class="shot"><img loading="lazy" src="${esc(main.thumb)}" alt=""></span>` : `<span class="shot none">No part built</span>`;
+  const chips = [t.group === "loop" ? `<span class="chip loop">Coupon loop</span>` : "",
+                 t.group !== "none" ? `<span class="chip">Test coupon</span>` : "",
+                 t.condition === "all_given" ? `<span class="chip">All given</span>` : ""].join("");
+  return `<button class="card" data-id="${t.id}" aria-label="Open ${esc(short(t.model))} trial ${t.trial}">${shot}
+    <span class="head"><span class="stamp ${t.verdict}">${VERDICT[t.verdict]}</span><span class="mono dim">t${t.trial} · $${t.cost.toFixed(3)}</span></span>
+    ${chips ? `<span class="chips">${chips}</span>` : ""}<span class="issue">${esc(issueLine(t))}</span></button>`;
+}
+
+function visible(t) {
+  return (state.group === "all" || t.group === state.group) && (state.verdict === "all" || t.verdict === state.verdict)
+    && (!state.family || t.issues.some(i => i.family === state.family));
+}
+
+function list() {
+  const byTask = {};
+  TRIALS.filter(visible).forEach(t => (byTask[t.task] ??= []).push(t));
+  const rank = m => { const i = FRONTIER.indexOf(m); return i < 0 ? 99 : i; };
+  const html = Object.keys(byTask).sort().map(task => {
+    const ts = byTask[task], brief = TASKS[task] || {};
+    const count = k => ts.filter(t => t.verdict === k).length;
+    const models = [...new Set(ts.map(t => t.model))].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+    const rows = models.map(m => `<div class="row"><div>${esc(short(m))}</div><div class="cards">${
+      ts.filter(t => t.model === m).sort((a, b) => a.condition.localeCompare(b.condition) || a.trial - b.trial).map(card).join("")}</div></div>`).join("");
+    return `<div class="task"><h2>${esc(task)}</h2>
+      <details><summary>The request</summary><blockquote>${esc(brief.request)}</blockquote>${brief.why ? `<p class="dim">${esc(brief.why)}</p>` : ""}</details>
+      <div class="counts"><span><b>${ts.length}</b> trials</span><span><b>${count("pass")}</b> pass</span><span><b>${count("fail")}</b> fail</span><span><b>${count("not_graded")}</b> not graded</span></div>
+      ${rows}</div>`;
+  }).join("");
+  document.getElementById("tasks").innerHTML = html || `<p class="dim">No trials match.</p>`;
+}
+
+function draw() { groupsBar(); list(); }
+
+// ---- one trial ----
+function partButton(p, caption) {
+  const img = p.thumb ? `<span class="shot"><img loading="lazy" src="${esc(p.thumb)}" alt=""></span>` : `<span class="shot none">No render</span>`;
+  const role = p.role === "coupon" ? `<span class="chip">Test coupon</span>` : `<span class="chip">Final</span>`;
+  return `<button class="part" data-name="${p.viewer ? esc(p.name) : ""}" data-caption="${esc(caption + ": " + p.id)}" aria-pressed="false">${img}<span>${esc(p.id)}</span>${role}</button>`;
+}
+
+function checksTable(findings) {
+  const label = f => (f.ok === true ? `<span class="stamp pass">Pass</span>` : f.ok === false ? `<span class="stamp fail">Fail</span>` : `<span class="stamp not_graded">Not graded</span>`)
+    + (f.test_print ? ` <span class="chip">Test coupon, not counted</span>` : "");
+  return `<div class="scroll"><table><tr><th>Check</th><th>Part</th><th>Result</th><th>Why</th></tr>${findings.map(f =>
+    `<tr><td class="mono">${esc(f.check)}</td><td class="mono">${f.part === "-" ? "" : esc(f.part)}</td><td>${label(f)}</td><td>${esc(f.detail)}</td></tr>`).join("")}</table></div>`;
+}
+
+function armBlock(arm, label, caption) {
+  const failing = arm.findings.filter(f => f.ok !== true);
+  return `<div class="arm"><b>${esc(label)}</b><span><span class="stamp ${arm.verdict}">${esc(arm.label)}</span></span>
+    <span class="dim mono">${arm.calls} call${arm.calls === 1 ? "" : "s"} · $${arm.cost.toFixed(3)}</span>
+    ${arm.parts.length ? `<div class="partlist">${arm.parts.map(p => partButton(p, caption)).join("")}</div>` : ""}
+    ${failing.length ? `<ul>${failing.map(f => `<li><span class="mono">${esc(f.check)}</span> ${esc(f.detail)}</li>`).join("")}</ul>` : ""}</div>`;
+}
+
+function loopSection(t) {
+  if (!t.rounds.length) return "";
+  const rounds = t.rounds.map(r => {
+    const name = r.sample === 1 ? "Replay 1" : "Replay 2, with two fixes";
+    const report = r.report.length ? `<div class="report">${r.report.map(l =>
+      `<span>${esc(l.part)}: ${esc(l.text)} <span class="badge ${l.basis === "no record" ? "gap" : l.basis === "bridge check prediction" ? "open" : "pass"}">${esc(l.basis)}</span></span>`).join("")}</div>` : "";
+    return `<div class="box"><h3>${name}</h3><p class="dim">What the person said about the test coupon, from recorded prints only:</p>${report}
+      <div class="arms">${armBlock(r.feedback, "After the coupon report", name + ", after the report")}${armBlock(r.neutral, "After a second look (no report)", name + ", after a second look")}</div></div>`;
+  }).join("");
+  return `<section><h3>Coupon loop</h3><p class="dim">After handing in, the model was told how its test coupon came out and got one more turn. As a control, the same trial was also given a turn with only "take another look". Both revised designs are graded with the coupon left out.</p>${rounds}</section>`;
+}
+
+function openTrial(t, push = true) {
+  document.getElementById("dtitle").textContent = `${short(t.model)} · ${t.task} · t${t.trial}`;
+  document.getElementById("dsub").innerHTML = `<span class="stamp ${t.verdict}">${VERDICT[t.verdict]}</span> ${t.condition === "all_given" ? "measurements given" : "could ask"} · $${t.cost.toFixed(3)} · run ${esc(t.run)}`;
+  const issues = t.issues.length ? `<ul class="issues">${t.issues.map(i => `<li><span><span class="mono">${esc(i.check)}${i.part !== "-" ? " · " + esc(i.part) : ""}</span> ${esc(i.family)}</span>
+      <span><span class="badge ${i.kind}">${esc(KIND[i.kind])}</span></span><span class="help"><b>Would help:</b> ${esc(HELP[i.help])}</span></li>`).join("")}</ul>`
+    : `<p>Passed every check.</p>`;
+  const asked = t.asked.length ? `<section><h3>What it asked the person</h3><ul class="plain">${t.asked.map((q, i) => `<li>${esc(q)}<br><span class="dim">${esc(t.answers[i])}</span></li>`).join("")}</ul></section>` : "";
+  const audit = t.audit ? `<p class="dim"><b>Audit note, 3 November:</b> ${esc(t.audit.note)}</p>` : "";
+  const parts = t.parts.length ? `<div class="partlist">${t.parts.map(p => partButton(p, "Its design")).join("")}</div>` : `<p class="dim">No part built.</p>`;
+  document.getElementById("dcontent").innerHTML = `<div class="box"><h3>What went wrong</h3>${issues}${audit}</div>
+    <section><h3>Parts it designed</h3>${parts}</section>${loopSection(t)}
+    <section><h3>Every check</h3>${checksTable(t.findings)}</section>${asked}`;
+  const dlg = document.getElementById("detail");
+  if (!dlg.open) dlg.showModal();
+  const first = document.querySelector("#dcontent .part[data-name]:not([data-name=''])");
+  if (first) select(first); else { clearView(); document.getElementById("viewcap").textContent = "No part small enough to show in 3D."; }
+  if (push) { try { history.replaceState(null, "", "#" + t.id); } catch (e) {} }
+}
+
+// ---- the 3D viewer ----
+let three;
+function setup() {
+  const canvas = document.getElementById("view"), renderer = new THREE.WebGLRenderer({canvas, antialias: true, alpha: true});
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(35, 1, 0.1, 5000), controls = new THREE.OrbitControls(camera, canvas);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.85));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.7); sun.position.set(1, -0.8, 1.6); scene.add(sun);
+  camera.up.set(0, 0, 1);
+  const loop = () => { requestAnimationFrame(loop); if (document.getElementById("detail").open) { controls.update(); renderer.render(scene, camera); } };
+  loop();
+  three = {canvas, renderer, scene, camera, controls, mesh: null};
+}
+function parseStl(buf) {
+  const view = new DataView(buf), n = view.getUint32(80, true), pos = new Float32Array(n * 9);
+  for (let i = 0; i < n; i++) for (let j = 0; j < 9; j++) pos[i * 9 + j] = view.getFloat32(84 + i * 50 + 12 + j * 4, true);
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
+}
+function clearView() { if (three && three.mesh) { three.scene.remove(three.mesh); three.mesh.geometry.dispose(); three.mesh = null; } }
+let loading = 0;
+async function show(name, caption) {
+  const cap = document.getElementById("viewcap");
+  if (!window.THREE) { cap.textContent = "The 3D viewer didn't load."; return; }
+  if (!three) setup();
+  const {canvas, renderer, scene, camera, controls} = three, token = ++loading;
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+  camera.aspect = canvas.clientWidth / canvas.clientHeight; camera.updateProjectionMatrix();
+  cap.textContent = caption + " (loading)";
+  try {
+    const r = await fetch(`stl/${name}.txt`);
+    if (!r.ok) throw new Error(r.status);
+    const g = parseStl(Uint8Array.from(atob(await r.text()), c => c.charCodeAt(0)).buffer);
+    if (token !== loading) return;
+    g.computeBoundingSphere(); clearView();
+    three.mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({color: 0x9fb0bf, roughness: 0.55, side: THREE.DoubleSide}));
+    scene.add(three.mesh);
+    const {center, radius} = g.boundingSphere;
+    controls.target.copy(center);
+    camera.position.set(center.x + radius * 1.8, center.y - radius * 2.2, center.z + radius * 2);
+    cap.textContent = caption + " · drag to turn, scroll to zoom";
+  } catch (e) { cap.textContent = caption + " (couldn't load this part)"; }
+}
+function select(btn) {
+  document.querySelectorAll("#dcontent .part").forEach(b => b.setAttribute("aria-pressed", b === btn));
+  if (btn.dataset.name) show(btn.dataset.name, btn.dataset.caption);
+  else document.getElementById("viewcap").textContent = btn.dataset.caption + ": too big to show in 3D";
+}
+
+// ---- events ----
+document.addEventListener("click", e => {
+  const g = e.target.closest("[data-group]"); if (g) { state.group = g.dataset.group; draw(); return; }
+  const v = e.target.closest("[data-verdict]"); if (v) { state.verdict = v.dataset.verdict; draw(); return; }
+  if (e.target.closest("[data-clear]")) { state.family = null; draw(); return; }
+  const row = e.target.closest("tr[data-family]");
+  if (row) { state.family = row.dataset.family; state.group = "all"; state.verdict = "all"; draw(); document.getElementById("groups").scrollIntoView({behavior: "smooth"}); return; }
+  const c = e.target.closest(".card"); if (c) { openTrial(TRIALS.find(t => t.id === c.dataset.id)); return; }
+  const p = e.target.closest("#dcontent .part"); if (p) { select(p); return; }
+});
+document.addEventListener("keydown", e => {
+  const row = e.target.closest && e.target.closest("tr[data-family]");
+  if (row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); row.click(); }
+});
+document.getElementById("dclose").addEventListener("click", () => document.getElementById("detail").close());
+document.getElementById("detail").addEventListener("close", () => { try { history.replaceState(null, "", location.pathname); } catch (e) {} });
+function fromHash() { const t = TRIALS.find(t => "#" + t.id === location.hash); if (t) openTrial(t, false); }
+window.addEventListener("hashchange", fromHash);
+where(); loopsum(); draw(); fromHash();
+</script>
