@@ -2,6 +2,21 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-04: Prompt caching for Claude models (issue 34)
+
+Every saved Claude call showed 0% cached, because `pbe/runner/llm.py` never asked for it. Most other providers cache on their own, so the saved runs compared Claude's uncached cost with everyone else's cached cost.
+
+- `llm.caching_params(model)`: calls to `anthropic/` models only get OpenRouter's top-level `cache_control: {"type": "ephemeral"}`, its "automatic caching" (its prompt-caching docs, read 2026-11-04). It's one field on the request, so the messages and tools stay byte-identical to what every other model gets. The 5-minute default TTL suits these trials, since every saved Claude turn came back in under 75 s. In `can_run_code`, a reply whose `run_python` calls run past 5 minutes would make the next turn miss the cache and write it again. That costs more, but changes nothing the model reads.
+- Each trial saved from now on records `settings.prompt_caching` (true or false). Records saved earlier have no such field and load as before. The provider's `cached_tokens` and `cache_write_tokens` were already saved in each call's `usage`; `ModelCall` now reads them as `cached_tokens` and `cache_write_tokens`, alongside `prompt_tokens`.
+- Only `pbe.runner.agent.run_trial` asks for caching. The coupon loop and crash replay call `llm.chat` without it, as before.
+- New scripts: `scripts/caching_check.py` (the check below), `scripts/top_up.py` (tops the `can_ask` pilot runs up to 3 trials per lineup model and task, cheapest model first, under one spending cap across the run folders; it never changes a saved trial, retries one that ended in an infrastructure error, and stops on an out-of-credit HTTP 402) and `scripts/cost_report.py` (per model, from saved trials only: verdicts, cost per trial and per turn, and the cached and written shares of prompt tokens).
+
+Evidence:
+- `tests/test_caching.py`, 14 passed: in every condition, Haiku 5.5 and each of GPT-6.1 Sol, Gemini 4 Argon and DeepSeek V4 Pro get the same messages and tools, byte for byte, over a three-turn scripted trial. The request body posted to OpenRouter differs only by `model` and the top-level `cache_control`. Only Claude models ask for caching.
+- The rest of the suite, apart from the three slow task files CI runs on their own: 206 passed and 55 skipped (the Docker-container variants of the sandbox tests, since there's no Docker daemon in this session; the bwrap variants ran).
+- `results/caching-check/anthropic__claude-haiku-5.5.json`: the m5-spacer opening request sent twice to Haiku 5.5, served by Claude Platform on AWS (the provider behind every saved Claude call). Call 1: 6,738 prompt tokens, 0 cached, 6,734 written, $0.00099. Call 2: 6,734 cached, 0 written, $0.00022.
+- The check, and the issue 34 trials run from `claude/caching-pilot`, are stamped with commits on that branch from `492575a` on: a trial's stamp is the branch head when it was saved, and the commits after `492575a` add only saved trials and scripts. None of those commits will be on `main`, because this squashed commit replaces them. Their `pbe/`, `catalog/`, `pyproject.toml` and `uv.lock` are identical to this commit's. `tasks/` differs only by `tasks/estoa-light/files/datasheet.png`, from #22, which none of those runs uses.
+
 ## 2026-11-04: In `can_run_code`, `submit_design` builds every part and sends build errors back (issue 26)
 
 Dan, on a test print that crashed on a code bug: "the model should be able to know about the bug and attempt to fix it". In `can_ask` and `all_given`, parts are first built during grading, so a model never hears about a build error: `builds` fails 11 of the saved trials, and the audit on #15 found 9 of those are code errors, such as a `NameError` on `math`. Opt-in with `can_run_code`, and no run uses it yet: no model was called.

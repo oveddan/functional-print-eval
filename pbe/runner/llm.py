@@ -18,6 +18,10 @@ from pydantic import BaseModel
 URL = "https://openrouter.ai/api/v1/chat/completions"
 OP_REF = "op://kb-sync/OpenRouter/credential"
 RETRYABLE = {408, 429, 500, 502, 503, 504}
+# Anthropic's automatic prompt caching, as OpenRouter documents it (docs/guides/best-practices/prompt-caching,
+# read 2026-11-04): one top-level field, so the messages and tools sent stay byte for byte what they were.
+# The default 5-minute cache: every saved Claude turn came back in under 75 s. Other providers cache on their own.
+AUTOMATIC_CACHE = {"type": "ephemeral"}
 
 
 class LLMError(RuntimeError):
@@ -81,6 +85,16 @@ def _attempt(model, data, timeout) -> dict:
         raise _Failed(f"{model}: {error or 'no choices in response'}", body_error=error)
     response["elapsed_s"] = round(time.monotonic() - started, 1)
     return response
+
+
+def requests_caching(model) -> bool:
+    """Whether calls to this model ask for prompt caching: Claude models only (issue 34)."""
+    return model.startswith("anthropic/")
+
+
+def caching_params(model) -> dict:
+    """What a call adds to its request to ask for caching: a price change, never a change to what the model reads."""
+    return {"cache_control": AUTOMATIC_CACHE} if requests_caching(model) else {}
 
 
 def chat(model, messages, tools=None, retries=4, timeout=900, **params) -> dict:
