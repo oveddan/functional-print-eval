@@ -1,0 +1,355 @@
+task: servo-mount
+note: 'Design is a plate with a through opening for the servo body. The tabs rest
+  on the top ledges and four M4 screws clamp them down into hex nut pockets underneath.
+  The servo hangs below the plate, so the tab clamp carries the load. Several inputs
+  are unmeasured: the two-hole spacing on one tab (guessed 14 mm), cable diameter
+  and exit height (guessed 6 mm slot), tab width, and whether the top-face rib interferes
+  with the washers. The design should not be printed until the hole spacing is confirmed.'
+questions:
+- text: Centre-to-centre distance between the two holes on one tab (not measured;
+    plate uses a guessed 14 mm). Please measure before printing.
+  answer: null
+- text: Cable outer diameter and where it exits the case end (height below the tab).
+    Slot is guessed at 6 mm wide.
+  answer: null
+- text: 'Rib: which direction it runs and whether it sits under the washer footprint
+    (washer OD 9 mm). The rib stands 1.8 mm above the tab top, so a washer on the
+    rib may tilt. If it does, add a shallow recess in the plate or a thicker washer.'
+  answer: null
+- text: Tab width across the body. Plate is 25 mm wide, assumed to fit under the tabs.
+  answer: null
+params:
+  body_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case end to end, tabs excluded
+  body_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case side to side
+  body_h:
+    value: 40.4
+    unit: mm
+    kind: world
+    source: measured
+    note: case top to bottom
+  tab_top_to_case_top:
+    value: 5.66
+    unit: mm
+    kind: world
+    source: measured
+    note: measured 5.63 to 5.69, averaged
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  hole_span:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge to inside edge across the body; hole centres are at hole_span
+      + tab_hole_d
+  hole_y_spacing:
+    value: 14.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: centre-to-centre spacing of the two holes on one tab. NOT MEASURED. Guessed.
+      Must be measured before printing; the plate's screw pattern depends on it.
+  cable_d:
+    value: 6.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: cable outer diameter, NOT MEASURED. Guessed; the cable slot is sized from
+      this.
+  screw_d:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  screw_clear:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole in plate for M4
+  nut_af:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 3.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: extra width in the hex pocket for printing
+  opening_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: clearance each side of the servo body in the plate opening
+  plate_t:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: plate thickness; tabs rest on the top face
+  plate_half_x:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_half_y:
+    value: 12.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cable_slot_w:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: slot width for the cable; should be at least cable_d
+  washer_t:
+    value: 0.8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  tab_top_z:
+    value: 8.28
+    unit: mm
+    kind: design
+    source: design
+    note: 'plate frame: plate_t + tab_t'
+parts:
+- id: plate
+  role: final
+  material: PLA black (high-speed)
+  code: "import math\n\ndef build(p):\n    T = p.plate_t\n    hx = p.hole_span / 2\
+    \ + p.tab_hole_d / 2\n    hy = p.hole_y_spacing / 2\n    ox = p.body_len / 2 +\
+    \ p.opening_clear\n    oy = p.body_w / 2 + p.opening_clear\n    plate = cq.Workplane('XY').box(2\
+    \ * p.plate_half_x, 2 * p.plate_half_y, T, centered=(True, True, False))\n   \
+    \ opening = cq.Workplane('XY').box(2 * ox, 2 * oy, T + 2, centered=(True, True,\
+    \ False)).translate((0, 0, -1))\n    plate = plate.cut(opening)\n    pts = [(sx\
+    \ * hx, sy * hy) for sx in (-1, 1) for sy in (-1, 1)]\n    clear = cq.Workplane('XY').pushPoints(pts).circle(p.screw_clear\
+    \ / 2).extrude(T + 2).translate((0, 0, -1))\n    plate = plate.cut(clear)\n  \
+    \  nut_d = (p.nut_af + p.nut_clear) / math.cos(math.radians(30))\n    nuts = cq.Workplane('XY').pushPoints(pts).polygon(6,\
+    \ nut_d).extrude(p.nut_h + 1.3).translate((0, 0, -1))\n    plate = plate.cut(nuts)\n\
+    \    slot = cq.Workplane('XY').box(p.plate_half_x - ox + 2, p.cable_slot_w, T\
+    \ + 2, centered=(False, True, False)).translate((ox - 1, 0, -1))\n    plate =\
+    \ plate.cut(slot)\n    return plate\n"
+  print_orientation: bottom face (z=0) on the bed, tab ledge face up
+  use_orientation: bottom face down, shaft pointing up, servo body hanging through
+    the opening
+hardware:
+- id: screw4
+  ref: ISO 4762 M4x10
+  qty: 4
+- id: washer4
+  ref: ISO 7089 M4
+  qty: 4
+- id: nut4
+  ref: ISO 4032 M4
+  qty: 4
+joints:
+- id: j_px_py
+  fastener: screw4
+  axis_origin:
+  - 24.595
+  - 7.0
+  - 9.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: clear_hole_+x+y
+    role: clearance
+  - part: plate
+    feature: nut_pocket_+x+y
+    role: nut_pocket
+  nut: nut4
+  external: null
+- id: j_px_my
+  fastener: screw4
+  axis_origin:
+  - 24.595
+  - -7.0
+  - 9.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: clear_hole_+x-y
+    role: clearance
+  - part: plate
+    feature: nut_pocket_+x-y
+    role: nut_pocket
+  nut: nut4
+  external: null
+- id: j_mx_py
+  fastener: screw4
+  axis_origin:
+  - -24.595
+  - 7.0
+  - 9.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: clear_hole_-x+y
+    role: clearance
+  - part: plate
+    feature: nut_pocket_-x+y
+    role: nut_pocket
+  nut: nut4
+  external: null
+- id: j_mx_my
+  fastener: screw4
+  axis_origin:
+  - -24.595
+  - -7.0
+  - 9.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: clear_hole_-x-y
+    role: clearance
+  - part: plate
+    feature: nut_pocket_-x-y
+    role: nut_pocket
+  nut: nut4
+  external: null
+criteria:
+- id: c_body_opening
+  part: plate
+  feature: body opening
+  relation: contains
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - body_len
+  - body_w
+  - opening_clear
+  check:
+    method: measure
+    ref: null
+    description: Servo body (40.58 x 19.82) drops through the opening without binding.
+- id: c_holes
+  part: plate
+  feature: clearance holes
+  relation: clears
+  hardware: screw4
+  clearance_mm: 0.5
+  params:
+  - hole_y_spacing
+  - hole_span
+  - tab_hole_d
+  check:
+    method: measure
+    ref: null
+    description: Confirm the tab hole centre spacing on one tab (hole_y_spacing) matches
+      the plate before printing.
+- id: c_nuts
+  part: plate
+  feature: hex nut pockets
+  relation: seats
+  hardware: nut4
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_clear
+  check:
+    method: template
+    ref: null
+    description: Nut drops into the hex pocket from below and is held.
+- id: c_cable
+  part: plate
+  feature: cable slot
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - cable_d
+  - cable_slot_w
+  check:
+    method: measure
+    ref: null
+    description: Measure the servo cable diameter and exit height; the slot must pass
+      it.
+manual:
+- n: '1'
+  text: Print the plate with its flat bottom on the bed. Check the four clearance
+    holes and the four hex pockets on the underside are clean.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one M4 hex nut into each of the four hex pockets from the underside
+    of the plate. The nut corners point along the plate length (X). Nuts should sit
+    flush or slightly recessed.
+  parts:
+  - plate
+  hardware:
+  - nut4
+  tool: null
+- n: '3'
+  text: Lower the servo shaft-first down through the opening from the top of the plate,
+    with the cable end toward the cable slot. The two tabs should rest on the plate
+    top ledges on either side of the opening. Feed the cable out through the slot.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Place one M4 washer on each tab hole on top of the tab.
+  parts:
+  - plate
+  hardware:
+  - washer4
+  tool: null
+- n: '5'
+  text: Insert an M4x10 socket head screw through each washer and tab hole and thread
+    it into the nut below. Tighten evenly across the four screws until the tabs are
+    clamped and the servo does not wobble. Do not overtighten the PLA.
+  parts:
+  - plate
+  hardware:
+  - screw4
+  tool: 2.5 mm hex key

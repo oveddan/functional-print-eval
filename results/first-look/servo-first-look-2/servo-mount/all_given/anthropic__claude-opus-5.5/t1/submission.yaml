@@ -1,0 +1,385 @@
+task: servo-mount
+note: The servo hangs below the plate and only its top end comes through, so the cable
+  never has to pass through the cutout. The snug cutout and the rib grooves stop it
+  moving sideways, and the four clamped tabs stop it rocking. M4 screws fit the 4.58
+  mm tab holes. The heads are small enough not to hit the ribs. You don't need the
+  coupon's outer border; it's just the plate printed at 3 mm.
+questions:
+- text: I couldn't get the spacing between the two holes on one tab. I used the datasheet's
+    10 mm, and the slots also cover a 12 mm spacing. Do your tab holes fall inside
+    the slots?
+  answer: null
+- text: The grooves assume each rib runs along the servo's long axis, centred between
+    the tab's two holes. Is that right?
+  answer: null
+params:
+  body_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case end to end, tabs excluded
+  body_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  body_h:
+    value: 40.4
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  tab_to_top:
+    value: 5.63
+    unit: mm
+    kind: world
+    source: measured
+    note: smallest reading of 5.63-5.69 used, so the plate can't be thicker than the
+      case sticks up
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  hole_inner_span:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge to inside edge across the two tabs; centres = 44.61 + 4.58 =
+      49.19
+  hole_y_min:
+    value: 5.0
+    unit: mm
+    kind: world
+    source: datasheet
+    note: 'MG996R datasheet: holes 10 mm apart across one tab -> 5 mm from the centreline'
+  hole_y_max:
+    value: 6.1
+    unit: mm
+    kind: world
+    source: guessed
+    note: one reading of the 8.31 mm rib-position measurement puts holes ~12 mm apart;
+      the slot covers both 10 and 12 mm
+  rib_w:
+    value: 1.51
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  rib_h:
+    value: 1.8
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  m4_d:
+    value: 4.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m4_washer_t:
+    value: 0.8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m4_washer_od:
+    value: 9.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m4_locknut_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  screw_clear_d:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for M4
+  body_clearance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: per side, so the case fits snug in the cutout with no wobble
+  rib_clear:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: per side, rib groove
+  rib_groove_extra:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: less than tab_to_top (5.63) so the case top stands about 0.6 mm above the
+      plate and the horn clears it
+  plate_len:
+    value: 70.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_w:
+    value: 40.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: servo_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    L, W, T = p.plate_len, p.plate_w, p.plate_t\n    plate\
+    \ = cq.Workplane('XY').box(L, W, T, centered=(True, True, False))\n    cl = p.body_clearance\n\
+    \    cut = cq.Workplane('XY').box(p.body_len + 2*cl, p.body_w + 2*cl, T + 2, centered=(True,\
+    \ True, False)).translate((0, 0, -1))\n    plate = plate.cut(cut)\n    hx = (p.hole_inner_span\
+    \ + p.tab_hole_d) / 2.0\n    yc = (p.hole_y_min + p.hole_y_max) / 2.0\n    slen\
+    \ = (p.hole_y_max - p.hole_y_min) + p.screw_clear_d\n    for sx in (-1, 1):\n\
+    \        for sy in (-1, 1):\n            s = (cq.Workplane('XY').center(sx*hx,\
+    \ sy*yc)\n                 .slot2D(slen, p.screw_clear_d, angle=90)\n        \
+    \         .extrude(T + 2).translate((0, 0, -1)))\n            plate = plate.cut(s)\n\
+    \    gw = p.rib_w + 2*p.rib_clear\n    gd = p.rib_h + p.rib_groove_extra\n   \
+    \ x0 = p.body_len/2.0\n    glen = L/2.0 + 1 - x0\n    for sx in (-1, 1):\n   \
+    \     g = cq.Workplane('XY').box(glen, gw, gd + 1, centered=(True, True, False)).translate((sx*(x0\
+    \ + glen/2.0), 0, -1))\n        plate = plate.cut(g)\n    return plate\n"
+  print_orientation: Underside (the face with the two rib grooves, which goes against
+    the servo tabs) on the bed, as modelled. No supports.
+  use_orientation: Grooved face down. The servo's top end comes up from below through
+    the rectangular cutout, with the shaft pointing up and the tabs clamped under
+    the plate.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    L, W, T = p.plate_len, p.plate_w, p.coupon_t\n    plate\
+    \ = cq.Workplane('XY').box(L, W, T, centered=(True, True, False))\n    cl = p.body_clearance\n\
+    \    plate = plate.cut(cq.Workplane('XY').box(p.body_len + 2*cl, p.body_w + 2*cl,\
+    \ T + 2, centered=(True, True, False)).translate((0, 0, -1)))\n    hx = (p.hole_inner_span\
+    \ + p.tab_hole_d) / 2.0\n    yc = (p.hole_y_min + p.hole_y_max) / 2.0\n    slen\
+    \ = (p.hole_y_max - p.hole_y_min) + p.screw_clear_d\n    for sx in (-1, 1):\n\
+    \        for sy in (-1, 1):\n            plate = plate.cut(cq.Workplane('XY').center(sx*hx,\
+    \ sy*yc).slot2D(slen, p.screw_clear_d, angle=90).extrude(T + 2).translate((0,\
+    \ 0, -1)))\n    gw = p.rib_w + 2*p.rib_clear\n    gd = p.rib_h + p.rib_groove_extra\n\
+    \    x0 = p.body_len/2.0\n    glen = L/2.0 + 1 - x0\n    for sx in (-1, 1):\n\
+    \        plate = plate.cut(cq.Workplane('XY').box(glen, gw, gd + 1, centered=(True,\
+    \ True, False)).translate((sx*(x0 + glen/2.0), 0, -1)))\n    # lighten: hollow\
+    \ out the outer margin, keep a 5 mm frame around the cutout and slots\n    return\
+    \ plate\n"
+  print_orientation: Grooved face on the bed
+  use_orientation: Held up against the servo by hand to test the fit
+hardware:
+- id: screw
+  ref: ISO 4762 M4x16
+  qty: 4
+- id: locknut
+  ref: ISO 10511 M4
+  qty: 4
+- id: washer
+  ref: ISO 7089 M4
+  qty: 8
+joints:
+- id: j1
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - 5.55
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: top face, washer under head
+    role: washer
+  - part: servo_plate
+    feature: slot -x,+y
+    role: clearance
+  nut: locknut
+  external: servo tab U-hole; washer + lock nut under the tab
+- id: j2
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - -5.55
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: top face, washer under head
+    role: washer
+  - part: servo_plate
+    feature: slot -x,-y
+    role: clearance
+  nut: locknut
+  external: servo tab U-hole; washer + lock nut under the tab
+- id: j3
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - 5.55
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: top face, washer under head
+    role: washer
+  - part: servo_plate
+    feature: slot +x,+y
+    role: clearance
+  nut: locknut
+  external: servo tab U-hole; washer + lock nut under the tab
+- id: j4
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - -5.55
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: top face, washer under head
+    role: washer
+  - part: servo_plate
+    feature: slot +x,-y
+    role: clearance
+  nut: locknut
+  external: servo tab U-hole; washer + lock nut under the tab
+criteria:
+- id: c_body
+  part: servo_plate
+  feature: rectangular cutout
+  relation: contains
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - body_len
+  - body_w
+  - body_clearance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The case top should slide into the cutout by hand with no play you
+      can feel. If it's too tight, raise body_clearance to 0.3. If it rocks, lower
+      it to 0.1.
+- id: c_rib
+  part: servo_plate
+  feature: rib grooves on underside
+  relation: clears
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - rib_w
+  - rib_h
+  - rib_clear
+  - rib_groove_extra
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The tab top faces should sit flat against the underside, with the
+      ribs inside the grooves
+- id: c_holes
+  part: servo_plate
+  feature: 4 slots
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - hole_inner_span
+  - tab_hole_d
+  - hole_y_min
+  - hole_y_max
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Looking down a slot, you should see the matching tab hole inside
+      it
+- id: c_top
+  part: servo_plate
+  feature: plate thickness vs case top
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  - tab_to_top
+  check:
+    method: measure
+    ref: null
+    description: Once assembled, the case top stands about 0.6 mm proud of the plate
+manual:
+- n: '1'
+  text: 'Print fit_coupon (3 mm thick, about 15 min) with the grooved face down. Push
+    the top end of the servo up into it from the grooved side. Check three things:
+    the case is snug with no play, the ribs on the tabs drop into the grooves so the
+    tabs sit flat, and each tab hole lines up inside a slot. If the fit is off, change
+    body_clearance and print the coupon again.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print servo_plate in PLA with the grooved face on the bed. No supports needed.
+    4 walls or 40% infill is enough.
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Hold the plate grooved side down. From below, push the shaft end of the servo
+    up through the cutout until the tabs press against the underside, with each rib
+    in its groove. The cable stays below the plate.
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'From the top, put a washer on each M4x16 screw and push it down through a
+    slot and the tab hole under it. Under each tab, add a washer and then a lock nut.
+    Tighten all four in a cross pattern with a 3 mm hex key until the tabs are pulled
+    flat. Stop there: overtightening will crush the PLA.'
+  parts:
+  - servo_plate
+  hardware:
+  - screw
+  - washer
+  - locknut
+  tool: 3 mm hex key, 7 mm spanner

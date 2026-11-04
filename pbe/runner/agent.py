@@ -9,6 +9,7 @@ submit_design builds every part before accepting the design, sending build error
 fix (pbe/runner/build_on_submit.py). The other conditions' prompt and tools are exactly as
 they were before either existed.
 """
+import base64
 import json
 import re
 import time
@@ -29,9 +30,10 @@ from pbe.runner.tasks import TaskFormat
 from pbe.runner.trial_record import BuildOnSubmit, ModelCall, Settings, TrialRecord
 
 ROOT = Path(__file__).resolve().parents[2]
-CONDITIONS = ("can_ask", "all_given", python_tool.CONDITION)
+DATASHEET = "can_ask_datasheet"  # can_ask, with the task's datasheet handed over with the request
+CONDITIONS = ("can_ask", "all_given", python_tool.CONDITION, DATASHEET)
 # each code run takes a turn, so a model that can run code gets more of them
-DEFAULT_MAX_TURNS = {"can_ask": 8, "all_given": 8, python_tool.CONDITION: 20}
+DEFAULT_MAX_TURNS = {"can_ask": 8, "all_given": 8, python_tool.CONDITION: 20, DATASHEET: 8}
 
 SYSTEM = """You're designing a part for someone to 3D print at home. They'll print it on their own printer, use only the hardware listed below, and put it together by following your manual.
 
@@ -71,8 +73,14 @@ def setup_text():
     ])
 
 
-def hardware_text():
+def hardware_text(left_out=()):
+    """The hardware list as the prompt shows it. `left_out` names top-level sections a task gives
+    through its hidden facts instead (its prompt.yaml); with none, the whole catalog."""
     data = yaml.safe_load((ROOT / "catalog/hardware.yaml").read_text())
+    unknown = set(left_out) - set(data)
+    if unknown:
+        raise ValueError(f"no section {sorted(unknown)} in catalog/hardware.yaml to leave out")
+    data = {section: value for section, value in data.items() if section not in left_out}
 
     def strip(node):  # internal bookkeeping, not facts about the hardware
         if isinstance(node, dict):
@@ -151,9 +159,24 @@ def tools(condition="can_ask", assembly=False):
     ] + ([python_tool.spec()] if condition == python_tool.CONDITION else [])
 
 
+class NoDatasheet(ValueError):
+    """can_ask_datasheet on a task with no datasheet in its prompt.yaml."""
+
+
+def _image(page):
+    return {"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(page.read_bytes()).decode()}}
+
+
 def first_message(task, condition, person):
+    """The person's opening message: the request, with every measurement in all_given, and with the
+    datasheet's pages as images in can_ask_datasheet."""
     if condition == "all_given" and person.things:
         return f"{task.request}\n\nMeasurements I took:\n{person.all_measurements()}"
+    if condition == DATASHEET:
+        if not task.datasheet:
+            raise NoDatasheet(f"{task.id} has no datasheet for {DATASHEET}")
+        text = f"{task.request}\n\n{task.datasheet_line}" if task.datasheet_line else task.request
+        return [{"type": "text", "text": text}] + [_image(page) for page in task.datasheet]
     return task.request
 
 
@@ -372,8 +395,8 @@ def _with_task_format(text, task_format: TaskFormat | None):
     return text
 
 
-def system_prompt(max_turns, python: PythonTool | None = None, task_format: TaskFormat | None = None):
-    text = SYSTEM.format(setup=setup_text(), hardware=hardware_text(), max_turns=max_turns)
+def system_prompt(max_turns, python: PythonTool | None = None, task_format: TaskFormat | None = None, hardware_left_out=()):
+    text = SYSTEM.format(setup=setup_text(), hardware=hardware_text(hardware_left_out), max_turns=max_turns)
     text = _with_task_format(text, task_format)
     if python is None:
         return text
@@ -385,7 +408,7 @@ def system_prompt(max_turns, python: PythonTool | None = None, task_format: Task
 
 
 def opening_messages(task, condition, person, max_turns, python: PythonTool | None = None):
-    system = system_prompt(max_turns, python, task.format)
+    system = system_prompt(max_turns, python, task.format, task.hardware_left_out)
     return [{"role": "system", "content": system}, {"role": "user", "content": first_message(task, condition, person)}]
 
 

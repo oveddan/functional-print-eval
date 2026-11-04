@@ -1,0 +1,210 @@
+task: servo-mount
+note: ''
+questions: []
+params:
+  servo_tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: measured tab hole width (U open to tab end)
+  servo_hole_spacing_inside:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge to inside edge across the two tabs
+  servo_tab_thickness:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_rib_width:
+    value: 1.51
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_rib_height:
+    value: 1.8
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_rib_position:
+    value: 8.31
+    unit: mm
+    kind: world
+    source: measured
+    note: from hole side to rib center along tab
+  servo_shaft_d:
+    value: 5.8
+    unit: mm
+    kind: world
+    source: datasheet
+    note: MG996R splined output shaft max diameter
+  servo_body_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_body_l:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  screw_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M3 screw major diameter for clearance
+  screw_head_d:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M3 head diameter
+  screw_head_h:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M3 head height
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across-flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 height
+  plate_t:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: plate thickness
+  clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: general clearance
+  rib_pocket_w:
+    value: 2.6
+    unit: mm
+    kind: design
+    source: design
+    note: rib-clearance pocket width, per tab
+  rib_pocket_h:
+    value: 1.9
+    unit: mm
+    kind: design
+    source: design
+    note: rib-clearance pocket depth
+  shaft_opening_d:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: center opening diameter around shaft
+parts:
+- id: servo_mount_plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    hole_d = p.servo_tab_hole_d \
+    \ # screw passes through the U-hole\n    # center-to-center across tabs\n    ctc\
+    \ = p.servo_hole_spacing_inside + hole_d  # inside->inside + one hole dia = center->center\n\
+    \    plate_w = p.servo_body_w + 2*18.0  # width covering both tabs\n    plate_l\
+    \ = p.servo_body_l + 60.0      # length spanning both tabs\n\n    base = (cq.Workplane('XY')\n\
+    \            .box(plate_l, ctc + 2*10.0, p.plate_t, centered=(True,True,False)))\n\
+    \n    # central opening for servo body + shaft\n    base = base.faces('>Z').workplane().rect(p.servo_body_l\
+    \ + 14.0, p.servo_body_w + 14.0).cutBlind(-p.plate_t)\n    base = base.faces('>Z').workplane().hole(p.shaft_opening_d)\n\
+    \n    # four screw holes at the tab positions (two per tab)\n    x = p.servo_body_l/2.0\n\
+    \    y = ctc/2.0\n    for sx in (x, -x):\n        for sy in (y, -y):\n       \
+    \     base = (base.faces('>Z').workplane()\n                    .moveTo(sx, sy)\n\
+    \                    .cboreHole(p.screw_d + p.clearance, p.screw_head_d + p.clearance,\
+    \ p.screw_head_h + 1.0))\n\n    # rib-clearance pockets on underside (tab faces\
+    \ the plate's underside)\n    # rib runs along the tab between the two holes;\
+    \ pocket centered at rib position from hole side\n    # approximate: pocket spans\
+    \ the tab width at rib location\n    for sx in (p.servo_body_l/2.0 + 8.0, -p.servo_body_l/2.0\
+    \ - 8.0):\n        base = (base.faces('<Z').workplane()\n                .center(sx,\
+    \ 0)\n                .rect(p.rib_pocket_w, ctc + 4.0)\n                .cutBlind(-p.rib_pocket_h))\n\
+    \n    return base"
+  print_orientation: flat, large face down on bed (the face that contacts the servo
+    tabs faces up)
+  use_orientation: servo tabs face the plate underside, shaft pokes up through center
+    opening
+hardware:
+- id: screws
+  ref: ISO 4762 M3x16
+  qty: 4
+- id: nuts
+  ref: ISO 4032 M3
+  qty: 4
+- id: washers
+  ref: ISO 7089 M3
+  qty: 4
+joints:
+- id: tab_joint_a1
+  fastener: screws
+  axis_origin:
+  - 20.29
+  - 24.61
+  - 4.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: cbore hole top
+    role: head_seat
+  - part: servo_mount_plate
+    feature: through hole
+    role: clearance
+  - part: servo_mount_plate
+    feature: thread through U-hole
+    role: thread
+  nut: nuts
+  external: null
+criteria: []
+manual:
+- n: '1'
+  text: Print servo_mount_plate flat, large face on the bed.
+  parts:
+  - servo_mount_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Lay the plate flat. Slide the servo in from below so its two mounting tabs
+    sit against the plate's underside and the shaft pokes up through the center opening.
+  parts:
+  - servo_mount_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop one M3x16 screw through each of the four holes, threading through the
+    servo's tab U-holes.
+  parts:
+  - servo_mount_plate
+  hardware:
+  - screws
+  tool: null
+- n: '4'
+  text: From below, slip a washer and spin an M3 nut onto each screw. Tighten evenly
+    until the tabs sit flat and there is no wobble.
+  parts:
+  - servo_mount_plate
+  hardware:
+  - nuts
+  - washers
+  tool: null

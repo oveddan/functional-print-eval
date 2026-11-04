@@ -1,5 +1,5 @@
-"""Load a task: the person's request, the hidden facts, the typed requirements and
-the reference solution."""
+"""Load a task: the person's request, the hidden facts, the typed requirements, the reference
+solution, its format (format.yaml) and, if the task has one, its prompt rule (prompt.yaml)."""
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
@@ -50,6 +50,16 @@ class TaskFormat(BaseModel):
     own_hardware: list[OwnPart] = []
 
 
+class PromptRule(BaseModel):
+    """A task's prompt.yaml: what its system prompt leaves out, and the datasheet the can_ask_datasheet
+    condition hands over with the request. Most tasks have none, and their prompt is the same as
+    before prompt rules existed."""
+    model_config = ConfigDict(extra="forbid")
+    hardware_left_out: list[str] = []  # top-level sections of catalog/hardware.yaml; the task's hidden facts carry them instead
+    datasheet: list[str] = []  # page images, relative to the task folder
+    datasheet_line: str = ""  # what the person says as they hand it over
+
+
 @dataclass
 class Task:
     id: str
@@ -58,6 +68,9 @@ class Task:
     requirements: list[Requirement]
     reference: str | None  # the reference solution, as YAML text
     format: TaskFormat = field(default_factory=TaskFormat)
+    hardware_left_out: tuple[str, ...] = ()  # from prompt.yaml, if the task has one
+    datasheet: tuple[Path, ...] = ()  # page images, from prompt.yaml
+    datasheet_line: str = ""
 
 
 def _variants(family):
@@ -103,4 +116,12 @@ def load(task_id) -> Task:
     requirements = [Requirement.model_validate(entry) for entry in yaml.safe_load(read("requirements.yaml")) or []]
     reference = read("reference.yaml") if (folder / "reference.yaml").exists() else None
     task_format = TaskFormat.model_validate(catalog.task_format(task_id))
-    return Task(task_id, request, facts, requirements, reference, task_format)
+    rule = _prompt_rule(folder)
+    return Task(task_id, request, facts, requirements, reference, task_format, tuple(rule.hardware_left_out),
+                tuple(folder / page for page in rule.datasheet), rule.datasheet_line)
+
+
+def _prompt_rule(folder) -> PromptRule:
+    if not (folder / "prompt.yaml").exists():
+        return PromptRule()
+    return PromptRule.model_validate(yaml.safe_load((folder / "prompt.yaml").read_text()))

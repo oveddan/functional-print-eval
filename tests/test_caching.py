@@ -34,7 +34,8 @@ def requests_sent(model, condition, monkeypatch):
         sent.append((json.dumps(messages), json.dumps(tools), params))
         tool_call = {"id": "1", "type": "function", "function": {"name": "measure", "arguments": '{"item": "a", "what": "b"}'}}
         return {"choices": [{"message": {"role": "assistant", "tool_calls": [tool_call]}}]}
-    record, _, _ = agent.run_trial(tasks.load("tripod-plate"), model, condition, max_turns=3, chat=chat)
+    task = "servo-mount" if condition == agent.DATASHEET else "tripod-plate"  # only servo-mount has a datasheet
+    record, _, _ = agent.run_trial(tasks.load(task), model, condition, max_turns=3, chat=chat)
     return sent, record
 
 

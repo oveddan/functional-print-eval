@@ -252,6 +252,10 @@ def main():
         return
     args.condition = args.condition or ["can_ask"]
     exit_unless_able_to_run(args.condition)
+    if agent.DATASHEET in args.condition:
+        missing = [task_id for task_id in args.task if not tasks.load(task_id).datasheet]
+        if missing:
+            sys.exit(f"{agent.DATASHEET}: no datasheet in prompt.yaml for {', '.join(missing)}")
     run_all_trials(args, run_dir)
     summarize(run_dir)
     print(f"spent ${spent(run_dir):.4f}; summary in {run_dir / 'summary.csv'}")

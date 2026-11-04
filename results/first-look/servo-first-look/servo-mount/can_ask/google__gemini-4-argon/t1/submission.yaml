@@ -1,0 +1,412 @@
+task: servo-mount
+note: The 9.5 mm thick plate closely hugs the 40.58 x 19.82 mm servo body on all four
+  sides to eliminate lateral play, while four M4x12 screws with M4 washers clamp the
+  2.28 mm thick U-slotted mounting tabs against captive M4 hex nuts recessed into
+  the underside of the plate.
+questions:
+- text: Since the spacing between the two holes on a single mounting tab wasn't measured,
+    it is set to the MG996R datasheet value of 10.0 mm; print the 2 mm thick servo_fit_coupon
+    first to confirm the hole alignment on your servo.
+  answer: null
+params:
+  m4_washer_t:
+    value: 0.8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Thickness of ISO 7089 M4 washer
+  plate_corner_r:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Outer corner fillet radius of the mounting plate
+  servo_tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured width/diameter of the U-shaped mounting holes in the servo tabs
+  servo_body_length:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured length of the MG996R case excluding mounting tabs
+  m4_nut_af:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Across-flats width of ISO 4032 M4 hex nut
+  m4_washer_id:
+    value: 4.3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Inner diameter of ISO 7089 M4 washer
+  servo_tab_thickness:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured thickness of the MG996R mounting tabs
+  servo_body_width:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured width of the MG996R case side to side
+  body_clearance:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Total clearance added to servo body length and width (0.125 mm per side)
+      for a snug, wobble-free slip fit
+  plate_thickness:
+    value: 9.5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the mounting plate to support the servo walls and fully recess
+      the nuts and screw tips
+  m4_clearance_d:
+    value: 4.3
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for M4 screws
+  coupon_thickness:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the quick-print fit test coupon
+  m4_screw_len:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Length of ISO 4762 M4x12 screw
+  plate_width:
+    value: 44
+    unit: mm
+    kind: design
+    source: design
+    note: Overall width of the servo mounting plate
+  coupon_margin:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Border width around the holes on the test coupon
+  m4_d:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal thread diameter of ISO 4762 M4 screw
+  servo_tab_hole_pitch_y:
+    value: 10
+    unit: mm
+    kind: world
+    source: datasheet
+    note: Standard MG996R center-to-center spacing between the two holes on a single
+      mounting tab
+  m4_head_d:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Head diameter of ISO 4762 M4 screw
+  nut_af_clearance:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance across flats for captive M4 hex nut pocket
+  nut_pocket_depth:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the recessed hex nut pocket on the bottom face
+  m4_nut_h:
+    value: 3.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Thickness of ISO 4032 M4 hex nut
+  plate_length:
+    value: 76
+    unit: mm
+    kind: design
+    source: design
+    note: Overall length of the servo mounting plate (leaves flat border for base
+      attachment later)
+  servo_hole_inner_span:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured distance between the inside edges of the holes on opposite mounting
+      tabs
+  m4_washer_od:
+    value: 9
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Outer diameter of ISO 7089 M4 washer
+  m4_head_h:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Head height of ISO 4762 M4 screw
+  servo_body_height:
+    value: 40.4
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured height of the MG996R case top to bottom
+parts:
+- id: servo_mount_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    cutout_l = p.servo_body_length + p.body_clearance\n  \
+    \  cutout_w = p.servo_body_width + p.body_clearance\n    hole_x = (p.servo_hole_inner_span\
+    \ + p.servo_tab_hole_d) / 2.0\n    hole_y = p.servo_tab_hole_pitch_y / 2.0\n \
+    \   hole_pts = [\n        (-hole_x, -hole_y),\n        (-hole_x, hole_y),\n  \
+    \      (hole_x, -hole_y),\n        (hole_x, hole_y),\n    ]\n    nut_af = p.m4_nut_af\
+    \ + p.nut_af_clearance\n    nut_circum_d = nut_af / 0.8660254037844386\n\n   \
+    \ part = (\n        cq.Workplane(\"XY\")\n        .box(p.plate_length, p.plate_width,\
+    \ p.plate_thickness, centered=(True, True, False))\n        .edges(\"|Z\")\n \
+    \       .fillet(p.plate_corner_r)\n        .faces(\">Z\")\n        .workplane()\n\
+    \        .rect(cutout_l, cutout_w)\n        .cutThruAll()\n        .faces(\">Z\"\
+    )\n        .workplane()\n        .pushPoints(hole_pts)\n        .hole(p.m4_clearance_d)\n\
+    \    )\n\n    nut_cutters = (\n        cq.Workplane(\"XY\")\n        .pushPoints(hole_pts)\n\
+    \        .polygon(6, nut_circum_d)\n        .extrude(p.nut_pocket_depth)\n   \
+    \ )\n\n    return part.cut(nut_cutters)\n"
+  print_orientation: Bottom face of the plate on the build plate (z = 0 to z = 9.5
+    mm)
+  use_orientation: Horizontal, with the top face (z = 9.5 mm) supporting the underside
+    of the MG996R mounting tabs and the servo shaft pointing up (+Z)
+- id: servo_fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    cutout_l = p.servo_body_length + p.body_clearance\n  \
+    \  cutout_w = p.servo_body_width + p.body_clearance\n    hole_x = (p.servo_hole_inner_span\
+    \ + p.servo_tab_hole_d) / 2.0\n    hole_y = p.servo_tab_hole_pitch_y / 2.0\n \
+    \   hole_pts = [\n        (-hole_x, -hole_y),\n        (-hole_x, hole_y),\n  \
+    \      (hole_x, -hole_y),\n        (hole_x, hole_y),\n    ]\n    coupon_l = 2.0\
+    \ * hole_x + p.m4_clearance_d + 2.0 * p.coupon_margin\n    coupon_w = cutout_w\
+    \ + 2.0 * p.coupon_margin\n\n    coupon = (\n        cq.Workplane(\"XY\")\n  \
+    \      .box(coupon_l, coupon_w, p.coupon_thickness, centered=(True, True, False))\n\
+    \        .faces(\">Z\")\n        .workplane()\n        .rect(cutout_l, cutout_w)\n\
+    \        .cutThruAll()\n        .faces(\">Z\")\n        .workplane()\n       \
+    \ .pushPoints(hole_pts)\n        .hole(p.m4_clearance_d)\n    )\n    return coupon\n"
+  print_orientation: Flat on the build plate (z = 0 to z = 2.0 mm)
+  use_orientation: Slid over the MG996R body against the underside of the mounting
+    tabs to verify cutout fit and hole spacing
+hardware:
+- id: screw_m4x12
+  ref: ISO 4762 M4x12
+  qty: 4
+- id: washer_m4
+  ref: ISO 7089 M4
+  qty: 4
+- id: nut_m4
+  ref: ISO 4032 M4
+  qty: 4
+joints:
+- id: joint_neg_x_neg_y
+  fastener: screw_m4x12
+  axis_origin:
+  - -24.595
+  - -5.0
+  - 12.58
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: top_mounting_face
+    role: washer
+  - part: servo_mount_plate
+    feature: m4_clearance_holes
+    role: clearance
+  - part: servo_mount_plate
+    feature: m4_nut_pockets
+    role: nut_pocket
+  nut: nut_m4
+  external: MG996R mounting tab (-X, -Y)
+- id: joint_neg_x_pos_y
+  fastener: screw_m4x12
+  axis_origin:
+  - -24.595
+  - 5.0
+  - 12.58
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: top_mounting_face
+    role: washer
+  - part: servo_mount_plate
+    feature: m4_clearance_holes
+    role: clearance
+  - part: servo_mount_plate
+    feature: m4_nut_pockets
+    role: nut_pocket
+  nut: nut_m4
+  external: MG996R mounting tab (-X, +Y)
+- id: joint_pos_x_neg_y
+  fastener: screw_m4x12
+  axis_origin:
+  - 24.595
+  - -5.0
+  - 12.58
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: top_mounting_face
+    role: washer
+  - part: servo_mount_plate
+    feature: m4_clearance_holes
+    role: clearance
+  - part: servo_mount_plate
+    feature: m4_nut_pockets
+    role: nut_pocket
+  nut: nut_m4
+  external: MG996R mounting tab (+X, -Y)
+- id: joint_pos_x_pos_y
+  fastener: screw_m4x12
+  axis_origin:
+  - 24.595
+  - 5.0
+  - 12.58
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_mount_plate
+    feature: top_mounting_face
+    role: washer
+  - part: servo_mount_plate
+    feature: m4_clearance_holes
+    role: clearance
+  - part: servo_mount_plate
+    feature: m4_nut_pockets
+    role: nut_pocket
+  nut: nut_m4
+  external: MG996R mounting tab (+X, +Y)
+criteria:
+- id: servo_body_snug_fit
+  part: servo_mount_plate
+  feature: servo_body_pocket
+  relation: contains
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - servo_body_length
+  - servo_body_width
+  - body_clearance
+  check:
+    method: coupon
+    ref: servo_fit_coupon
+    description: Test-fit the MG996R servo case into the rectangular cutout of the
+      coupon before printing the full plate.
+- id: servo_tab_hole_alignment
+  part: servo_mount_plate
+  feature: m4_clearance_holes
+  relation: clears
+  hardware: screw_m4x12
+  clearance_mm: 0.3
+  params:
+  - servo_hole_inner_span
+  - servo_tab_hole_d
+  - servo_tab_hole_pitch_y
+  - m4_clearance_d
+  check:
+    method: coupon
+    ref: servo_fit_coupon
+    description: Align the coupon over the four mounting holes on the MG996R tabs
+      and check that four M4 screws pass through both the servo tabs and the coupon
+      holes.
+- id: washer_bridges_tab_slot
+  part: servo_mount_plate
+  feature: top_mounting_face
+  relation: supports
+  hardware: washer_m4
+  clearance_mm: 1.0
+  params:
+  - servo_tab_hole_d
+  - servo_tab_hole_pitch_y
+  - m4_washer_od
+  check:
+    method: measure
+    ref: null
+    description: Verify that the M4 washers sit flat on the servo mounting tabs and
+      bridge across the 4.58 mm U-shaped tab slots without overlapping each other.
+- id: nut_pocket_fit
+  part: servo_mount_plate
+  feature: m4_nut_pockets
+  relation: seats
+  hardware: nut_m4
+  clearance_mm: 0.25
+  params:
+  - m4_nut_af
+  - m4_nut_h
+  - nut_af_clearance
+  - nut_pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Press an ISO 4032 M4 hex nut into each bottom hex pocket and verify
+      that it seats cleanly below the bottom face of the plate.
+manual:
+- n: '1'
+  text: Print the 2 mm thick servo_fit_coupon first. Slide it over the bottom of the
+    MG996R servo case up to the mounting tabs to confirm the snug slip fit around
+    the case and verify that all four hole centers line up with the servo's tab slots.
+  parts:
+  - servo_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the servo_mount_plate and press four ISO 4032 M4 hex nuts into the hexagonal
+    pockets on the bottom face of the plate.
+  parts:
+  - servo_mount_plate
+  hardware:
+  - nut_m4
+  tool: null
+- n: '3'
+  text: Feed the servo wire and connector down through the central rectangular cutout
+    of the servo_mount_plate, then slide the MG996R body down into the cutout so its
+    mounting tabs sit flat on the top face of the plate with the servo shaft sticking
+    up.
+  parts:
+  - servo_mount_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Place an ISO 7089 M4 washer over each of the four open-ended U-slots on the
+    servo mounting tabs, insert the four ISO 4762 M4x12 socket head cap screws down
+    through the washers, servo tabs, and plate, and tighten them into the captive
+    M4 nuts with a 3 mm hex key.
+  parts:
+  - servo_mount_plate
+  hardware:
+  - screw_m4x12
+  - washer_m4
+  - nut_m4
+  tool: 3 mm hex key
