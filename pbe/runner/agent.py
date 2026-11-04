@@ -334,9 +334,10 @@ def code_tool(task, condition, workdir) -> PythonTool | None:
     return PythonTool.for_trial(task.id, workdir)
 
 
-def trial_settings(max_turns, max_tokens, python: PythonTool | None) -> Settings:
+def trial_settings(model, max_turns, max_tokens, python: PythonTool | None) -> Settings:
     code_settings = python.settings if python is not None else None
-    return Settings(max_turns=max_turns, max_tokens=max_tokens, temperature="provider default", run_python=code_settings)
+    return Settings(max_turns=max_turns, max_tokens=max_tokens, temperature="provider default", run_python=code_settings,
+                    prompt_caching=llm.requests_caching(model))
 
 
 def as_sent_back(message: dict) -> dict:
@@ -368,7 +369,7 @@ def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, c
     started = time.monotonic()
     for _ in range(max_turns):
         try:
-            response = chat(model, messages, tools=tools(condition), max_tokens=max_tokens)
+            response = chat(model, messages, tools=tools(condition), max_tokens=max_tokens, **llm.caching_params(model))
         except llm.LLMError as e:
             error = str(e)
             break
@@ -388,7 +389,7 @@ def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, c
         hidden=[f"{thing}.{measurement}" for thing, measurement in person.every_measurement()],
         limitations=trial_tools.limitations, cost_usd=round(sum(call.cost_usd for call in calls), 6),
         elapsed_s=round(time.monotonic() - started, 1),
-        settings=trial_settings(max_turns, max_tokens, python),
+        settings=trial_settings(model, max_turns, max_tokens, python),
         calls=calls,
     )
     return record, messages, trial_tools.submission

@@ -64,6 +64,20 @@ class ModelCall(Saved):
         """What the call was charged, or 0 if the provider didn't say."""
         return (self.usage or {}).get("cost") or 0
 
+    @property
+    def prompt_tokens(self) -> int:
+        return (self.usage or {}).get("prompt_tokens") or 0
+
+    @property
+    def cached_tokens(self) -> int:
+        """Prompt tokens read from the provider's cache, or 0 if it didn't say."""
+        return ((self.usage or {}).get("prompt_tokens_details") or {}).get("cached_tokens") or 0
+
+    @property
+    def cache_write_tokens(self) -> int:
+        """Prompt tokens written to the provider's cache, or 0 if it didn't say."""
+        return ((self.usage or {}).get("prompt_tokens_details") or {}).get("cache_write_tokens") or 0
+
 
 class CodeSettings(Saved):
     """How run_python ran the model's code, in the can_run_code condition."""
@@ -78,6 +92,7 @@ class Settings(Saved):
     max_tokens: int
     temperature: str
     run_python: CodeSettings | None = None  # only when the model could run code
+    prompt_caching: bool | None = None  # whether the runner asked for caching (llm.requests_caching); older records have none
 
 
 class BuildOnSubmit(Saved):
@@ -148,13 +163,15 @@ class TrialRecord(Saved):
     def as_saved(self) -> dict:
         """The fields grades.json keeps. Only a regraded trial has `regrades`, only a declined one
         has `declined`, only a trial whose model could run code has `settings.run_python` and
-        `build_on_submit`, and a record or an earlier verdict saved before `platform` was recorded
+        `build_on_submit`, only a trial saved since issue 34 has `settings.prompt_caching`, and a record or an earlier verdict saved before `platform` was recorded
         stays without one."""
         fields = self.model_dump()
         if not self.regrades:
             del fields["regrades"]
         if self.settings.run_python is None:
             del fields["settings"]["run_python"]
+        if self.settings.prompt_caching is None:
+            del fields["settings"]["prompt_caching"]
         if self.build_on_submit is None:
             del fields["build_on_submit"]
         if "platform" not in self.model_fields_set:
