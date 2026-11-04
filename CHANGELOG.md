@@ -2,6 +2,48 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-04: Audit fixes from issue 15; regraded: 27 pass, 50 fail, 22 not graded, 5 declined
+
+The decided calls from the audit of the 104 pilot trials (issue 15), applied as one change and regraded with `--regrade` (no model calls). Who made each call, as recorded on issue 15:
+- **Dan:** a test print can't fail a trial on its own (fix 1 below); declining gets its own category, never counted as a pass (fix 2); holed recess roofs keep failing `bridges` (unchanged).
+- **Claude**, after Dan handed over the last two calls on 2026-11-04 ("do what you think is best"): M3 at +0.1 counts as unsettled (fix 3), and the test print labelled `final` (DeepSeek V4.1 Flash, M5 t1) stays a fail on R1 (unchanged). These are not Dan's expert judgement.
+- **No decision needed:** the pocket-reader bug (fix 4) and the detection rule for declining.
+
+Changes:
+1. **Test prints.** `checks.py` marks each generic check (`builds`, `connected_bodies`, `bed_fit`, `bridges`) on a part with `role: coupon` as `test_print`. They stay in `grades.json` and in the new `test_print_failed` column of `summary.csv`, but don't count toward `all_pass`, `failed_checks` or `not_graded`. A generic check that crashes now runs again part by part, so a crash on a test print is marked as one too. No saved trial has a check crash.
+2. **Declined** (`pbe/graders/declined.py`), neither a pass nor a fail. Two rules, read from what was handed in and never from the model's prose: no final part (nothing, or only test prints); or a final part that didn't build because a `raise` in its own code fired under an `if` that reads a param handed in with no value. The build keeps only the error's text, so the error must come from exactly one `raise` in the code; then that one fired, and its `if` was true (from Codex's review, which showed a skipped guard sharing its message with an unguarded `raise`). Across all 106 saved trials the first rule catches exactly the 4 `can_ask` trials and the second only GPT-6.1 Sol's `all_given` t1. No ordinary crash matches: the other 10 trials with a failed build (on a final part or a test print) stopped on a NameError, TypeError, AttributeError or CAD kernel error, which no `raise` in their code produced. Limits: a model that labelled its only real part `coupon` would read as declined, and a stop with an f-string message isn't recognized. `TrialRecord` has `declined` (the reason) and a `verdict` property; A declined trial's findings stay in `grades.json`, but none count by check or class: its `failed_checks` and `not_graded` are empty, so a declined trial's R1 "no final part built" isn't tallied as a failure. `summary.csv` gains `verdict` and `declined` columns after the existing ones; `digest.py` and `gallery.py` show it. Older records load unchanged.
+3. **M3 +0.1.** `round1-coupons.yaml` codes it `won't go in`, with Dan's note "really struggles to go in". The record is unchanged; `nuts.READ_AS` reads that row as "struggles to go in", which settles nothing either way.
+4. **Pocket reader.** `_read_pocket` counted open air outside the part's outline as blocking a nut, so any feature standing higher than a pocket's mouth closed every pocket. Now a layer where the nut's place is outside the outline doesn't block. The same bug was in R5's bolt reader (`_clear_around`): a raised feature made the layers above the knob's top read as solid. Fixed the same way; it flips no saved trial.
+5. **`--regrade`** replaces a verdict only when what decides it changes: a finding's check, part, `ok` or detail, which findings count, or `declined`. Otherwise every one of the 56 trials whose test prints all pass would be rewritten just to add the `test_print` mark to passing findings. In those trials the mark is missing, which changes nothing they report.
+
+Evidence: a baseline of `digest --why` and `summary.csv` for every run, taken before any change; `--regrade` of every run at code commit `dfc2860` (the stamp in each regraded `grades.json`; it was squashed into this commit with no code change); `digest --why` and `summary.csv` compared trial by trial. All tests pass (274 after restacking onto #31), and every `--reference` passes. After a code review, the crash and declined changes above went in; a second full regrade with them changed no `grades.json`.
+
+**Counts on the 104 pilot trials: 27 pass, 50 fail, 22 not graded, 5 declined** (from 27 / 58 / 19). Issue 15 expected 27 / 51 / 21 / 5. The difference is one trial no fix's estimate covered:
+
+| Trial | Was | Now | Why |
+|---|---|---|---|
+| nut-knob M5, DeepSeek V4 Pro, t1 | fail | not graded | fix 1: its only failure was `builds` on its test print |
+| tripod `can_ask`, GPT-6.1 Sol, t1, t2, t3 | fail | declined | fix 2: test prints only (t1's `bridges` failure is on its test print) |
+| tripod `can_ask`, GPT-6 Luna, t2 | fail | declined | fix 2: no parts |
+| tripod `all_given`, GPT-6.1 Sol, t1 | fail | declined | fix 2: `temporary_plate` stops until `socket_usable_depth` has a value |
+| nut-knob M3, Gemini 4 Argon, t1 | fail | not graded | fix 3: +0.05 lies between "won't go in" and the unsettled +0.1 |
+| **nut-knob M3, DeepSeek V4.1 Flash, t1** | fail | not graded | **not expected: fixes 3 and 4 together.** Its test print's 1.5 mm marker nub made all 4 pockets read closed (the audit's example of the bug), so no test print counted. Read correctly, they open to the top, and one is 5.60 (+0.1), now unsettled. So R4's rule applies: a test print that could find a size that holds, with the knob's pocket following a param, is not graded. The audit's "no flips" for fix 4 assumed the old +0.1 coding, and each fix's count was worked out on its own. Its knob (5.42, −0.08) still reads "won't go in" |
+
+Other regraded trials, verdict unchanged:
+- The test print's failure no longer counts in `failed_checks` in 11 trials, each still failing on its final part: Qwen 3.8 Flash M5 t1, M3 t1, tripod t1, t2, t3, `all_given` t1; GLM 5.3 Flash tripod t1, t3, wheel t1; Gemini 4 Argon tripod t2; Gemini 3.8 Flash tripod `all_given` t1.
+- Haiku 5.5 M3 t1: R4 at +0.10 goes from fail to not graded; it still fails R3 (a closed pocket).
+- Opus 5.5 and GPT-6.1 Sol M3 t1: observations only. A test-print pocket at +0.1 now "struggles to go in"; Sol's two test-print pockets are also listed in the other order.
+
+Linux detail text: regrading on Linux rewrites `bridges` detail in some trials (issue 15 documents this). A baseline regrade of the untouched code changed detail text in 14 trials, with no verdict change. 9 of those have nothing else changed, so their files are left as they were. 5 are regraded anyway for the reasons above, and keep the Linux text. In each, only the best strand angle changes, to its mirror image, except Qwen's overhang count: Gemini 3.8 Flash `all_given` t1 test print 150° → 30°; Qwen 3.8 Flash `all_given` t1 plate 13 → 9 unbridgeable overhangs; Gemini 4 Argon tripod t2 plate 150° → 30°; GPT-6.1 Sol tripod t1 test print 115° → 65°; GLM 5.3 Flash wheel t1, wheel and test print 160° → 20°.
+Scoring criteria (`docs/scoring.md` and the guide's 100-point rubric), one line each:
+- **Real-world relevance:** unchanged by this. Declining now shows as its own result, which is the behaviour a careful designer should have when a size is missing. Weak: all 5 declines trace to the tripod task having no clamp width on record.
+- **Task design:** weak, as before. The tripod's lookup answers every size question with the clamp's style, so the declines say as much about the task as about the models.
+- **Grader reliability:** two reader bugs fixed (pocket and bolt), each with a test. A test print can no longer fail a trial, even through a crash. Each rule has a right and a wrong case in `tests/test_verdicts.py`. Weak: the declined rule is a code pattern with known misses (an `else:` branch, an f-string), and M3 R4 still rests on one print per size.
+- **Evidence of model limitations:** the 5 declines are backed by the transcripts quoted on issue 15. Weak: one to three trials per model.
+- **Reproducibility:** the regrade needs no model calls, and every changed verdict is listed above. Weak: `bridges` detail text still depends on the platform, and 5 kept files carry Linux text.
+- **Human expertise and review:** calls 1 and 2 are Dan's; the M3 reading and the R1 label are Claude's, delegated, and are labelled so here and on issue 15. The extra DeepSeek flip was accepted on the PR. The rest is reviewed by Claude, with a Codex review requested; nobody else has read it independently.
+- **Insight:** fixes that each flip nothing on their own can flip a trial together. So counts were checked trial by trial against a baseline, not taken from each fix's estimate.
+
 ## 2026-11-04: Crash replay (issue 27): one retry builds 5 of 10 saved crashes, and none of them passes
 
 Run `crash-replay`: the 10 saved trials that failed `builds` from a real crash, each continued once with its saved build error and nothing else, then graded with the normal checks, test prints in. Code in `pbe/runner/crash_replay.py` and `scripts/crash_replay.py` (reusing `coupon_loop.second_turn`), tests in `tests/test_crash_replay.py`. The measures in `docs/crash-replay.md` were committed and pushed before any model call (`d749302`). $0.3309, no infrastructure stop.

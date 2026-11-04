@@ -31,22 +31,24 @@ def trials(run, task, model):
 
 
 def verdict(record):
-    if record.outcome != "submitted":
-        return record.outcome
-    if record.all_pass:
-        return "pass"
-    if record.failed_checks:
-        return "failed " + " ".join(dict.fromkeys(record.failed_checks))
-    return "not graded " + " ".join(dict.fromkeys(record.not_graded_checks))
+    """The trial's verdict, with the checks behind it: "failed R3", "not graded R4", "declined"."""
+    match record.verdict:
+        case "fail":
+            return "failed " + " ".join(dict.fromkeys(record.failed_checks))
+        case "not graded":
+            return "not graded " + " ".join(dict.fromkeys(record.not_graded_checks))
+        case other:
+            return other
 
 
 def tally_key(verdict_text):
-    """The verdict without the checks it names: "pass", "failed", "not graded" or an outcome."""
+    """The verdict without the checks it names: "pass", "failed", "not graded", "declined" or an outcome."""
     return "not graded" if verdict_text.startswith("not") else verdict_text.split()[0]
 
 
 def finding_mark(finding):
-    return "FAIL" if finding.ok is False else "n/g "
+    mark = "FAIL" if finding.ok is False else "n/g "
+    return f"{mark} (test print, not counted)" if finding.test_print else mark
 
 
 def params_from(sub, sources):
@@ -68,6 +70,8 @@ def print_submission(sub, record):
 
 
 def why(folder, record):
+    if record.declined:
+        print(f"    declined: {short(record.declined)}")
     for finding in record.findings:
         if finding.ok is not True:
             print(f"    {finding_mark(finding)} {finding.check} {finding.part}: {short(finding.detail)}")

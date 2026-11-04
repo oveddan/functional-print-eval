@@ -9,7 +9,9 @@ from pbe.graders import nuts
 from pbe.parts import submission
 from pbe.runner import tasks
 
-from helpers import failed, grade, not_graded, not_passing
+from pbe.parts.build import build_parts
+
+from helpers import checked, failed, grade, not_graded, not_passing
 
 # Shared by the designs below, so each one shows only what makes it different.
 HELPERS = '''
@@ -218,6 +220,12 @@ def build(p):
     relief = cq.Workplane("XY").workplane(offset=p.floor - 1).circle(3.5).extrude(1)
     return blank(p).cut(bolt_hole(p)).cut(pocket_on_top(p)).cut(relief)
 '''
+RAISED_NUB = HELPERS + '''
+def build(p):
+    # as DeepSeek V4.1 Flash's M3 test print: a 1.5 mm marker standing on the top face, off to one side
+    nub = cq.Workplane("XY").workplane(offset=height(p)).center(p.knob_d / 2 - 3, 0).rect(2, 2).extrude(1.5)
+    return blank(p).cut(bolt_hole(p)).cut(pocket_on_top(p)).union(nub)
+'''
 HEX_CELLS = HELPERS + '''
 def build(p):
     # six nut-sized hex cells run all the way through for lightening; the pocket in the middle is blind
@@ -378,6 +386,18 @@ def test_a_pocket_that_isnt_plain_is_not_graded(tmp_path, sub):
     assert (failed(findings), not_graded(findings)) == (set(), {"R4"}), not_passing(findings)
 
 
+def test_a_raised_feature_beside_the_pockets_mouth_doesnt_close_it(tmp_path):
+    # above the top face, the nut's place is open air outside the part's outline: that doesn't block
+    # it. It used to read as closed (issue 15, the pocket-reader bug)
+    sub = design(code=RAISED_NUB)
+    findings = grade(sub, tmp_path)
+    assert (failed(findings), not_graded(findings)) == (set(), set()), not_passing(findings)
+    with_coupon(sub, clearances=(0.0, 0.2), depth=5)
+    sub.parts[1].code = sub.parts[1].code.replace("return bar", "return bar.union(cq.Workplane('XY').box(2, 2, 1.6 + 5 + 1.5, centered=(True, True, False)))")
+    coupon = build_parts(checked(sub), tmp_path / "coupon")["coupon"]
+    assert [found.opens for found in nuts.find_pockets(coupon.mesh, 8.0)] == [["top"], ["top"]]
+
+
 def test_fingers_split_by_slits_are_not_graded_rather_than_failed(tmp_path):
     findings = grade(design("M3", code=SPLIT_FINGERS), tmp_path)
     assert {"R3", "R4", "R5"} <= not_graded(findings) and failed(findings) == set(), not_passing(findings)
@@ -396,12 +416,14 @@ def test_a_crash_in_a_design_is_one_failure(tmp_path):
 
 
 @pytest.mark.parametrize("label, clearance, expected", [
-    ("M3", 0.0, "won't go in"), ("M3", 0.1, "won't go in"), ("M3", 0.2, "holds"), ("M3", 0.3, "holds"),
+    ("M3", 0.0, "won't go in"), ("M3", 0.2, "holds"), ("M3", 0.3, "holds"),
+    ("M3", 0.1, "struggles to go in"),   # coded "won't go in"; Dan's note says "really struggles to go in" (nuts.READ_AS)
     ("M5", 0.0, "holds"), ("M5", 0.1, "holds"), ("M5", 0.2, "loose"), ("M5", 0.3, "falls out"),
     ("M8", 0.0, "holds"), ("M8", 0.1, "loose"), ("M8", 0.2, "loose"), ("M8", 0.3, "falls out"),
     ("M5", 0.05, "holds"),         # between two steps that agree
     ("M8", 0.15, "loose"),
     ("M3", 0.15, None),            # between two that disagree
+    ("M3", 0.05, None),            # Gemini 4 Argon's M3 knob, between "won't go in" and "struggles to go in"
     ("M5", 0.15, None),
     ("M5", 0.25, None),
     ("M8", 0.05, None),
@@ -415,10 +437,11 @@ def test_verdict_reads_what_the_prints_say(label, clearance, expected):
 
 
 @pytest.mark.parametrize("label, clearance, expected", [
-    ("M3", 0.1, False), ("M3", -0.1, False), ("M5", 0.3, False), ("M8", 0.3, False), ("M8", 0.5, False),
+    ("M3", -0.1, False), ("M5", 0.3, False), ("M8", 0.3, False), ("M8", 0.5, False),
     ("M3", 0.2, True), ("M5", 0.05, True), ("M8", 0.0, True),
     ("M5", 0.2, None), ("M8", 0.1, None), ("M8", 0.2, None),   # "loose": nobody has turned them over
     ("M3", 0.15, None), ("M5", 0.15, None), ("M5", -0.1, None), ("M3", 1.2, None),   # no print says
+    ("M3", 0.1, None), ("M3", 0.05, None),   # it went in, with a struggle: nothing records whether that's usable
 ])
 def test_holds_is_settled_only_where_prints_settle_it(label, clearance, expected):
     assert nuts._holds(label, clearance) is expected

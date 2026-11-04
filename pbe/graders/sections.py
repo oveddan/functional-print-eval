@@ -27,7 +27,11 @@ def section(mesh, axis, frac):
 
 def holes(mesh, axis, frac):
     """The holes in a cross-section. Anything solid standing inside a hole is cut out of it."""
-    polys = section(mesh, axis, frac)
+    return holes_in(section(mesh, axis, frac))
+
+
+def holes_in(polys):
+    """The holes in a cross-section's polygons, as `holes` reads them."""
     found = []
     for poly in polys:
         for ring in poly.interiors:
@@ -39,12 +43,18 @@ def holes(mesh, axis, frac):
     return found
 
 
-def holes_by_layer(mesh, axis, step):
+def sections_by_layer(mesh, axis, step):
     """The part cut into layers about `step` thick along an axis, each read at its middle, away
-    from the end faces: (the layers' exact thickness, the holes in each layer, in order)."""
+    from the end faces: (the layers' exact thickness, each layer's cross-section, in order)."""
     length = float(mesh.extents[axis])
     count = max(int(round(length / step)), 2)
-    return length / count, [holes(mesh, axis, (i + 0.5) / count) for i in range(count)]
+    return length / count, [section(mesh, axis, (i + 0.5) / count) for i in range(count)]
+
+
+def holes_by_layer(mesh, axis, step):
+    """As sections_by_layer, with the holes in each layer."""
+    layer_h, sections = sections_by_layer(mesh, axis, step)
+    return layer_h, [holes_in(polys) for polys in sections]
 
 
 def hole_axis(mesh):

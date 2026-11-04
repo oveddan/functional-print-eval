@@ -52,6 +52,8 @@ Tests run in parallel (pytest-xdist). Model code builds under `sandbox-exec` on 
 
 A check has three answers: pass, fail and not graded (`ok = None`). Not graded means the recorded prints can't decide the case. It's never a pass, and `summary.csv` lists it in its own column.
 
+A trial comes to one verdict, in `summary.csv`'s `verdict` column: pass, fail, not graded or declined. Declined means the model handed in no final part, or a final part whose own code stops until a measurement it left blank is filled in (`pbe/graders/declined.py`). It's neither a pass nor a fail, and never counts as a pass. The generic checks (`builds`, `connected_bodies`, `bed_fit`, `bridges`) also run on test prints and are reported (`test_print_failed`), but a test print can't fail a trial on its own.
+
 Planned and not yet built: the assembly simulation, the printer simulator, the report.
 
 ## Prior art

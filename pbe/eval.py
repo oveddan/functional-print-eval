@@ -21,10 +21,11 @@ from pathlib import Path
 
 import yaml
 
+from pbe.graders import declined
 from pbe.graders.checks import verdict_word
 from pbe.parts import build, submission
 from pbe.runner import agent, llm, tasks
-from pbe.runner.trial_record import CheckResult, TrialRecord
+from pbe.runner.trial_record import TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
 PLATFORM = f"{platform.system()}-{platform.machine()}"  # geometry comes from a platform's own CAD kernel wheel
@@ -47,6 +48,10 @@ SUMMARY_COLUMNS = {
     "limitations": lambda record: len(record.limitations),
     "cost_usd": lambda record: record.cost_usd,
     "elapsed_s": lambda record: record.elapsed_s,
+    # added after the columns above, so a reader that goes by position still finds them
+    "verdict": lambda record: record.verdict,
+    "test_print_failed": lambda record: " ".join(record.test_print_failed_checks),
+    "declined": lambda record: record.declined or "",
 }
 
 
@@ -83,7 +88,7 @@ def save_conversation(folder, messages, sub):
 
 def grade_and_save(task, sub, folder, record):
     findings, record.observations = agent.evaluate(task, sub, folder)
-    record.set_verdict(findings)
+    record.set_verdict(findings, declined.reason(sub, findings))
     stamp_version(record)
     record.save(folder)
     return record
@@ -130,18 +135,27 @@ def is_selected(task_id, task_ids):
     return task_id in task_ids or family in task_ids
 
 
+def what_decides(record):
+    """What a trial's verdict is made of: each finding as the checks read it, which of them count,
+    and whether it declined. A passing test print's finding gaining its mark changes none of these."""
+    read = [(finding.check, finding.part, finding.ok, finding.detail) for finding in record.findings]
+    return read, record.failed_checks, record.not_graded_checks, record.declined
+
+
 def regrade_one(record, sub, folder):
     findings, observations = agent.evaluate(tasks.load(record.task), sub, folder)
-    verdict_changed = [CheckResult.from_finding(finding) for finding in findings] != record.findings
+    regraded = record.model_copy(deep=True)
+    regraded.set_verdict(findings, declined.reason(sub, findings))
+    verdict_changed = what_decides(regraded) != what_decides(record)
     if not verdict_changed and observations == record.observations:
         return
     record.observations = observations
     if verdict_changed:
-        was_passing = record.all_pass
+        was = record.verdict
         record.keep_verdict_as_earlier()
-        record.set_verdict(findings)
+        record.set_verdict(findings, regraded.declined)
         stamp_version(record)
-        print(f"{record.model}: all_pass {was_passing} -> {record.all_pass}")
+        print(f"{record.task} {record.condition} {record.model} t{record.trial}: {was} -> {record.verdict}")
     record.save(folder)
 
 
@@ -198,7 +212,7 @@ def exit_unless_able_to_run():
 
 def progress_line(record):
     line = (f"{record.task} {record.condition} {record.model} t{record.trial}: {record.outcome}, "
-            f"all_pass={record.all_pass}, failed={record.failed_checks}, repairs={record.repairs}, "
+            f"{record.verdict}, failed={record.failed_checks}, repairs={record.repairs}, "
             f"turns={record.turns}, ${record.cost_usd:.4f}, {record.elapsed_s} s")
     return f"{line}\n  error: {record.error[:300]}" if record.error else line
 

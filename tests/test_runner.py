@@ -15,6 +15,8 @@ from pbe.parts.build import build_parts
 from pbe.runner import agent, llm, tasks
 from pbe.runner.trial_record import TrialRecord
 
+from helpers import a_record
+
 
 def one_part(code, part_id="p"):
     part = submission.Part(id=part_id, role="final", material="PLA", code=code, print_orientation="flat", use_orientation="flat")
@@ -151,11 +153,6 @@ class Args:
     max_tokens = 10
 
 
-def a_record(**fields):
-    settings = {"max_turns": 1, "max_tokens": 10, "temperature": "provider default"}
-    return TrialRecord(**{"task": "t", "model": "m", "condition": "can_ask", "outcome": "no_submission", "error": None, "turns": 1,
-                          "repairs": 0, "measures": [], "revealed": [], "hidden": [], "limitations": [], "cost_usd": 0.0,
-                          "elapsed_s": 0.0, "settings": settings, "calls": [], **fields})
 
 
 def test_every_saved_trial_reads_back_unchanged():

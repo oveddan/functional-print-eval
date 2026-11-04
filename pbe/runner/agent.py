@@ -165,9 +165,27 @@ def observe(task, sub, built):
     return seen
 
 
-def _check_error(check, e):
-    return checks.Finding(check=check.__name__, part="-", ok=False, detail=f"check error: {type(e).__name__}: {e}",
-                          failure_class="C6-printability")
+def _check_error(check, e, part=None):
+    """A check that crashed: on one part, if it's known, so a crash on a test print is marked as one."""
+    return checks.Finding(check=check.__name__, part=part.part_id if part else "-", ok=False,
+                          detail=f"check error: {type(e).__name__}: {e}", failure_class="C6-printability",
+                          test_print=bool(part) and part.role == "coupon")
+
+
+def _run_check(check, built):
+    """A generic check's findings. If it crashes, it runs again part by part, so the crash is pinned on the
+    part whose geometry broke it, and a test print's crash can't fail the trial on its own."""
+    try:
+        return check(built)
+    except Exception:  # as in requirements.grade: model geometry can break a check
+        pass
+    findings = []
+    for part_id, part in built.items():
+        try:
+            findings += check({part_id: part})
+        except Exception as e:
+            findings.append(_check_error(check, e, part))
+    return findings
 
 
 def evaluate(task, sub, out_dir):
@@ -175,10 +193,7 @@ def evaluate(task, sub, out_dir):
     built = build_parts(sub, Path(out_dir) / "parts")
     findings = []
     for check in checks.ALL:
-        try:
-            findings += check(built)
-        except Exception as e:  # as in requirements.grade: model geometry can break a check
-            findings.append(_check_error(check, e))
+        findings += _run_check(check, built)
     findings += requirements.grade(task, sub, built)
     try:
         observations = observe(task, sub, built)

@@ -23,7 +23,7 @@ from shapely.geometry import Point, Polygon
 from shapely.ops import polylabel, unary_union
 
 from pbe.graders.checks import Verdict
-from pbe.graders.sections import clear_width, holes, holes_by_layer, section, single_final
+from pbe.graders.sections import clear_width, holes, holes_by_layer, holes_in, section, sections_by_layer, single_final
 from pbe.parts import catalog
 from pbe.parts.build import build_parts
 from pbe.parts.printer import printer
@@ -49,6 +49,11 @@ FELL_OUT = {"M5": 0.3, "M8": 0.3}
 # What each outcome says about the request's "presses in by hand and stays in upside down".
 # Any other outcome, "loose" among them, doesn't settle it.
 SETTLES = {"holds": True, "won't go in": False, "falls out": False}
+# Printed outcomes the checks read differently from how the record codes them, by (nut, clearance).
+# The record stays word for word. M3 +0.1 is coded "won't go in", but Dan's note says "really
+# struggles to go in": the nut went in, and nothing records whether that's usable, so it doesn't
+# settle the request either way (issue 15, item 5; Claude's call, which Dan delegated).
+READ_AS = {("M3", 0.1): "struggles to go in"}
 
 
 class PrintedPocket(BaseModel):
@@ -85,8 +90,19 @@ class Pocket:
 
 
 def _fits_through(slice_holes, nut):
-    """Could this nut shape pass through this layer?"""
+    """Could this nut shape pass through one of this layer's holes?"""
     return any(hole.buffer(TOL).contains(nut) for hole in slice_holes)
+
+
+def _outline(polys):
+    """A layer's outline, filled: everything inside it is the part or one of its holes."""
+    return unary_union([Polygon(poly.exterior) for poly in polys])
+
+
+def _passes(nut, slice_holes, shrunk_outline):
+    """Could this nut pass this layer: through a hole, or through open air outside the part's outline?
+    The outline comes shrunk by TOL, as the holes are grown by it."""
+    return _fits_through(slice_holes, nut) or not shrunk_outline.intersects(nut)
 
 
 def _hexagon(centre, across, degrees):
@@ -159,12 +175,13 @@ def _is_plain(stack, tightest, opens):
     return not roomy and all(layer.width <= tightest.width + TOL for layer in beyond)
 
 
-def _read_pocket(stack, tightest, slices, bottom, layer_h):
+def _read_pocket(stack, tightest, slices, outlines, bottom, layer_h):
     """How deep this pocket is, and which faces a nut can reach it from. Hex layers count in full,
     and up to MIN_DEPTH of other layers a nut's corners fit through, for a chamfered mouth. So a
-    round collar it can't pass isn't part of the pocket, and nor is a round bore it could spin in."""
+    round collar it can't pass isn't part of the pocket, and nor is a round bore it could spin in.
+    A layer where the nut's place is open air, beside a feature standing higher up, doesn't block it."""
     nut = _nut_in(tightest.hole, tightest.width)
-    nut_passes = [_fits_through(slice_holes, nut) for slice_holes in slices]
+    nut_passes = [_passes(nut, slice_holes, outline) for slice_holes, outline in zip(slices, outlines, strict=True)]
     hex_layers = [layer for layer in stack if nut_passes[layer.layer] and _is_hex(layer.hole, layer.width)]
     other_layers = sum(nut_passes[layer.layer] for layer in stack) - len(hex_layers)
     depth = len(hex_layers) * layer_h + min(other_layers * layer_h, MIN_DEPTH)
@@ -181,14 +198,16 @@ def find_pockets(mesh, af):
     """Every hex pocket along the print's z axis about the size of a nut with this across-flats.
     The hexagon decides its size: a cone or a round relief next to it can be narrower, but they
     aren't where the nut sits."""
-    layer_h, slices = holes_by_layer(mesh, 2, LAYER)
+    layer_h, sections = sections_by_layer(mesh, 2, LAYER)
+    slices = [holes_in(polys) for polys in sections]
+    outlines = [_outline(polys).buffer(-TOL) for polys in sections]
     bottom = mesh.bounds[0, 2]
     pockets = []
     for stack in _nut_sized_stacks(slices, af):
         hexes = [layer for layer in stack if _is_hex(layer.hole, layer.width)]
         if hexes:
             tightest = min(hexes, key=lambda layer: layer.width)
-            pockets.append(_read_pocket(stack, tightest, slices, bottom, layer_h))
+            pockets.append(_read_pocket(stack, tightest, slices, outlines, bottom, layer_h))
     return [found for found in pockets if found.depth >= MIN_DEPTH]
 
 
@@ -203,7 +222,10 @@ def _nuts_pocket(mesh, af):
 
 
 def _outcome(printed):
-    """What the print says, with "loose" read as "falls out" where nuts fell out on the tripod build."""
+    """What the print says, with "loose" read as "falls out" where nuts fell out on the tripod build,
+    and READ_AS where the record's note doesn't back its coding."""
+    if (printed.nut, printed.clearance) in READ_AS:
+        return READ_AS[printed.nut, printed.clearance]
     fell_out = printed.outcome == "loose" and printed.clearance >= FELL_OUT.get(printed.nut, math.inf)
     return "falls out" if fell_out else printed.outcome
 
@@ -219,8 +241,8 @@ def _measured():
 
 
 def verdict(label, clearance):
-    """What the prints say at this clearance: "holds", "loose", "falls out", "won't go in", or
-    None if they can't say: between measured steps that disagree, or beyond them in a direction
+    """What the prints say at this clearance: "holds", "loose", "falls out", "won't go in", a
+    READ_AS reading, or None if they can't say: between measured steps that disagree, or beyond them in a direction
     the trend doesn't settle. Tighter than "won't go in" and looser than "loose" are settled."""
     rows = _measured()[label]
     for printed, outcome in rows:
@@ -405,11 +427,11 @@ def bolt_passes(sub, built, nut, d_min):
     found = _nuts_pocket(part.mesh, catalog.resolve(nut)["af"])
     if found is None:
         return None, "no hex pocket to line the bolt up with"
-    layer_h, slices = holes_by_layer(part.mesh, 2, LAYER)
-    clears = [_clear_around(slice_holes, found.centre) for slice_holes in slices]
+    layer_h, sections = sections_by_layer(part.mesh, 2, LAYER)
+    clears = [_clear_around(holes_in(polys), _outline(polys), found.centre) for polys in sections]
     blocked = [i for i, c in enumerate(clears) if c < d_min - TOL]
     if not blocked:
-        height = len(slices) * layer_h
+        height = len(sections) * layer_h
         return True, f"clear all the way through {height:.1f} mm: {min(clears):.2f} at its narrowest (want at least {d_min})"
     thickness = len(blocked) * layer_h
     closed = all(clears[i] == 0.0 for i in blocked)
@@ -420,10 +442,13 @@ def bolt_passes(sub, built, nut, d_min):
     return False, f"only {clears[blocked[0]]:.2f} clear at z = {z:.1f} (want at least {d_min})"
 
 
-def _clear_around(slice_holes, centre):
-    """The widest circle around this point that's clear in this layer. 0 if it's solid."""
+def _clear_around(slice_holes, outline, centre):
+    """The widest circle around this point that's clear in this layer: in a hole, or in open air
+    outside the part's outline, beside a feature standing higher up. 0 if it's solid."""
     hole = next((found for found in slice_holes if found.contains(centre)), None)
-    return 0.0 if hole is None else 2 * hole.boundary.distance(centre)
+    if hole is not None:
+        return 2 * hole.boundary.distance(centre)
+    return math.inf if outline.is_empty else 2 * outline.distance(centre)
 
 
 def summarize(sub, built, nut, label):

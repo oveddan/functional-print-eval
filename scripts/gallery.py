@@ -125,11 +125,10 @@ def parts_of(folder, renders, slug):
 
 
 def verdict(record):
+    """The page's name for a trial's verdict: pass, fail, not_graded, declined or error."""
     if record.outcome != "submitted":
         return "error"
-    if record.all_pass:
-        return "pass"
-    return "fail" if record.failed_checks else "not_graded"
+    return record.verdict.replace(" ", "_")
 
 
 def brief_of(task):

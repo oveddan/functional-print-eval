@@ -12,6 +12,7 @@ class Finding:
     ok: bool | None  # None: not graded, which is never a pass
     detail: str
     failure_class: str
+    test_print: bool = False  # a generic check on a test print: reported, but it can't fail the trial (issue 15)
 
 
 class Verdict(NamedTuple):
@@ -32,7 +33,8 @@ def _built_parts(built):
 
 
 def _printability(check, part, ok, detail):
-    return Finding(check=check, part=part.part_id, ok=ok, detail=detail, failure_class="C6-printability")
+    return Finding(check=check, part=part.part_id, ok=ok, detail=detail, failure_class="C6-printability",
+                   test_print=part.role == "coupon")
 
 
 def connected_bodies(built):

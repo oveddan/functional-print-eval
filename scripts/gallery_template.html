@@ -35,7 +35,7 @@ background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradien
 .shot img{width:100%;height:100%;object-fit:contain;display:block}
 .shot.none{display:grid;place-items:center;color:var(--dim);cursor:default;font-size:14px}
 .stamp{display:inline-block;font:600 13px var(--body);padding:1px 8px;border-radius:3px}
-.pass{color:var(--pass);background:var(--pass-bg)}.fail,.error{color:var(--fail);background:var(--fail-bg)}.not_graded{color:var(--ng);background:var(--ng-bg)}
+.pass{color:var(--pass);background:var(--pass-bg)}.fail,.error{color:var(--fail);background:var(--fail-bg)}.not_graded{color:var(--ng);background:var(--ng-bg)}.declined{color:var(--dim);border:1px solid currentColor}
 .head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 details{font-size:14px;line-height:1.4}summary{cursor:pointer;color:var(--dim)}
 ul{margin:6px 0 0;padding-left:16px;display:grid;gap:5px;overflow-wrap:anywhere}
@@ -88,7 +88,7 @@ flowchart TD
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>
 const DATA = /*DATA*/null;
-const LABEL = {pass:"Pass", fail:"Fail", not_graded:"Not graded", error:"Didn't finish"};
+const LABEL = {pass:"Pass", fail:"Fail", not_graded:"Not graded", declined:"Declined", error:"Didn't finish"};
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let filter = "all";
 
@@ -99,6 +99,7 @@ function rates(ts) {
     <div><b>${pct(n("pass"))}</b><span class="dim">passed (${n("pass")} of ${total})</span></div>
     <div><b>${pct(n("fail"))}</b><span class="dim">failed</span></div>
     <div><b>${pct(n("not_graded"))}</b><span class="dim">not graded</span></div>
+    ${n("declined") ? `<div><b>${n("declined")}</b><span class="dim">declined, never a pass</span></div>` : ""}
     <div><b>${decided ? Math.round(100 * n("pass") / decided) + "%" : "–"}</b><span class="dim">passed, of ${decided} decided</span></div>
     ${n("error") ? `<div><b>${n("error")}</b><span class="dim">didn't finish</span></div>` : ""}
     <div><b>$${ts.reduce((a, t) => a + t.cost, 0).toFixed(2)}</b><span class="dim">spent</span></div></div>`;
@@ -111,7 +112,7 @@ function card(t) {
     : `<div class="shot none">No part built</div>`;
   const others = t.parts.slice(1).filter(p => p.viewer).map(p =>
     `<button data-name="${esc(p.name)}" data-title="${esc(t.model)} t${t.trial}: ${esc(p.id)}">${esc(p.id)}</button>`).join("");
-  const why = t.findings.map(f => `<li><b>${f.ok === false ? "Failed" : "Not graded"} ${esc(f.check)}</b> ${f.part !== "-" ? esc(f.part) + ": " : ""}${esc(f.detail)}</li>`).join("");
+  const why = t.findings.map(f => `<li><b>${f.ok === false ? "Failed" : "Not graded"} ${esc(f.check)}</b> ${f.part !== "-" ? esc(f.part) + ": " : ""}${esc(f.detail)}${f.test_print ? ' <span class="dim">(test print, not counted)</span>' : ""}</li>`).join("");
   const asked = t.asked.map((q, i) => `<li>Asked: ${esc(q)}<br><span class="dim">${esc(t.answers[i])}</span></li>`).join("");
   return `<div class="card" data-verdict="${t.verdict}">${shot}
     <div class="head"><span class="stamp ${t.verdict}">${LABEL[t.verdict]}</span><span class="mono dim">t${t.trial} · $${t.cost.toFixed(3)}</span></div>
@@ -135,7 +136,7 @@ function draw() {
   }).join("");
 }
 
-document.getElementById("filters").innerHTML = [["all","All"],["pass","Pass"],["fail","Fail"],["not_graded","Not graded"],["error","Didn't finish"]]
+document.getElementById("filters").innerHTML = [["all","All"],["pass","Pass"],["fail","Fail"],["not_graded","Not graded"],["declined","Declined"],["error","Didn't finish"]]
   .map(([k, l]) => `<button data-f="${k}" aria-pressed="${k === "all"}">${l}</button>`).join("");
 document.getElementById("filters").addEventListener("click", e => {
   const k = e.target.dataset.f; if (!k) return; filter = k;
