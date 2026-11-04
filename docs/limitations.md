@@ -44,22 +44,22 @@ These prints would turn the assumptions above into records. The check counts are
 | Coupon B turned upside down | The "loose" rows, which are not graded today |
 | Bearing seats at 22.05, 22.4 and 22.5 mm, and lobed seats | Seats between and beyond the round 2 sizes, and seats with ribs or lobes (3 checks) |
 | Dovetail plates at 34, 36, 37, 39, 40, 42 and 45 mm in the clamp | How far the clamp's jaws travel, so R2's width limits become records. Models' plates ranged from 33.8 to 45 mm (6 checks not graded) |
-| Nut pockets with crush ribs, clips or relief beside plain ones | The largest single gap: 8 knob trials are not graded only because their pockets, or their coupon's, have ribs. Each model's ribs differ, so one print settles only designs like it |
+| Nut pockets with crush ribs, clips or relief beside plain ones | The largest single gap: 8 knob trials are not graded only because their pockets, or their test print's, have ribs. Each model's ribs differ, so one print settles only designs like it |
 | M5 pockets at -0.15, -0.10 and -0.05 mm | Pockets under the nut's size, which round 1 never tried (3 checks) |
 | Tripod head recesses 3, 4 and 4.5 mm deep for the 5 mm head | Recesses shallower than the one printed (8 checks) |
 | Tripod bolt holes at 6.5 and 6.6 mm | Holes between 6.35 and 6.8 mm (5 checks) |
 | Wheel bolt holes at 8.1, 8.2 and 8.3 mm on an M8 | Holes between 8.0 and the 8.4 mm clearance hole (5 checks) |
 | Wheels whose bearings stand 0.2 to 0.6 mm proud, and a bore with no shoulder | Wheels slightly thinner than two bearings, and bores where only the press fit places them (4 checks) |
 | The salvaged bolt, measured | The 10 mm length R5 assumes |
-| Each coupon printed three times | How much one setup varies print to print, so limits can be ranges |
+| Each test print printed three times | How much one setup varies print to print, so limits can be ranges |
 | A slicer comparison (Bambu Studio's command line) | Which direction the slicer bridges, for the tunnel case |
 
 With records like these, the coupon loop's replies would come from prints for most features instead of from "didn't print that" or the bridge check's prediction.
 
 ## Coupon loop (`docs/coupon-loop.md`)
 
-- It can answer only plain pockets and seats at printed sizes or tighter than one that wouldn't go in, and roofs by the bridge check's prediction. Most tripod coupons test the clamp's fit, which no record covers, so they'd get "didn't print that".
-- Of the 31 trials whose final part fails `bridges`, only 4 had a coupon with the same roof, so for roofs the loop can help in few cases.
+- It can answer only plain pockets and seats at printed sizes or tighter than one that wouldn't go in, and roofs by the bridge check's prediction. Most tripod test prints test the clamp's fit, which no record covers, so they'd get "didn't print that".
+- Of the 31 trials whose final part fails `bridges`, only 4 had a test print with the same roof, so for roofs the loop can help in few cases.
 - One extra turn only (up to 8 calls), and the reply is a lookup, so it can't answer a follow-up question.
 - Gains are measured against a neutral second turn on a matched set of trials. Without that, feedback and a second look can't be told apart.
 - A roof answer and the grade of the revised roof come from the same check.

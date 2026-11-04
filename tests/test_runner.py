@@ -283,3 +283,14 @@ def test_a_coupon_can_be_separate_pieces_on_the_bed(tmp_path, role, gap, ok):
     # Opus's M3 t2 was failed for a coupon of three separate pockets, which prints fine
     built = build_parts(_pucks(role, gap), tmp_path)
     assert checks.connected_bodies(built)[0].ok is ok
+
+
+def test_regrading_a_run_without_grades_keeps_its_own_summary(tmp_path):
+    # issue 32: the crash replay and coupon loop samples keep their own summary.csv and no grades.json
+    run_dir = tmp_path / "crash-replay"
+    run_dir.mkdir()
+    own = "trial,model,saved_verdict\nsome/trial,m,fail builds\n"
+    (run_dir / "summary.csv").write_text(own)
+    runner.regrade(run_dir, ["nut-knob"])
+    assert runner.summarize(run_dir) == []
+    assert (run_dir / "summary.csv").read_text() == own

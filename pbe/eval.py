@@ -3,6 +3,7 @@
     uv run python -m pbe.eval --run pilot --task m5-spacer --model anthropic/claude-haiku-5.5 --trials 1 --budget 0.50
     uv run python -m pbe.eval --reference --task m5-spacer   # the reference must pass every check
     uv run python -m pbe.eval --regrade --run pilot --task m5-spacer   # saved submissions, current checks
+    uv run python -m pbe.eval --regrade --runs-dir /tmp/runs --run pilot --task m5-spacer   # on a copy
     uv run python -m pbe.eval --run pilot-code --condition can_run_code --task m5-spacer --model ... --budget 0.50
 
 Each trial saves transcript.json, submission.yaml, grades.json (and parts/, not committed;
@@ -125,7 +126,11 @@ def run_one(task, model, condition, trial, run_dir, args):
 
 
 def summarize(run_dir):
+    """Write the run's summary.csv from its trials. A run with no trial saved by this module (the crash replay
+    and the coupon loop samples keep their own summary.csv and no grades.json) is left alone (issue 32)."""
     records = [record for _, record in TrialRecord.all_in(run_dir)]
+    if not records:
+        return records
     with open(run_dir / "summary.csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(SUMMARY_COLUMNS)
@@ -194,6 +199,8 @@ def parse_args():
     ap.add_argument("--condition", action="append", choices=agent.CONDITIONS)
     ap.add_argument("--trials", type=int, default=1)
     ap.add_argument("--run", default="scratch")
+    ap.add_argument("--runs-dir", type=Path, default=ROOT / "results/runs",
+                    help="the folder that holds the runs; regrade a copy by pointing this at it")
     ap.add_argument("--budget", type=float, default=1.0, help="USD for the whole run")
     ap.add_argument("--max-turns", type=int, help="default: 8, or 20 for can_run_code (agent.DEFAULT_MAX_TURNS)")
     ap.add_argument("--max-tokens", type=int, default=32000)
@@ -238,7 +245,7 @@ def main():
     args = parse_args()
     if args.reference:
         sys.exit(0 if check_references(args.task) else 1)
-    run_dir = ROOT / "results/runs" / args.run
+    run_dir = args.runs_dir / args.run
     if args.regrade:
         regrade(run_dir, args.task)
         summarize(run_dir)
