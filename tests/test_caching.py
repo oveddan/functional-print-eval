@@ -4,6 +4,7 @@ Claude models get one top-level `cache_control` field. Every message and tool se
 for byte what any other model gets, in every condition, and each trial records whether
 caching was asked for.
 """
+import itertools
 import json
 import urllib.request
 
@@ -34,12 +35,13 @@ def requests_sent(model, condition, monkeypatch):
         sent.append((json.dumps(messages), json.dumps(tools), params))
         tool_call = {"id": "1", "type": "function", "function": {"name": "measure", "arguments": '{"item": "a", "what": "b"}'}}
         return {"choices": [{"message": {"role": "assistant", "tool_calls": [tool_call]}}]}
-    record, _, _ = agent.run_trial(tasks.load("tripod-plate"), model, condition, max_turns=3, chat=chat)
+    task = "servo-mount" if condition == agent.DATASHEET else "tripod-plate"  # only servo-mount has a datasheet
+    record, _, _ = agent.run_trial(tasks.load(task), model, condition, max_turns=3, chat=chat)
     return sent, record
 
 
 # each condition once and each other model once: what a model reads doesn't depend on the pair
-@pytest.mark.parametrize("condition, other", list(zip(agent.CONDITIONS, OTHERS, strict=True)))
+@pytest.mark.parametrize("condition, other", list(zip(agent.CONDITIONS, itertools.cycle(OTHERS))))
 def test_claude_reads_exactly_what_every_other_model_reads(condition, other, monkeypatch):
     claude_sent, claude_record = requests_sent(CLAUDE, condition, monkeypatch)
     other_sent, other_record = requests_sent(other, condition, monkeypatch)
