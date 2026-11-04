@@ -1,0 +1,124 @@
+task: m5-spacer
+note: 'This is a plain round spacer: 12 mm across and 20 mm long, with a 5.5 mm clearance
+  hole for M5. I didn''t add any bolt hardware because the plate thicknesses aren''t
+  known. The bolt needs to be at least 20 mm plus both plate thicknesses plus the
+  washer and nut (about 6 mm), measured under the head.'
+questions: []
+params:
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal diameter (ISO 4762 M5)
+  hole_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Added to bolt_d. A medium-fit M5 clearance is 5.5 mm, and vertical FDM holes
+      usually print a little undersized, so the bolt still slides through
+  spacer_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: asked
+    note: Diameter the user asked for
+  spacer_len:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Length the user asked for
+  base_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Outer chamfer on the bed edge to make up for elephant's foot
+  hole_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Lead-in chamfer at both ends of the hole
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    hole_d = p.bolt_d + p.hole_clearance\n    body = (cq.Workplane('XY').circle(p.spacer_od/2).extrude(p.spacer_len))\n\
+    \    body = body.faces('<Z').edges().chamfer(p.base_chamfer)\n    body = body.faces('>Z').workplane().hole(hole_d)\n\
+    \    body = body.faces('>Z').edges('not %LINE').edges(cq.selectors.RadiusNthSelector(0)).chamfer(p.hole_chamfer)\n\
+    \    body = body.faces('<Z').edges(cq.selectors.RadiusNthSelector(0)).chamfer(p.hole_chamfer)\n\
+    \    return body\n"
+  print_orientation: Standing on one end face, hole vertical (axis along z). The hole
+    needs no supports or bridges
+  use_orientation: Bolt passes through the bore; the two end faces clamp against the
+    two plates
+hardware: []
+joints: []
+criteria:
+- id: bolt_passes
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - hole_clearance
+  check:
+    method: measure
+    ref: null
+    description: Push the M5 bolt through the printed spacer by hand. It should slide
+      through with no forcing. If it binds, drill out the bore with a 5.5 mm drill.
+- id: length_ok
+  part: spacer
+  feature: end faces
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_len
+  check:
+    method: measure
+    ref: null
+    description: Measure the length with calipers. It should be 20 mm, within ±0.2
+      mm.
+- id: od_ok
+  part: spacer
+  feature: outer diameter
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Measure the outer diameter. It should be 12 mm, within ±0.2 mm.
+manual:
+- n: '1'
+  text: Print the spacer standing on one end, with the hole vertical. Use PLA, 0.2
+    mm layers, at least 3 walls and 20%+ infill (use 100% infill or more walls if
+    the plates will be clamped tight). You don't need supports.
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check that the bolt slides through the bore. If it's tight, run a 5.5 mm drill
+    through it by hand.
+  parts:
+  - spacer
+  hardware: []
+  tool: 5.5 mm drill (only if needed)
+- n: '3'
+  text: Put your M5 bolt through the first plate, then the spacer, then the second
+    plate. Add a washer and nut (a nylon-insert lock nut if there's vibration) and
+    tighten until it's snug. Don't overtighten, because PLA can creep under heavy
+    clamping.
+  parts:
+  - spacer
+  hardware: []
+  tool: 4 mm hex key + 8 mm spanner

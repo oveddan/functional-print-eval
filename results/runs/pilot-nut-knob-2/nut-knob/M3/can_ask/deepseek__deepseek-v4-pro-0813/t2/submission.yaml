@@ -1,0 +1,167 @@
+task: nut-knob/M3
+note: ''
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across-flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height
+  nut_apothem:
+    value: 3.175
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 'half across-flats: af/2 = 5.5/2 = 2.75; actually corner radius ~ af/sqrt(3)
+      = 3.175. Use apothem for hex points'
+  nut_corner:
+    value: 3.175
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: hex corner circumradius = af/sqrt(3) = 5.5/1.732 = 3.175
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: press-fit across-flats clearance, slight interference for grip
+  pocket_depth:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits recessed, fully inside
+  knob_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: overall diameter ~20 mm
+  knob_h:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: overall height
+  bore_d:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: M3 bolt clearance bore through far side
+  bore_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: radial clearance on bore
+  flange_h:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: height of grip flange below nut pocket
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    o = 0\n    # base cylinder (grip)\n \
+    \   knob = cq.Workplane(\"XY\").circle(p.knob_d/2).extrude(p.knob_h)\n\n    #\
+    \ chamfer top and bottom edges for comfort\n    knob = knob.faces(\">Z\").chamfer(1.0)\n\
+    \    knob = knob.faces(\"<Z\").chamfer(0.8)\n\n    # nut pocket from the top:\
+    \ hex prism, press-fit af\n    # hex centered at origin\n    apothem = p.pocket_af\
+    \ / math.sqrt(3.0)\n    hexprism = (cq.Workplane(\"XY\")\n                .polygon(6,\
+    \ p.pocket_af, circumscribed=True)\n                .extrude(p.pocket_depth))\n\
+    \n    knob = knob.cut(hexprism.translate((0, 0, p.knob_h - p.pocket_depth + 0.001)))\n\
+    \n    # small lead-in taper at the pocket mouth\n    mouth = (cq.Workplane(\"\
+    XY\")\n             .polygon(6, p.pocket_af + 0.4, circumscribed=True)\n     \
+    \        .extrude(0.8))\n    knob = knob.cut(mouth.translate((0, 0, p.knob_h -\
+    \ 0.8 + 0.001)))\n\n    # bolt clearance bore from the bottom through the nut\
+    \ pocket and out the top\n    bore = cq.Workplane(\"XY\").circle((p.bore_d)/2).extrude(p.knob_h\
+    \ + 1)\n    knob = knob.cut(bore.translate((0, 0, -0.5)))\n\n    # a couple of\
+    \ grip ridges on the side\n    for a in range(6):\n        ang = a * 60\n    \
+    \    knob = (knob.faces(\"<Z\").workplane()\n                .center(0, 0)\n \
+    \               .rect(p.knob_d * 0.18, p.knob_h * 0.55)\n                .extrude(0.5))\n\
+    \n    return knob"
+  print_orientation: nut pocket opening up (+Z), flat bottom on bed
+  use_orientation: nut pocket faces up; bolt enters from bottom through bore and threads
+    into nut
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_press
+  part: knob
+  feature: nut_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: print a coupon with the nut pocket at a few AF sizes around 5.6-5.9
+      mm; the chosen size should press the nut in by hand and hold it when inverted
+- id: nut_retain
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: verify nut seats flat at pocket bottom and cannot be pushed through
+      (bottom is solid below pocket)
+- id: bolt_clear
+  part: knob
+  feature: bore
+  relation: clears
+  hardware: nut
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt should pass freely through the bore into the nut
+manual:
+- n: '1'
+  text: Print the knob, nut pocket opening upward.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Push the M3 hex nut (ISO 4032 M3) into the hexagonal pocket in the top until
+    it seats at the bottom.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down; the nut must stay in place.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: 'Thread an M3 bolt in from the opposite side: it enters the small hole, passes
+    through the knob, and threads into the nut.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

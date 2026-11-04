@@ -2,6 +2,37 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-04: The lineup at 3 runs on the `can_ask` pilot tasks, and the first `can_run_code` trials (issue 34)
+
+Pilot data: one to three trials per model, task and condition. The code these runs used merged as #39. No check, task wording, prompt or saved trial changes.
+
+**`can_ask` top-up.** `scripts/top_up.py --cap 4.00` gave each lineup model (Haiku 5.5, DeepSeek V4 Pro, GPT-6.1 Sol, Sonnet 5.5, Gemini 4 Argon, Opus 5.5) 3 trials on m5-spacer, nut-knob/M3, nut-knob/M5 and bearing-wheel, counting the saved ones. tripod-plate already had 3 each. That made 40 new trials in `pilot-spacer`, `pilot-nut-knob`, `pilot-nut-knob-2` (DeepSeek's M5 and every M3) and `pilot-wheel`, for $2.75, against a $2.60 estimate made before caching. `git diff` on `results/runs/` showed only new trial folders and 40 added `summary.csv` rows.
+- New trials: 14 pass, 11 fail, 15 not graded, 0 declined. m5-spacer 12 pass; nut-knob/M3 4 fail and 6 not graded; nut-knob/M5 2 pass, 3 fail and 7 not graded; bearing-wheel 4 fail and 2 not graded.
+- Every not graded is a gap in the print records, reported as a limitation (`docs/limitations.md`). R4 accounts for 12: pockets with ribs, clips or relief (6), plain M3 pockets at +0.05 between the printed +0.0 and +0.1 (3), and plain M5 pockets 0.2 to 0.3 under the nut (2). `bridges` accounts for 3 (ledges of 32 to 157 mm²), and one bearing-wheel trial has a 22.04 mm seat and an 8.20 mm bore that no print measured.
+- Caching worked. Each Claude model read 57 to 69% of its prompt tokens from the cache. Against each model's own earlier cost per trial on the same tasks, Haiku's new trials cost 54% less, Sonnet's 15% and Opus's 12%. Sol's and Argon's, whose caching didn't change, cost 7 to 9% less, so for Sonnet and Opus the saving is within trial-to-trial variation: output tokens are most of the cost.
+- DeepSeek V4 Pro (served by Wafer) wrote until the 32,000-token output limit in 3 of its 4 new nut-knob trials, repeating "I'll write it now. Done. Final." It submitted on the next turn each time. Those trials cost about $0.16 each, against its usual $0.01.
+
+**`can_run_code` pilot.** A smoke test (`pilot-code-smoke`: Haiku on m5-spacer, pass, $0.0023), then one trial per lineup model on tripod-plate (`pilot-code`), in bubblewrap 0.9.0 with the default 20 turns. Together they cost $1.16 against a $6 cap.
+
+| model | verdict | turns | run_python calls | cost | its `can_ask` tripod trials | their mean cost |
+|---|---|---|---|---|---|---|
+| Haiku 5.5 | declined (only a test print) | 8 | 0 | $0.006 | 3 fail | $0.008 |
+| GPT-6.1 Sol | declined (only a test print) | 9 | 1 | $0.080 | 3 declined | $0.083 |
+| Sonnet 5.5 | fail (R3) | 5 | 1 | $0.140 | 3 fail | $0.140 |
+| Opus 5.5 | pass | 7 | 3 | $0.255 | 3 fail | $0.225 |
+| Gemini 4 Argon | fail (`bridges`) | 10 | 5 | $0.275 | 2 pass, 1 fail | $0.154 |
+| DeepSeek V4 Pro | fail (R5) | 11 | 6 | $0.404 | 3 fail | $0.017 |
+
+- No design was sent back for a build error: every part built when first handed in.
+- Cost grows with code runs, because each run's output stays in the conversation. DeepSeek's prompt grew from 5,500 to 75,000 tokens over 11 turns, and two of its turns wrote 25,600 and 16,900 tokens, so it cost 24 times its `can_ask` mean. Sonnet, Sol, Haiku and Opus cost within 0.7 to 1.1 times theirs, and Argon 1.8 times.
+- Projected cost of 3 `can_run_code` runs per lineup model on the same five tasks, from these single trials: $17 if every trial costs what its model's tripod trial did, $23 if each model's `can_ask` cost on every task is scaled by its tripod ratio. DeepSeek alone is $6 to $15 of that, the rest $8 to $11. One trial per model is a weak basis, so treat it as a range, not an estimate to budget to.
+
+Two tests had frozen the set of saved trials, so they're narrowed to what they were written for. `tests/test_build_on_submit.py` now expects `build_on_submit` in exactly the `can_run_code` records, not in none. `tests/test_crash_replay.py` compares the replay's fixed list (issue 27) with the crashes saved before issue 34, because three new DeepSeek trials fail `builds`. The replay's list is unchanged: those three are new crashes, not part of it.
+
+The README's results table is regenerated (`scripts/results_table.py --write`). It counts `pilot-code-smoke` as a `can_run_code` trial, because it's an ordinary graded trial, not a cloud machine check like `cloud-smoke`.
+
+Commit stamps: the trials are stamped with commits on `claude/caching-pilot` from `492575a` to `2289969`, the branch head when each was saved. The commits after `492575a` add only saved trials and scripts. None of them is on `main`: #39 and this PR's squashed commit replace them. Their `pbe/`, `catalog/`, `pyproject.toml` and `uv.lock` match #39's, and `tasks/` differs only by the Estoa datasheet from #22, which these runs don't use. #42 later changed `pbe/eval.py` only in how `summarize` treats a run with no trials and in a `--runs-dir` flag, neither of which touches grading.
+
 ## 2026-11-04: The submission ZIP, and machine-local citations rewritten (issue 6)
 
 No verdict changes, no model calls, and the prompt models see is byte-identical (checked by hashing the hardware list, the setup facts and a request before and after).
