@@ -56,17 +56,17 @@ cd print-build-eval && uv sync
 scripts/reproduce.sh
 ```
 
-It runs the six steps below in order and stops at the first one that fails. Expected: every step passes, ending with `done`. It took 22 minutes on the clean run.
+It runs the six steps below in order and stops at the first one that fails. Expected: every step passes, ending with `done`. It took 29 minutes on the clean run.
 
 ### Step by step
 
 | Step | Command | Expected | Time on the clean run |
 |---|---|---|---|
 | 1. Install | `uv sync` | Python 3.12 and the locked dependencies installed | 7 s, with a fast network |
-| 2. Tests | `uv run pytest` | all pass; the Docker versions of the sandbox tests skip where Docker isn't running | 3 min 25 s: 375 passed, 55 skipped |
+| 2. Tests | `uv run pytest` | all pass; the Docker versions of the sandbox tests skip where Docker isn't running | 3 min 33 s: 407 passed, 55 skipped |
 | 3. Every reference | `uv run python -m pbe.eval --reference --task tripod-plate` (and `m5-spacer`, `bearing-wheel`, `nut-knob/M3`, `nut-knob/M5`, `nut-knob/M8`) | each task's reference design passes every check; exit code 0 | 29 s for all six |
-| 4. Regrade every saved trial, on a copy | see below | every run's `summary.csv` unchanged | 11 min 40 s for all 11 runs |
-| 5. Results page | `uv run python scripts/results_page.py` | `results/local/results-page/index.html`: every trial but the 12 spacer passes, with its parts in 3D and every check | 6 min 50 s, most of it rebuilding parts |
+| 4. Regrade every saved trial, on a copy | see below | every run's `summary.csv` unchanged | 16 min 35 s for all 13 runs (151 trials) |
+| 5. Results page | `uv run python scripts/results_page.py` | `results/local/results-page/index.html`: the `can_ask` and `all_given` trials on the knob, wheel and tripod (120 on the clean run), each with its parts in 3D and every check. It leaves out the spacer and the `can_run_code` runs | 8 min 10 s, most of it rebuilding parts |
 | 6. README results | `uv run python scripts/results_table.py --check` | "README.md's results and assumptions match results/runs/" | under 1 s |
 
 Regrading reads each saved design and grades it again with today's checks, without calling a model. Point it at a copy so `results/` isn't touched:
@@ -91,7 +91,7 @@ One design by hand, with the generic checks only (the Arca plate as first drawn,
 uv run python -m pbe.run examples/arca-plate/original.yaml examples/arca-plate/fix.yaml
 ```
 
-Expected, in 5 s: the original fails `bridges` (its roof tangled when printed) and the fix passes every check, so the command exits 1.
+Expected, in 4 s: the original fails `bridges` (its roof tangled when printed) and the fix passes every check, so the command exits 1.
 
 CI runs steps 2 and 3 on every pull request and on `main` (`.github/workflows/ci.yml`), and step 6 as one of the tests.
 
