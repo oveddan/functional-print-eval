@@ -1,7 +1,10 @@
 """The task cap for run_python's code under bwrap. Enforcement is tested end to end in
 tests/test_run_python.py (a fork bomb and a thread bomb); this checks the bookkeeping."""
 import os
+import sys
 import threading
+
+import pytest
 
 from pbe.runner import task_limit
 from pbe.runner.task_limit import BWRAP_OWN_TASKS, TaskLimit
@@ -12,6 +15,7 @@ def own_threads():
     return int(status["Threads"])
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="reads /proc, and the cap only applies under bwrap, which is Linux only")
 def test_tasks_owned_by_counts_threads():
     # other tests' processes start and end meanwhile, so compare with this process alone
     stop = threading.Event()

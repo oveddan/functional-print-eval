@@ -5,11 +5,19 @@ come from report/atlas/examples.yaml. Writes report/atlas/out/ (gitignored,
 since the photos are private).
 
     uv run --with pyyaml python report/atlas/build.py
+
+With --readme it instead rewrites README.md's failure-class section from the same
+data: the classes the graded tasks test (the `class:` on each requirement in
+tasks/*/requirements.yaml), each with its featured failure and the hosted copies
+(`url:`) of its pictures. That needs no local photos. --check exits 1 if the
+section is out of date.
 """
+import argparse
 import html
 import shutil
 import struct
 import subprocess
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -23,7 +31,7 @@ PROJECTS = [
     ("tripod", "Tripod and phone stand", "seeds/tripod-failures.yaml"),
     ("estoa", "Estoa light piece", "seeds/estoa-failures.yaml"),
     ("side", "Lamp mount and organizer", "seeds/side-project-failures.yaml"),
-    ("coupons", "The eval's own test coupons", "seeds/coupon-failures.yaml"),
+    ("coupons", "The eval's own test prints", "seeds/coupon-failures.yaml"),
 ]
 STATUS_LABEL = {"failed": "failed", "near-miss": "caught before printing", "unconfirmed": "unconfirmed"}
 
@@ -121,8 +129,15 @@ def chart(classes, seeds):
     return "\n".join(out)
 
 
-def seed_row(s):
-    also = f' <span class="also">also {", ".join(a.split("-", 1)[0] for a in s.get("also", []))}</span>' if s.get("also") else ""
+def class_num(class_id):
+    return class_id.split("-", 1)[0]
+
+
+def seed_row(s, class_id):
+    """One failure in a class's list, labelled with its other class: its main one when it's here as a second class."""
+    others = [s["class"]] if s["class"] != class_id else s.get("also", [])
+    label = "main class" if s["class"] != class_id else "also"
+    also = f' <span class="also">{label} {", ".join(class_num(a) for a in others)}</span>' if others else ""
     return (f'<li><span class="sid">{esc(s["id"])}</span> <span class="tag tag-{s["project"]}">{esc(s["project_label"])}</span>'
             f' <span class="st st-{s["status"]}">{esc(STATUS_LABEL[s["status"]])}</span>{also}'
             f'<p>{esc(s["did"])}</p></li>')
@@ -162,7 +177,7 @@ def section(c, seeds, ex):
         <dt>How it was found</dt><dd>{esc(feat['found_by'])}</dd>
       </dl>
       <p class="graders">Checked by {graders}</p>
-      <details><summary>All {len(mine)} failures in this class</summary><ul class="seeds">{''.join(seed_row(s) for s in mine)}</ul></details>
+      <details><summary>All {len(mine)} failures in this class</summary><ul class="seeds">{''.join(seed_row(s, c['id']) for s in mine)}</ul></details>
     </div>
   </div>
 </section>"""
@@ -183,7 +198,7 @@ def page(classes, seeds, examples):
 /* Layout: a field guide. One section per failure class: the picture of the real failure beside the case file. */
 :root {{
   --bg: #f3f4f1; --panel: #ffffff; --fg: #1a211e; --muted: #5b6661; --rule: #d5dad6;
-  --accent: #c2410c; --tripod: #2f6f8f; --estoa: #b7791f; --side: #6b8f3a;
+  --accent: #c2410c; --tripod: #2f6f8f; --estoa: #b7791f; --side: #6b8f3a; --coupons: #7a4f9a;
   --ok: #2f7a4f; --warn: #a15c07;
   --display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --body: "IBM Plex Sans", system-ui, sans-serif;
@@ -191,10 +206,10 @@ def page(classes, seeds, examples):
 }}
 @media (prefers-color-scheme: dark) {{ :root:not([data-theme="light"]) {{
   --bg: #121614; --panel: #1a201d; --fg: #e4e9e6; --muted: #9aa49f; --rule: #2e3632;
-  --accent: #f08a4b; --tripod: #6fb0d0; --estoa: #e0aa52; --side: #9cc46a; --ok: #6cc391; --warn: #e3a54a; color-scheme: dark; }} }}
+  --accent: #f08a4b; --tripod: #6fb0d0; --estoa: #e0aa52; --side: #9cc46a; --coupons: #b48fd4; --ok: #6cc391; --warn: #e3a54a; color-scheme: dark; }} }}
 :root[data-theme="dark"] {{
   --bg: #121614; --panel: #1a201d; --fg: #e4e9e6; --muted: #9aa49f; --rule: #2e3632;
-  --accent: #f08a4b; --tripod: #6fb0d0; --estoa: #e0aa52; --side: #9cc46a; --ok: #6cc391; --warn: #e3a54a; color-scheme: dark; }}
+  --accent: #f08a4b; --tripod: #6fb0d0; --estoa: #e0aa52; --side: #9cc46a; --coupons: #b48fd4; --ok: #6cc391; --warn: #e3a54a; color-scheme: dark; }}
 body {{ background: var(--bg); color: var(--fg); font: 15px/1.55 var(--body); }}
 .wrap {{ max-width: 1120px; margin: 0 auto; padding-block: 40px 80px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }}
@@ -213,7 +228,7 @@ h1 {{ font-size: clamp(40px, 7vw, 64px); line-height: 1; }}
 .ch-axis {{ font: 11px var(--mono); fill: var(--muted); }}
 .ch-tick {{ stroke: var(--rule); stroke-width: 1; }}
 .chart a:hover .ch-lab {{ fill: var(--accent); }}
-.bar-tripod {{ fill: var(--tripod); background: var(--tripod); }} .bar-estoa {{ fill: var(--estoa); background: var(--estoa); }} .bar-side {{ fill: var(--side); background: var(--side); }}
+.bar-tripod {{ fill: var(--tripod); background: var(--tripod); }} .bar-estoa {{ fill: var(--estoa); background: var(--estoa); }} .bar-side {{ fill: var(--side); background: var(--side); }} .bar-coupons {{ fill: var(--coupons); background: var(--coupons); }}
 .legend {{ display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }}
 .lg {{ display: inline-flex; align-items: center; gap: 6px; }} .sw {{ width: 12px; height: 12px; border-radius: 2px; display: inline-block; }}
 .note {{ color: var(--muted); font-size: 13px; max-width: 70ch; }}
@@ -246,7 +261,7 @@ summary:focus-visible {{ outline: 2px solid var(--accent); outline-offset: 2px; 
 .seeds p {{ margin: 4px 0 0; font-size: 13.5px; }}
 .sid {{ font: 500 13px var(--mono); }}
 .tag {{ font-size: 11.5px; padding: 1px 7px; border-radius: 10px; border: 1px solid currentColor; white-space: nowrap; }}
-.tag-tripod {{ color: var(--tripod); }} .tag-estoa {{ color: var(--estoa); }} .tag-side {{ color: var(--side); }}
+.tag-tripod {{ color: var(--tripod); }} .tag-estoa {{ color: var(--estoa); }} .tag-side {{ color: var(--side); }} .tag-coupons {{ color: var(--coupons); }}
 .st {{ font-size: 11.5px; color: var(--muted); }} .st-failed {{ color: var(--accent); }} .st-near-miss {{ color: var(--warn); }}
 .also {{ font: 11px var(--mono); color: var(--muted); }}
 footer {{ margin-top: 72px; border-top: 1px solid var(--rule); padding-top: 18px; color: var(--muted); font-size: 13px; max-width: 75ch; }}
@@ -257,7 +272,7 @@ a {{ color: inherit; }}
 <header>
   <p class="kicker">Print-and-Build Eval &middot; failure classes</p>
   <h1>Print Failure Atlas</h1>
-  <p class="lede">Every failure here happened for real, while Dan designed and built printed objects with an AI agent: a tripod mount and phone stand, the Estoa light piece, and two smaller projects. Each was traced to the transcript and grouped into a class that doesn't depend on the object. Each class becomes a check the eval runs on any design.</p>
+  <p class="lede">Every failure here happened for real, while Dan designed and built printed objects with an AI agent: a tripod mount and phone stand, the Estoa light piece, two smaller projects, and the eval's own test prints. Each was traced to the transcript and grouped into a class that doesn't depend on the object. Each class becomes a check the eval runs on any design.</p>
   <ul class="stats">
     <li><b>{total}</b><span>real failures</span></li>
     <li><b>{failed}</b><span>went wrong physically</span></li>
@@ -276,13 +291,95 @@ a {{ color: inherit; }}
 """
 
 
-def main():
+README = ROOT / "README.md"
+GRADED_TASKS = ["tripod-plate", "nut-knob", "bearing-wheel"]  # m5-spacer is a control and tests no class
+GENERIC = ("C6-printability", "every task: `bridges`, one connected body, fits the bed")
+MARKERS = ("<!-- failure-classes:start (written by report/atlas/build.py --readme; don't edit by hand) -->",
+           "<!-- failure-classes:end -->")
+
+
+def tested_by(classes):
+    """For each class, the graded tasks' requirements that test it."""
+    tests = {c["id"]: [] for c in classes}
+    for task in GRADED_TASKS:
+        for r in yaml.safe_load((ROOT / "tasks" / task / "requirements.yaml").read_text()):
+            if r.get("class"):
+                text = r["text"].replace("test coupon", "test print")
+                tests[r["class"]].append(f"`{task}` {r['id']}, {text[0].lower()}{text[1:]}")
+    tests[GENERIC[0]].append(GENERIC[1])
+    return tests
+
+
+def readme_class(c, seeds, ex, tests):
+    feat = next(s for s in seeds if s["id"] == ex["seed"])
+    n = sum(s["class"] == c["id"] for s in seeds)
+    lines = [f"#### {class_num(c['id'])}: {c['name']}", "",
+             f"{n} failures in the builds. Tested by:", ""]
+    lines += [f"- {t}" for t in tests]
+    lines += ["", f"**From the builds** ({feat['project_label']}): {feat['did']}. Found by: {feat['found_by'][0].lower()}{feat['found_by'][1:]}."]
+    images = ex["images"]
+    missing = [im["caption"] for im in images if not im.get("url")]
+    if missing:
+        raise SystemExit(f"{c['id']} has pictures with no hosted copy (`url:` in examples.yaml): {missing}")
+    if images:
+        lines += ["", "| " + " | ".join(f"![{im['caption']}]({im['url']})" for im in images) + " |",
+                  "|" + "---|" * len(images),
+                  "| " + " | ".join(f"{im['caption']} *{im['credit']}*" for im in images) + " |"]
+    return "\n".join(lines)
+
+
+def readme_section(classes, seeds, examples):
+    tests = tested_by(classes)
+    tested = [c for c in classes if tests[c["id"]]]
+    untested = [c for c in classes if not tests[c["id"]]]
+    projects = Counter(s["project"] for s in seeds)
+    sources = ", ".join(f"{label} ({projects[key]})" for key, label, _ in PROJECTS)
+    out = [f"{len(seeds)} failures from real builds with an AI agent, each traced to its session (`seeds/`) and sorted "
+           f"into one of {len(classes)} classes that don't depend on the object (`seeds/classes.yaml`). They came from: "
+           f"{sources}. The graded tasks test {len(tested)} of the classes; each is below with the requirements that "
+           "test it, one real failure, and photos, which are hosted rather than committed.", ""]
+    out += [readme_class(c, seeds, examples[c["id"]], tests[c["id"]]) + "\n" for c in tested]
+    out += ["**Recorded but not tested by any task yet:** " + "; ".join(
+        f"{class_num(c['id'])} {c['name'].lower()} ({sum(s['class'] == c['id'] for s in seeds)})" for c in untested) + "."]
+    return "\n".join(out)
+
+
+def readme_with(text, classes, seeds, examples):
+    start, end = MARKERS
+    if start not in text or end not in text:
+        raise SystemExit(f"README.md has no failure-class markers: add {start!r} and {end!r}")
+    before, rest = text.split(start, 1)
+    _, after = rest.split(end, 1)
+    return f"{before}{start}\n{readme_section(classes, seeds, examples)}\n{end}{after}"
+
+
+def build_page():
     if OUT.exists():
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
     classes, seeds, examples = load()
     (OUT / "index.html").write_text(page(classes, seeds, examples))
     print(f"wrote {OUT / 'index.html'}: {len(seeds)} seeds, {len(list((OUT / 'img').iterdir()))} images")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--readme", action="store_true", help="rewrite README.md's failure-class section")
+    parser.add_argument("--check", action="store_true", help="exit 1 if README.md's failure-class section is out of date")
+    args = parser.parse_args()
+    if not (args.readme or args.check):
+        build_page()
+        return
+    classes, seeds, examples = load()
+    text = README.read_text()
+    updated = readme_with(text, classes, seeds, examples)
+    if args.check:
+        if updated != text:
+            sys.exit("README.md's failure classes don't match seeds/: run uv run python report/atlas/build.py --readme")
+        print("README.md's failure classes match seeds/")
+        return
+    README.write_text(updated)
+    print("README.md's failure-class section updated")
 
 
 if __name__ == "__main__":

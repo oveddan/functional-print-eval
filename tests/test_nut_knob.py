@@ -323,6 +323,17 @@ def test_wrong_designs_fail_only_their_check(tmp_path, sub, want_failed, want_no
     assert (failed(findings), not_graded(findings)) == (want_failed, want_not_graded), not_passing(findings)
 
 
+@pytest.mark.parametrize("sub, says", [
+    pytest.param(with_coupon(design("M3", clearance=0.0), clearances=(0.0,)), "would show the size is wrong", id="only-the-wrong-size"),
+    pytest.param(with_coupon(design(clearance=0.3), in_manual=False), "no test print in the manual", id="not-in-the-manual"),
+    pytest.param(with_coupon(design(clearance=0.3), depth=1.2), "no pocket a nut could try", id="too-shallow"),
+    pytest.param(with_coupon(design(code=HARD_CODED_POCKET)), "no param moves the pocket", id="hard-coded-pocket"),
+])
+def test_r4_says_why_a_test_print_doesnt_rescue_it(tmp_path, sub, says):
+    r4 = next(finding for finding in grade(sub, tmp_path) if finding.check == "R4")
+    assert r4.ok is False and says in r4.detail, r4.detail
+
+
 @pytest.mark.parametrize("sub", [
     pytest.param(with_coupon(design(clearance=0.3)), id="coupon-rescues-a-clearance-that-falls-out"),
     pytest.param(with_coupon(design(clearance=0.15)), id="coupon-rescues-one-no-print-measured"),
@@ -417,13 +428,13 @@ def test_a_crash_in_a_design_is_one_failure(tmp_path):
 
 @pytest.mark.parametrize("label, clearance, expected", [
     ("M3", 0.0, "won't go in"), ("M3", 0.2, "holds"), ("M3", 0.3, "holds"),
-    ("M3", 0.1, "struggles to go in"),   # coded "won't go in"; Dan's note says "really struggles to go in" (nuts.READ_AS)
+    ("M3", 0.1, "holds"),          # coded "won't go in"; Dan: "with force it goes in" (nuts.READ_AS)
     ("M5", 0.0, "holds"), ("M5", 0.1, "holds"), ("M5", 0.2, "loose"), ("M5", 0.3, "falls out"),
     ("M8", 0.0, "holds"), ("M8", 0.1, "loose"), ("M8", 0.2, "loose"), ("M8", 0.3, "falls out"),
     ("M5", 0.05, "holds"),         # between two steps that agree
     ("M8", 0.15, "loose"),
-    ("M3", 0.15, None),            # between two that disagree
-    ("M3", 0.05, None),            # Gemini 4 Argon's M3 knob, between "won't go in" and "struggles to go in"
+    ("M3", 0.15, "holds"),
+    ("M3", 0.05, None),            # Gemini 4 Argon's M3 knob, between two that disagree
     ("M5", 0.15, None),
     ("M5", 0.25, None),
     ("M8", 0.05, None),
@@ -440,8 +451,8 @@ def test_verdict_reads_what_the_prints_say(label, clearance, expected):
     ("M3", -0.1, False), ("M5", 0.3, False), ("M8", 0.3, False), ("M8", 0.5, False),
     ("M3", 0.2, True), ("M5", 0.05, True), ("M8", 0.0, True),
     ("M5", 0.2, None), ("M8", 0.1, None), ("M8", 0.2, None),   # "loose": nobody has turned them over
-    ("M3", 0.15, None), ("M5", 0.15, None), ("M5", -0.1, None), ("M3", 1.2, None),   # no print says
-    ("M3", 0.1, None), ("M3", 0.05, None),   # it went in, with a struggle: nothing records whether that's usable
+    ("M5", 0.15, None), ("M5", -0.1, None), ("M3", 1.2, None), ("M3", 0.05, None),   # no print says
+    ("M3", 0.1, True), ("M3", 0.15, True),   # with force it goes in (nuts.READ_AS)
 ])
 def test_holds_is_settled_only_where_prints_settle_it(label, clearance, expected):
     assert nuts._holds(label, clearance) is expected

@@ -26,9 +26,6 @@ def test_a_not_graded_check_names_the_record_it_is_missing():
     # coupon B printed 5.5 to 5.8 for M3: 5.55 sits between two printed sizes, not below them
     family, _, _ = results_page.missing_record("nut-knob", "R4", "pocket 5.55 across flats, +0.05 over the 5.5 nut: prints say not measured")
     assert "between printed sizes" in family
-    family, kind, _ = results_page.missing_record(
-        "nut-knob", "R4", "pocket 5.60 across flats, +0.10 over the 5.5 nut: prints say struggles to go in; no test coupon in the manual would catch it")
-    assert "struggles" in family and kind == "open"
     family, _, _ = results_page.missing_record(
         "nut-knob", "R4", "pocket 5.42 across flats, -0.08 over the 5.5 nut: prints say won't go in; test coupon coupon has 4 pocket(s), "
         "and no print has settled whether any of them holds")

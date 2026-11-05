@@ -230,6 +230,16 @@ def _worst(verdicts):
     return verdicts[0]
 
 
+def _why_no_coupon_helps(sub, built, coupon):
+    """Why the design's test coupons don't rescue a seat, in words."""
+    if coupon:
+        return f"test print {coupon} has a size that holds, but no param moves the seat"
+    in_the_manual = coupons_in_the_manual(sub, built)
+    if in_the_manual:
+        return f"test print {in_the_manual[0][0]} has no size known to hold"
+    return "no test print in the manual"
+
+
 def fit(sub, built, seat_range, too_tight, holds, bearing_width, bearings):
     """The bearing presses in and stays upside down, or a test coupon would have found a size that
     does and the design has a param to apply it with."""
@@ -245,7 +255,7 @@ def fit(sub, built, seat_range, too_tight, holds, bearing_width, bearings):
     part_id, seat = found[0]
     if coupon and (param := _param_that_moves_seat(sub, part_id, seat.across, seat_range, bearing_width, bearings)):
         return True, f"{worst.detail}; test coupon {coupon} would find a size that holds, and {param} moves the seat"
-    return worst.ok, worst.detail + "; no test coupon in the manual would catch it"
+    return worst.ok, f"{worst.detail}; {_why_no_coupon_helps(sub, built, coupon)}"
 
 
 def bolt_passes(sub, built, seat_range, bolt, fine):

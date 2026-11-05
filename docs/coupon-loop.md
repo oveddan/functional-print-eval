@@ -2,6 +2,8 @@
 
 Status: built and tested on two samples of 12 trials (results at the end of this file). Decided by Dan on 2026-11-03, with the changes a second review asked for (issue 15). The second sample stopped part way when the OpenRouter account ran out of credit and was finished once Dan added more. An illustrated version of the review is at https://claude.ai/artifact/Xt9j8NAaA46ASA2e9gJ6BJ, and every replay is on the results page, https://claude.ai/artifact/8FoztxxrwV6ioveQhz8gY6.
 
+**Correction, 2026-11-05: the report gained 2 passes in each sample.** Dan said of the M3 +0.1 print, "it was very hard to put in, but i could put it in" and "with force it goes in", so that size now counts as holding. Sonnet's 5.60 and DeepSeek V4.1 Flash's 5.65 M3 knobs now pass. Each sample's feedback arm passes 3 of 12 trials against the neutral arm's 1. This is still a small sample of 12 trials, replayed twice, and those two passes rest on one print Dan called very hard. The M3 replays were regraded; the results below are updated to match.
+
 ## The idea
 
 Today `submit_design` ends the conversation, so a model never hears how its test coupon would have come out. With the loop, when a model hands in a design with coupons:
@@ -73,15 +75,15 @@ Written 2026-11-03, before any model call for the loop, and committed before the
 
 Run 2026-11-03, $0.98 for 24 replays, all 12 trials complete. Every record is in `results/runs/loop-sample/` (`summary.csv` has one row per trial). The replays ran on the code at commit 7b30192, before the restack onto the refactor. Their records were then converted to `loop.json`, and the restacked code reproduces every report word for word and every verdict.
 
-**Primary measure: no improvement on this sample.** Each arm passes 1 of 12 trials, the same one: Sonnet 5.5's M5 knob, which already passed. Neither second turn broke it.
+**Primary measure: the report gained 2 passes on this sample.** The feedback arm passes 3 of 12 trials and the neutral arm 1. All of them pass Sonnet 5.5's M5 knob, which already passed, and neither second turn broke it. The 2 gained are the M3 knobs from Sonnet 5.5 and DeepSeek V4.1 Flash (see the correction above).
 
 **Secondary measure: one fix, from the report.** Five trials got a report line from a record or the bridge check that bears on a check they weren't passing:
 
 | Trial | The report said | Feedback | Neutral |
 |---|---|---|---|
 | DeepSeek V4.1 Flash, wheel t2 | "22.19 mm seat: goes in; holds upside down." | **R3 fixed**: seat 21.89 → 22.18 mm. Still fails `bridges` | Unchanged, R3 fails |
-| Sonnet 5.5, M3 knob | "5.50 mm pocket: does not go in." | Moved to 5.60 ("really struggles"): R4 still fails | Moved to a ribbed 4.90 pocket: not graded |
-| DeepSeek V4.1 Flash, M3 knob | "5.50 mm pocket: does not go in." "5.60 mm pocket: really struggles to go in." | Moved to 5.65, between printed sizes: not graded | Pocket unchanged at 5.42 (knob made shorter): R4 fails |
+| Sonnet 5.5, M3 knob | "5.50 mm pocket: does not go in." | Moved to 5.60 ("really struggles", which goes in with force): passes | Moved to a ribbed 4.90 pocket: not graded |
+| DeepSeek V4.1 Flash, M3 knob | "5.50 mm pocket: does not go in." "5.60 mm pocket: really struggles to go in." | Moved to 5.65, between two sizes that hold: passes | Pocket unchanged at 5.42 (knob made shorter): R4 fails |
 | GLM 5.3 Flash, wheel t1 | "21.99 mm seat: won't go in." "The roof over the pocket: loose loops and tangles around the hole; hole partly closed." (the check's prediction) | No design: all three calls hit the 32,000-token limit while reasoning | Unchanged |
 | GLM 5.3 Flash, wheel t2 | "22.09 mm seat: goes in, pretty snug; holds upside down." | Unchanged, not graded | Worse: fails `bridges` and R3 |
 
@@ -128,7 +130,7 @@ No result is drawn until all 12 are done. Among the 7 that finished, the feedbac
 - *The records can't decide* (5 trials, all not graded): GLM's M5 knob (ribbed pocket), DeepSeek's M5 knob (a pocket 0.15 mm under the nut, where the tightest print, +0.0, held), DeepSeek's M3 knob (5.65 mm, between printed sizes), GLM's wheel t1 (a 22.04 mm seat, between printed sizes) and GLM's wheel t2 (a ribbed seat in a bore with no shoulder).
 - *The coupon didn't test what failed* (4): Sonnet's and DeepSeek's wheels fail `bridges` on the roof over the bearing seat, and their coupons had only a seat.
 - *The report had nothing to say* (1): GLM's M3 knob, whose coupon pockets all have ribs.
-- *The model didn't go far enough* (1): Sonnet's M3 knob, told 5.50 doesn't go in, chose 5.60, recorded as "really struggles".
+- *Sonnet's M3 knob* (1): told 5.50 doesn't go in, it chose 5.60, recorded as "really struggles". This was counted as not going far enough until the 2026-11-05 correction above; it now passes.
 - *Passes* (1): Sonnet's M5 knob.
 
 So only 3 of the 11 failing trials could turn into a pass from anything the report can say, and the pass count can barely move on this sample whatever the models do. Checks fixed is the more sensitive measure here. A larger test should choose trials whose coupon tests the feature that failed. Changing the measure for a future sample is Dan's call, and would be written down before that run.
@@ -137,7 +139,7 @@ So only 3 of the 11 failing trials could turn into a pass from anything the repo
 
 Finished 2026-11-04 once credit was added: all 12 trials, both arms, $1.03 in all. The 10 arms that had stopped on the credit error were re-run; nothing else was. Records in `results/runs/loop-sample-2/`.
 
-**Primary measure: no improvement on this sample.** Each arm passes 1 of 12 trials, the same Sonnet 5.5 M5 knob that already passed. Neither second turn broke it. This matches the first sample.
+**Primary measure: the report gained 2 passes on this sample.** The feedback arm passes 3 of 12 trials and the neutral arm 1, the same Sonnet 5.5 M5 knob that already passed in every arm. Neither second turn broke it. This matches the first sample.
 
 **Secondary measure: the report fixed 3 checks; "take another look" fixed none and made 2 trials worse.**
 
@@ -146,13 +148,13 @@ Finished 2026-11-04 once credit was added: all 12 trials, both arms, $1.03 in al
 | DeepSeek V4.1 Flash, wheel t1 | Its four seats, 21.69 to 21.94 mm: "won't go in" (all tighter than a record) | **R3 fixed**: seat 21.84 → 22.19 mm. Still fails `bridges` | Unchanged |
 | DeepSeek V4.1 Flash, wheel t2 | 21.59 to 21.89: "won't go in" (tighter than a record); 22.04: no record; 22.19: "goes in; holds upside down" | **R3 fixed**: seat → 22.19 mm, as in the first sample. Still fails `bridges` | Unchanged |
 | GLM 5.3 Flash, wheel t1 | 21.99: "won't go in"; the roof: "loose loops and tangles around the hole" (the check's prediction) | **`bridges` fixed**; seat moved to 22.04, between printed sizes, so R3 is not graded | Unchanged |
-| Sonnet 5.5, M3 knob | 5.50: "does not go in" | Moved to 5.60, "really struggles": R4 still fails (the same move as in the first sample) | Unchanged at 5.50 |
-| DeepSeek V4.1 Flash, M3 knob | 5.30 and 5.40: "won't go in"; 5.50: "does not go in"; 5.60: "really struggles to go in" | Moved to 5.65, between printed sizes: not graded | Unchanged, R4 fails |
+| Sonnet 5.5, M3 knob | 5.50: "does not go in" | Moved to 5.60, "really struggles", which goes in with force: passes (the same move as in the first sample) | Unchanged at 5.50 |
+| DeepSeek V4.1 Flash, M3 knob | 5.30 and 5.40: "won't go in"; 5.50: "does not go in"; 5.60: "really struggles to go in" | Moved to 5.65, between two sizes that hold: passes | Unchanged, R4 fails |
 | GLM 5.3 Flash, wheel t2 | 22.09: "goes in, pretty snug; holds upside down" | Unchanged, not graded | **Worse**: seat 21.97, R3 fails |
 | Sonnet 5.5, wheel t1 | 22.09: "goes in, pretty snug; holds upside down" (a seat that already passed) | Unchanged | **Worse**: room for only one bearing, R2 fails |
 
 **The two fixes worked as intended.** 8 second turns had a call stop at the 32,000-token limit; with up to 8 calls, every one went on to hand in a design, and no turn ended `token_limit`. GLM's wheel t1, lost to the limit in the first sample, fixed its roof. The "tighter than a record" answers are what DeepSeek's wheel t1 acted on.
 
-**What the two samples show together.** Across both samples, 6 trials got a usable size or the roof's outcome in the report. In 5 the model moved the right way, and in 3 of those it fixed the check (DeepSeek's two wheel seats, GLM's roof). Sonnet's and DeepSeek's M3 pockets grew, but not to a size that held. GLM's wheel t2 didn't change. No neutral turn fixed a check, and neutral turns made a design worse three times. The pass count didn't move because each fix leaves the trial failing elsewhere: the DeepSeek wheels still have a holed roof their coupon never tested, and GLM's seat landed between printed sizes. That matches the breakdown above: only 3 of the 11 failing trials could become a pass from what the records can report.
+**What the two samples show together.** Across both samples, 6 trials got a usable size or the roof's outcome in the report. In 5 the model moved the right way, and in all 5 it fixed the check (Sonnet's and DeepSeek's M3 pockets, DeepSeek's two wheel seats, GLM's roof). GLM's wheel t2 didn't change. No neutral turn fixed a check, and neutral turns made a design worse three times. The M3 knobs are the 2 passes gained in each sample. The other fixes leave the trial failing elsewhere: the DeepSeek wheels still have a holed roof their coupon never tested, and GLM's seat landed between printed sizes.
 
 **For a larger run (Dan's call, written down before it runs):** count checks fixed as the main measure, choose trials whose coupon tests the feature that failed, and add models beyond these three.
