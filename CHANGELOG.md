@@ -2,6 +2,13 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-06: Slicer estimates leave out the printer's start and end sequences
+
+Dan: the X1C's start-up (homing, nozzle cleaning, calibration, purge line) depends on the printer, not the design, so it shouldn't count. `scripts/slice_estimates.py` now empties the machine preset's `machine_start_gcode` and `machine_end_gcode` before slicing, and drops the `total_s` columns that carried about 7 minutes of start per plate. The per-trial columns are now `final_print_s`, `test_print_s` and `all_print_s`. The estimates for the five runs are regenerated.
+- Against the first version, each sliced part's `print_s` moved by a median −11 s (−19 to +15 s; the increases are all on parts over 12 minutes, at most 1%), and `filament_g` fell by 0.32 to 0.33 g, the purge line. Layer counts are unchanged, and the same 231 of 252 parts sliced.
+- New reading: a test print adds a median 4 to 7 minutes per task. The doc's earlier "about 0.2 g" for the purge came from one cube sliced before the presets were fully resolved; it is 0.32 to 0.33 g on every part.
+- `tests/test_slice_estimates.py` tests that only the start and end G-code are emptied.
+
 ## 2026-11-06: Slicer estimates of print time and filament per design
 
 The README asks which model reaches a working print fastest and with the least material, and nothing was sliced. `scripts/slice_estimates.py` rebuilds each saved design's parts as the results page does and slices each one offline with Bambu Studio's command line (02.08.02.61, installed here), using the setup Dan's test prints used: X1 Carbon 0.4 nozzle, 0.20mm Standard @BBL X1C, Generic PLA High Speed @BBL X1C. It writes `slice_estimates_parts.csv` and `slice_estimates.csv` beside each run's `summary.csv`. These are slicer estimates, not measured prints; no verdict, `grades.json` or `summary.csv` changes, and nothing talks to a printer. Method, research into other options and limits: `docs/slice-estimates.md`.

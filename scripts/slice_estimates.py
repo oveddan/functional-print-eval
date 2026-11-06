@@ -6,8 +6,9 @@
 These are estimates from Bambu Studio's slicer, run offline on this machine, not measured prints: nothing is sent
 to a printer. Each part is sliced as its own plate with one fixed setup, the one Dan's test prints used
 (catalog/printer.yaml): machine "Bambu Lab X1 Carbon 0.4 nozzle", process "0.20mm Standard @BBL X1C" and filament
-"Generic PLA High Speed @BBL X1C", Bambu's stock system presets with nothing changed. docs/slice-estimates.md has
-the method and its limits.
+"Generic PLA High Speed @BBL X1C", Bambu's stock system presets with one change: the machine's start and end G-code
+are left out. Homing, nozzle cleaning, calibration and the purge line depend on the printer, not on the design, so
+neither the time nor the filament counts them. docs/slice-estimates.md has the method and its limits.
 
 A part's mesh is built from the saved design the way the results page builds it (parts/ isn't committed), dropped
 onto the bed (lowest point to z = 0) without turning it, since a design's z = 0 is already its bed face. Writes,
@@ -86,13 +87,24 @@ def _template_keys(folder, name):
     return {key: value for key, value in template.items() if key not in ("name", "instantiation")}
 
 
+PRINTER_SEQUENCES = ("machine_start_gcode", "machine_end_gcode")
+
+
+def without_printer_sequences(machine: dict) -> dict:
+    """The machine preset with its start and end G-code empty: the printer's own routine, the same for every design."""
+    return machine | {key: "" for key in PRINTER_SEQUENCES}
+
+
 def write_presets(out_dir: Path, profiles=None) -> dict[str, Path]:
     """Each fixed preset, resolved, as a JSON file the command line can load."""
     profiles = profiles or profiles_dir()
     paths = {}
     for kind, name in PRESETS.items():
+        preset = resolved_preset(profiles / kind, name)
+        if kind == "machine":
+            preset = without_printer_sequences(preset)
         paths[kind] = out_dir / f"{kind}.json"
-        paths[kind].write_text(json.dumps(resolved_preset(profiles / kind, name), indent=1))
+        paths[kind].write_text(json.dumps(preset, indent=1))
     return paths
 
 
@@ -101,7 +113,7 @@ def write_presets(out_dir: Path, profiles=None) -> dict[str, Path]:
 @dataclass
 class SlicedPlate:
     print_s: float  # Bambu's "model printing time": moving and extruding
-    total_s: float  # its "total estimated time", which adds the start and end G-code it can time
+    total_s: float  # its "total estimated time", which adds the start and end G-code (left out here, so about equal)
     filament_mm: float
     filament_g: float
     layers: int
@@ -188,7 +200,6 @@ class PartEstimate:
     error: str
     warning: str
     print_s: float | None = None
-    total_s: float | None = None
     filament_m: float | None = None
     filament_g: float | None = None
     layers: int | None = None
@@ -240,7 +251,7 @@ def slice_part(job_and_presets) -> PartEstimate:
         with gcode.open(errors="replace") as text:
             plate = parse_gcode_header(text.read(4000))
     estimate.status = "sliced"
-    estimate.print_s, estimate.total_s = round(plate.print_s), round(plate.total_s)
+    estimate.print_s = round(plate.print_s)
     estimate.filament_m, estimate.filament_g = round(plate.filament_mm / 1000, 3), round(plate.filament_g, 2)
     estimate.layers = plate.layers
     return estimate
@@ -295,13 +306,12 @@ class TrialEstimate:
     test_print_parts: int
     parts_not_sliced: int  # when above 0, the totals below are blank: a partial sum would read as the whole
     final_print_s: float | None
-    final_total_s: float | None
     final_filament_m: float | None
     final_filament_g: float | None
-    test_print_total_s: float | None
+    test_print_s: float | None
     test_print_filament_m: float | None
     test_print_filament_g: float | None
-    all_total_s: float | None
+    all_print_s: float | None
     all_filament_g: float | None
 
 
@@ -310,7 +320,8 @@ def _sum(estimates, attribute, digits):
 
 
 def trial_estimate(parts: list[PartEstimate]) -> TrialEstimate:
-    """A trial's totals, each part its own plate: final parts, test prints (role coupon) and both."""
+    """A trial's totals: final parts, test prints (role coupon) and both. Without the printer's start sequence, the
+    totals don't depend on how the parts are grouped onto plates."""
     first = parts[0]
     finals = [part for part in parts if part.role == "final"]
     tests = [part for part in parts if part.role == "coupon"]
@@ -323,11 +334,11 @@ def trial_estimate(parts: list[PartEstimate]) -> TrialEstimate:
     return TrialEstimate(
         run=first.run, task=first.task, condition=first.condition, model=first.model, trial=first.trial,
         verdict=first.verdict, final_parts=len(finals), test_print_parts=len(tests), parts_not_sliced=unsliced,
-        final_print_s=total(finals, "print_s", 0), final_total_s=total(finals, "total_s", 0),
+        final_print_s=total(finals, "print_s", 0),
         final_filament_m=total(finals, "filament_m", 3), final_filament_g=total(finals, "filament_g", 2),
-        test_print_total_s=total(tests, "total_s", 0), test_print_filament_m=total(tests, "filament_m", 3),
+        test_print_s=total(tests, "print_s", 0), test_print_filament_m=total(tests, "filament_m", 3),
         test_print_filament_g=total(tests, "filament_g", 2),
-        all_total_s=total(parts, "total_s", 0), all_filament_g=total(parts, "filament_g", 2))
+        all_print_s=total(parts, "print_s", 0), all_filament_g=total(parts, "filament_g", 2))
 
 
 def trial_estimates(parts: list[PartEstimate]) -> list[TrialEstimate]:
