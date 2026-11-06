@@ -2,6 +2,13 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-06: The tripod test-print sample's last neutral arm
+
+The `loop-tripod` run had stopped at its $3.00 cap before Gemini 4 Argon's `can_run_code` t3 got its neutral arm. Dan asked to finish it. `scripts/coupon_loop.py --run loop-tripod --budget 3.25` skipped every saved arm and ran that one, from 8c1a4f8, with the person cut back to the facts its first turn had, so it didn't get the clamp-width answer. It cost $0.14, so the run cost $3.16 in all.
+- **Result:** after "take another look" it still fails `bridges`, so it fixed nothing and broke nothing. Its printed arm had stepped the roof but lost the recess, failing R3.
+- **The sample, now complete:** after the printed reply 14 of 24 roofs are fixed, against 2 of 24 after the neutral turn. That's 12 more roofs fixed by being told how the roof printed. Whole-trial passes are unchanged: 3 against 2, or 4 against 2 with the R3 drill-out fix.
+- **Updated:** `docs/coupon-loop.md`, and the "2 of 23" in the README, `docs/lessons.md` and `docs/limitations.md`. `loop-tripod/summary.csv` gains that trial's neutral verdict.
+
 ## 2026-11-06: The person tells a model the clamp takes 38 mm plates
 
 Asked about the clamp's width, the person in `tripod-plate` now says "38 mm (the width of plate it takes)" (`tasks/tripod-plate/hidden_facts.yaml`, `tripod_clamp.plate_width`). Dan's call, 2026-11-06: answer with the standard. Arca-Swiss-style plates are 38 mm wide with a 45° dovetail, per the vendor pages he was shown (Leofoto QP-38, Benro, Neewer; no official Arca-Swiss datasheet), and the 38 mm plate he printed fit this clamp. Only the width is given, not the angle.

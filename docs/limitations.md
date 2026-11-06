@@ -14,7 +14,7 @@ The rubric is the 100-point one in section 5 of the hackathon's eval design guid
 | Evidence of model limitations | One to three trials per model, so the runs are pilots, not pass rates. Models never see a build error, so a slip they'd fix in one retry counts as a failure. The coupon loop (`docs/coupon-loop.md`) gives a test-print result back, but only in replays so far: two samples of 12 knob and wheel trials, and 24 tripod plates. |
 | Reproducibility | Every saved verdict reproduces on Linux as on macOS (106 trials). The detail text doesn't always: tied strand angles come out mirrored, and one part counts 9 bad overhangs instead of 13. The budget allowed only pilot runs. |
 | Human expertise and review | Dan wrote the tasks from his own builds and decides every open call. Claude wrote the checks and reviewed them, and the audit is another reading by Claude, not an independent expert's. |
-| Insight | Drawn from pilots. Holed roofs account for 37 of the 40 trials that fail `bridges` (read from each part's mesh, `bridges.is_holed_roof`), and 9 of 62 tripod trials put the dovetail upside down. Told how a holed roof printed, models fixed it in 14 of 24 replays, against 2 of 23 after a second look. The samples are small. |
+| Insight | Drawn from pilots. Holed roofs account for 37 of the 40 trials that fail `bridges` (read from each part's mesh, `bridges.is_holed_roof`), and 9 of 62 tripod trials put the dovetail upside down. Told how a holed roof printed, models fixed it in 14 of 24 replays, against 2 of 24 after a second look. The samples are small. |
 
 ## Assumptions today's verdicts rest on
 
@@ -66,7 +66,7 @@ With records like these, the coupon loop's replies would come from prints for mo
 - Gains are measured against a neutral second turn on a matched set of trials. Without that, feedback and a second look can't be told apart.
 - A roof answer and the grade of the revised roof come from the same check.
 - Tested on two samples of the same 12 knob and wheel trials from three cheaper models (Sonnet 5.5, DeepSeek V4.1 Flash, GLM 5.3 Flash). After the M3 correction (2026-11-05), the report's arm passes 3 of 12 in each sample and the neutral arm 1. The report fixed 3 checks in the second sample, and a second look fixed none. Too few trials and models to generalize.
-- The tripod sample (24 plates failing on a holed roof, 8 models, one replay per arm): the report fixed 14 roofs and a second look 2 of 23. Only one stepped roof has been printed (the second Arca plate), so a revised roof that passes is the check's call. And Opus 5.5 t2's two-step roof fails a check that has never seen a two-step roof print.
+- The tripod sample (24 plates failing on a holed roof, 8 models, one replay per arm): the report fixed 14 roofs and a second look 2 of 24. Only one stepped roof has been printed (the second Arca plate), so a revised roof that passes is the check's call. And Opus 5.5 t2's two-step roof fails a check that has never seen a two-step roof print.
 
 
 ## Bridge check (`pbe/graders/bridges.py`) and its test print (coupon A)
