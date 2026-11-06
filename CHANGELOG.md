@@ -87,6 +87,14 @@ The README's results tables are regenerated (`scripts/results_table.py --write`)
 
 Commit stamps: the new trials are stamped `26963c3` (Haiku's) or with work-in-progress commits on this branch that add only saved trials. This PR's squashed commit replaces them.
 
+## 2026-11-06: Slicer estimates: a trial's parts sliced together, and presets found beside any install (codex review)
+
+A Codex review of #52 and #53 found two problems, both checked before fixing.
+- **Totals were sums of parts sliced alone.** Slicing four wheel trials' final parts together took 27 to 80 s less (3 to 8%) than the sum, with the same filament: the PLA preset slows any layer under 4 s to let it cool, and several parts on a plate share each layer's time. `scripts/slice_estimates.py` now slices each trial's final parts together on one plate and its test prints on another, and the trial's totals come from those plates. Part rows are unchanged (still each part alone). A new `plate_error` column says why a plate didn't slice; none failed. On the five runs, 25 trials with several final parts drop 1 to 10% (median 4.5%) and 2 with several test prints drop 4 and 15%; filament moves at most 0.05 g. No verdict changes.
+- **`BAMBU_STUDIO` pointing at the program failed.** The presets folder was always looked for inside a `.app`. It's now found beside the program (macOS, or a `resources` folder on Linux and Windows), also when the program is named by a relative path such as `./bambu-studio` or sits at the file system's root (later Codex reviews caught both), or named with `BAMBU_STUDIO_PROFILES`.
+- **Parts that don't fit on one bed** (a third Codex review): the slicer moves them to `plate_2.gcode` and on with no error, and only plate 1 was read. Every plate is now added up, and a new `plates` column counts them. Checked with two 180 mm boxes, which landed on 2 plates. No trial on these runs spills (29 need 1 plate, 76 need 2).
+- Slicing again showed part times vary by up to 3 s between runs (18 of 231 parts), not 1 s; the doc says so.
+
 ## 2026-11-06: Slicer estimates leave out the printer's start and end sequences
 
 Dan: the X1C's start-up (homing, nozzle cleaning, calibration, purge line) depends on the printer, not the design, so it shouldn't count. `scripts/slice_estimates.py` now empties the machine preset's `machine_start_gcode` and `machine_end_gcode` before slicing, and drops the `total_s` columns that carried about 7 minutes of start per plate. The per-trial columns are now `final_print_s`, `test_print_s` and `all_print_s`. The estimates for the five runs are regenerated.
