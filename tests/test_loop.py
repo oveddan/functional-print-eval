@@ -124,8 +124,8 @@ def test_a_retry_after_an_error_keeps_what_the_failed_attempt_cost(tmp_path, mon
     failed.save(tmp_path)
     assert not script.is_settled(tmp_path)
     monkeypatch.setattr(script.coupon_loop, "second_turn", fake_turn(spacer(), 0.10))
-    saved = type("Saved", (), {"task": "m5-spacer", "model": "fake"})()
-    script.run_arm(tasks.load("m5-spacer"), saved, "neutral", coupon_loop.NEUTRAL, {}, [], tmp_path, "x")
+    saved = type("Saved", (), {"task": "m5-spacer", "model": "fake", "condition": "can_ask", "hidden": []})()
+    script.run_arm(tasks.load("m5-spacer"), saved, "neutral", coupon_loop.NEUTRAL, {}, [], tmp_path, "x", coupon_loop.SECOND_TURN_CALLS)
     record = coupon_loop.LoopRecord.load(tmp_path)
     assert record.cost_usd == 0.35 and record.findings and script.is_settled(tmp_path)
 
@@ -139,3 +139,75 @@ def test_an_arm_stopped_while_grading_is_finished_without_a_new_model_call(tmp_p
     script.finish_grading(tasks.load("m5-spacer"), tmp_path)
     record = coupon_loop.LoopRecord.load(tmp_path)
     assert record.findings and record.cost_usd == 0.10 and script.is_settled(tmp_path)
+
+
+# --- the tripod sample: printing the final plate ---
+
+OPUS_PLATE = RUNS / "pilot-tripod/tripod-plate/can_ask/anthropic__claude-opus-5.5/t2"
+HAIKU_PLATE = RUNS / "pilot-tripod/tripod-plate/can_ask/anthropic__claude-haiku-5.5/t1"
+ARGON_PASS = RUNS / "pilot-tripod/tripod-plate/can_ask/google__gemini-4-argon/t1"
+
+
+def plate_report_for(trial, tmp_path):
+    sub = submission.load(trial / "submission.yaml")
+    return coupon_loop.plate_report(tasks.load("tripod-plate"), sub, build_parts(sub, tmp_path))
+
+
+def test_a_printed_plate_reports_the_clamp_the_head_and_a_holed_roof(tmp_path):
+    (lines,) = plate_report_for(OPUS_PLATE, tmp_path).values()
+    assert texts(lines) == ["the clamp: it fits.", "the bolt's head: it fits in its recess.",
+                            f"the roof the hole goes through: {coupon_loop.ROOF_NOTE}."]
+    assert [line.basis for line in lines] == ["tripod plate record", "tripod plate record", "bridge check prediction"]
+
+
+def test_a_plate_that_prints_cleanly_says_nothing_about_its_roof(tmp_path):
+    (lines,) = plate_report_for(ARGON_PASS, tmp_path).values()
+    assert not any("roof" in text for text in texts(lines))
+
+
+def test_only_the_printed_width_is_said_to_fit_the_clamp():
+    def r2(ok, detail):
+        return [type("F", (), {"check": "R2", "ok": ok, "detail": detail})()]
+    assert coupon_loop.clamp_line(r2(True, "38.0 mm wide, narrowing by 1.0 mm on both edges")).text == "the clamp: it fits."
+    assert coupon_loop.clamp_line(r2(True, "38.40 mm wide, narrowing by 1.0 mm on both edges")).text == "the clamp: it fits."
+    # 37 to 39 passes R2 on an estimate of the jaws' travel; only 38 was printed
+    assert coupon_loop.clamp_line(r2(True, "37.00 mm wide, narrowing by 1.0 mm on both edges")).basis == "no record"
+    assert coupon_loop.clamp_line(r2(False, "straight sides: it narrows by only 0.00 mm")).basis == "no record"
+
+
+def test_the_head_line_follows_the_two_printed_recesses():
+    def r4(ok):
+        return [type("F", (), {"check": "R4", "ok": ok, "detail": ""})()]
+    assert coupon_loop.head_line(r4(True)).text == "the bolt's head: it fits in its recess."
+    assert coupon_loop.head_line(r4(False)).text == "the bolt's head: it didn't fit in its recess."
+    assert coupon_loop.head_line(r4(None)).basis == "no record"
+
+
+def test_the_printed_reply_names_no_cause_or_fix(tmp_path):
+    text = coupon_loop.printed_text(plate_report_for(HAIKU_PLATE, tmp_path))
+    for word in ("stepped", "sacrificial", "bridge", "support", "flip", "layer"):
+        assert word not in text.lower()
+
+
+def test_a_can_run_code_trial_keeps_run_python_in_its_second_turn():
+    offered = []
+
+    def chat(model, messages, tools=None, max_tokens=None):
+        offered.append({tool["function"]["name"] for tool in tools})
+        return {"choices": [{"message": {"role": "assistant", "content": "ok"}}], "usage": {"cost": 0.0}}
+    coupon_loop.second_turn(tasks.load("tripod-plate"), "fake", [], coupon_loop.NEUTRAL, max_turns=1, chat=chat, condition="can_run_code")
+    coupon_loop.second_turn(tasks.load("tripod-plate"), "fake", [], coupon_loop.NEUTRAL, max_turns=1, chat=chat)
+    assert "run_python" in offered[0] and "run_python" not in offered[1]
+
+
+def test_a_replay_answers_with_the_facts_its_first_turn_had():
+    """The clamp's width was added on 2026-11-06; a tripod trial saved before then must not hear it in a replay."""
+    from pbe.runner.measure import Person
+    from pbe.runner.trial_record import TrialRecord
+    task = tasks.load("tripod-plate")
+    saved = TrialRecord.load(RUNS / "pilot-tripod/tripod-plate/can_ask/anthropic__claude-opus-5.5/t2")
+    then = Person(coupon_loop.facts_as_saved(task, saved.hidden))
+    assert "38 mm" not in then.measure("tripod clamp", "how wide a plate does it take")
+    assert "angled lips" in then.measure("tripod clamp", "what kind is it")
+    assert "about 15" in then.measure("webcam bolt", "head diameter")
+    assert "38 mm" in Person(task.hidden_facts).measure("tripod clamp", "how wide a plate does it take")

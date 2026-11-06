@@ -1,0 +1,240 @@
+task: tripod-plate
+note: 'Change from the first print: the plate and coupon are now printed upside down.
+  Before, the bolt hole had a roof over the head recess, and that roof printed as
+  loose loops and closed the hole. Now the recess opens upward and the hole has nothing
+  to bridge. The dovetail size (38 mm, 45 degrees) is still a guess because the clamp
+  fit was not reported. If the coupon doesn''t fit, tell me how it failed, or measure
+  the clamp opening.'
+questions:
+- text: Did the coupon drop into the clamp, and was it loose, tight or too wide? That
+    result is what I need to confirm the clamp width and angle, which are still guesses.
+  answer: null
+params:
+  clamp_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: Tripod clamp could not be measured. 38 mm is the common Arca-Swiss-style
+      dovetail width. The coupon result was not reported, so this is still unconfirmed.
+  bevel_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: Angle of the jaw lips from vertical. Not measured.
+  fit_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Per-side clearance so the plate drops into the clamp.
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Total plate thickness.
+  band_h:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the vertical edge at the base of the dovetail.
+  bevel_h:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the sloped section.
+  plate_len:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length along the clamp.
+  coupon_len:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the test slice.
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 nominal major diameter.
+  bolt_hole_clear:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: Extra diameter on the bolt hole.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Salvaged webcam bolt head diameter, about 15 mm. It fit the recess in the
+      first print.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Head height, about 5 mm.
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Length under the head, about 10 mm.
+  head_clear:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Extra diameter of the head recess.
+parts:
+- id: plate
+  role: final
+  material: PLA (black), 100% infill or 6+ walls
+  code: "import math\ndef build(p):\n    W = p.clamp_width - 2*p.fit_clear\n    off\
+    \ = p.bevel_h*math.tan(math.radians(p.bevel_angle))\n    hw = W/2\n    pts = [(-hw,0),(hw,0),(hw,p.band_h),(hw-off,p.band_h+p.bevel_h),(hw-off,p.plate_t),(-(hw-off),p.plate_t),(-(hw-off),p.band_h+p.bevel_h),(-hw,p.band_h)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_len/2, both=True)\n\
+    \    hole = cq.Workplane('XY').circle((p.bolt_d+p.bolt_hole_clear)/2).extrude(p.plate_t)\n\
+    \    recess = cq.Workplane('XY').circle((p.bolt_head_d+p.head_clear)/2).extrude(p.bolt_head_h+0.4)\n\
+    \    part = body.cut(hole).cut(recess)\n    # flip so the camera face is on the\
+    \ bed (z=0) and the recess opens upward\n    return part.mirror('XY').translate((0,\
+    \ 0, p.plate_t))\n"
+  print_orientation: 'Printed upside down: the narrow camera face is on the bed (z=0).
+    The clamp base face with the head recess is the top layer, so the recess is open
+    at the top. The bolt hole then has no roof to bridge, which fixes the loose loops
+    and the closed hole. The 45 degree dovetail slopes are overhangs, but they print
+    without supports.'
+  use_orientation: Flip it over. The camera sits on the narrow face, and the wide
+    base with the head recess goes down into the clamp, held by the jaw lips.
+- id: fit-coupon
+  role: coupon
+  material: PLA (black)
+  code: "import math\ndef build(p):\n    W = p.clamp_width - 2*p.fit_clear\n    off\
+    \ = p.bevel_h*math.tan(math.radians(p.bevel_angle))\n    hw = W/2\n    pts = [(-hw,0),(hw,0),(hw,p.band_h),(hw-off,p.band_h+p.bevel_h),(hw-off,p.plate_t),(-(hw-off),p.plate_t),(-(hw-off),p.band_h+p.bevel_h),(-hw,p.band_h)]\n\
+    \    part = cq.Workplane('XZ').polyline(pts).close().extrude(p.coupon_len/2, both=True)\n\
+    \    return part.mirror('XY').translate((0, 0, p.plate_t))\n"
+  print_orientation: Printed upside down, narrow face on the bed, the same as the
+    plate, so the slopes print the same way.
+  use_orientation: Put it in the tripod clamp with the wide face down to test the
+    fit. It is not used afterwards.
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 2.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: head recess in the clamp-side face
+    role: head_seat
+  - part: plate
+    feature: central bolt hole
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: plate
+  feature: dovetail sides
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_width
+  - bevel_angle
+  - fit_clear
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: The coupon should drop into the tripod clamp and be held by the lips
+      when the knob is tightened. If not, adjust clamp_width and bevel_angle.
+- id: c2
+  part: plate
+  feature: head recess
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_clear
+  check:
+    method: measure
+    ref: null
+    description: The bolt head should sit fully inside the recess, below the clamp-side
+      face, so the plate lies flat in the clamp. This was confirmed in the first print.
+- id: c3
+  part: plate
+  feature: central bolt hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.45
+  params:
+  - bolt_d
+  - bolt_hole_clear
+  - bolt_len
+  check:
+    method: measure
+    ref: null
+    description: The hole should be fully open with no stringy loops. The 1/4-20 shank
+      should pass through freely, with about 7.4 mm of thread standing above the camera
+      face.
+manual:
+- n: '1'
+  text: Print the fit coupon, upside down with the narrow face on the bed. Put it
+    in the tripod clamp with the wide face down and tighten the knob. It should go
+    in easily and not lift out. If it is loose or won't fit, tell me or change clamp_width
+    or bevel_angle and reprint it.
+  parts:
+  - fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the plate in the same upside-down orientation. The recess faces up and
+    the hole is open all the way through. Use 6 or more walls or 100% infill. Check
+    that the hole is clear before assembling.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the salvaged bolt through the hole from the wide, recessed face, so the
+    head sits in the recess and the thread sticks out of the narrow face.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Screw the camera onto the protruding thread by turning the camera, not the
+    plate. Hand-tight is enough. PLA is not as strong as metal.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Drop the plate into the tripod clamp with the wide, recessed face down, and
+    tighten the knob gently. Hold the camera until you are sure it is secure. Use
+    a light camera only, and keep it out of the sun or a hot car.
+  parts: []
+  hardware: []
+  tool: null

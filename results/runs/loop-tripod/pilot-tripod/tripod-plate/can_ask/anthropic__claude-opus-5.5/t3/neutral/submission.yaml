@@ -1,0 +1,237 @@
+task: tripod-plate
+note: 'Temporary PLA Arca-style quick-release plate. It uses the metal 1/4-20 webcam
+  bolt instead of a printed screw. Revised: the bolt now sticks out about 4 mm (was
+  4.5) so it''s less likely to bottom out in a shallow camera socket, and there''s
+  a step to check that before printing. The 38 mm width is a guess at the Arca standard
+  and is checked with the coupon first.'
+questions:
+- text: Is the tripod clamp Arca-Swiss (38 mm wide plates)? The coupon will tell you;
+    if it doesn't fit, measure the gap between the jaws with the knob open.
+  answer: null
+params:
+  arca_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: 'Clamp with angled lips and a knob, plate drops in from above: almost certainly
+      Arca-Swiss style, standard plate width 38 mm. Not measured; the coupon checks
+      it first.'
+  bevel:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: depth of the 45 deg angled edge the jaw lips grip, typical Arca
+  flat:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: straight strip at the bottom edge, below the angled edge
+  plate_t:
+    value: 11.6
+    unit: mm
+    kind: design
+    source: design
+    note: a whole number of 0.2 mm layers
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_l:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: how far the bolt can slide, so the camera can be centred
+  bolt_clear_d:
+    value: 6.8
+    unit: mm
+    kind: hardware
+    source: design
+    note: 1/4-20 major diameter 6.35 + clearance
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under the head, 'about'
+  head_clear:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cb_extra:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: head sits 0.6 mm up inside the plate so the bottom rests flat in the clamp;
+      floor = 11.6 - 5.6 = 6.0 mm, bolt sticks out about 4 mm
+  coupon_l:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W=p.arca_w; b=p.bevel; f=p.flat; T=p.plate_t; L=p.plate_l\n\
+    \    pts=[(-W/2,0),(W/2,0),(W/2,f),(W/2-b,f+b),(W/2-b,T),(-(W/2-b),T),(-(W/2-b),f+b),(-W/2,f)]\n\
+    \    body=cq.Workplane('YZ').polyline(pts).close().extrude(L).translate((-L/2,0,0))\n\
+    \    cbw=p.bolt_head_d+p.head_clear\n    cbd=p.bolt_head_h+p.cb_extra\n    cb=cq.Workplane('XY').slot2D(p.slot_l+cbw,cbw).extrude(cbd)\n\
+    \    th=cq.Workplane('XY').slot2D(p.slot_l+p.bolt_clear_d,p.bolt_clear_d).extrude(T)\n\
+    \    return body.cut(cb).cut(th)\n"
+  print_orientation: bottom face (the side with the bolt-head recess) on the bed,
+    z=0; 100% infill or 6 walls
+  use_orientation: 'same as printed: recess side down in the tripod clamp, narrow
+    top face against the camera'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    W=p.arca_w; b=p.bevel; f=p.flat; T=p.plate_t\n    pts=[(-W/2,0),(W/2,0),(W/2,f),(W/2-b,f+b),(W/2-b,T),(-(W/2-b),T),(-(W/2-b),f+b),(-W/2,f)]\n\
+    \    return cq.Workplane('YZ').polyline(pts).close().extrude(p.coupon_l)\n"
+  print_orientation: wide bottom face on the bed
+  use_orientation: drop into the tripod clamp to test the fit of the angled edges
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: head recess slot
+    role: head_seat
+  - part: qr_plate
+    feature: through slot
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: dovetail_fit
+  part: fit_coupon
+  feature: angled edge profile
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - arca_w
+  - bevel
+  - flat
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The coupon drops into the opened clamp and is held firmly, with no
+      wobble, once the knob is tightened. If it won't go in, or the jaws close fully
+      without gripping, measure the gap so arca_w can be changed.
+- id: bolt_protrusion
+  part: qr_plate
+  feature: floor under the head recess
+  relation: clears
+  hardware: null
+  clearance_mm: 4.0
+  params:
+  - bolt_len
+  - plate_t
+  - bolt_head_h
+  - cb_extra
+  check:
+    method: measure
+    ref: null
+    description: With the bolt in the plate, it sticks up about 4 mm above the top
+      face. That must be less than how far the bolt screws into the camera by hand
+      before it stops.
+- id: head_recess
+  part: qr_plate
+  feature: head recess slot
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_clear
+  check:
+    method: measure
+    ref: null
+    description: The bolt head sits fully inside the recess, not sticking out of the
+      bottom face
+manual:
+- n: '1'
+  text: Print fit_coupon (about 10 minutes). Open the tripod knob all the way, drop
+    the coupon into the clamp from above and tighten the knob. If it grips firmly,
+    go on. If it won't go in, or it's loose with the knob fully tight, stop and measure
+    the gap between the jaws, because the plate width needs changing.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Check the bolt: screw the webcam bolt into the camera by hand until it stops,
+    and see how much went in. It needs to go in more than 4 mm. If it stops sooner,
+    don''t use this plate as it is, because it won''t pull tight against the camera.'
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Print qr_plate with the recess side on the bed. Use 100% infill (or at least
+    6 walls) so it's stiff.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Push the webcam bolt up from underneath through the slot, so its head sits
+    in the recess and the tip sticks out of the top.
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: 'Press your thumb hard on the bolt head from below and turn the camera onto
+    the bolt until it''s snug. Before the last turn, slide it along the slot so the
+    camera balances. Hand-tight only: PLA slowly gives under load, so check it again
+    now and then.'
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: Open the tripod knob, drop the plate in from above with the recess side down,
+    and tighten the knob. Give the camera a gentle tug before letting go, and don't
+    leave a heavy lens hanging off it unattended.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null

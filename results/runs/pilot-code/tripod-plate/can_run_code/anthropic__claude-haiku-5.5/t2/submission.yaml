@@ -1,0 +1,115 @@
+task: tripod-plate
+note: 'Only a test coupon. The camera plate itself could not be designed: the plate
+  length, width, thickness and clamp groove dimensions were never obtained from measurement.
+  The next step is to measure the plate and then design the full plate.'
+questions:
+- text: What are the length, width and thickness of the camera plate?
+  answer: null
+- text: Is the camera screw a separate bolt or a stud part of the plate, and where
+    is it located?
+  answer: null
+- text: What are the depth and width of the clamp grooves on the plate edges?
+  answer: null
+params:
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt head across, approximate
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt head height, approximate
+  hole_d:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: pilot hole for 1/4-20 thread cut by the bolt; printed PLA needs undersize
+  cb_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: radial clearance around bolt head
+  block_l:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  block_w:
+    value: 25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  block_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: coupon-thread
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    cb_d = p.bolt_head_d + p.cb_clear\n\
+    \    blk = cq.Workplane('XY').box(p.block_l, p.block_w, p.block_t, centered=(True,\
+    \ True, False))\n    blk = blk.faces('>Z').workplane().hole(p.hole_d)\n    cb\
+    \ = cq.Workplane('XY').workplane(offset=p.block_t - p.bolt_head_h).circle(cb_d\
+    \ / 2).extrude(p.bolt_head_h)\n    return blk.cut(cb)\n"
+  print_orientation: flat on bed, counterbore facing up
+  use_orientation: not used; test piece only
+hardware:
+- id: webcam-mount-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: bolt-thread
+  part: coupon-thread
+  feature: 1/4-20 pilot hole
+  relation: engages
+  hardware: webcam-mount-bolt
+  clearance_mm: null
+  params:
+  - hole_d
+  check:
+    method: measure
+    ref: null
+    description: Thread the webcam bolt into the 5.2 mm hole; it should cut in and
+      turn without binding or stripping.
+- id: bolt-head
+  part: coupon-thread
+  feature: counterbore
+  relation: seats
+  hardware: webcam-mount-bolt
+  clearance_mm: 0.5
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - cb_clear
+  check:
+    method: measure
+    ref: null
+    description: The bolt head should sit flush in the counterbore.
+manual:
+- n: '1'
+  text: Print the coupon block flat, counterbore facing up.
+  parts:
+  - coupon-thread
+  hardware: []
+  tool: null
+- n: '2'
+  text: Insert the webcam-mount bolt into the 5.2 mm hole from the bottom and turn
+    it in until the head sits in the counterbore. Note how it cuts threads and whether
+    it seats flush.
+  parts:
+  - coupon-thread
+  hardware:
+  - webcam-mount-bolt
+  tool: null

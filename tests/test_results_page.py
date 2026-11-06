@@ -1,6 +1,9 @@
 """The results page's diagnosis: which record a not-graded check is missing, and what follows from another failure."""
 import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
+
+import cadquery as cq
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,7 +40,7 @@ def test_every_saved_trial_gets_a_diagnosis_for_each_counted_check_that_did_not_
     from pbe.runner.trial_record import TrialRecord
     for run in results_page.RUNS:
         for _, record in TrialRecord.all_in(ROOT / "results/runs" / run):
-            issues = results_page.issues_of(run, record, None)
+            issues = results_page.issues_of(run, record, None, frozenset())
             if record.declined:
                 assert [issue["kind"] for issue in issues] == ["declined"]
             elif record.verdict == "pass":
@@ -46,3 +49,33 @@ def test_every_saved_trial_gets_a_diagnosis_for_each_counted_check_that_did_not_
                 assert all(issue["help"] in results_page.HELP and issue["kind"] in results_page.KIND for issue in issues)
                 failed = [f for f in record.counted_findings if f.ok is False]
                 assert len([issue for issue in issues if issue["kind"] != "gap"]) >= (1 if failed else 0)
+
+
+def _finding(check, part, ok, detail=""):
+    return SimpleNamespace(check=check, part=part, ok=ok, detail=detail)
+
+
+def _block_with_pocket(hole_d, pocket=(20, 10)):
+    """A 10 mm block with a 5 mm deep pocket open at the bed, and optionally a hole up through its roof."""
+    l, w = pocket
+    body = cq.Workplane("XY").box(l + 20, w + 20, 10, centered=(True, True, False))
+    body = body.cut(cq.Workplane("XY").workplane(offset=-1).rect(l, w).extrude(6))
+    if hole_d:
+        body = body.cut(cq.Workplane("XY").workplane(offset=-1).circle(hole_d / 2).extrude(12))
+    return body
+
+
+def test_only_a_failed_roof_with_a_hole_through_it_is_called_a_holed_roof(tmp_path):
+    """A failed bridge check is a holed roof only when the part's mesh shows one (DeepSeek V4 Pro's
+    can_run_code tripod t2 fails on a roof and ledges with no hole)."""
+    results_page = page()
+    (tmp_path / "parts").mkdir()
+    cq.exporters.export(_block_with_pocket(5), str(tmp_path / "parts/holed.stl"), tolerance=0.01, angularTolerance=0.1)
+    cq.exporters.export(_block_with_pocket(0, (70, 60)), str(tmp_path / "parts/wide.stl"), tolerance=0.01, angularTolerance=0.1)
+    record = SimpleNamespace(task="tripod-plate", model="m", trial=1, declined=False, counted_findings=[
+        _finding("bridges", "holed", False), _finding("bridges", "wide", False)])
+    holed = results_page.holed_roof_parts(tmp_path, record)
+    assert holed == {"holed"}
+    families = {issue["part"]: (issue["family"], issue["kind"]) for issue in results_page.issues_of("run", record, None, holed)}
+    assert families["holed"] == ("A roof with the bolt's hole cut through it", "decided")
+    assert families["wide"] == ("A roof or ledge too wide to bridge, with no hole through it", "real")

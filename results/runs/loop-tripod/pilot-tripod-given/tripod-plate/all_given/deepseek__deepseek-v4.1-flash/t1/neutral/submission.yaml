@@ -1,0 +1,774 @@
+task: tripod-plate
+note: 'Second look - four changes, all about failure modes rather than looks.
+
+
+  WHAT CHANGED
+
+  1. Plate length 50 -> 44 mm. clamp_len (52) was a guess I never verified, and a
+  plate that is too long cannot print its way out of trouble. 44 mm still gives the
+  camera plenty of support while dropping in even if the clamp''s opening is far shorter
+  than I assumed.
+
+  2. Head pocket depth 5.3 -> 5.5 mm. The pocket''s ceiling is printed over a 15 mm
+  circular void, so it bridges; a little droop is normal. The extra 0.5 mm of depth
+  means the bolt head cannot end up proud of the plate''s bottom face and make the
+  plate rock on the clamp''s floor. Thread protrusion is now 5.2 mm (~4 turns into
+  the camera), still under a typical 6.5 mm socket.
+
+  3. The printed screw no longer has a silent failure mode. If CadQuery''s helical
+  sweep fails on your machine (it is the one fancy operation in the whole design),
+  it now falls back to a deliberate gentle taper that jams into the camera''s socket,
+  instead of quietly producing a smooth pin that cannot hold anything. The thread
+  profile is also now positioned from the helix''s actual start point rather than
+  an assumed one. Manual step 7 tells you how to spot which one you got.
+
+  4. Added a fallback for a clamp that is not a drop-in: if a gauge tile drops in
+  but hangs on the lips instead of reaching the floor, your clamp is a side-loading
+  dovetail. Setting lip_angle_deg to -45 flips the bevel so a plate narrowing downwards
+  drops/slides in from the side (manual step 5). Also added a 0.5 mm bottom chamfer
+  so a filleted pocket floor cannot hold the plate up off the floor.
+
+
+  WHAT I DID NOT CHANGE (and still can''t verify without you)
+
+  - The clamp dimensions are still guesses: 43 mm opening, 11 mm deep pocket, 3.5
+  mm lips, 45 deg lip angle. The fit_gauge coupon is what converts those guesses into
+  a measurement, and manual steps 3-5 tell you exactly what to edit if the gauge disagrees.
+  That coupon is the one thing I would print first.
+
+  - Why the plate works: the plate is 10.3 mm thick and the clamp pocket is 11 mm,
+  so the plate''s top face ends up ~2.8 mm ABOVE the lip tips. That is what makes
+  the lips overhang it and stop it lifting out; the 45 deg top bevel then mates with
+  the angled lip faces and wedges the plate down onto the floor when you tighten the
+  knob. If the real pocket is much shallower, the gauge will show it (the tiles will
+  not sit flat) - reduce plate_t, not plate_w.
+
+
+  How hard is it, honestly: the plate is trivial to print and it is the part that
+  does the work. The screw is printable but is the weak link, and you already own
+  the right screw - the salvaged webcam bolt is a 1/4-20, which is literally the camera
+  thread. Print the plate, use the metal bolt, print the screw only as a spare.'
+questions:
+- text: How wide is the clamp's opening between the two jaw lip tips, with the knob
+    loosened a few turns (nearest mm)? This is the one number that decides whether
+    the plate drops in - the printed fit_gauge will tell you, but a real measurement
+    would let me size the plate exactly instead of guessing 43 mm.
+  answer: null
+- text: How deep is the clamp's pocket, from the jaw top face down to the floor the
+    plate rests on (nearest mm)? That sets the plate's thickness (I guessed 11 mm),
+    which is what stops it lifting out under the lips.
+  answer: null
+- text: How deep is the 1/4-20 threaded socket in the base of the camera you are mounting
+    (nearest mm)? I assumed 6.5 mm; it decides how much thread may stand proud of
+    the plate's top face (currently 5.2 mm).
+  answer: null
+params:
+  bolt_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 UNC major diameter (0.25 in).
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 = 20 tpi.
+  bolt_head_d:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: Salvaged webcam bolt head across, ~15 mm.
+  bolt_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: Salvaged webcam bolt head height.
+  bolt_len:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: Salvaged webcam bolt length under the head.
+  cam_socket_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Camera base socket is the standard 1/4-20.
+  clamp_mouth_w:
+    value: 43.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Opening between the jaw lip tips on the borrowed clamp (200PL/RC2 class).
+      Never measured - the fit_gauge coupon determines the real value.
+  clamp_channel_w:
+    value: 49.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Widest internal width of the jaw channel, below the lips. Sets how far the
+      knob must travel to squeeze the plate.
+  clamp_lip_h:
+    value: 3.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Depth of the lip overhang below the jaw top face.
+  clamp_depth:
+    value: 11.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Jaw top face down to the floor the plate rests on. Caps plate_t.
+  clamp_len:
+    value: 52.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Length of the clamp opening end to end.
+  lip_angle_deg:
+    value: 45.0
+    unit: deg
+    kind: world
+    source: guessed
+    note: Jaw lip faces measured from vertical; the plate's bevel matches it so the
+      two faces wedge face to face. Set to -45 if a gauge tile hangs on the lips instead
+      of reaching the floor (side-loading dovetail clamp).
+  cam_socket_depth:
+    value: 6.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Typical 1/4-20 socket depth in a camera base. Sets how much thread may stand
+      proud.
+  clearance_side:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Drop-in clearance per side against the clamp opening.
+  plate_w:
+    value: 42.4
+    unit: mm
+    kind: design
+    source: design
+    note: '= clamp_mouth_w - 2*clearance_side. THE NUMBER TO EDIT: set it to the widest
+      fit_gauge tile that drops in and sits flat.'
+  plate_t:
+    value: 10.3
+    unit: mm
+    kind: design
+    source: design
+    note: = clamp_depth - 0.7, and <= cb_depth + bolt_len - min_engagement (5.5+10-4.5=11.0).
+      As thick as the clamp allows - that overlap above the lip tips is what stops
+      the plate lifting out.
+  plate_len:
+    value: 44.0
+    unit: mm
+    kind: design
+    source: design
+    note: Kept well inside the clamp opening (guessed 52) so it drops in even if the
+      opening is much shorter than guessed; a short plate still works, a long one
+      does not.
+  top_bevel_h:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the bevel on the two long top edges. With a positive lip_angle_deg
+      the plate widens downwards and this is the surface the jaw lips bite; with a
+      negative angle it narrows downwards for a side-loading clamp.
+  bottom_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom perimeter chamfer, so a filleted pocket floor cannot hold the plate
+      up off the floor.
+  corner_r:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: Plan-view corner radius, to help it drop past the lips.
+  cb_dia:
+    value: 15.4
+    unit: mm
+    kind: design
+    source: design
+    note: = bolt_head_d + 0.4. Bolt head pocket, opening downwards.
+  cb_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: = bolt_head_h + 0.5. The extra 0.2 over the old value is sag allowance for
+      the pocket ceiling, which bridges a 15 mm void when printed.
+  shank_hole_d:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: = bolt_thread_d + 0.55; clears both the metal bolt and the printed screw.
+  min_engagement:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Minimum thread into the camera (3.5 threads).
+  protrusion:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: '= cb_depth + bolt_len - plate_t = 5.5+10-10.3. Thread standing above the
+      plate face: ~4 turns in the camera, and less than cam_socket_depth so the plate
+      still seats on the camera''s base.'
+  rib_h:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Anti-rotation rib height on the top face. Cut it off with flush cutters
+      if it fouls your camera's base.
+  rib_w:
+    value: 36.0
+    unit: mm
+    kind: design
+    source: design
+    note: Rib length across the plate, inside the bevel.
+  rib_len_x:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: Rib thickness along the plate.
+  rib_inset:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: Rib position from the plate end.
+  ps_head_d:
+    value: 14.8
+    unit: mm
+    kind: design
+    source: design
+    note: Printed screw head, to match the salvaged bolt's envelope.
+  ps_head_h:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: Printed screw head height.
+  ps_core_d:
+    value: 4.9
+    unit: mm
+    kind: design
+    source: design
+    note: Core under the thread ridge; small enough to enter the socket's minor diameter.
+      Also the tip diameter of the no-thread fallback taper.
+  ps_ridge_d:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of the helical ridge swept along the shank - printable overhang,
+      no sharp crests.
+  ps_major_d:
+    value: 6.2
+    unit: mm
+    kind: design
+    source: design
+    note: Effective major diameter of the printed thread (0.15 mm under nominal so
+      it beds in). Base diameter of the fallback taper.
+  ps_shank_len:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: = protrusion + (plate_t - cb_depth). EDIT ONLY if your camera's socket is
+      shallower than the thread standing proud.
+  ps_head_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on the head's top rim.
+  ps_tip_chamfer:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: Lead-in on the shank tip.
+  gauge_w1:
+    value: 35.0
+    unit: mm
+    kind: design
+    source: design
+    note: Tile 1, 1 notch.
+  gauge_w2:
+    value: 39.0
+    unit: mm
+    kind: design
+    source: design
+    note: Tile 2, 2 notches.
+  gauge_w3:
+    value: 43.0
+    unit: mm
+    kind: design
+    source: design
+    note: Tile 3, 3 notches. If this is the one that fits, keep plate_w = 42.4.
+  gauge_w4:
+    value: 47.0
+    unit: mm
+    kind: design
+    source: design
+    note: Tile 4, 4 notches.
+  gauge_seg_len:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: Tile length along the clamp channel.
+  gauge_gap:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Gap between tiles, spanned by a snap-off bridge.
+  gauge_bridge_h:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Snap-off bridge height.
+  gauge_t:
+    value: 10.3
+    unit: mm
+    kind: design
+    source: design
+    note: Same thickness as the plate, so the tiles also test the pocket depth.
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    L = p.plate_len\n    W = p.plate_w\n  \
+    \  T = p.plate_t\n    bev = p.top_bevel_h\n    inset = bev * math.tan(math.radians(abs(p.lip_angle_deg)))\n\
+    \n    # flat slab, bottom face on the bed\n    plate = cq.Workplane(\"XY\").box(L,\
+    \ W, T, centered=(True, True, False))\n    plate = plate.edges(\"|Z\").fillet(p.corner_r)\n\
+    \n    # small bottom chamfer so a filleted pocket floor cannot hold the plate\
+    \ up\n    try:\n        plate = plate.faces(\"<Z\").edges().chamfer(p.bottom_chamfer)\n\
+    \    except Exception:\n        pass\n\n    # top-edge bevel on the two clamped\
+    \ edges.  Positive lip_angle_deg: the plate\n    # WIDENS going down, so the lip\
+    \ tips overhang it and the angled lip faces\n    # wedge it down onto the floor\
+    \ (drop-in clamp).  Negative: it narrows going\n    # down, for a side-loading\
+    \ dovetail clamp.\n    for s in (1.0, -1.0):\n        if p.lip_angle_deg >= 0.0:\n\
+    \            pts = [(s * (W / 2.0 - inset), T),\n                   (s * (W /\
+    \ 2.0 + 2.0), T),\n                   (s * (W / 2.0 + 2.0), T - bev - 2.0)]\n\
+    \        else:\n            pts = [(s * (W / 2.0 + inset), T - bev),\n       \
+    \            (s * (W / 2.0), T),\n                   (s * (W / 2.0 + 2.0), T),\n\
+    \                   (s * (W / 2.0 + 2.0), T - bev)]\n        cut = (cq.Workplane(\"\
+    YZ\", origin=(-L / 2.0 - 1.0, 0, 0))\n               .polyline(pts).close().extrude(L\
+    \ + 2.0))\n        plate = plate.cut(cut)\n\n    # bolt head pocket, opening downwards\
+    \ (0.5 mm deeper than the head: its\n    # ceiling bridges a 15 mm void when printed\
+    \ and may droop slightly)\n    plate = plate.cut(cq.Workplane(\"XY\").circle(p.cb_dia\
+    \ / 2.0).extrude(p.cb_depth))\n    # shank clearance hole, right through\n   \
+    \ plate = plate.cut(cq.Workplane(\"XY\").circle(p.shank_hole_d / 2.0).extrude(T\
+    \ + 2.0))\n\n    # anti-rotation rib on the top face (camera's back edge bears\
+    \ on it)\n    rx = -(L / 2.0 - p.rib_inset - p.rib_len_x / 2.0)\n    rib = (cq.Workplane(\"\
+    XY\", origin=(rx, 0, T))\n           .box(p.rib_len_x, p.rib_w, p.rib_h, centered=(True,\
+    \ True, False)))\n    plate = plate.union(rib)\n    return plate"
+  print_orientation: 'As modelled: bottom face (the face with the open Ø15.4 pocket)
+    flat on the bed, z = 0 at the bottom face. No supports - the top bevel is at most
+    a 45 deg overhang and the bottom chamfer is a 45 deg self-supporting step.'
+  use_orientation: 'Exactly as printed: pocket side down into the clamp, beveled top
+    face up against the camera''s base. The bolt''s head lives in the pocket and its
+    thread points up into the camera.'
+- id: screw_printed
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    head_h = p.ps_head_h\n    total = p.ps_head_h\
+    \ + p.ps_shank_len\n    rc = (p.ps_major_d - p.ps_ridge_d) / 2.0\n\n    head =\
+    \ cq.Workplane(\"XY\").circle(p.ps_head_d / 2.0).extrude(head_h)\n    try:\n \
+    \       head = head.faces(\">Z\").chamfer(p.ps_head_chamfer)\n    except Exception:\n\
+    \        pass\n\n    rod = cq.Workplane(\"XY\").circle(p.ps_core_d / 2.0).extrude(total)\n\
+    \    try:\n        rod = rod.faces(\">Z\").chamfer(p.ps_tip_chamfer)\n    except\
+    \ Exception:\n        pass\n\n    screw = head.union(rod)\n\n    # Helical bump\
+    \ thread: a round ridge swept along a helix, buried in the core\n    # (the turns\
+    \ inside the head are simply swallowed by the head).  No sharp\n    # crests,\
+    \ so it prints cleanly and beds into the camera's metal socket.\n    got_thread\
+    \ = False\n    try:\n        h = total - 1.0\n        helix = cq.Wire.makeHelix(pitch=p.bolt_pitch,\
+    \ height=h, radius=rc)\n        try:\n            start = helix.startPoint()\n\
+    \        except Exception:\n            start = cq.Vector(rc, 0, 0)\n        prof\
+    \ = cq.Wire.makeCircle(p.ps_ridge_d / 2.0, start, cq.Vector(0, 1, 0))\n      \
+    \  thread = (cq.Workplane(obj=prof)\n                  .sweep(cq.Workplane(obj=helix),\
+    \ isFrenet=True, makeSolid=True))\n        if thread.val().Volume() > 1.0:\n \
+    \           screw = screw.union(thread)\n            got_thread = True\n    except\
+    \ Exception:\n        got_thread = False\n\n    if not got_thread:\n        #\
+    \ Fallback if the helical sweep is unavailable: a gentle taper that jams\n   \
+    \     # into the socket.  Holds a light camera; the metal bolt is better.\n  \
+    \      cone = (cq.Workplane(\"XY\").circle(p.ps_major_d / 2.0)\n             \
+    \   .workplane(offset=total).circle(p.ps_core_d / 2.0).loft())\n        screw\
+    \ = head.union(cone)\n    return screw"
+  print_orientation: Head down on the bed (z = 0), shank pointing up. One piece, no
+    supports.
+  use_orientation: 'As printed: head sunk in the plate''s Ø15.4 pocket, ridge thread
+    pointing up into the camera''s 1/4-20 socket.'
+- id: fit_gauge
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    T = p.gauge_t\n    seg = p.gauge_seg_len\n\
+    \    gap = p.gauge_gap\n    bev = p.top_bevel_h\n    inset = bev * math.tan(math.radians(abs(p.lip_angle_deg)))\n\
+    \    widths = [p.gauge_w1, p.gauge_w2, p.gauge_w3, p.gauge_w4]\n    pitch = seg\
+    \ + gap\n\n    body = None\n    for i, w in enumerate(widths):\n        x0 = i\
+    \ * pitch\n        b = (cq.Workplane(\"XY\", origin=(x0 + seg / 2.0, 0, 0))\n\
+    \             .box(seg, w, T, centered=(True, True, False)))\n        # identical\
+    \ top bevel to the plate's clamped edges\n        for s in (1.0, -1.0):\n    \
+    \        if p.lip_angle_deg >= 0.0:\n                pts = [(s * (w / 2.0 - inset),\
+    \ T),\n                       (s * (w / 2.0 + 2.0), T),\n                    \
+    \   (s * (w / 2.0 + 2.0), T - bev - 2.0)]\n            else:\n               \
+    \ pts = [(s * (w / 2.0 + inset), T - bev),\n                       (s * (w / 2.0),\
+    \ T),\n                       (s * (w / 2.0 + 2.0), T),\n                    \
+    \   (s * (w / 2.0 + 2.0), T - bev)]\n            cut = (cq.Workplane(\"YZ\", origin=(x0\
+    \ - 1.0, 0, 0))\n                   .polyline(pts).close().extrude(seg + 2.0))\n\
+    \            b = b.cut(cut)\n        # identification notches, i+1 of them: 1=35,\
+    \ 2=39, 3=43, 4=47\n        for k in range(i + 1):\n            nx = x0 + 1.8\
+    \ + k * 2.4\n            b = b.cut(cq.Workplane(\"XY\", origin=(nx, 0, T - 1.0))\n\
+    \                      .box(1.2, 3.0, 2.0, centered=(True, True, False)))\n  \
+    \      body = b if body is None else body.union(b)\n\n    # snap-off bridges holding\
+    \ the set together for printing\n    for i in range(len(widths) - 1):\n      \
+    \  xc = i * pitch + seg + gap / 2.0\n        br = (cq.Workplane(\"XY\", origin=(xc,\
+    \ 0, T))\n              .box(4.0, 6.0, p.gauge_bridge_h, centered=(True, True,\
+    \ False)))\n        body = body.union(br)\n    return body"
+  print_orientation: 'Lay it flat: all four tile bottoms on the bed (z = 0), notches
+    on top. No supports.'
+  use_orientation: Coupon, not part of the finished assembly. Snap or cut the four
+    tiles apart, then drop each one into the clamp; the widest tile that drops in
+    and sits flat on the pocket floor gives you plate_w.
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt_to_camera
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: counterbore ceiling Ø15.4 (head seat)
+    role: head_seat
+  - part: plate
+    feature: shank clearance hole Ø6.9
+    role: clearance
+  nut: null
+  external: camera base 1/4-20 UNC socket (ISO 1222)
+criteria:
+- id: c_drop_in
+  part: plate
+  feature: outline between the jaw lip tips (max width 42.4 mm)
+  relation: clears
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - plate_w
+  - clamp_mouth_w
+  - clearance_side
+  check:
+    method: coupon
+    ref: fit_gauge
+    description: With the knob loose, drop each tile in. The widest tile that drops
+      in AND sits flat on the pocket floor is the correct width. If it is the 43 mm
+      tile (3 notches), keep plate_w = 42.4. Otherwise set plate_w to that tile's
+      width (35/39/43/47) and re-slice.
+- id: c_lip_grip
+  part: plate
+  feature: top bevel (2.5 mm, 45 deg) widening downwards under the jaw lips
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  - top_bevel_h
+  - lip_angle_deg
+  - clamp_lip_h
+  - clamp_depth
+  check:
+    method: measure
+    ref: null
+    description: 'Knob tight, push the camera firmly upwards: the plate must not lift
+      out. Retention needs plate_t > clamp_depth - clamp_lip_h (10.3 > 7.5), i.e.
+      the plate''s top face above the lip tips. If it lifts, the plate is too narrow
+      - go one gauge step up. If the jaw lip angle looks much steeper or shallower
+      than 45 deg, change lip_angle_deg.'
+- id: c_pocket_depth
+  part: plate
+  feature: bottom face on the clamp's pocket floor
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  - clamp_depth
+  check:
+    method: measure
+    ref: null
+    description: 'The plate must sit flat with the lip tips above it: plate_t < clamp_depth.
+      If the tiles will not sit flat, the pocket is shallower than 10.3 mm - reduce
+      plate_t (and gauge_t) 1-2 mm and reprint the gauge before the plate. If a tile
+      instead HANGS on the lips (never reaches the floor), the clamp is a side-loading
+      dovetail: set lip_angle_deg to -45 and follow step 5.'
+- id: c_jaw_travel
+  part: plate
+  feature: long side faces gripped between the jaw walls
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_channel_w
+  - plate_w
+  check:
+    method: measure
+    ref: null
+    description: 'Tighten the knob: it has to take up roughly (clamp_channel_w - plate_w)/2
+      = 3 mm per side. If the knob bottoms out before the plate is gripped, the plate
+      is too narrow - step up one gauge size.'
+- id: c_head_seat
+  part: plate
+  feature: counterbore Ø15.4 x 5.5 opening downwards
+  relation: contains
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - cb_dia
+  - cb_depth
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: template
+    ref: null
+    description: The bolt head (Ø15 x 5) drops into the pocket from below and its
+      top face bears on the pocket ceiling, which is 0.5 mm clear of it so bridging
+      droop cannot push it proud of the plate's bottom face. To tighten, grip the
+      plate's edges and turn the camera - or pre-thread the bolt by hand first.
+- id: c_shank_clear
+  part: plate
+  feature: shank hole Ø6.9 through the plate
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.27
+  params:
+  - shank_hole_d
+  - bolt_thread_d
+  check:
+    method: template
+    ref: null
+    description: The 1/4-20 thread passes freely and the head cannot fall through,
+      so the screw stays captured in the plate.
+- id: c_thread_engagement
+  part: plate
+  feature: thread standing 5.2 mm above the top face
+  relation: engages
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - protrusion
+  - cb_depth
+  - bolt_len
+  - plate_t
+  - cam_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: 'Thread the bolt into the camera: about 4 turns, and the plate must
+      come up flush against the camera''s base. If it bottoms out (a gap you cannot
+      close), the socket is shallower than 5 mm: shorten the bolt ~2 mm with a hacksaw
+      and clean the thread, or set ps_shank_len shorter and reprint the screw.'
+- id: c_printed_head
+  part: screw_printed
+  feature: head Ø14.8 x 5 in the plate's pocket
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - ps_head_d
+  - ps_head_h
+  - cb_dia
+  - cb_depth
+  check:
+    method: template
+    ref: null
+    description: Printed screw and salvaged bolt share the same envelope, so either
+      one seats in the pocket.
+- id: c_printed_thread
+  part: screw_printed
+  feature: helical ridge thread, major Ø6.2, pitch 1.27 mm
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - ps_major_d
+  - ps_ridge_d
+  - ps_core_d
+  - bolt_pitch
+  - cam_socket_d
+  check:
+    method: measure
+    ref: null
+    description: 'Turn it into the camera''s socket by hand: it should run in and
+      tighten. PLA is soft - snug, not gorilla-tight. Check the shank looks like a
+      spiral ridge; if it prints as a plain taper, the helical sweep failed on your
+      machine and you should use the metal bolt instead.'
+- id: c_gauge_range
+  part: fit_gauge
+  feature: four tiles, 35 / 39 / 43 / 47 mm
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - gauge_w1
+  - gauge_w2
+  - gauge_w3
+  - gauge_w4
+  - clamp_mouth_w
+  check:
+    method: coupon
+    ref: null
+    description: Covers a 33-48 mm clamp opening. If no tile drops in, the clamp is
+      either narrower than 35 mm (reprint the gauge narrower) or the tiles are too
+      thick for its pocket (reduce gauge_t).
+manual:
+- n: '1'
+  text: Print fit_gauge first - it is the thing that tells you whether the plate will
+    fit your borrowed clamp. PLA, 0.2 mm layers, flat on the bed as supplied, 2 walls,
+    15% infill, no supports. About 20 minutes. Do this one before the plate.
+  parts:
+  - fit_gauge
+  hardware: []
+  tool: null
+- n: '2'
+  text: Snap the four tiles apart (or nip the little top bridges with side cutters
+    - they are 1 mm thick on purpose).
+  parts:
+  - fit_gauge
+  hardware: []
+  tool: side cutters
+- n: '3'
+  text: 'Loosen the tripod''s clamp knob a few turns. Try each tile in the clamp in
+    turn: find the widest tile that drops in from above AND sits flat on the clamp''s
+    pocket floor. Identify it by its notches: 1 = 35 mm, 2 = 39 mm, 3 = 43 mm, 4 =
+    47 mm. Then tighten the knob and confirm that tile is gripped and cannot be pulled
+    out.'
+  parts:
+  - fit_gauge
+  hardware: []
+  tool: tripod clamp
+- n: '4'
+  text: 'Act on what the gauge told you. If the 43 mm tile (3 notches) wins, change
+    nothing. If another tile wins, set plate_w to that tile''s width in the plate''s
+    code and re-slice. If the jaws close all the way without gripping any tile, your
+    clamp is wider than my guess: set plate_w about 1 mm less than the clamp''s full
+    opening. If NO tile drops in flat, the pocket is shallower than 10.3 mm: reduce
+    plate_t (and gauge_t) by 1-2 mm - never below 6 mm or the bolt head will not fit
+    inside - and reprint the gauge.'
+  parts:
+  - fit_gauge
+  - plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: 'Only if a tile dropped in but HUNG on the lips instead of reaching the floor:
+    your clamp is a side-loading dovetail, not a drop-in. Set lip_angle_deg to -45
+    in the plate''s code (the bevel flips so the plate narrows going down and slides
+    in from the side), re-slice, and load the plate from the side rather than dropping
+    it in.'
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '6'
+  text: 'Print the plate as supplied: flat on its bottom face (the face with the open
+    pocket), no supports. About 1 hour, ~25 g.'
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '7'
+  text: 'Optional: print the screw if you want a spare or an all-plastic version.
+    Head down on the bed, no supports. The salvaged 1/4-20 bolt from the webcam mount
+    is stronger and is the one to use first - it is the same thread as a camera.'
+  parts:
+  - screw_printed
+  hardware: []
+  tool: null
+- n: '8'
+  text: 'Hold the camera upside down. Drop the salvaged webcam bolt down into the
+    plate from underneath: the head sinks into the Ø15.4 pocket and the thread pokes
+    up out of the plate''s top face. Screw the thread two or three turns into the
+    camera''s base socket by hand.'
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '9'
+  text: 'Press the plate up against the camera''s base and tighten: grip the plate''s
+    edges and turn the camera (or turn the plate) until the plate''s top face is firmly
+    in contact with the camera''s base. The small rib on the top face should end up
+    against the camera''s back edge - that is what stops the camera spinning. If the
+    screw slips in the pocket instead of turning, pre-thread it by hand as in step
+    8, then press down on the plate while turning. The pocket ceiling may look slightly
+    droopy where it bridged the pocket - that is expected and it does not matter.'
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '10'
+  text: 'Check the thread is not bottoming out: there must be no gap between the plate''s
+    top face and the camera''s base. If a gap remains, the socket is shallower than
+    5 mm - shorten the bolt about 2 mm with a hacksaw, clean the thread with a file,
+    or print the screw with a shorter ps_shank_len.'
+  parts:
+  - plate
+  - screw_printed
+  hardware:
+  - bolt
+  tool: hacksaw, file
+- n: '11'
+  text: Loosen the clamp's knob and drop the camera + plate in from above, seating
+    the plate flat on the pocket floor. Tighten the knob firmly. The angled lips should
+    wedge the plate down onto the floor.
+  parts:
+  - plate
+  hardware: []
+  tool: tripod clamp
+- n: '12'
+  text: 'Test before you trust it: with the knob tight, push the camera firmly upwards,
+    sideways and try to twist it. Nothing should move and the plate must not lift
+    out. If it lifts out, the plate is too narrow - step up one gauge size and reprint.'
+  parts:
+  - plate
+  hardware: []
+  tool: tripod clamp
+- n: '13'
+  text: 'Use it like the temporary part it is: PLA, not metal. Keep a hand on the
+    camera while you carry the tripod, re-check the knob each session, and do not
+    leave anything valuable or heavy hanging off it.'
+  parts:
+  - plate
+  - screw_printed
+  hardware: []
+  tool: null

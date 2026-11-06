@@ -9,12 +9,12 @@ The rubric is the 100-point one in section 5 of the hackathon's eval design guid
 | Criterion | Shortcoming |
 |---|---|
 | Real-world relevance | The tasks come from one person's projects and mostly one agent's mistakes. The bearing wheel's request is invented and Dan hasn't reviewed it. |
-| Task design | The tripod's records have no clamp width, and the person answers every size question with the clamp's style. All 5 trials that declined trace to that. The 37 to 39 mm plate width and the 10 mm bolt length are assumptions, not records. |
+| Task design | Until 2026-11-06 the tripod's records had no clamp width, and the person answered every size question with the clamp's style. All 10 tripod trials that declined are in the saved runs from before then. The person now answers 38 mm, the Arca-Swiss width that Dan's one plate fit, but no saved trial has had that answer. The 37 to 39 mm plate width and the 10 mm bolt length are assumptions, not records. |
 | Grader reliability | An audit of the saved failures (issue 15, 2026-11-03) found no verdict that came from a check misreading the geometry. But many verdicts rest on one print per size, or on the bridge check's prediction for a shape nobody printed (see the next section). The audit found one reader bug: a raised feature anywhere above a nut pocket's mouth made the pocket read as closed, and the bolt's way through read as blocked. Both readers are fixed (2026-11-04); with M3 +0.1 read as unsettled, the fix flips one trial, DeepSeek V4.1 Flash's M3 knob, from fail to not graded (`CHANGELOG.md`). |
-| Evidence of model limitations | One to three trials per model, so the runs are pilots, not pass rates. Models never see a build error, so a slip they'd fix in one retry counts as a failure. The coupon loop (`docs/coupon-loop.md`) gives a test-print result back, but only in a separate condition so far, tested on 12 trials. |
+| Evidence of model limitations | One to three trials per model, so the runs are pilots, not pass rates. Models never see a build error, so a slip they'd fix in one retry counts as a failure. The coupon loop (`docs/coupon-loop.md`) gives a test-print result back, but only in replays so far: two samples of 12 knob and wheel trials, and 24 tripod plates. |
 | Reproducibility | Every saved verdict reproduces on Linux as on macOS (106 trials). The detail text doesn't always: tied strand angles come out mirrored, and one part counts 9 bad overhangs instead of 13. The budget allowed only pilot runs. |
 | Human expertise and review | Dan wrote the tasks from his own builds and decides every open call. Claude wrote the checks and reviewed them, and the audit is another reading by Claude, not an independent expert's. |
-| Insight | Drawn from pilots. Holed roofs account for 32 of the 34 trials that fail `bridges`, and at least 5 of 44 tripod trials put the dovetail upside down, but the samples are small. |
+| Insight | Drawn from pilots. Holed roofs account for 37 of the 40 trials that fail `bridges` (read from each part's mesh, `bridges.is_holed_roof`), and 9 of 62 tripod trials put the dovetail upside down. Told how a holed roof printed, models fixed it in 14 of 24 replays, against 2 of 23 after a second look. The samples are small. |
 
 ## Assumptions today's verdicts rest on
 
@@ -22,7 +22,7 @@ Each row is something the eval treats as true without a print that shows it for 
 
 | Assumption | Check | What rests on it |
 |---|---|---|
-| A holed roof of any shape between 3.1 and 7.8 mm from its walls tangles, as the Arca plate's and coupon A's H cell did. The models' roofs are round and of other sizes; H is a 20 mm square with a 6 mm hole, printed once. | `bridges` | 17 trials fail on `bridges` alone (Dan, 2026-11-03: they fail, because the first plate's roof didn't work and the stepped roof is the known fix). The coupon loop answers roofs with this prediction too. |
+| A holed roof of any shape between 3.1 and 7.8 mm from its walls tangles, as the Arca plate's and coupon A's H cell did. The models' roofs are round and of other sizes; H is a 20 mm square with a 6 mm hole, printed once. | `bridges` | 22 trials fail on `bridges` alone on a holed roof (Dan, 2026-11-03: they fail, because the first plate's roof didn't work and the stepped roof is the known fix). The coupon loop answers roofs with this prediction too, and grades the revised roof with the same check. |
 | One print per nut clearance, from round 1. Round 2's finer steps (B2) were never printed. | R4 knob | Every knob fit verdict. |
 | M3 at +0.1 is coded won't go in, but noted "really struggles to go in". Dan, 2026-11-05: "it was very hard to put in, but i could put it in" and "with force it goes in". So it counts as holding, from his memory of one print. Nobody recorded turning it over; it's tighter than +0.2, which holds (Claude's reading). The record is unchanged. | R4 knob | Sonnet 5.5's M3 knob t2 and t3 and DeepSeek V4.1 Flash's t1 pass because of a test print pocket at this size, and 2 test-print loop trials per sample pass. Gemini 4 Argon's M3 knobs (+0.05) stay not graded. |
 | A test print only rescues a design if it includes a size known to hold and a param moves the final part to match. A test print that would only show the size is wrong earns nothing, even though a person would likely keep adjusting until one worked. This is a rule, not something a print showed (Claude's call, which Dan reviewed on 2026-11-05). | R3 wheel, R4 knob | 5 trials fail a fit check with a test print in their manual, and on 2 of them, Sonnet's M3 knob t1 and DeepSeek V4 Pro's M3 knob t3, it's the only failed check. |
@@ -60,11 +60,13 @@ With records like these, the coupon loop's replies would come from prints for mo
 ## Coupon loop (`docs/coupon-loop.md`)
 
 - It can answer only plain pockets and seats at printed sizes or tighter than one that wouldn't go in, and roofs by the bridge check's prediction. Most tripod test prints test the clamp's fit, which no record covers, so they'd get "didn't print that".
-- Of the 31 trials whose final part fails `bridges`, only 4 had a test print with the same roof, so for roofs the loop can help in few cases.
+- Of the 31 trials whose final part fails `bridges`, only 4 had a test print with the same roof. The tripod sample gets round that by printing the plate itself, as Dan did. That's a different question: what a failed final print teaches, not what a test print the model planned does.
+- The reply is text in the words of a recorded print, not a photo. A photo would show the model the tangle's shape and where it is; the text says only what came out.
 - One extra turn only (up to 8 calls), and the reply is a lookup, so it can't answer a follow-up question.
 - Gains are measured against a neutral second turn on a matched set of trials. Without that, feedback and a second look can't be told apart.
 - A roof answer and the grade of the revised roof come from the same check.
-- Tested on two samples of the same 12 knob and wheel trials from three cheaper models (Sonnet 5.5, DeepSeek V4.1 Flash, GLM 5.3 Flash). Neither raised the pass rate (1 of 12 in every arm); the report fixed 3 checks in the second sample and a second look none. Too few trials and models to generalize.
+- Tested on two samples of the same 12 knob and wheel trials from three cheaper models (Sonnet 5.5, DeepSeek V4.1 Flash, GLM 5.3 Flash). After the M3 correction (2026-11-05), the report's arm passes 3 of 12 in each sample and the neutral arm 1. The report fixed 3 checks in the second sample, and a second look fixed none. Too few trials and models to generalize.
+- The tripod sample (24 plates failing on a holed roof, 8 models, one replay per arm): the report fixed 14 roofs and a second look 2 of 23. Only one stepped roof has been printed (the second Arca plate), so a revised roof that passes is the check's call. And Opus 5.5 t2's two-step roof fails a check that has never seen a two-step roof print.
 
 
 ## Bridge check (`pbe/graders/bridges.py`) and its test print (coupon A)

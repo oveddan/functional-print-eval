@@ -1,0 +1,208 @@
+task: tripod-plate
+note: The only change is the print orientation. The plate now prints flat face down,
+  with the bevel narrowing upward and the bolt pocket opening upward. This removes
+  the bridged roof over the pocket that gave the loose loops and the partly closed
+  hole. Dimensions are unchanged, since the clamp and bolt head both fit. The first
+  layer against the bed may have slight elephant foot on the camera face. If the camera
+  sits unevenly, lightly sand the face.
+questions:
+- text: How did the coupon come out in the clamp? You said you couldn't tell, though
+    the full plate fit the clamp.
+  answer: null
+- text: Is the plate firm in the clamp when the knob is tight, or does it wobble?
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: Width of the plate across the top of the dovetail. The clamp fit your print,
+      so I'm keeping it.
+  plate_len:
+    value: 50
+    unit: mm
+    kind: world
+    source: guessed
+    note: Plate length along the jaw slot. Unmeasured.
+  plate_t:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Total plate thickness
+  bevel:
+    value: 3
+    unit: mm
+    kind: world
+    source: guessed
+    note: Height and run of the 45 deg bevel the jaw lips grip. The clamp fit your
+      print.
+  head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: Webcam bolt head across, about 15 mm. It fit.
+  head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: Webcam bolt head height, about 5 mm. It fit.
+  head_clear:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Extra diameter in the head pocket
+  head_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Extra depth in the head pocket
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 nominal diameter
+  shank_clear:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance added to bolt diameter in the slot
+  slot_travel:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Slot travel for balancing the camera
+  coupon_len:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the fit-test slice
+parts:
+- id: plate
+  role: final
+  material: PLA (black), 4+ walls, 40% gyroid infill
+  code: "def build(p):\n    w=p.plate_w; t=p.plate_t; b=p.bevel\n    pts=[(-w/2+b,0),(w/2-b,0),(w/2,b),(w/2,t),(-w/2,t),(-w/2,b)]\n\
+    \    body=cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_len/2, both=True)\n\
+    \    depth=p.head_h+p.head_extra\n    pocket=(cq.Workplane('XY').slot2D(p.slot_travel+p.head_d+p.head_clear,\
+    \ p.head_d+p.head_clear, 90).extrude(depth))\n    thru=(cq.Workplane('XY').slot2D(p.slot_travel+p.bolt_d+p.shank_clear,\
+    \ p.bolt_d+p.shank_clear, 90).extrude(t))\n    use=body.cut(pocket).cut(thru)\n\
+    \    return use.mirror('XY').translate((0,0,t))\n"
+  print_orientation: Flat top face (the camera side) on the bed. The bevel then narrows
+    upward, so no overhangs. The head pocket opens upward, so the roof over the slot
+    is no longer bridged.
+  use_orientation: Flip over. The bevelled edges go into the tripod clamp from above
+    and the flat face sits against the camera. The head pocket faces the tripod.
+- id: plate-coupon
+  role: coupon
+  material: PLA (black)
+  code: "def build(p):\n    w=p.plate_w; t=p.plate_t; b=p.bevel\n    pts=[(-w/2+b,0),(w/2-b,0),(w/2,b),(w/2,t),(-w/2,t),(-w/2,b)]\n\
+    \    c=cq.Workplane('XZ').polyline(pts).close().extrude(p.coupon_len/2, both=True)\n\
+    \    return c.mirror('XY').translate((0,0,t))\n"
+  print_orientation: Flat wide face on the bed, bevel narrowing upward
+  use_orientation: Drop into the tripod clamp to test the edge profile
+hardware:
+- id: webcam-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-bolt
+  fastener: webcam-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 3.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: head pocket (open to the tripod side)
+    role: head_seat
+  - part: plate
+    feature: through slot
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: plate-coupon
+  feature: bevelled plate edges
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - bevel
+  check:
+    method: coupon
+    ref: plate-coupon
+    description: The coupon drops into the clamp and is gripped when the knob is tightened.
+- id: c2
+  part: plate
+  feature: head pocket
+  relation: contains
+  hardware: webcam-bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  - head_clear
+  - head_extra
+  check:
+    method: measure
+    ref: null
+    description: The bolt head fits in the pocket and can be turned by hand.
+- id: c3
+  part: plate
+  feature: through slot
+  relation: clears
+  hardware: webcam-bolt
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - shank_clear
+  check:
+    method: measure
+    ref: null
+    description: The 1/4 inch shank slides through the slot, which prints fully open.
+manual:
+- n: '1'
+  text: Print the plate with the flat wide face on the bed (the pocket opens upward).
+    Use 4 or more walls. You don't need supports.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Flip the plate over. Push the webcam bolt through the slot from the pocket
+    side, so the head sits in the pocket and the thread sticks out of the flat face.
+  parts:
+  - plate
+  hardware:
+  - webcam-bolt
+  tool: null
+- n: '3'
+  text: Thread the bolt into the camera's tripod socket by turning the head by hand.
+    Slide the plate along the slot to balance the camera, then tighten.
+  parts:
+  - plate
+  hardware:
+  - webcam-bolt
+  tool: null
+- n: '4'
+  text: Drop the plate into the tripod clamp from above and tighten the knob gently.
+    Check it's secure before you let go of the camera.
+  parts:
+  - plate
+  hardware: []
+  tool: null

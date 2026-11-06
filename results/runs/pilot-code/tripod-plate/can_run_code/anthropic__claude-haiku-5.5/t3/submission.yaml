@@ -1,0 +1,134 @@
+task: tripod-plate
+note: ''
+questions:
+- text: What are the plate's real length, width and thickness, and the width of its
+    edge grip?
+  answer: null
+- text: Does the camera's socket hold the 1/4-20 bolt (about 10 mm of thread)?
+  answer: null
+params:
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: guessed
+    note: Placeholder. Plate length is unmeasured; must match the clamp's grip
+  plate_w:
+    value: 40
+    unit: mm
+    kind: design
+    source: guessed
+    note: Placeholder. Plate width is unmeasured; must match the clamp's grip
+  plate_t:
+    value: 6
+    unit: mm
+    kind: design
+    source: guessed
+    note: Placeholder thickness for strength in PLA; unmeasured
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Webcam bolt head across, approx.
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Webcam bolt head height, approx.
+  bolt_clear_d:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance for 1/4-20 bolt shank
+  head_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Extra clearance around the bolt head in its counterbore
+parts:
+- id: plate
+  role: final
+  material: PLA (black)
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(p.plate_l, p.plate_w, p.plate_t,\
+    \ centered=(True, True, False))\n    # counterbore on the bottom for the bolt\
+    \ head\n    cb = cq.Workplane('XY').circle((p.head_d + p.head_clear) / 2).extrude(p.head_h\
+    \ + 0.5)\n    plate = plate.cut(cb)\n    # through hole for the bolt shank\n \
+    \   hole = cq.Workplane('XY').circle(p.bolt_clear_d / 2).extrude(p.plate_t + 2).translate((0,\
+    \ 0, -1))\n    plate = plate.cut(hole)\n    return plate\n"
+  print_orientation: flat, plate bottom on the bed
+  use_orientation: flat, camera on top, clamp grips the long edges
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: plate
+  feature: bolt counterbore
+  relation: seats
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  - head_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt head sits flush in the underside counterbore
+- id: c2
+  part: plate
+  feature: clamp grip
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_l
+  - plate_w
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: Plate sits in the friend's clamp jaws and the knob holds it. The
+      plate's length and width are guessed and must be verified first.
+manual:
+- n: '1'
+  text: Print the plate flat on the bed, black PLA, 100% infill, with the counterbore
+    facing up.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check the printed plate against the tripod clamp. Stop here if it doesn't
+    seat or grip.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the webcam bolt up through the counterbore and the hole, so its head
+    sits in the counterbore on the underside.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Screw the bolt's threaded end into the camera's bottom socket until it's snug.
+    Don't overtighten the PLA.
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Drop the plate into the clamp from above and tighten the knob.
+  parts:
+  - plate
+  hardware: []
+  tool: null

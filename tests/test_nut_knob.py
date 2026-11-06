@@ -470,8 +470,12 @@ def test_holds_is_settled_only_where_prints_settle_it(label, clearance, expected
     ("Thread the bolt through the clearance hole.", False),
     ("Remove the brim from the first layer.", False),
     ("Press the nut in and check the hole", False),
+    ("From the top face, run a hobby knife round the inside of the slot and push the skin out.", True),  # Opus 5.5, loop-tripod
+    ("Cut the thin layer out with a hobby knife.", True),
+    ("Push the bolt out of the hole.", False),
+    ("Pop the plate off the bed.", False),
 ])
 def test_what_counts_as_being_told_to_clear_a_layer(sentence, tells):
     sub = told(design(), sentence)
     sub.manual[1].tool = "drill press"  # a tool on its own doesn't tell anyone to open a layer
-    assert (nuts._sentence_saying_to_clear_it(sub) is not None) is tells
+    assert (nuts.sentence_saying_to_clear_it(sub) is not None) is tells

@@ -24,6 +24,14 @@ README = ROOT / "README.md"
 VERDICTS = ("pass", "fail", "not graded", "declined")
 SMOKE_RUNS = ("cloud-smoke", "cloud-smoke-2")  # one Haiku spacer each, to test a new cloud machine; not results
 
+# Trials that fail on `bridges` alone, but not on a roof with a hole cut through it, so their verdict doesn't
+# rest on the holed-roof assumption. Keyed by task, condition, model and trial. tests/test_results_table.py
+# rebuilds every such trial's parts and checks this list against bridges.is_holed_roof.
+NOT_HOLED_ROOFS = {
+    ("nut-knob/M5", "can_ask", "google/gemini-4-argon", 2):
+        "the underside of its 30 mm grip overhangs the 16 mm boss below: a ledge whose free edge is the outside",
+}
+
 # Whose words each task's request is, as of issue 35. Only the tripod's was approved by Dan before it ran.
 WORDING = {
     "tripod-plate": "Dan's own words, approved by Dan",
@@ -120,6 +128,14 @@ def section(records: list[TrialRecord]) -> str:
     return "\n".join(lines)
 
 
+def trial_key(record: TrialRecord) -> tuple:
+    return record.task, record.condition, record.model, record.trial
+
+
+def fails_on_bridges_alone(record: TrialRecord) -> bool:
+    return record.verdict == "fail" and record.failed_checks == ["bridges"]
+
+
 def graded(records: list[TrialRecord], check: str, ok) -> int:
     """How many findings of this check came out `ok` (True, False or None), declined trials left out."""
     return sum(1 for record in records if not record.declined
@@ -130,7 +146,7 @@ def assumptions(records: list[TrialRecord]) -> str:
     """The three assumptions already changing results (issue 35), with how many verdicts rest on each."""
     tripod = [record for record in records if record.task == "tripod-plate"]
     tripod_passes = sum(1 for record in tripod if record.verdict == "pass")
-    only_bridges = sum(1 for record in records if record.verdict == "fail" and record.failed_checks == ["bridges"])
+    only_bridges = sum(1 for record in records if fails_on_bridges_alone(record) and trial_key(record) not in NOT_HOLED_ROOFS)
     lines = [
         "| Assumption | Check | What rests on it in the saved runs |",
         "|---|---|---|",
@@ -141,7 +157,7 @@ def assumptions(records: list[TrialRecord]) -> str:
         f"Every graded tripod R2 verdict ({graded(tripod, 'R2', True)} pass, {graded(tripod, 'R2', False)} fail) |",
         "| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the "
         "Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | "
-        f"{only_bridges} trials that fail on `bridges` alone (Dan's call: they fail) |",
+        f"{only_bridges} trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |",
     ]
     return "\n".join(lines)
 

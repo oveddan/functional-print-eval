@@ -1,0 +1,312 @@
+task: tripod-plate
+note: 'Replacement quick-release plate for a borrowed tripod, temporary use. The plate
+  is printed in PLA and sized generically (39 x 70 x 7.4 mm, adjustable by sanding/tape),
+  because the clamp''s inside dimensions couldn''t be measured — a stepped fit gauge
+  prints first and tells you which size fits, and a head-fit coupon checks the bolt
+  seat before committing filament. The camera screw is not printed: the salvaged steel
+  webcam-mount bolt is a real 1/4"-20 (standard camera thread) with ~10 mm of thread
+  and a ~15 x 5 mm head. The head sits in a 5.7 mm-deep slot in the plate''s underside
+  — fully captured, plate still seats flat — leaving ~8.3 mm (≈6.5 turns) of thread
+  to engage the camera socket, with the camera body acting as the nut. How hard is
+  it? Easy — about 20 g of PLA, a print or two, some sanding, no special tools. It
+  won''t be as rigid or heat-tolerant as the metal original (keep it out of hot cars,
+  check tightness before each use), but it should hold a camera securely until the
+  proper plate turns up.'
+questions: []
+params:
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: head height; fits the 5.7 mm slot with ~0.7 mm spare so the head is fully
+      captured and the plate seats flat
+  bolt_head_w:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: head width across flats/diameter, ~15 mm; slot sized 18.6 so hex across-corners
+      (~17.3) clears
+  bolt_thread_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under-head threaded length; ~8.3 mm (≈6.5 turns of 1/4-20) reaches the camera
+      socket past the 1.7 mm slot ceiling
+  hole_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for the Ø6.35 1/4-20 shank
+  hole_x:
+    value: 35
+    unit: mm
+    kind: design
+    source: design
+    note: default bolt position; the bolt slides in the slot so it can sit under the
+      camera's tripod hole
+  plate_len:
+    value: 70
+    unit: mm
+    kind: design
+    source: design
+    note: generic length; the open back end can be trimmed if the clamp channel is
+      shorter
+  plate_t:
+    value: 7.4
+    unit: mm
+    kind: design
+    source: design
+    note: sand the top face down if the clamp channel is shallower than ~7.5 mm
+  plate_w:
+    value: 39
+    unit: mm
+    kind: design
+    source: design
+    note: center of the likely 38-43 mm range; the fit gauge decides — sand down or
+      tape-shim to match
+  stop_from_front:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: stop wall keeps the bolt head from sliding out the front of the slot
+  top_wall:
+    value: 1.7
+    unit: mm
+    kind: design
+    source: design
+    note: material between slot ceiling and camera seating face
+  trench_d:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: bolt head 5 mm + 0.7 clearance
+  trench_w:
+    value: 18.6
+    unit: mm
+    kind: design
+    source: design
+    note: head 15 mm + 3.6 so a hex head's across-corners (~17.3) clears
+parts:
+- id: fit_gauge
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    steps = [36.0, 38.0, 40.0, 42.0]\n    sl, h = 13.0, 7.5\n\
+    \    x = 0.0\n    g = None\n    for w in steps:\n        b = cq.Workplane(\"XY\"\
+    ).box(sl, w, h, centered=(False, False, False)).translate((x, 0, 0))\n       \
+    \ g = b if g is None else g.union(b)\n        x += sl\n    dt = (cq.Workplane(\"\
+    YZ\")\n          .polyline([(-19.0, h), (19.0, h), (16.5, 0.0), (-16.5, 0.0)]).close()\n\
+    \          .extrude(15.0)\n          .translate((x, 0, 0)))\n    g = g.union(dt)\n\
+    \    g = g.edges(\"|X and >Z\").chamfer(1.0)\n    notch = cq.Workplane(\"XY\"\
+    ).box(3.0, 3.0, 3.0, centered=(False, False, False)).translate((-0.5, -1.5, h\
+    \ - 3.0))\n    return g.cut(notch)\n"
+  print_orientation: lying flat on the bed; the five steps in a row along the length,
+    notched 36 mm end first
+  use_orientation: held with the steps up, each step dipped into the clamp from above
+- id: head_fit
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    L, W = 24.0, 22.0\n    b = cq.Workplane(\"XY\").box(L,\
+    \ W, p.plate_t, centered=(False, False, False))\n    trench = (cq.Workplane(\"\
+    XY\")\n              .box(L - 5.0 + 1.0, p.trench_w, p.trench_d + 0.25, centered=(False,\
+    \ False, False))\n              .translate((4.5, (W - p.trench_w) / 2.0, -0.25)))\n\
+    \    b = b.cut(trench)\n    hole = (cq.Workplane(\"XY\").circle(p.hole_d / 2.0).extrude(p.plate_t)\n\
+    \            .translate((14.0, W / 2.0, 0)))\n    return b.cut(hole)\n"
+  print_orientation: bottom face down; the head slot opens through the bottom face
+    and the open end face, with the stop wall at the closed end like the real plate
+  use_orientation: slot down, open end toward you
+- id: qr_plate
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    L = p.plate_len\n    W = p.plate_w\n    T = p.plate_t\n\
+    \    plate = cq.Workplane(\"XY\").box(L, W, T, centered=(False, False, False))\n\
+    \    trench = (cq.Workplane(\"XY\")\n              .box(L - p.stop_from_front\
+    \ + 1.0, p.trench_w, p.trench_d + 0.25, centered=(False, False, False))\n    \
+    \          .translate((p.stop_from_front - 0.5, (W - p.trench_w) / 2.0, -0.25)))\n\
+    \    plate = plate.cut(trench)\n    hole = (cq.Workplane(\"XY\").circle(p.hole_d\
+    \ / 2.0).extrude(T)\n            .translate((p.hole_x, W / 2.0, 0)))\n    return\
+    \ plate.cut(hole)\n"
+  print_orientation: bottom face down; the head slot opens through the bottom and
+    the open back end face; the 18.6 mm bridge over the slot is well within this printer's
+    clean-bridge range
+  use_orientation: 'in the clamp: slot faces the clamp floor, open end of the slot
+    at the back, camera seat face up'
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: webcam_bolt
+  axis_origin:
+  - 35.0
+  - 19.5
+  - 3.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: head_trench (18.6 x 5.7 slot, open at the bottom and the back end face,
+      stop wall 14 mm from the front)
+    role: head_seat
+  - part: qr_plate
+    feature: shank_hole (Ø6.8 through the plate top wall)
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket (the camera body is the nut; ~10 mm bolt
+    gives ~8.3 mm / ~6.5 turns of engagement past the slot ceiling)
+criteria:
+- id: clamp_fit
+  part: qr_plate
+  feature: plate cross-section, 39 wide x 7.4 tall x 70 long
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_t
+  - plate_len
+  check:
+    method: coupon
+    ref: fit_gauge
+    description: 'With the clamp knob loose, dip each gauge step into the channel
+      from above: the step that drops in fully and clamps snug gives the channel width
+      (steps 1-4 are 36/38/40/42 mm wide; step 5 is a trapezoid). The plate prints
+      at 39 x 7.4: if the snug step is 36 or 38, sand the plate''s two long sides
+      evenly to step minus ~1 mm; if only 42 is snug, add a layer of tape per side;
+      if the trapezoid step fits while the rectangles rock, the jaws are dovetail-style
+      — file a shallow taper on the plate''s bottom edges instead. If the plate is
+      longer than the channel, trim the open back end.'
+- id: bolt_head_seat
+  part: qr_plate
+  feature: head_trench (18.6 x 5.7 slot, open at the bottom and the back end face)
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - bolt_head_w
+  - bolt_head_h
+  - trench_w
+  - trench_d
+  check:
+    method: coupon
+    ref: head_fit
+    description: Bolt head must slide into the coupon's slot from its open end and
+      stop at the stop wall, sitting about flush with the bottom face (head is 5 mm
+      in a 5.7 mm slot). If a hex head's corners snag, sand the slot sides slightly
+      wider.
+- id: shank_clear
+  part: qr_plate
+  feature: shank_hole (Ø6.8 through-hole)
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - hole_d
+  check:
+    method: coupon
+    ref: head_fit
+    description: The bolt's shank must pass up through the coupon's hole freely and
+      protrude above the face.
+- id: camera_thread
+  part: qr_plate
+  feature: bolt engaged in the camera socket
+  relation: engages
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - bolt_thread_len
+  check:
+    method: none
+    ref: null
+    description: 'Thread the bolt into the camera''s 1/4-20 socket by hand: it should
+      turn smoothly for about six turns. If it goes tight early, the bolt is bottoming
+      out in a shallow socket — back off, don''t force; the camera will still be held,
+      just slightly raised.'
+manual:
+- n: '1'
+  text: 'Print both coupons first: the stepped fit gauge and the head-fit block, each
+    flat on the bed as oriented.'
+  parts:
+  - fit_gauge
+  - head_fit
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Size the clamp: with the clamp knob loose, dip each gauge step into the channel,
+    starting from the notched end. Steps 1-4 are 36/38/40/42 mm wide rectangles; step
+    5 is a trapezoid. The step that drops in fully and clamps snug is your channel
+    width — remember which one.'
+  parts:
+  - fit_gauge
+  hardware: []
+  tool: null
+- n: '3'
+  text: Print the quick-release plate, flat on the bed.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'Fit the plate: drop it into the clamp. Too tight? Sand both long sides evenly,
+    a little at a time, until it matches your snug gauge step minus about 1 mm. Loose?
+    Add a layer of tape to each side. If the trapezoid step was the snug one and rectangles
+    rock in the clamp, the jaws are dovetail-style: file a shallow taper on the bottom
+    edge of both long sides until the plate wedges snugly. Plate longer than the channel?
+    Trim or sand the open back end.'
+  parts:
+  - qr_plate
+  - fit_gauge
+  hardware: []
+  tool: sandpaper / file
+- n: '5'
+  text: 'Check the bolt: slide its head into the head-fit coupon''s slot from the
+    open end until it stops at the stop wall, then push the thread up through the
+    hole. The head should sit about flush in the slot and the bolt should turn freely
+    in the hole.'
+  parts:
+  - head_fit
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '6'
+  text: Load the bolt into the plate's slot from the open back end, thread pointing
+    up, and slide it roughly to the middle of the plate (under where the camera's
+    tripod hole will sit). Gravity keeps it in the slot.
+  parts:
+  - qr_plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '7'
+  text: Drop the plate into the clamp and tighten the knob firmly.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '8'
+  text: 'Mount the camera: set it on the plate over the bolt, then rotate the camera
+    to wind the bolt up into its socket until snug, and align the camera. If it goes
+    tight before the camera sits flat, the bolt has bottomed out — back off slightly;
+    don''t force it.'
+  parts:
+  - qr_plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '9'
+  text: 'This is a temporary part: PLA softens in a hot car and wears with use. Check
+    the knob and the bolt tightness before each shoot, and swap in the proper metal
+    plate once you find it.'
+  parts:
+  - qr_plate
+  hardware:
+  - webcam_bolt
+  tool: null

@@ -1,0 +1,329 @@
+task: tripod-plate
+note: Instead of 3D printing the 1/4"-20 screw thread in PLA—which is weak across
+  layer lines and risks shearing off flush inside your camera's tripod socket—this
+  design uses your salvaged metal 1/4"-20 webcam-mount-bolt ("the part that screws
+  in") paired with a 3D-printed 4-way Arca-Swiss dovetail quick-release plate ("the
+  flat part"). The 10 mm bolt shaft passes through a 5.6 mm thick solid web so 4.4
+  mm of metal thread engages the camera's 1/4"-20 socket, while the 15 mm x 5 mm bolt
+  head sits 0.4 mm recessed inside a 21 mm counterbore with an open underside finger/tool
+  trough and support-free two-stage sequential bridging.
+questions:
+- text: Should both the flat plate and the 1/4"-20 screw be 3D printed in PLA?
+  answer: Print only the flat dovetail plate in PLA and use your salvaged metal 1/4"-20
+    webcam-mount-bolt for the screw rather than 3D printing a plastic 1/4"-20 thread,
+    which can easily shear off inside the camera's socket.
+params:
+  clamp_base_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: datasheet
+    note: Standard Arca-Swiss dovetail base width for drop-in knob-tightened angled-lip
+      jaw clamp
+  cbore_radial_clearance:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance around the 15 mm bolt head inside the counterbore (21 mm
+      OD also clears 15 mm AF hex corners at 17.32 mm)
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured under-head shaft length of salvaged:webcam-mount-bolt (~10 mm)
+  bolt_thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Thread pitch of 1/4-20 UNC thread
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured head height of salvaged:webcam-mount-bolt (~5 mm)
+  bolt_clearance_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole clearance diameter for 1/4-20 (6.35 mm) bolt shaft
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured head width across of salvaged:webcam-mount-bolt (~15 mm)
+  dovetail_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: datasheet
+    note: Standard 45-degree dovetail bevel angle matching angled clamp lips
+  bridge_step_h:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Two-layer (2 x 0.2 mm) sequential bridge step height above counterbore ceiling
+  access_slot_w:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: Width of underside finger/tool access trough across the plate
+  coupon_length:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the test coupon slice along X
+  bolt_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Major diameter of 1/4-20 UNC thread on salvaged:webcam-mount-bolt and camera
+      tripod socket
+  bolt_protrusion:
+    value: 4.4
+    unit: mm
+    kind: world
+    source: datasheet
+    note: Standard ISO 1222 camera 1/4-20 socket thread engagement protrusion above
+      the top plate face
+  dovetail_lip_h:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Height of lower vertical edge below the 45-degree dovetail bevel
+  dovetail_bevel_h:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: Vertical height of the 45-degree dovetail bevel on all four sides
+  plate_h:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Overall thickness of the quick-release plate
+  corner_chamfer:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Vertical corner chamfer for smooth drop-in jaw alignment
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef _octagon_pts(size, chamf):\n  \
+    \  s = size / 2.0\n    c = min(chamf, s - 0.5)\n    return [\n        (s - c,\
+    \ -s),\n        (s, -s + c),\n        (s, s - c),\n        (s - c, s),\n     \
+    \   (-s + c, s),\n        (-s, s - c),\n        (-s, -s + c),\n        (-s + c,\
+    \ -s),\n    ]\n\ndef build(p):\n    w = p.clamp_base_w\n    lip_h = p.dovetail_lip_h\n\
+    \    bev_h = p.dovetail_bevel_h\n    h = p.plate_h\n    bev_inset = bev_h / math.tan(math.radians(p.dovetail_angle))\n\
+    \    top_w = w - 2.0 * bev_inset\n    web_t = p.bolt_length - p.bolt_protrusion\n\
+    \    cbore_depth = h - web_t\n    cbore_d = p.bolt_head_d + 2.0 * p.cbore_radial_clearance\n\
+    \n    pts_bot = _octagon_pts(w, p.corner_chamfer)\n    pts_top = _octagon_pts(top_w,\
+    \ max(1.0, p.corner_chamfer - 0.5))\n\n    # 1. Lower base lip: z = 0 to lip_h\n\
+    \    part = cq.Workplane(\"XY\").polyline(pts_bot).close().extrude(lip_h)\n\n\
+    \    # 2. Four-way 45-deg upward-facing dovetail bevel: z = lip_h to lip_h + bev_h\n\
+    \    bevel = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=lip_h)\n\
+    \        .polyline(pts_bot)\n        .close()\n        .workplane(offset=bev_h)\n\
+    \        .polyline(pts_top)\n        .close()\n        .loft(combine=False)\n\
+    \    )\n    part = part.union(bevel)\n\n    # 3. Upper camera support platform:\
+    \ z = lip_h + bev_h to h\n    upper = (\n        cq.Workplane(\"XY\")\n      \
+    \  .workplane(offset=lip_h + bev_h)\n        .polyline(pts_top)\n        .close()\n\
+    \        .extrude(h - (lip_h + bev_h))\n    )\n    part = part.union(upper)\n\n\
+    \    # 4. Underside finger/tool access trough along X (z = 0 to cbore_depth)\n\
+    \    trough = (\n        cq.Workplane(\"XY\")\n        .rect(w + 2.0, p.access_slot_w)\n\
+    \        .extrude(cbore_depth)\n    )\n    part = part.cut(trough)\n\n    # 5.\
+    \ Central bolt head counterbore (z = 0 to cbore_depth)\n    cbore = (\n      \
+    \  cq.Workplane(\"XY\")\n        .circle(cbore_d / 2.0)\n        .extrude(cbore_depth)\n\
+    \    )\n    part = part.cut(cbore)\n\n    # 6. Two-stage sequential bridging above\
+    \ counterbore ceiling\n    bridge_slot = (\n        cq.Workplane(\"XY\")\n   \
+    \     .workplane(offset=cbore_depth)\n        .rect(p.bolt_clearance_d, cbore_d)\n\
+    \        .extrude(p.bridge_step_h)\n    )\n    bridge_sq = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=cbore_depth + p.bridge_step_h)\n        .rect(p.bolt_clearance_d,\
+    \ p.bolt_clearance_d)\n        .extrude(p.bridge_step_h)\n    )\n    part = part.cut(bridge_slot).cut(bridge_sq)\n\
+    \n    # 7. Central clearance bore for 1/4\"-20 bolt shaft\n    hole = (\n    \
+    \    cq.Workplane(\"XY\")\n        .circle(p.bolt_clearance_d / 2.0)\n       \
+    \ .extrude(h)\n    )\n    part = part.cut(hole)\n\n    return part\n"
+  print_orientation: Bottom face of the plate (clamp floor side) flat on the print
+    bed at z = 0; camera mounting face at z = +plate_h. Prints with zero supports
+    via inward-sloping 45-degree dovetails and two-stage sequential bridging over
+    the underside counterbore.
+  use_orientation: 'Same as print orientation: z = 0 sits down inside the tripod clamp
+    jaws, and the flat top surface at z = +plate_h presses against the bottom of the
+    camera with the 1/4"-20 bolt pointing in +Z.'
+- id: qr_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    w = p.clamp_base_w\n\
+    \    l = p.coupon_length\n    lip_h = p.dovetail_lip_h\n    bev_h = p.dovetail_bevel_h\n\
+    \    h = p.plate_h\n    bev_inset = bev_h / math.tan(math.radians(p.dovetail_angle))\n\
+    \    top_w = w - 2.0 * bev_inset\n    web_t = p.bolt_length - p.bolt_protrusion\n\
+    \    cbore_depth = h - web_t\n    cbore_d = p.bolt_head_d + 2.0 * p.cbore_radial_clearance\n\
+    \n    pts = [\n        (-w / 2.0, 0.0),\n        (w / 2.0, 0.0),\n        (w /\
+    \ 2.0, lip_h),\n        (top_w / 2.0, lip_h + bev_h),\n        (top_w / 2.0, h),\n\
+    \        (-top_w / 2.0, h),\n        (-top_w / 2.0, lip_h + bev_h),\n        (-w\
+    \ / 2.0, lip_h),\n    ]\n    part = (\n        cq.Workplane(\"YZ\")\n        .polyline(pts)\n\
+    \        .close()\n        .extrude(l / 2.0, both=True)\n    )\n\n    trough =\
+    \ (\n        cq.Workplane(\"XY\")\n        .rect(l + 2.0, p.access_slot_w)\n \
+    \       .extrude(cbore_depth)\n    )\n    cbore = (\n        cq.Workplane(\"XY\"\
+    )\n        .circle(cbore_d / 2.0)\n        .extrude(cbore_depth)\n    )\n    bridge_slot\
+    \ = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=cbore_depth)\n\
+    \        .rect(p.bolt_clearance_d, cbore_d)\n        .extrude(p.bridge_step_h)\n\
+    \    )\n    bridge_sq = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=cbore_depth\
+    \ + p.bridge_step_h)\n        .rect(p.bolt_clearance_d, p.bolt_clearance_d)\n\
+    \        .extrude(p.bridge_step_h)\n    )\n    hole = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(p.bolt_clearance_d / 2.0)\n        .extrude(h)\n    )\n\
+    \n    part = part.cut(trough).cut(cbore).cut(bridge_slot).cut(bridge_sq).cut(hole)\n\
+    \    return part\n"
+  print_orientation: Bottom face at z = 0 flat on the print bed, identical in cross-section
+    to qr_plate.
+  use_orientation: 'Same as qr_plate: test-fit the 1/4"-20 bolt into the underside
+    counterbore and camera socket, and test-fit the 38 mm dovetail profile in the
+    tripod clamp jaws.'
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_mount_joint
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.4
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: bolt_head_counterbore_and_trough
+    role: head_seat
+  - part: qr_plate
+    feature: bolt_shaft_clearance_bore
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: clamp_dovetail_engagement
+  part: qr_plate
+  feature: four_way_arca_dovetail_rails
+  relation: engages
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - clamp_base_w
+  - dovetail_angle
+  - dovetail_lip_h
+  - dovetail_bevel_h
+  check:
+    method: coupon
+    ref: qr_fit_coupon
+    description: Check with qr_fit_coupon that the 38 mm 45-degree dovetail drops
+      into the tripod clamp from above and locks tightly when the clamp knob is tightened.
+- id: bolt_head_recess_seat
+  part: qr_plate
+  feature: bolt_head_counterbore_and_trough
+  relation: seats
+  hardware: camera_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - cbore_radial_clearance
+  - plate_h
+  - bolt_length
+  - bolt_protrusion
+  check:
+    method: coupon
+    ref: qr_fit_coupon
+    description: Verify with qr_fit_coupon that the 15 mm x 5 mm head of salvaged:webcam-mount-bolt
+      fits cleanly inside the 21 mm x 5.4 mm underside counterbore and stays recessed
+      0.4 mm above the bottom plane (z = 0).
+- id: bolt_shaft_clearance
+  part: qr_plate
+  feature: bolt_shaft_clearance_bore
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: 0.45
+  params:
+  - bolt_thread_d
+  - bolt_clearance_d
+  check:
+    method: coupon
+    ref: qr_fit_coupon
+    description: Verify that the 1/4"-20 (6.35 mm) shaft of salvaged:webcam-mount-bolt
+      passes freely through the 6.8 mm central bore.
+- id: camera_base_support_and_thread_reach
+  part: qr_plate
+  feature: top_camera_platform_web
+  relation: supports
+  hardware: camera_bolt
+  clearance_mm: 0.0
+  params:
+  - bolt_length
+  - bolt_protrusion
+  - bolt_thread_d
+  - bolt_thread_pitch
+  check:
+    method: coupon
+    ref: qr_fit_coupon
+    description: Verify with qr_fit_coupon that the 4.4 mm bolt thread protrusion
+      above the top camera platform threads securely into the camera's 1/4"-20 socket
+      and clamps the camera base flat without bottoming out early.
+manual:
+- n: '1'
+  text: 'Print qr_fit_coupon first (z = 0 flat on the build plate, no supports). Insert
+    the salvaged 1/4"-20 webcam-mount-bolt from the underside counterbore and check
+    that: (a) the bolt head fits freely inside the recess without protruding past
+    the flat bottom face, (b) the exposed ~4.4 mm thread screws smoothly into your
+    camera''s 1/4"-20 socket and pulls the flat top face snug against the camera base
+    without bottoming out, and (c) the 38 mm 45-degree dovetail drops into the open
+    tripod clamp jaws and locks firmly when the clamp knob is tightened.'
+  parts:
+  - qr_fit_coupon
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '2'
+  text: Print qr_plate in its modeled orientation (z = 0 flat on the build plate,
+    no supports needed; the underside counterbore uses built-in two-stage sequential
+    bridging and all four 45-degree dovetail bevels slope inward as z increases).
+    Use at least 4 wall loops and 40%+ infill in PLA for high clamping and compressive
+    strength.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the salvaged 1/4"-20 webcam-mount-bolt up through the center hole from
+    the underside of qr_plate. Hold the flat top face of qr_plate against the bottom
+    of the camera and turn the bolt head via the underside finger/tool access trough
+    until the plate is snug against the camera base.
+  parts:
+  - qr_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '4'
+  text: Open the tripod clamp jaws with the knob, drop qr_plate (with camera attached)
+    straight into the angled jaw lips in either 0-degree or 90-degree orientation,
+    and tighten the clamp knob firmly. Verify the clamp jaws grip the 45-degree dovetail
+    bevels securely before releasing the camera.
+  parts:
+  - qr_plate
+  hardware:
+  - camera_bolt
+  tool: null

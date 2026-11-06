@@ -1,0 +1,219 @@
+task: tripod-plate
+note: 'INCOMPLETE MOUNT: bolt-fit coupon only, NOT a camera-supporting quick-release
+  plate. A flat plate can sometimes be printed for temporary light-duty use, but its
+  retaining geometry must match the actual tripod. Do not print a load-bearing camera
+  screw in PLA. Use the existing metal webcam bolt only after verifying thread, engagement
+  and socket depth. Repeated measurement requests returned clamp style rather than
+  dimensions, so no mating geometry or load rating is claimed. Buy the head-specific
+  replacement plate if those dimensions cannot be obtained.'
+questions:
+- text: Clamp style?
+  answer: Drop-in jaws with angled lips, tightened by a knob.
+- text: Camera socket thread?
+  answer: Reported as 1/4-20.
+- text: Bottom and top jaw gaps, lip height, channel length, adjustment range and
+    end-stop geometry?
+  answer: null
+- text: Camera model, mass, socket usable depth and flat seating footprint?
+  answer: null
+- text: Webcam bolt dimensions?
+  answer: Approximately 15 mm across the head, 5 mm head height, 10 mm length under
+    head. Thread compatibility still requires checking.
+params:
+  bolt_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal major diameter of listed 1/4-20 webcam bolt.
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_head_across:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate across-head reading; shape not established.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_underhead_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate; must be confirmed before selecting plate thickness.
+  clamp_bottom_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  clamp_top_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  clamp_lip_height:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  clamp_channel_length:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  socket_usable_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  coupon_w:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_l:
+    value: 54
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hole_offset:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shank_diametral_allowance:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_diametral_allowance:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  label_size:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  label_depth:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: bolt_fit_coupon
+  role: coupon
+  material: Black high-speed PLA
+  code: "def build(p):\n    s = cq.Workplane('XY').box(p.coupon_w, p.coupon_l, p.coupon_t,\
+    \ centered=(True, True, False))\n    for y, d in [(-p.hole_offset, p.bolt_thread_d\
+    \ + p.shank_diametral_allowance), (p.hole_offset, p.bolt_head_across + p.head_diametral_allowance)]:\n\
+    \        cutter = cq.Workplane('XY').center(0, y).circle(d/2).extrude(p.coupon_t)\n\
+    \        s = s.cut(cutter)\n    label = cq.Workplane('XY').workplane(offset=p.coupon_t-p.label_depth).text('TEST\
+    \ ONLY', p.label_size, p.label_depth, combine=False)\n    return s.cut(label)\n"
+  print_orientation: Broad flat face on the bed at z=0; engraved TEST ONLY faces upward.
+  use_orientation: Hand-held fit gauge only; never attach it between camera and tripod.
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: shank_clearance
+  part: bolt_fit_coupon
+  feature: Smaller through-hole
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.275
+  params:
+  - bolt_thread_d
+  - shank_diametral_allowance
+  check:
+    method: coupon
+    ref: bolt_fit_coupon
+    description: Metal bolt threads slide through without turning or force. This verifies
+      clearance only, not thread compatibility or mounting strength.
+- id: head_envelope
+  part: bolt_fit_coupon
+  feature: Larger through-hole
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_head_across
+  - head_diametral_allowance
+  check:
+    method: coupon
+    ref: bolt_fit_coupon
+    description: Check whether entire head passes through freely. This is only an
+      envelope test, not a load-bearing recess.
+manual:
+- n: '1'
+  text: This file is a bolt-fit gauge, not the missing quick-release plate. Do not
+    mount a camera with it. Print at 0.2 mm layers, three walls and 20% infill; no
+    supports required.
+  parts:
+  - bolt_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Away from the camera, slide the webcam bolt through the small hole and test
+    the head in the large hole. Do not force either fit. Record any interference;
+    do not treat a successful test as approval of a camera mount.
+  parts:
+  - bolt_fit_coupon
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '3'
+  text: Before a usable plate can be designed, obtain numerical bottom and top jaw
+    gaps, lip height, length along the jaws, clamp adjustment range, and safety-stop
+    geometry. Also establish the camera mass, seating footprint and usable socket
+    depth. A head model number or original plate drawing may identify the required
+    geometry.
+  parts: []
+  hardware: []
+  tool: null
+- n: '4'
+  text: A future plate must retain the camera with the clamp fully engaged, accommodate
+    the real metal bolt head, and leave adequate verified thread engagement without
+    bottoming the bolt in the camera. The present information does not determine that
+    thickness. Do not substitute a printed screw.
+  parts: []
+  hardware: []
+  tool: null
+- n: '5'
+  text: 'Until the missing dimensions are known, use a replacement plate specified
+    for the tripod head. Even a subsequently verified PLA plate should be treated
+    as a supervised light-duty temporary solution: no carrying the tripod by the camera,
+    unattended use, heat exposure, or overhead mounting.'
+  parts: []
+  hardware: []
+  tool: null

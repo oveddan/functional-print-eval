@@ -1,0 +1,262 @@
+task: tripod-plate
+note: Only the print orientation changed. The dovetail fit and the bolt pocket worked,
+  so those dimensions are unchanged. The messy hole came from the roof over the head
+  pocket. The old orientation printed that roof as a bridge with a slot cut through
+  it, so it sagged and made loops. Now the camera face goes on the bed, and the slot
+  and roof print as solid first layers, with no bridging. I didn't need the coupon
+  result, since the plate fits the clamp as printed.
+questions:
+- text: How deep is the camera's tripod socket? It is still unmeasured, and the bolt
+    sticks out about 5 mm.
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: Arca-Swiss-style dovetail width was a guess, and the printed plate fits
+      the clamp, so it stays unchanged.
+  bevel_h:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the 45 degree dovetail bevel. The printed plate fits the clamp,
+      so it is unchanged.
+  plate_len:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: Webcam bolt head, 'about 15 mm'. It fits the printed pocket.
+  head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: Webcam bolt head height, 'about 5 mm'.
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: world
+    source: measured
+    note: Length under the head, 'about 10 mm'.
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter.
+  head_clear:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Total diametral clearance around the head pocket.
+  head_depth_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket is slightly deeper than the head.
+  shank_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Total diametral clearance in the slot.
+  wall:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Plate material between the head pocket and the camera face. The bolt sticks
+      out by bolt_len minus wall, which is 5 mm.
+  slot_travel:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Bolt position adjustment along the plate.
+  camera_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Not measured. The bolt sticks out about 5 mm, which is typical of camera
+      sockets.
+  coupon_len:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Length of each width step on the clamp coupon.
+  coupon_step:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Width change per step on the coupon.
+parts:
+- id: plate
+  role: final
+  material: PLA (black), 4+ walls, 40% gyroid infill
+  code: "def build(p):\n    T = p.head_h + p.head_depth_clear + p.wall\n    w = p.plate_w\n\
+    \    hb = w/2 - p.bevel_h\n    pts = [(-hb,0),(hb,0),(w/2,p.bevel_h),(w/2,T),(-w/2,T),(-w/2,p.bevel_h)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_len/2, both=True)\n\
+    \    pocket_d = p.head_d + p.head_clear\n    pocket = (cq.Workplane('XY').slot2D(pocket_d\
+    \ + p.slot_travel, pocket_d, 90)\n              .extrude(p.head_h + p.head_depth_clear))\n\
+    \    sd = p.bolt_d + p.shank_clear\n    slot = (cq.Workplane('XY').slot2D(sd +\
+    \ p.slot_travel, sd, 90).extrude(T))\n    plate = body.cut(pocket).cut(slot)\n\
+    \    # flip so the camera face is on the bed (z=0)\n    return plate.rotate((0,0,0),(1,0,0),180).translate((0,0,T))\n"
+  print_orientation: Flipped from the last version. The flat camera face (top) goes
+    on the bed. The head pocket and dovetail then open upward. The hole's roof is
+    now the first layers, so it prints with no bridging and no supports. The 45 degree
+    bevels taper inward as they rise.
+  use_orientation: Rotated 180 degrees from the print position. Dovetail down in the
+    tripod clamp, and the camera sits on the flat face that was against the bed.
+- id: clamp-coupon
+  role: coupon
+  material: PLA (black)
+  code: "def build(p):\n    T = p.head_h + p.head_depth_clear + p.wall\n    res =\
+    \ None\n    for i, k in enumerate((-2, -1, 0, 1)):\n        w = p.plate_w + k\
+    \ * p.coupon_step\n        hb = w/2 - p.bevel_h\n        pts = [(-hb,0),(hb,0),(w/2,p.bevel_h),(w/2,T),(-w/2,T),(-w/2,p.bevel_h)]\n\
+    \        seg = (cq.Workplane('XZ').polyline(pts).close().extrude(p.coupon_len)\n\
+    \               .translate((0, -i * p.coupon_len, 0)))\n        res = seg if res\
+    \ is None else res.union(seg)\n    return res\n"
+  print_orientation: Bottom face flat on the bed.
+  use_orientation: Slide or drop each step into the tripod clamp.
+hardware:
+- id: webcam-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt-joint
+  fastener: webcam-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: head pocket
+    role: head_seat
+  - part: plate
+    feature: through slot
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c-dovetail
+  part: plate
+  feature: dovetail edges
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - bevel_h
+  check:
+    method: measure
+    ref: null
+    description: The plate drops into the tripod clamp and grips when the knob is
+      tightened. This fit was already confirmed on the first print.
+- id: c-head
+  part: plate
+  feature: head pocket
+  relation: contains
+  hardware: webcam-bolt
+  clearance_mm: 0.4
+  params:
+  - head_d
+  - head_h
+  - head_clear
+  - head_depth_clear
+  check:
+    method: measure
+    ref: null
+    description: The bolt head sits in the pocket. This was confirmed on the first
+      print.
+- id: c-shank
+  part: plate
+  feature: through slot
+  relation: clears
+  hardware: webcam-bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - shank_clear
+  - slot_travel
+  check:
+    method: measure
+    ref: null
+    description: The slot is cleanly open through the 5 mm roof, with no loops or
+      strings. The bolt shank slides along it freely.
+- id: c-camera
+  part: plate
+  feature: camera face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - wall
+  - camera_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: The bolt sticks out about 5 mm. The camera threads on and sits flat
+      on the plate.
+manual:
+- n: '1'
+  text: Slice the plate with the flat camera face down on the bed. This is how the
+    file now comes. Use at least 4 walls and 40% infill. No supports are needed. This
+    fixes the messy hole, because the slot now prints as the first layers instead
+    of bridging over the pocket.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: After the print, check that the slot is clear. Remove any stray strings with
+    a hobby knife.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the webcam bolt's threaded end through the slot from the pocket side,
+    which is the dovetail side. The 15 mm head sits in the pocket and the thread comes
+    out of the flat camera face.
+  parts:
+  - plate
+  hardware:
+  - webcam-bolt
+  tool: null
+- n: '4'
+  text: Drop the plate into the tripod clamp with the pocket side down, and tighten
+    the knob.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Slide the bolt along the slot to where you want it. Thread the camera onto
+    the bolt by turning the camera. Tighten until the camera sits flat on the plate.
+    If the bolt bottoms out before the camera is flat, stop and tell me.
+  parts:
+  - plate
+  hardware:
+  - webcam-bolt
+  tool: null

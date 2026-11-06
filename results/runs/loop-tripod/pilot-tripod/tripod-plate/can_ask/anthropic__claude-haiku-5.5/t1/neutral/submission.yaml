@@ -1,0 +1,157 @@
+task: tripod-plate
+note: Unverified draft. Plate size, slot size, and bolt head height are guesses, and
+  the jaw fit is unknown. The tightening method is not solved, so do not assemble
+  or load a camera until it is revised. Light cameras only; PLA can crack under heavy
+  loads or drops. Measure the jaws and bolt before printing.
+questions:
+- text: Jaw gap at the top (mm)?
+  answer: null
+- text: Lip depth into the slot (mm)?
+  answer: null
+- text: Webcam bolt head height and shape (round, hex, or knob)?
+  answer: null
+- text: Does a 1/4-20 bolt thread into the camera's bottom socket?
+  answer: null
+params:
+  plate_len:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: Placeholder. Must be checked against the camera base and tripod jaws
+  plate_w:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: Placeholder. Must be checked against the jaw gap, which is unmeasured
+  plate_t:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Placeholder PLA thickness
+  head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: Webcam bolt head across, about 15 mm (user). Head shape not confirmed; round
+      assumed
+  head_h:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: Bolt head height NOT measured
+  bolt_clear_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance for a 1/4 in shaft (6.35 mm)
+  groove_w:
+    value: 4
+    unit: mm
+    kind: design
+    source: guessed
+    note: Jaw lip slot height. NOT measured; guess
+  groove_d:
+    value: 3
+    unit: mm
+    kind: design
+    source: guessed
+    note: Jaw lip slot depth. NOT measured; guess
+parts:
+- id: plate
+  role: final
+  material: PLA black
+  code: "def build(p):\n    L = p.plate_len\n    W = p.plate_w\n    T = p.plate_t\n\
+    \    plate = cq.Workplane('XY').box(L, W, T, centered=(True, True, False))\n \
+    \   pocket = cq.Workplane('XY').circle(p.head_d / 2 + 0.3).extrude(p.head_h +\
+    \ 0.5)\n    plate = plate.cut(pocket)\n    hole = cq.Workplane('XY').circle(p.bolt_clear_d\
+    \ / 2).extrude(T)\n    plate = plate.cut(hole)\n    for s in (-1, 1):\n      \
+    \  g = cq.Workplane('XY').box(L + 2, 2 * p.groove_d, p.groove_w).translate((0,\
+    \ s * W / 2, T / 2))\n        plate = plate.cut(g)\n    return plate"
+  print_orientation: bottom face down on the bed (z=0 is the bottom face)
+  use_orientation: plate lies flat in the tripod jaws; top face against the camera
+    base, bolt head underneath
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: head_pocket
+  part: plate
+  feature: bottom head pocket
+  relation: seats
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  check:
+    method: measure
+    ref: null
+    description: Bolt head sits in the pocket without rotating (head shape unconfirmed)
+- id: shaft_clearance
+  part: plate
+  feature: center clearance hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: 1/4 in shaft passes through without binding
+- id: jaw_lips
+  part: plate
+  feature: side slots
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - groove_w
+  - groove_d
+  check:
+    method: measure
+    ref: null
+    description: Test fit in the tripod jaws; slot size is an unmeasured guess
+manual:
+- n: '0'
+  text: DO NOT ASSEMBLE OR USE until the jaw gap, lip depth, bolt head height and
+    shape, and camera socket thread have been measured and this design updated. The
+    round head pocket cannot be tightened by turning the bolt from below.
+  parts: []
+  hardware: []
+  tool: null
+- n: '1'
+  text: Print the plate bed-down (bottom face on the bed).
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove any supports from the pocket and slots.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop the bolt head-first into the underside pocket, shaft up through the clearance
+    hole.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Test-fit the plate in the tripod jaws before loading a camera. Adjust the
+    slot size if it does not seat.
+  parts:
+  - plate
+  hardware: []
+  tool: null

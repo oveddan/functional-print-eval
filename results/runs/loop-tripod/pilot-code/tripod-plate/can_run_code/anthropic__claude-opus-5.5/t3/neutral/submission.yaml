@@ -1,0 +1,188 @@
+task: tripod-plate
+note: 'Rev 2: 0.6 mm vertical land on the bottom edges so the corner isn''t fragile
+  and elephant''s foot doesn''t make it too wide; floor thickened to 5 mm so the 10
+  mm bolt reaches only about 5 mm into the camera. Screw is the salvaged 1/4-20 webcam
+  bolt, not printed: a printed thread would be too weak to hold the camera.'
+questions: []
+params:
+  arca_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: datasheet
+    note: Arca-Swiss standard plate width; clamp not measured, verify with coupon
+  bevel_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: guessed
+    note: height of 45 deg dovetail bevel; jaw lips not measured
+  edge_land:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: short vertical edge at the bed so the bottom corner isn't a fragile knife
+      edge and elephant's foot doesn't make it too wide
+  plate_t:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: material under the camera; bolt_len - floor_t = 5 mm thread into camera
+  plate_len:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_len:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: recess depth plate_t - floor_t = 5.5 > head_h, head sits below bottom face
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  coupon_len:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W=p.arca_width; b=p.bevel_h; t=p.plate_t; L=p.plate_len;\
+    \ f=p.edge_land\n    top_w=W-2*(b-f)\n    prof=(cq.Workplane('YZ').polyline([(-W/2,0),(W/2,0),(W/2,f),(top_w/2,b),(top_w/2,t),(-top_w/2,t),(-top_w/2,b),(-W/2,f)]).close().extrude(L).translate((-L/2,0,0)))\n\
+    \    sl=p.slot_len\n    head=cq.Workplane('XY').slot2D(sl+p.head_d+1.0,p.head_d+1.0).extrude(t-p.floor_t)\n\
+    \    thru=cq.Workplane('XY').slot2D(sl+p.bolt_d+0.6,p.bolt_d+0.6).extrude(t+1)\n\
+    \    return prof.cut(head).cut(thru)\n"
+  print_orientation: wide 38 mm bottom (clamp side) face on the bed; bolt-head recess
+    opens to the bed, its 16 mm wide ceiling bridges
+  use_orientation: bottom face down into the tripod clamp, camera on top face
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    W=p.arca_width; b=p.bevel_h; t=p.plate_t; L=p.coupon_len;\
+    \ f=p.edge_land\n    top_w=W-2*(b-f)\n    return cq.Workplane('YZ').polyline([(-W/2,0),(W/2,0),(W/2,f),(top_w/2,b),(top_w/2,t),(-top_w/2,t),(-top_w/2,b),(-W/2,f)]).close().extrude(L)\n"
+  print_orientation: wide bottom face on the bed
+  use_orientation: dropped into the tripod clamp to test the dovetail fit
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: counterbored slot (head recess)
+    role: head_seat
+  - part: plate
+    feature: through slot
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: dovetail_fit
+  part: fit_coupon
+  feature: 45 deg side bevels
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - arca_width
+  - bevel_h
+  - edge_land
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Coupon drops into the opened clamp and doesn't move once the knob
+      is tightened
+- id: bolt_reach
+  part: plate
+  feature: slot floor
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - head_h
+  - bolt_len
+  - floor_t
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: Bolt tip sticks out about 5 mm above the plate top. The camera should
+      pull down tight before the bolt bottoms out.
+manual:
+- n: '1'
+  text: Print fit_coupon (a 2 cm slice). Open the clamp knob, drop it in wide face
+    down, and tighten. If it holds firmly, go on. If it won't drop in, or still slides
+    when tight, tell me roughly how much and I'll change arca_width/bevel_h.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the plate wide face down, with 100% infill (or 6 walls) so the clamp
+    doesn't crush it.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: 'Push the webcam bolt up from underneath through the slot so its head sits
+    in the recess. Thread it into the camera''s tripod socket and tighten it. If the
+    camera still wobbles when the bolt stops turning, the bolt is bottoming out: add
+    a thin spacer under the head.'
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Loosen the clamp, drop the plate in, and tighten it firmly but not hard. Keep
+    a hand on the camera the first few times you tilt the head.
+  parts:
+  - plate
+  hardware: []
+  tool: null

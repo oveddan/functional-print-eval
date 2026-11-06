@@ -1,6 +1,6 @@
 # Coupon loop: letting a model learn from its test print
 
-Status: built and tested on two samples of 12 trials (results at the end of this file). Decided by Dan on 2026-11-03, with the changes a second review asked for (issue 15). The second sample stopped part way when the OpenRouter account ran out of credit and was finished once Dan added more. An illustrated version of the review is at https://claude.ai/artifact/Xt9j8NAaA46ASA2e9gJ6BJ, and every replay is on the results page, https://claude.ai/artifact/8FoztxxrwV6ioveQhz8gY6.
+Status: built and tested on two samples of 12 knob and wheel trials, and on 24 tripod plates where the person prints the plate itself (results at the end of this file). Decided by Dan on 2026-11-03, with the changes a second review asked for (issue 15). The second sample stopped part way when the OpenRouter account ran out of credit and was finished once Dan added more. An illustrated version of the review is at https://claude.ai/artifact/Xt9j8NAaA46ASA2e9gJ6BJ, and every replay is on the results page, https://claude.ai/artifact/8FoztxxrwV6ioveQhz8gY6.
 
 **Correction, 2026-11-05: the report gained 2 passes in each sample.** Dan said of the M3 +0.1 print, "it was very hard to put in, but i could put it in" and "with force it goes in", so that size now counts as holding. Sonnet's 5.60 and DeepSeek V4.1 Flash's 5.65 M3 knobs now pass. Each sample's feedback arm passes 3 of 12 trials against the neutral arm's 1. This is still a small sample of 12 trials, replayed twice, and those two passes rest on one print Dan called very hard. The M3 replays were regraded; the results below are updated to match.
 
@@ -158,3 +158,65 @@ Finished 2026-11-04 once credit was added: all 12 trials, both arms, $1.03 in al
 **What the two samples show together.** Across both samples, 6 trials got a usable size or the roof's outcome in the report. In 5 the model moved the right way, and in all 5 it fixed the check (Sonnet's and DeepSeek's M3 pockets, DeepSeek's two wheel seats, GLM's roof). GLM's wheel t2 didn't change. No neutral turn fixed a check, and neutral turns made a design worse three times. The M3 knobs are the 2 passes gained in each sample. The other fixes leave the trial failing elsewhere: the DeepSeek wheels still have a holed roof their coupon never tested, and GLM's seat landed between printed sizes.
 
 **For a larger run (Dan's call, written down before it runs):** count checks fixed as the main measure, choose trials whose coupon tests the feature that failed, and add models beyond these three.
+
+## Tripod sample: printing the final plate, written before the run
+
+Written 2026-11-06, before any model call for this sample, and pushed before the run, so the rule can't be fitted to the outcome. Every replay record in `results/runs/loop-tripod/` names the commit it ran from.
+
+**Why.** This is the loop Dan actually ran. In Estoa (session 602ba611, 2026-10-02), a screw hole through a bridged roof printed closed on the test wall, and the model then proposed the stepped (sacrificial) hole. Dan didn't know the technique before it did. On the tripod (session c941d075, 2026-10-12), the first Arca plate's holed roof printed as a tangle, and the second plate, with a stepped roof, worked. In the eval, 24 saved tripod designs fail on a holed roof, but only 4 of the 31 tripod trials failing `bridges` had a coupon with that roof, so the coupon report can't reach most of them. Dan approved three things on 2026-11-06: the person prints the final part too; the reply's wording; and the spend.
+
+**What the reply says.** After the saved first turn, the person prints everything in the design and replies from the records only. It never names a cause or a fix (`coupon_loop.plate_report`, `printed_text`):
+- Coupons: as in the samples above (`coupon_report`).
+- The clamp: "it fits" only for a plate that passes R2 within 0.5 mm of 38 mm, the one width printed. Otherwise "I can't tell you how that one came out."
+- The bolt's head: "it fits in its recess" where R4 passes (15 x 5 mm or more fit), "it didn't fit in its recess" where R4 fails (13 mm or less didn't), otherwise "I can't tell you".
+- A holed roof (`bridges.is_holed_roof`): "the roof the hole goes through: loose loops and tangles around the hole; hole partly closed." The words are coupon A's H cell, the same as the coupon report, marked as the bridge check's prediction. A roof the check passes isn't mentioned.
+- It ends: "Send me the design again with submit_design, changed or unchanged, and I'll print it again from what you send."
+
+**Sample.** Every saved tripod trial (`pilot-tripod`, `pilot-tripod-given`, `pilot-code`) whose final part fails `bridges` on a holed roof: 24 trials from 8 models (Haiku 5, Opus 4, Sonnet 3, DeepSeek V4.1 Flash 3, Gemini 4 Argon 3, GPT-6 Luna 3, GLM 2, DeepSeek V4 Pro 1), 4 of them `can_run_code`. Qwen's `all_given` t1 is left out: its `bridges` failure is a broken shape (`BROKEN_ROOFS`). Selection is code (`scripts/coupon_loop.py`, `tripod_sample`).
+
+**Arms.** Each trial is replayed twice: the printed reply above, and the neutral "take another look" turn the earlier samples used. A second turn gets as many calls as the trial's first turn had: 8, or 20 for `can_run_code`, which keeps `run_python` and the build on submit. Its working folder starts fresh, so files written in turn 1 aren't there. The person answers measurements as in the saved trial; the clamp-width answer Dan approved on 2026-11-06 is added only after this run, so the replays don't change two things at once. Budget: $3.00 for the run (estimated $1.30 to $2.65).
+
+**What counts as improving.**
+- **Main measure: roofs fixed.** For each arm, how many of the 24 turn-2 designs pass `bridges` on every final part. A turn with no design counts as not fixed. The loop's effect is the printed arm's count minus the neutral arm's.
+- **Secondary: whole-trial verdicts.** For each arm, pass, fail, not graded and no design, against the baseline (every trial fails at baseline).
+- **Got worse:** a check that passed at baseline and fails in turn 2, counted per arm.
+- **How a roof was fixed,** read from the turn-2 design: stepped or sacrificial layers, a closed roof drilled out after printing, a flipped part, a roof removed, or something else. This is a reading of the design and its notes, labelled as such, not a check.
+
+**What it can't show.** 24 trials, one replay per arm, provider-default sampling: a difference of one or two trials could be chance. The bridge check grades the fix to the roof it predicted, and only one stepped roof has been printed (the second Arca plate), so a pass is the check's call, not a print's. The trials are designs that already failed, so the result says what a failed print teaches, not how often a first design fails.
+
+## Tripod sample: result
+
+Run `loop-tripod`, 2026-11-06, from fda7554 (the rule above, pushed before the first model call). It stopped at the $3.00 budget after spending $3.03 ($1.74 on the printed arm, $1.29 on the neutral one): 23 trials got both arms, and Gemini 4 Argon's `can_run_code` t3 got only the printed arm. The estimate was $1.30 to $2.65; the `can_run_code` turns, with up to 20 calls, cost more than the 30 to 60% of a first turn the estimate assumed. Every replay is in `results/runs/loop-tripod/`, with its reply, transcript, design and grades.
+
+**Main measure: roofs fixed.** After the printed reply, 14 of 24 designs pass `bridges` on every final part. After the neutral turn, 2 of 23 do. Over the 23 trials with both arms it's 13 against 2, so the printed reply fixed 11 more roofs than a second look.
+
+**Secondary: whole-trial verdicts.** Every trial failed at baseline.
+
+| Arm | Trials | Pass | Fail | Not graded | No design |
+|---|---|---|---|---|---|
+| Printed reply | 24 | 3 | 18 | 3 | 0 |
+| Neutral turn | 23 | 2 | 21 | 0 | 0 |
+
+The printed arm's passes are Sonnet 5.5 t2, Gemini 4 Argon t2 and Argon's `can_run_code` t1. The neutral arm's are Argon's `can_run_code` t1 (which passed both ways) and DeepSeek V4.1 Flash t1. Most fixed roofs still fail elsewhere, on what failed at baseline as well: the dovetail upside down (Sonnet t1 and t3, Luna's two) or straight sides (Haiku, GLM t3).
+
+**Got worse:** 4 printed-arm designs and no neutral ones failed a check that passed at baseline.
+- Gemini 4 Argon `can_run_code` t3 stepped its roof, but the revised plate lost the head's recess below it, so no hole runs through (R3).
+- DeepSeek V4.1 Flash t1 came apart (`connected_bodies`).
+- GPT-6 Luna t3 thickened its deck to carry a cone roof, so the bolt no longer reaches 3.81 mm into the camera (R5).
+- Opus 5.5 t3 is a check's mistake, not the model's: see below.
+
+**How the roofs were fixed** (a reading of each turn-2 design and its note, not a check). Of the 14:
+- **8 flipped the plate** so the recess opens upward and nothing bridges: Sonnet t1, t2 and t3, Haiku `can_run_code` t3 and `all_given` t1, DeepSeek V4.1 Flash t2, GLM t3 and Argon `can_run_code` t1.
+- **3 replaced the flat roof with a cone or funnel:** Luna t3 and `all_given` t1, and DeepSeek V4.1 Flash `all_given` t1.
+- **2 stepped the roof** the way the Estoa model did (a slot, then a square, then the round hole): Argon t2 and `can_run_code` t3.
+- **1 left a drill-out skin** and told the person to push it out: Opus t3.
+
+One more tried the stepped roof and still fails the check: Opus t2 bridged "in two one-layer steps", with no square step. Its bolt slot's round ends sit in the second step, so 42% of the strands there end in the hole. Whether that would print is unmeasured. Coupon A's stepped hole printed with "a few loose strands near the hole" and counted as clean.
+
+Every one of these came from the reply's single line about the roof ("loose loops and tangles around the hole; hole partly closed"), which names no cause or fix. Most turn-2 notes explain the cause correctly. GLM t3 wrote: "the through-hole sat in that bridged roof and got tangled".
+
+**Two check findings, fixed after the run.**
+- **R3 failed a drill-out layer.** Opus t3 closed the slot with a 0.4 to 0.6 mm skin, and its manual says to "push the skin out". `PLAN.md` says a drill-out layer passes, and the knob's bolt path already allowed one (`nuts.MAX_DRILL_OUT`, 3 layers, with a manual sentence saying to clear it). The tripod's bolt-hole reader didn't. `bolted._bores` now lets up to 3 closed layers through when the manual says to clear them, and `nuts.OPENS_A_HOLE` also accepts "push, cut, knock, pop or punch ... out" when the thing pushed out is a skin, layer, membrane, film, web or diaphragm. Graded again with the fix, Opus t3's printed arm passes every check, so the printed arm has 4 passes and 3 designs that got worse. No other arm in this run changes, and no saved trial's verdict changes (regrading the tripod, knob and wheel runs on a copy left every `summary.csv` the same). The numbers above are as the run graded them; `loop.json` keeps those grades.
+- **The width the person gives.** Several turn-2 notes say the clamp's width is still a guess. The person now answers it (the next CHANGELOG entry), but only for runs after this one.
+
+**What it shows, and what it can't.** In 23 matched trials, being told how the roof printed fixed 13 roofs, and a second look fixed 2. That's a large gap for a sample this size, but it's one replay per arm of trials chosen because they failed, graded by the same check that wrote the reply. It says that these models, told the outcome, nearly always know at least one fix for a holed roof. It doesn't say how often a first design avoids the problem: that's the main eval's 24 failures out of 62 tripod trials.

@@ -1,0 +1,330 @@
+task: tripod-plate
+note: One printed plate plus the screw you already have (the salvaged 1/4-20 webcam
+  bolt) - I did not print the screw, because a 0.4 mm nozzle cannot hold a 1.27 mm-pitch
+  thread that would survive a camera socket. The plate is 9 mm thick with 45 deg x
+  3 mm chamfers on the top edges, so the angled jaw lips pull it down onto the channel
+  floor; the bolt head hides in a 18.5 mm counterbore so the plate bottom stays flat.
+  I still have no numbers off the tripod clamp, so plate_w (40 mm), the 3 mm chamfer
+  and the 9 mm thickness are guesses - the coupon finds the width, and if the plate
+  will not drop all the way to the floor, the channel is shallower than 9 mm and I
+  need to thin the plate. Engagement is 6.5 mm of thread, which is normal for a tripod
+  screw; the 8 mm camera socket depth is a guess I could not verify.
+questions:
+- text: 'After testing the coupon: which dot count dropped to the channel floor and
+    got gripped firmly? And did the 9 mm thickness drop all the way down, or is the
+    channel shallower than that?'
+  answer: null
+params:
+  bolt_head_d:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged 1/4-20 webcam bolt, head across; ambiguous whether across flats
+      or corners, hence the generous counterbore
+  bolt_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head height
+  bolt_shank_l:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt, threaded length under the head
+  camera_socket_depth:
+    value: 8.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: typical camera 1/4-20 tripod socket depth; must be at least screw_engagement
+  chamfer:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg chamfer on the top edges, for the angled jaw lips to bear on; makes
+      the plate wider at the bottom so clamping pulls it down onto the floor
+  coupon_gap:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: gap between coupon blocks
+  coupon_len:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon block length along the drop-in direction
+  head_clear_d:
+    value: 18.5
+    unit: mm
+    kind: design
+    source: design
+    note: counterbore dia. bolt_head_d + 3.5 so a 15 mm-across-flats hex (17.3 across
+      corners) still clears
+  head_recess:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: counterbore depth; bolt_head_h + 0.5 so the head floats clear instead of
+      rocking the plate on it
+  plate_l:
+    value: 40.0
+    unit: mm
+    kind: design
+    source: design
+    note: along the drop-in direction
+  plate_t:
+    value: 9.0
+    unit: mm
+    kind: design
+    source: design
+    note: must not exceed the clamp channel depth; 9 mm leaves 3.5 mm of material
+      over the bolt head
+  plate_w:
+    value: 40.0
+    unit: mm
+    kind: design
+    source: design
+    note: across the jaws - the main unknown; confirm with the coupon
+  screw_clear_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: through hole; thread_major_d + 0.45 clearance
+  screw_engagement:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: 'derived: bolt_shank_l - (plate_t - head_recess) = 10 - 3.5'
+  thread_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4 in = 6.35 mm
+  thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 UNC
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    plate = cq.Workplane(\"XY\").rect(p.plate_w, p.plate_l).extrude(p.plate_t)\n\
+    \    # 45 deg chamfer on all four top edges: the angled jaw lips bear here and\n\
+    \    # pull the plate down onto the channel floor.\n    plate = plate.faces(\"\
+    >Z\").edges().chamfer(p.chamfer)\n    # through hole for the 1/4-20 shank\n  \
+    \  plate = plate.faces(\">Z\").workplane().hole(p.screw_clear_d)\n    # counterbore\
+    \ in the UNDERSIDE, open to the bed, so the bolt head sits\n    # inside the plate\
+    \ and the plate bottom stays flat on the clamp floor\n    plate = plate.cut(\n\
+    \        cq.Workplane(\"XY\").circle(p.head_clear_d / 2.0).extrude(p.head_recess)\n\
+    \    )\n    return plate"
+  print_orientation: flat, counterbored underside on the bed at z = 0, chamfered face
+    up
+  use_orientation: 'same as printed: flat bottom in the clamp channel, camera on the
+    top face, bolt head up inside the counterbore from below'
+- id: fit-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    # Five plate cross-sections of different widths, printed\
+    \ loose side by side,\n    # smallest on the left. Each block has (index+1) dots\
+    \ on its top face so the\n    # winning width can be read off: 1 dot = 32 mm ...\
+    \ 5 dots = 48 mm.\n    widths = [32.0, 36.0, 40.0, 44.0, 48.0]\n    blocks = []\n\
+    \    x = 0.0\n    for i, w in enumerate(widths):\n        b = cq.Workplane(\"\
+    XY\").rect(w, p.coupon_len).extrude(p.plate_t)\n        b = b.faces(\">Z\").edges().chamfer(p.chamfer)\n\
+    \        n = i + 1\n        span = (n - 1) * 4.0\n        for k in range(n):\n\
+    \            cx = -span / 2.0 + k * 4.0\n            mark = (\n              \
+    \  cq.Workplane(\"XY\")\n                .circle(1.25)\n                .extrude(3.0)\n\
+    \                .translate((cx, 0.0, p.plate_t - 3.0))\n            )\n     \
+    \       b = b.cut(mark)\n        b = b.translate((x + w / 2.0, 0.0, 0.0))\n  \
+    \      blocks.append(b.val())\n        x += w + p.coupon_gap\n    fused = blocks[0]\n\
+    \    for blk in blocks[1:]:\n        fused = fused.fuse(blk)\n    return fused"
+  print_orientation: flat, z = 0 on the bed, same as the plate; the five blocks print
+    loose, laid out along X
+  use_orientation: each block dropped into the tripod clamp individually, chamfered
+    edges up against the jaw lips
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: j_bolt
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: counterbore, dia head_clear_d x head_recess deep, in the underside
+    role: head_seat
+  - part: plate
+    feature: central through hole, dia screw_clear_d
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: plate
+  feature: counterbore dia head_clear_d x head_recess deep, in the underside
+  relation: contains
+  hardware: webcam_bolt
+  clearance_mm: 1.0
+  params:
+  - head_clear_d
+  - bolt_head_d
+  - head_recess
+  - bolt_head_h
+  check:
+    method: measure
+    ref: bolt head across (and whether it is a hex head - across flats vs across corners)
+    description: counterbore must swallow the bolt head entirely so the head never
+      stands proud of the plate underside and the plate can sit flat on the clamp
+      floor
+- id: c2
+  part: plate
+  feature: central through hole dia screw_clear_d
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.45
+  params:
+  - screw_clear_d
+  - thread_major_d
+  check:
+    method: none
+    ref: null
+    description: 6.8 mm through hole clears the 6.35 mm shank; the shank is the only
+      thing that should touch the camera's socket
+- id: c3
+  part: plate
+  feature: top face above the counterbore (9 - 5.5 = 3.5 mm of material)
+  relation: engages
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - screw_engagement
+  - camera_socket_depth
+  - bolt_shank_l
+  - plate_t
+  - head_recess
+  check:
+    method: measure
+    ref: camera socket depth
+    description: 6.5 mm of thread stands proud of the plate top (about 5 turns). The
+      camera socket must be at least that deep, otherwise the bolt bottoms out and
+      the camera will not sit flat
+- id: c4
+  part: plate
+  feature: sides at plate_w with 45 deg x 3 mm chamfered top edges
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_l
+  - plate_t
+  - chamfer
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: the winning coupon block must drop to the channel floor and be gripped
+      by the angled jaw lips when the knob is tightened; that block's dot count gives
+      the width to put in plate_w
+- id: c5
+  part: plate
+  feature: top face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_l
+  - plate_w
+  check:
+    method: none
+    ref: null
+    description: flat 40 x 40 top face gives the camera base a full bearing surface
+      around the central bolt
+manual:
+- n: '1'
+  text: 'Print FIT-COUPON in PLA at 0.2 mm layers. Its five blocks print loose, side
+    by side, smallest on the left. Each block has dots on top: 1 dot = 32 mm, 2 =
+    36, 3 = 40, 4 = 44, 5 = 48.'
+  parts:
+  - fit-coupon
+  hardware: []
+  tool: printer
+- n: '2'
+  text: Loosen the tripod knob. Drop each block into the clamp jaws in turn, chamfered
+    top edges up, and tighten the knob. You want the block that sits right down on
+    the channel floor and is gripped firmly - not proud, not loose, knob not bottomed
+    out.
+  parts:
+  - fit-coupon
+  hardware: []
+  tool: null
+- n: '3'
+  text: If the winner has 3 dots (40 mm), print the PLATE as it is. If it has a different
+    number of dots, open the PLATE code, set plate_w to that width, re-slice, and
+    print that. If nothing fits or nothing gets gripped, stop and tell me the dot
+    count you saw.
+  parts:
+  - fit-coupon
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'Print PLATE in PLA at 0.2 mm layers, flat - the counterbored face down on
+    the bed, chamfered face up. No supports: the 18.5 mm counterbore bridges on its
+    own.'
+  parts:
+  - plate
+  hardware: []
+  tool: printer
+- n: '5'
+  text: Hold the plate under the camera, flat top face against the camera base, counterbore
+    facing down. Push the salvaged 1/4-20 webcam bolt up through it so its head drops
+    down inside the counterbore.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '6'
+  text: Turn the bolt by hand until snug in the camera's 1/4-20 socket. Check there
+    is no gap between the plate's top face and the camera base - if there is, the
+    socket is shallower than my 8 mm guess and the bolt is bottoming out; take it
+    apart and tell me.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '7'
+  text: Loosen the tripod knob, drop the plate (camera attached) into the clamp, and
+    tighten. Confirm the camera is level and cannot rock before you let go.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '8'
+  text: Use it gently. PLA creeps under a clamped load - do not overtighten the knob,
+    and unscrew the camera from the plate before you pack the tripod away.
+  parts:
+  - plate
+  hardware: []
+  tool: null

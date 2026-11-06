@@ -40,6 +40,7 @@ OPENS_A_HOLE = re.compile(r"""\b(
     | pok(e|es|ed|ing)
     | pierc(e|es|ed|ing)
     | open\ (up|out|the|that|this)
+    | (push|cut|knock|pop|punch)(es|s|ed|ing)?\s+((the|that|this|its)\s+)?(\w+\s+)?(skin|layer|membrane|film|web|diaphragm)s?\s+out
 )\b""", re.I | re.X)
 A_THIN_LAYER = re.compile(r"\b(hole|layer|membrane|skin|film|web|roof|bridge|diaphragm)s?\b", re.I)
 NEGATED = re.compile(r"\b(no|not|never|without)\b|n['’]t\b", re.I)
@@ -414,7 +415,7 @@ def _says_to_open_a_hole(sentence):
     return NEGATED.search(three_words_before) is None
 
 
-def _sentence_saying_to_clear_it(sub):
+def sentence_saying_to_clear_it(sub):
     """A sentence in the manual that says to open up a hole or layer, or None. It's a text match,
     not an understanding, so the check quotes the sentence for whoever reads the result."""
     for step in sub.manual:
@@ -442,7 +443,7 @@ def bolt_passes(sub, built, nut, d_min):
         return True, f"clear all the way through {height:.1f} mm: {min(clears):.2f} at its narrowest (want at least {d_min})"
     thickness = len(blocked) * layer_h
     closed = all(clears[i] == 0.0 for i in blocked)
-    told = _sentence_saying_to_clear_it(sub)
+    told = sentence_saying_to_clear_it(sub)
     if closed and thickness <= MAX_DRILL_OUT + TOL and told:
         return True, f"a {thickness:.1f} mm drill-out layer the manual says to clear (\"{told}\"); otherwise at least {d_min} clear"
     z = part.mesh.bounds[0, 2] + (blocked[0] + 0.5) * layer_h

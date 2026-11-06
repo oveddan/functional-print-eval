@@ -1,0 +1,238 @@
+task: tripod-plate
+note: Printing a 1/4-20 screw in PLA would be weak, so the "part that screws in" is
+  the webcam bolt you already have. The plate is a flat dovetail-style plate with
+  a slot and a pocket for the bolt head. It is a temporary substitute for a camera
+  plate. I couldn't get any dimensions of the tripod clamp, so plate width, length
+  and bevel are guesses. Print the five-width fit coupon first. Until you've tested
+  it with a light load, don't trust an expensive camera to it. A real plate may have
+  a pin or stop that this one lacks.
+questions:
+- text: What is the jaw-to-jaw gap and the angle of the clamp lips? I couldn't get
+    numbers, so plate_w=38 mm and a 45 degree 3 mm bevel are guesses.
+  answer: null
+- text: What is the length of the jaw slot, and does the clamp have a locating pin
+    or stop?
+  answer: null
+- text: How long is the threaded part of the webcam bolt? It needs to reach about
+    6 mm into the camera after passing through the plate's 3.5 mm floor.
+  answer: null
+- text: Can you get your fingers or a tool on the bolt head? If it has no knob or
+    hex, the pocket may need a driver slot.
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: Width of the plate across the top of the dovetail. NOT measured; the person
+      could not give the jaw gap. 38 mm is a common quick-release size. Update it
+      from the coupon test.
+  plate_len:
+    value: 50
+    unit: mm
+    kind: world
+    source: guessed
+    note: Plate length along the jaw slot. Unmeasured.
+  plate_t:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Total plate thickness
+  bevel:
+    value: 3
+    unit: mm
+    kind: world
+    source: guessed
+    note: Height and horizontal run of the 45 deg lower bevel that the angled jaw
+      lips grip. Angle and size unmeasured.
+  head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: Webcam bolt head across, about 15 mm
+  head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: Webcam bolt head height, about 5 mm
+  head_clear:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Extra diameter in the head pocket so the head can turn and be gripped
+  head_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Extra depth in the head pocket
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 nominal diameter
+  shank_clear:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance added to bolt diameter in the slot
+  slot_travel:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Slot travel so the camera can be balanced front to back
+  coupon_len:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Length of each fit-test slice
+  coupon_step:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Width difference between neighbouring coupon slices
+parts:
+- id: plate
+  role: final
+  material: PLA (black), 4+ walls, 40% gyroid infill
+  code: "def build(p):\n    w=p.plate_w; t=p.plate_t; b=p.bevel\n    pts=[(-w/2+b,0),(w/2-b,0),(w/2,b),(w/2,t),(-w/2,t),(-w/2,b)]\n\
+    \    body=cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_len/2, both=True)\n\
+    \    depth=p.head_h+p.head_extra\n    pocket=(cq.Workplane('XY').slot2D(p.slot_travel+p.head_d+p.head_clear,\
+    \ p.head_d+p.head_clear, 90).extrude(depth))\n    thru=(cq.Workplane('XY').slot2D(p.slot_travel+p.bolt_d+p.shank_clear,\
+    \ p.bolt_d+p.shank_clear, 90).extrude(t))\n    return body.cut(pocket).cut(thru)\n"
+  print_orientation: Underside (the narrower, bevelled face that faces the tripod)
+    on the bed; the head pocket opens onto the bed
+  use_orientation: Dropped into the tripod clamp from above, bevelled edges in the
+    jaws, flat top face up against the camera
+- id: plate-coupon
+  role: coupon
+  material: PLA (black)
+  code: "def build(p):\n    t=p.plate_t; b=p.bevel; L=p.coupon_len; gap=3\n    res=None\n\
+    \    for i in range(5):\n        w=p.plate_w+(i-2)*p.coupon_step\n        pts=[(-w/2+b,0),(w/2-b,0),(w/2,b),(w/2,t),(-w/2,t),(-w/2,b)]\n\
+    \        piece=cq.Workplane('XZ').polyline(pts).close().extrude(L/2, both=True).translate((0,(i-2)*(L+gap),0))\n\
+    \        res=piece if res is None else res.union(piece)\n    return res\n"
+  print_orientation: Bevelled narrow face on the bed
+  use_orientation: Try each slice in the tripod clamp, narrowest first, to find the
+    width that drops in and is gripped firmly
+hardware:
+- id: webcam-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-bolt
+  fastener: webcam-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: head pocket (underside slot)
+    role: head_seat
+  - part: plate
+    feature: through slot
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: plate-coupon
+  feature: bevelled plate edges (five widths)
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - bevel
+  - coupon_step
+  check:
+    method: coupon
+    ref: plate-coupon
+    description: One slice must drop into the clamp and be gripped firmly when the
+      knob is tightened. Set plate_w to that slice's width. If none fit, change bevel
+      and reprint.
+- id: c2
+  part: plate
+  feature: head pocket
+  relation: contains
+  hardware: webcam-bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  - head_clear
+  - head_extra
+  check:
+    method: measure
+    ref: null
+    description: The bolt head (about 15 x 5 mm) fits in the pocket and can still
+      be turned by hand.
+- id: c3
+  part: plate
+  feature: through slot
+  relation: clears
+  hardware: webcam-bolt
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - shank_clear
+  check:
+    method: measure
+    ref: null
+    description: The 1/4 inch shank slides through the slot.
+manual:
+- n: '1'
+  text: Print the plate-coupon first. It is five short slices of the plate edge, each
+    2 mm wider than the last (34, 36, 38, 40 and 42 mm). Try them in the tripod clamp.
+    Pick the widest one that drops in, then tighten the knob. It should grip without
+    wobbling or lifting out. If none fit, the bevel is wrong for your clamp, so change
+    bevel and reprint. Set plate_w to the width you chose.
+  parts:
+  - plate-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the plate with the narrow bevelled face on the bed. Use 4 or more walls.
+    Don't use a printed thread for the screw.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: From the underside, push the webcam bolt up through the slot so its head sits
+    in the pocket and the threaded end sticks out of the top face.
+  parts:
+  - plate
+  hardware:
+  - webcam-bolt
+  tool: null
+- n: '4'
+  text: Hold the plate against the camera's tripod socket and turn the bolt head by
+    hand to thread it into the camera. Slide the plate along the slot to balance the
+    camera, then tighten.
+  parts:
+  - plate
+  hardware:
+  - webcam-bolt
+  tool: null
+- n: '5'
+  text: Drop the plate into the tripod clamp from above and tighten the clamp knob.
+    Don't over-tighten. Check it's secure before letting go of the camera.
+  parts:
+  - plate
+  hardware: []
+  tool: null

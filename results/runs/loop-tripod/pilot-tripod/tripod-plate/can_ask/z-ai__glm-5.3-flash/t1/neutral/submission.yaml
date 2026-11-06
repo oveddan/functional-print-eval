@@ -1,0 +1,313 @@
+task: tripod-plate
+note: 'Temporary camera-to-tripod plate (re-checked design). The flat part is printed;
+  the screw is NOT printed — it''s the salvaged steel 1/4-20 webcam-mount bolt (PLA
+  threads into a camera''s metal socket would strip and carry the whole load). Geometry
+  re-verified: the bolt head sits in the plate''s underside pocket with its top face
+  bearing on the pocket ceiling; the camera rests on the plate''s top face; the short
+  2.5 mm section of shaft passing through the plate puts the bolt in tension and the
+  pocket-ceiling annulus in compression — a very strong load path for a camera. With
+  the 10 mm bolt and 8 mm plate, ~7.5 mm of thread enters the camera socket; if the
+  socket is shallower, the plate simply hangs rigidly on the bolt instead (also fine).
+  Assembly order matters and is spelled out in the manual: thread the bolt only 2-3
+  turns first, or the head jams before the camera can settle onto the plate. A pre-check
+  step covers the case where the tripod clamp has a central screw or pin (unverifiable
+  — measurement attempts returned no numbers), which would collide with the recessed
+  head. The clamp''s jaw opening was never measured, so plate width is a best guess
+  with a sand-to-fit step; PLA files easily. Hand-tight only; temporary part, swap
+  when the real plate turns up.'
+questions: []
+params:
+  bolt_shaft_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: asked
+    note: ruler measurement, asked twice, both times 'about 10 mm under the head'
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: asked
+    note: across the head; pocket sized round and generously so any head shape (round/knurled/hex)
+      fits
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: asked
+    note: ''
+  camera_socket_depth:
+    value: 6
+    unit: mm
+    kind: world
+    source: guessed
+    note: typical camera 1/4-20 sockets are 5-8 mm deep; if shallower than 7.5 mm
+      the bolt bottoms in the socket and the plate hangs rigidly on the bolt instead
+      of the camera resting on the plate — both states are rigid
+  cbore_d:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt head 15 + 1.5 total clearance; generous because the head was measured
+      with a ruler (+/-0.5)
+  cbore_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: head height 5 + 0.5 clearance; head bottom sits 0.5 mm above the plate bottom,
+      so nothing protrudes to snag a central clamp screw
+  engagement_at_contact:
+    value: 7.5
+    unit: mm
+    kind: design
+    source: design
+    note: = bolt_shaft_len - (plate_t - cbore_depth) = 10 - 2.5; thread in the camera
+      when the camera rests on the plate and the head is seated on the pocket ceiling
+  jaw_opening:
+    value: 46
+    unit: mm
+    kind: world
+    source: guessed
+    note: clamp measurements never returned numbers; plate sized for a typical drop-in
+      jaw clamp and sanded to fit
+  plate_d:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: front-to-back; the jaws grip the sides, so this mostly just has to fit the
+      slot
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: as thick as the 10 mm bolt allows while leaving >=7 mm of thread for the
+      camera
+  plate_w:
+    value: 45
+    unit: mm
+    kind: design
+    source: design
+    note: jaw_opening minus ~1 mm; sand the long sides to fit if the clamp opening
+      differs
+  shaft_hole_d:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: 1/4-20 shaft is 6.35; ~0.85 clearance so the plate slides on the bolt despite
+      hole shrinkage
+  shaft_through_plate:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: = plate_t - cbore_depth; this annulus is the compression load path between
+      camera and pocket ceiling (~173 mm2, trivial stress for a camera's weight);
+      also the number that must NOT be exceeded when pre-threading the bolt
+  top_chamfer:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: helps the plate drop past the clamp's angled lips
+parts:
+- id: plate
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    t = p.plate_t\n    plate = (\n        cq.Workplane(\"\
+    XY\")\n        .box(p.plate_w, p.plate_d, t, centered=(True, True, False))\n \
+    \       .edges(\">Z\")\n        .chamfer(p.top_chamfer)\n    )\n    # pocket in\
+    \ the underside: the bolt head rides in here; in use its top\n    # face bears\
+    \ on the pocket ceiling while the camera rests on the plate top\n    plate = plate.cut(\n\
+    \        cq.Workplane(\"XY\").circle(p.cbore_d / 2).extrude(p.cbore_depth)\n \
+    \   )\n    # clearance hole for the 1/4-20 shaft, through the remaining thickness\n\
+    \    plate = plate.cut(\n        cq.Workplane(\"XY\").circle(p.shaft_hole_d /\
+    \ 2).extrude(t)\n    )\n    # lead-in chamfers on the underside edges (outer rim\
+    \ + pocket rim)\n    plate = plate.edges(\"<Z\").chamfer(0.6)\n    return plate\n"
+  print_orientation: underside (the face with the round pocket) down on the bed
+  use_orientation: pocket face down against the tripod platform; camera sits on the
+    flat top face
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    t = p.plate_t\n    block = cq.Workplane(\"XY\").box(25,\
+    \ 25, t, centered=(True, True, False))\n    block = block.cut(\n        cq.Workplane(\"\
+    XY\").circle(p.cbore_d / 2).extrude(p.cbore_depth)\n    )\n    block = block.cut(\n\
+    \        cq.Workplane(\"XY\").circle(p.shaft_hole_d / 2).extrude(t)\n    )\n \
+    \   return block\n"
+  print_orientation: underside (the face with the round pocket) down on the bed
+  use_orientation: 'same as the plate: pocket down'
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_to_plate
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: underside counterbore (head pocket)
+    role: head_seat
+  - part: plate
+    feature: center shaft hole
+    role: clearance
+  nut: null
+  external: camera underside 1/4-20 socket (metal, on the camera body)
+criteria:
+- id: head_fits_pocket
+  part: plate
+  feature: underside counterbore (head pocket)
+  relation: contains
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - cbore_d
+  - cbore_depth
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The coupon has the same pocket; the bolt's head must seat against
+      the pocket ceiling with ~0.5 mm play, head bottom ~0.5 mm above the plate bottom
+      so nothing protrudes below
+- id: shaft_fits_hole
+  part: plate
+  feature: center shaft hole
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - shaft_hole_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Shaft must slide through the plate's center hole freely so the plate
+      can be slid onto the bolt
+- id: plate_fits_clamp
+  part: plate
+  feature: outer width and depth vs jaw opening
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_d
+  - jaw_opening
+  check:
+    method: measure
+    ref: tripod head
+    description: Plate must drop into the clamp from above with the knob loose and
+      be gripped by the jaws; if too wide, sand the long sides to fit
+- id: bolt_reach
+  part: plate
+  feature: bolt reach through plate into camera
+  relation: supports
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - plate_t
+  - cbore_depth
+  - bolt_shaft_len
+  - engagement_at_contact
+  check:
+    method: none
+    ref: null
+    description: 'Stack check: engagement at contact = 10 - 2.5 = 7.5 mm of the 10
+      mm shaft in the camera socket when the camera rests on the plate and the head
+      is seated on the pocket ceiling. If the socket is shallower, the bolt bottoms
+      in the socket and the plate hangs rigidly on the bolt instead - also acceptable.'
+- id: no_central_screw_collision
+  part: plate
+  feature: recessed bolt head vs clamp's central screw/pin (if any)
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - cbore_depth
+  check:
+    method: none
+    ref: null
+    description: The head sits 0.5 mm above the plate bottom, nearly flush, so the
+      design assumes no central fixing screw or spring pin in the clamp. Manual step
+      2 tells the user to look; if one is present, stop - the design needs a through-pocket
+      variant instead.
+manual:
+- n: '1'
+  text: 'Print both parts exactly as modelled: the face with the round pocket DOWN
+    on the bed, no supports. 0.2 mm layers, 3-4 perimeters, 25% infill. (The small
+    coupon is optional - print it first if you want to check the fit before committing
+    to the full plate.)'
+  parts:
+  - fit_coupon
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Pre-check the tripod: look UNDER the clamp, into the slot where the plate
+    drops in. If there is a central screw or spring-loaded pin poking up, STOP and
+    tell me - this design would collide with it and needs a variant.'
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: 'Coupon test: push the webcam bolt up into the coupon''s pocket from below.
+    The head should seat against the pocket ceiling with slight play, and the shaft
+    should slide freely through the center hole. If anything is tight, open it up
+    a touch with a small file or a 7 mm drill.'
+  parts:
+  - fit_coupon
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '4'
+  text: 'Tripod fit check: with the clamp knob loose, drop the plate into the tripod
+    head from above. It should drop in and the jaws should close on its sides when
+    you turn the knob. If it''s too wide, file or sand the two long sides evenly,
+    a little at a time, until it drops in with slight wiggle. (If the knob closes
+    without gripping anything, tell me and we''ll reprint wider.)'
+  parts:
+  - plate
+  hardware: []
+  tool: fine file or sandpaper
+- n: '5'
+  text: 'IMPORTANT - assemble in this order: first screw the webcam bolt into the
+    camera''s underside 1/4-20 socket only 2-3 turns by hand. Do NOT thread it deep
+    yet. Then slide the plate down over the bolt so the head seats into the plate''s
+    underside pocket and the shaft passes through the center hole. Now hold the plate
+    and turn the CAMERA onto the bolt until the camera''s bottom rests flat on the
+    plate''s top face, then snug it. If you pre-thread the bolt too deep, the head
+    jams in the pocket before the camera can settle - just unthread and start again.
+    Hand-tight only, about jar-lid firm. No pliers.'
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '6'
+  text: 'Mount it: drop the camera+plate assembly into the tripod clamp and tighten
+    the knob until the jaws grip the plate firmly.'
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '7'
+  text: 'Care: PLA and temporary. No hot cars or direct sun (PLA softens around 60
+    C), don''t overtighten the bolt, and swap in the real plate as soon as it turns
+    up.'
+  parts: []
+  hardware: []
+  tool: null

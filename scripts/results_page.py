@@ -20,6 +20,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import gallery  # noqa: E402  the gallery's renderer and part list, so both pages render parts the same way
 
+import trimesh  # noqa: E402
+
+from pbe.graders.bridges import is_holed_roof, overhangs  # noqa: E402
 from pbe.parts import submission  # noqa: E402
 from pbe.parts.build import build_parts  # noqa: E402
 from pbe.runner import coupon_loop  # noqa: E402
@@ -89,8 +92,21 @@ def missing_record(family, check, detail):
     return "Not graded: bearing seat between printed sizes or ribbed", "gap", "prints"
 
 
-def failure(run, record, finding, note):
-    """A counted check that failed: (what went wrong, is it real, what would help)."""
+def holed_roof_parts(folder, record):
+    """The parts whose failed bridge check includes a roof with a hole cut through it (bridges.is_holed_roof),
+    read from the meshes in folder/parts (built by ensure_parts)."""
+    failed = {finding.part for finding in record.counted_findings if finding.check == "bridges" and finding.ok is False}
+    holed = set()
+    for part in failed:
+        stl = folder / "parts" / f"{part}.stl"
+        if stl.exists() and any(is_holed_roof(found) for found in overhangs(trimesh.load(stl, force="mesh"))):
+            holed.add(part)
+    return holed
+
+
+def failure(run, record, finding, note, holed_roofs):
+    """A counted check that failed: (what went wrong, is it real, what would help). holed_roofs: the parts
+    with a roof with a hole through it (holed_roof_parts)."""
     family, check, detail = record.task.split("/")[0], finding.check, finding.detail
     if note and note["kind"] == "open" and "marked final" in note["note"]:
         return "Test coupon labelled as a final part", "open", "label"
@@ -101,7 +117,9 @@ def failure(run, record, finding, note):
     if check == "bridges":
         if (run, record.model, record.trial) in BROKEN_ROOFS:
             return "Geometry slip: a broken shape", "real", "render"
-        return "A roof with the bolt's hole cut through it", "decided", "checks"
+        if finding.part in holed_roofs:
+            return "A roof with the bolt's hole cut through it", "decided", "checks"
+        return "A roof or ledge too wide to bridge, with no hole through it", "real", "checks"
     if family == "nut-knob":
         if check == "R4":
             return "Nut pocket a size the prints don't take", "real", "coupon"
@@ -121,8 +139,10 @@ def failure(run, record, finding, note):
     return "Geometry slip: no usable bolt hole", "real", "render"
 
 
-def issues_of(run, record, note):
-    """Every counted check that didn't pass, diagnosed. A declined trial counts none, as its verdict says."""
+def issues_of(run, record, note, holed_roofs):
+    """Every counted check that didn't pass, diagnosed. A declined trial counts none, as its verdict says.
+    holed_roofs: the parts with a roof with a hole through it (holed_roof_parts); a failed bridge check
+    on any other part is a roof or ledge with no hole."""
     if record.declined:
         return [{"check": "-", "part": "-", "family": "Declined: the clamp's width isn't recorded", "kind": "declined", "help": "measure"}]
     found = []
@@ -134,7 +154,7 @@ def issues_of(run, record, note):
                 continue
             diagnosis = missing_record(record.task.split("/")[0], finding.check, finding.detail)
         else:
-            diagnosis = failure(run, record, finding, note)
+            diagnosis = failure(run, record, finding, note, holed_roofs)
         family, kind, help_key = diagnosis
         found.append({"check": finding.check, "part": finding.part, "family": family, "kind": kind, "help": help_key})
     return found
@@ -165,7 +185,7 @@ def trial_card(run, folder, record, audit, rounds, renders):
             "condition": record.condition, "model": record.model, "trial": record.trial, "verdict": gallery.verdict(record),
             "cost": record.cost_usd, "asked": [m.what or m.item for m in record.measures], "answers": [m.reply for m in record.measures],
             "findings": findings, "parts": parts,
-            "audit": audit.get(key), "issues": issues_of(run, record, audit.get(key)),
+            "audit": audit.get(key), "issues": issues_of(run, record, audit.get(key), holed_roof_parts(folder, record)),
             "group": "loop" if key in rounds else ("coupon" if has_coupon else "none"), "rounds": rounds.get(key, [])}
 
 

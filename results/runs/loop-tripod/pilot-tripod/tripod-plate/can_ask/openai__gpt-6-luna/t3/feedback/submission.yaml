@@ -1,0 +1,165 @@
+task: tripod-plate
+note: 'Revised after the reported print defect: the flat, wide underside counterbore
+  now transitions to the bolt hole through a long conical funnel instead of a flat
+  roof, so the printer should not need to bridge across the pocket. The camera-side
+  deck is thicker to keep that taper self-supporting. This will use a centered bolt
+  position rather than the previous adjustment slot. The tripod clamp dimensions and
+  bolt-head fit are still unverified; test-fit the plate and hardware without a camera
+  first. Use only as a stationary, light-duty temporary mount—do not carry the tripod
+  with a camera attached or use it over people or valuable equipment. Do not print
+  a plastic screw; use the salvaged metal bolt and make sure it does not bottom out.'
+questions: []
+params:
+  plate_length_mm:
+    value: 60
+    unit: mm
+    kind: world
+    source: guessed
+    note: Unverified Arca-style starting dimension; clamp was not measured.
+  plate_top_width_mm:
+    value: 40
+    unit: mm
+    kind: world
+    source: guessed
+    note: Unverified top deck width; adjust to match the clamp.
+  rail_bottom_width_mm:
+    value: 34
+    unit: mm
+    kind: world
+    source: guessed
+    note: Unverified narrow width of tapered rail profile.
+  rail_top_width_mm:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: Unverified upper width of tapered rail profile.
+  rail_height_mm:
+    value: 4.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Unverified rail engagement height.
+  deck_thickness_mm:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Thickened deck to make a printable tapered funnel above the bolt-head recess.
+  bolt_clearance_d_mm:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Designed clearance for a 1/4-20 bolt shank; verify the actual bolt.
+  bolt_head_pocket_d_mm:
+    value: 22
+    unit: mm
+    kind: world
+    source: guessed
+    note: Estimated circular head recess; measure the actual salvaged bolt head.
+  bolt_head_pocket_depth_mm:
+    value: 4.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Estimated bolt-head depth; measure the actual head.
+  pocket_clearance_mm:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance added to the estimated head recess.
+parts:
+- id: plate
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    rail = (cq.Workplane('XY').rect(p.rail_bottom_width_mm,\
+    \ p.plate_length_mm)\n            .workplane(offset=p.rail_height_mm)\n      \
+    \      .rect(p.rail_top_width_mm, p.plate_length_mm).loft(combine=True))\n   \
+    \ deck = (cq.Workplane('XY').box(p.plate_top_width_mm, p.plate_length_mm,\n  \
+    \          p.deck_thickness_mm, centered=(True, True, False))\n            .translate((0,\
+    \ 0, p.rail_height_mm)))\n    part = rail.union(deck)\n    total_h = p.rail_height_mm\
+    \ + p.deck_thickness_mm\n    pocket_r = (p.bolt_head_pocket_d_mm + 2 * p.pocket_clearance_mm)\
+    \ / 2.0\n    shank_r = p.bolt_clearance_d_mm / 2.0\n    # Head recess opens on\
+    \ the bed-facing side. The broad recess tapers\n    # continuously to the shank\
+    \ hole, avoiding a flat bridge/roof.\n    recess = cq.Solid.makeCylinder(pocket_r,\
+    \ p.bolt_head_pocket_depth_mm + 0.1,\n                                   cq.Vector(0,\
+    \ 0, -0.1), cq.Vector(0, 0, 1))\n    funnel_h = total_h - p.bolt_head_pocket_depth_mm\n\
+    \    funnel = cq.Solid.makeCone(pocket_r, shank_r, funnel_h,\n               \
+    \                cq.Vector(0, 0, p.bolt_head_pocket_depth_mm),\n             \
+    \                  cq.Vector(0, 0, 1))\n    through = cq.Solid.makeCylinder(shank_r,\
+    \ total_h + 0.4,\n                                    cq.Vector(0, 0, -0.2), cq.Vector(0,\
+    \ 0, 1))\n    return part.cut(recess).cut(funnel).cut(through)\n"
+  print_orientation: Print with the narrow rail bottoms on the bed (z=0), deck upward.
+    The underside head recess opens to the bed; its funnel tapers over 9 mm, with
+    no flat bridge roof. No supports intended.
+  use_orientation: Tapered rails engage the tripod clamp lips; the flat upper deck
+    faces the camera. Insert the salvaged metal bolt from the underside through the
+    centered tapered passage into the camera's 1/4-20 socket.
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: clamp-fit
+  part: plate
+  feature: tapered side rails
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: template
+    ref: null
+    description: With no camera installed, test whether the rails drop into the open
+      jaws and are held when the knob is gently tightened. Do not force or rely on
+      the guessed dimensions.
+- id: bolt-head-fit
+  part: plate
+  feature: underside circular recess and tapered passage
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.6
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Measure the actual bolt head and shank. Confirm the head fits the
+      underside recess and the shank passes through; verify the bolt does not bottom
+      out in the camera.
+manual:
+- n: '1'
+  text: Before mounting a camera, measure the clamp and bolt head. The clamp and bolt
+    dimensions were not provided, so adjust the guessed rail widths/heights and head
+    recess if necessary.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '2'
+  text: Print the revised plate with its rail bottoms on the bed. Inspect the funnel
+    around the hole; it should be a clean sloping surface, not a flat bridge.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Test the rail fit in the clamp with no camera, and test the metal bolt through
+    the plate. Do not force either fit; revise dimensions if needed.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '4'
+  text: Confirm the bolt threads into the camera by hand and does not bottom out.
+    Tighten gently. Use only as a stationary light-duty temporary mount; keep a hand
+    on the camera and never carry it attached to the tripod.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null

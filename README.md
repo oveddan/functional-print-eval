@@ -217,7 +217,7 @@ uv run python -m pbe.eval --run my-run --task tripod-plate --model anthropic/cla
 - Each trial saves `transcript.json`, `submission.yaml` and `grades.json` under `results/runs/<run>/<task>/<condition>/<model>/t<n>/`, and the run gets a `summary.csv`. A stopped run resumes where it left off.
 - **What it costs:** the Cost column in [Results](#results) is what OpenRouter charged for the saved trials, by task, condition and model. Divide by the Trials column for a trial's cost.
 - **Prompt caching:** Claude models ask for OpenRouter's prompt caching; every model gets the same messages and tools, byte for byte (issue 34, `tests/test_caching.py`). Each trial saved since records `settings.prompt_caching`. Trials saved before had no caching, so their Claude costs are full price. `scripts/cost_report.py <run>...` gives cost per trial and per turn by model.
-- **`can_run_code`** lets the model run Python before handing in. That code runs in bubblewrap on Linux, or in Docker with the image from `scripts/build_run_python_image.sh`. Docker on macOS hasn't been tested; a Linux cloud machine is the tested route. The saved runs `pilot-code-smoke` and `pilot-code` used it, under bubblewrap, one trial per model (issue 34).
+- **`can_run_code`** lets the model run Python before handing in. That code runs in bubblewrap on Linux, or in Docker with the image from `scripts/build_run_python_image.sh`. Docker on macOS hasn't been tested; a Linux cloud machine is the tested route. The saved runs `pilot-code-smoke` (one trial) and `pilot-code` (three per lineup model on the tripod) used it, under bubblewrap (issue 34).
 
 ### Building the submission ZIP
 
@@ -263,14 +263,14 @@ Every condition also has `report_limitation`, which changes nothing and records 
 ## Results
 
 <!-- results:start (written by scripts/results_table.py; don't edit by hand) -->
-151 trials of 12 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 3 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
+163 trials of 12 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 3 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
 
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
 | `can_ask` | 134 | 43 | 54 | 33 | 4 | 0 | $10.24 |
-| `can_run_code` | 7 | 2 | 3 | 0 | 2 | 0 | $1.16 |
-| **all** | **151** | 46 | 64 | 34 | 7 | 0 | $12.51 |
+| `can_run_code` | 19 | 3 | 10 | 1 | 5 | 0 | $2.55 |
+| **all** | **163** | 47 | 71 | 35 | 10 | 0 | $13.90 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
@@ -365,19 +365,22 @@ Every condition also has `report_limitation`, which changes nothing and records 
 | `can_ask` | qwen/qwen3.8-flash | 3 | 0 | 3 | 0 | 0 | 0 | $0.17 |
 | `can_ask` | x-ai/grok-4.7 | 1 | 1 | 0 | 0 | 0 | 0 | $0.46 |
 | `can_ask` | z-ai/glm-5.3-flash | 3 | 0 | 2 | 1 | 0 | 0 | $0.13 |
-| `can_run_code` | anthropic/claude-haiku-5.5 | 1 | 0 | 0 | 0 | 1 | 0 | $0.01 |
-| `can_run_code` | anthropic/claude-opus-5.5 | 1 | 1 | 0 | 0 | 0 | 0 | $0.25 |
-| `can_run_code` | anthropic/claude-sonnet-5.5 | 1 | 0 | 1 | 0 | 0 | 0 | $0.14 |
-| `can_run_code` | deepseek/deepseek-v4-pro-0813 | 1 | 0 | 1 | 0 | 0 | 0 | $0.40 |
-| `can_run_code` | google/gemini-4-argon | 1 | 0 | 1 | 0 | 0 | 0 | $0.27 |
-| `can_run_code` | openai/gpt-6.1-sol | 1 | 0 | 0 | 0 | 1 | 0 | $0.08 |
+| `can_run_code` | anthropic/claude-haiku-5.5 | 3 | 0 | 1 | 0 | 2 | 0 | $0.01 |
+| `can_run_code` | anthropic/claude-opus-5.5 | 3 | 1 | 2 | 0 | 0 | 0 | $0.57 |
+| `can_run_code` | anthropic/claude-sonnet-5.5 | 3 | 0 | 3 | 0 | 0 | 0 | $0.38 |
+| `can_run_code` | deepseek/deepseek-v4-pro-0813 | 3 | 0 | 2 | 1 | 0 | 0 | $0.52 |
+| `can_run_code` | google/gemini-4-argon | 3 | 1 | 2 | 0 | 0 | 0 | $0.91 |
+| `can_run_code` | openai/gpt-6.1-sol | 3 | 0 | 0 | 0 | 3 | 0 | $0.17 |
 <!-- results:end -->
 
 Every trial's transcript, design and grades are in `results/runs/`; the results page (step 5) shows each one with its parts in 3D. `scripts/digest.py <run> --why` prints each failure's evidence.
 
-Two follow-up experiments on saved trials, each with its own write-up:
+Follow-up experiments on saved trials, each with its own write-up:
 - **Telling the model how its test print came out** (`docs/coupon-loop.md`, run `loop-sample` and `loop-sample-2`): one more turn after a reply built from the recorded prints, against a neutral "take another look". In each of two samples of 12 trials, the reply's arm passed 3 and the neutral arm 1. That's a small sample, and the 2 extra passes both rest on the M3 +0.1 mm print.
+- **Printing the tripod plate and saying how its roof came out** (same write-up, run `loop-tripod`): the 24 saved plates that fail on a holed roof, each told "loose loops and tangles around the hole; hole partly closed" and nothing about why. 14 of 24 fixed the roof, against 2 of 23 after a neutral second look. 8 flipped the plate, 3 used a cone, 2 the stepped bridge and 1 a skin to push out. Most still fail elsewhere, so 3 pass every check (4 with the R3 fix that came after the run).
 - **Sending a build error back once** (`docs/crash-replay.md`, run `crash-replay`): each saved crash replayed with its error.
+
+**Letting the model run code** (`can_run_code`, run `pilot-code`): three tripod trials per lineup model. 2 of 18 pass, against 3 of 23 for the same models without code (`can_ask` and `all_given`). Fewer designs fail on a roof with the bolt's hole cut through it: 4 of 13 against 12 of 19. No design was sent back for a build error. That's a small sample, and Sonnet's three plates all have the dovetail upside down instead.
 
 ### Where models fail
 
@@ -389,18 +392,19 @@ Is kind of designing a print, not really understanding the constraints of 3D pri
 
 Counts are trials, from the saved runs; a trial can fail more than one way. The pictures are cuts through saved designs, made by `scripts/failure_figures.py`, with the hardware drawn in orange where it has to go. None of these designs was printed.
 
-### `tripod-plate`: 50 trials
+### `tripod-plate`: 62 trials
 
 | What went wrong | Trials |
 |---|---|
-| A roof with the bolt's hole cut through it (`bridges`) | 21 |
-| Declined: the clamp's width isn't recorded | 7 |
-| Dovetail upside down: the bolt head's recess is on the camera's side | 6 |
-| Straight sides, nothing for the clamp's lips to grip | 6 |
-| No usable bolt hole | 5 |
+| A roof with the bolt's hole cut through it (`bridges`) | 24 |
+| Declined: the clamp's width isn't recorded | 10 |
+| Dovetail upside down: the bolt head's recess is on the camera's side | 9 |
+| Straight sides, nothing for the clamp's lips to grip | 7 |
+| No usable bolt hole | 6 |
 | Code didn't run | 3 |
 | A part in pieces | 3 |
 | Bolt doesn't reach far enough into the camera | 2 |
+| Head recess too small for the bolt's head | 2 |
 
 | The plate Dan printed | Dovetail upside down | Straight sides |
 |---|---|---|
@@ -432,7 +436,8 @@ The bridge check's picture of GPT-6 Luna's roof (`pilot-tripod` t1, 449 mm² at 
 | Code didn't run | 5 |
 | Nut pocket a size the prints don't take | 4 |
 | The pocket is closed, so the nut can't be pressed in | 3 |
-| A roof with the bolt's hole cut through it | 2 |
+| A roof with the bolt's hole cut through it | 1 |
+| A ledge too wide to bridge: the grip overhangs its boss | 1 |
 | Its test print labelled as a final part | 1 |
 
 | No clearance | A closed pocket |
@@ -453,10 +458,10 @@ A check is not graded when no recorded print decides it. A trial can have more t
 | Not graded because | Trials | The print that would settle it |
 |---|---|---|
 | A nut pocket with crush ribs or clips | 14 | Pockets with ribs, clips or relief beside plain ones. Each model's ribs differ, so one print settles only designs like it |
-| A tripod head recess under 5 mm deep | 9 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
+| A tripod head recess under 5 mm deep | 11 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
 | A roof ledge 1.5 to 3 mm wide | 9 | Ring roofs 1.5 to 3 mm wide around a bolt hole |
-| A tripod bolt hole between 6.35 and 6.8 mm | 6 | Bolt holes at 6.5 and 6.6 mm |
-| A plate width outside 37 to 39 mm | 6 | Dovetail plates from 34 to 45 mm tried in the clamp |
+| A tripod bolt hole between 6.35 and 6.8 mm | 8 | Bolt holes at 6.5 and 6.6 mm |
+| A plate width outside 37 to 39 mm | 8 | Dovetail plates from 34 to 45 mm tried in the clamp |
 | A wheel bolt hole between 8.0 and 8.4 mm | 6 | Holes at 8.1, 8.2 and 8.3 mm on an M8 |
 | A bearing seat between printed sizes, or ribbed | 4 | Seats at 22.05, 22.4 and 22.5 mm, and lobed seats |
 | Bearings a little proud, or no shoulder | 4 | Wheels with bearings 0.2 to 0.6 mm proud, and a bore with no shoulder |
@@ -521,15 +526,15 @@ These are treated as true without a print that shows them for that exact case. T
 <!-- assumptions:start (written by scripts/results_table.py; don't edit by hand) -->
 | Assumption | Check | What rests on it in the saved runs |
 |---|---|---|
-| The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (34 pass, 2 fail), so all 8 tripod passes |
-| One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (28 pass, 6 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 21 trials that fail on `bridges` alone (Dan's call: they fail) |
+| The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (43 pass, 2 fail), so all 9 tripod passes |
+| One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (34 pass, 7 fail) |
+| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 22 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
 <!-- assumptions:end -->
 
 ### Whose calls these are
 
 From the audit of the saved failures (issue 15):
-- **Dan's:** a test print can't fail a trial on its own; declining is its own verdict, never a pass; a roof with the bolt's hole cut through it fails `bridges`; nothing new is printed or measured before publishing, so what the records can't decide is not graded; one printer and one filament; M3 at +0.1 mm goes in by hand "with force", so it counts as holding (his memory of one print).
+- **Dan's:** a test print can't fail a trial on its own; declining is its own verdict, never a pass; a roof with the bolt's hole cut through it fails `bridges`; nothing new is printed or measured before publishing, so what the records can't decide is not graded; one printer and one filament; M3 at +0.1 mm goes in by hand "with force", so it counts as holding (his memory of one print); the person answers the clamp's width as 38 mm, the Arca-Swiss standard his plate fit (new runs only); the test-print loop may print the final plate, not only the model's test prints.
 - **Claude's, delegated by Dan** ("do what you think is best"): DeepSeek V4.1 Flash's M5 test print labelled `final` stays a fail, which Dan reviewed and kept. These aren't Dan's expert judgment. Also Claude's: one official set of counts, with no second, more optimistic score (issue 35).
 
 ### Known limits

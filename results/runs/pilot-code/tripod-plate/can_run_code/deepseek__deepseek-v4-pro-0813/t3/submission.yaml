@@ -1,0 +1,150 @@
+task: tripod-plate
+note: ''
+questions: []
+params:
+  plate_w:
+    value: 39.0
+    unit: mm
+    kind: design
+    source: guessed
+    note: Arca-style typical; measure recess to confirm
+  plate_l:
+    value: 50.0
+    unit: mm
+    kind: design
+    source: guessed
+    note: typical quick-release plate length
+  plate_t:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: plate thickness
+  bevel_h:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: height of 45deg bevel on long edges
+  boss_od:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  boss_h:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear_d:
+    value: 6.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: clearance for 1/4-20 shank
+  nut_af:
+    value: 11.11
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ASME B18.2.2 1/4-20 across flats
+  nut_h:
+    value: 5.56
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ASME B18.2.2 1/4-20 height
+  nut_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: clearance on nut pocket
+  nut_h_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    base = cq.Workplane(\"XY\").box(p.plate_l,\
+    \ p.plate_w, p.plate_t, centered=(True, True, False))\n    cham = base.edges(\"\
+    <Z\").edges(\"|X\").chamfer(p.bevel_h)\n    boss = cq.Workplane(\"XY\").circle(p.boss_od\
+    \ / 2).extrude(p.boss_h).translate((0, 0, p.plate_t))\n    plate = cham.union(boss)\n\
+    \    # through hole for the bolt shank\n    plate = plate.faces(\"<Z\").workplane().hole(p.bolt_clear_d,\
+    \ depth=p.plate_t + p.boss_h)\n    # hex nut pocket from the bottom, so the bolt\
+    \ can't spin\n    r_circum = (p.nut_af + p.nut_clear) / 2.0 / 0.8660254\n    plate\
+    \ = plate.faces(\"<Z\").workplane().polygon(6, r_circum, circumscribed=True).cutBlind(p.nut_h\
+    \ + p.nut_h_clear)\n    return plate"
+  print_orientation: flat plate face (boss up), bottom face on bed
+  use_orientation: boss up, bolt through from below, nut in underside pocket
+hardware:
+- id: stud
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+- id: nut_14
+  ref: ASME B18.2.2 1/4-20
+  qty: 1
+joints:
+- id: camera_mount
+  fastener: stud
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: hex nut pocket
+    role: nut_pocket
+  - part: plate
+    feature: through hole
+    role: clearance
+  nut: null
+  external: null
+criteria: []
+manual:
+- n: '1'
+  text: Print the plate with the boss facing up and the flat underside on the print
+    bed.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the 1/4-20 hex nut into the hexagonal pocket on the underside of the
+    plate.
+  parts:
+  - plate
+  hardware:
+  - nut_14
+  tool: null
+- n: '3'
+  text: Thread the salvaged webcam-mount bolt up through the bottom (through the nut
+    and the boss) until it just pokes out the top of the boss.
+  parts:
+  - plate
+  hardware:
+  - stud
+  tool: null
+- n: '4'
+  text: Screw the camera onto the protruding 1/4-20 bolt so it sits snug against the
+    boss.
+  parts: []
+  hardware:
+  - stud
+  tool: null
+- n: '5'
+  text: Drop the plate down into the tripod clamp so the beveled long edges engage
+    the angled lips, then tighten the clamp knob.
+  parts: []
+  hardware: []
+  tool: null

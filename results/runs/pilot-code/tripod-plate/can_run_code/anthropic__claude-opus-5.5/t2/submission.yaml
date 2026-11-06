@@ -1,0 +1,220 @@
+task: tripod-plate
+note: Arca-Swiss style quick-release plate. The tripod clamp couldn't be measured,
+  so the profile uses the standard 38 mm width and a guessed 4 mm 45° bevel. Check
+  it with the coupon. The salvaged webcam 1/4-20 bolt is used as the camera screw
+  because a printed PLA thread would be weak.
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: datasheet
+    note: Arca-Swiss standard plate width; tripod clamp not measured – check with
+      the coupon
+  dovetail_h:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: height of the 45° bevel the clamp lips grip
+  plate_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_len:
+    value: 25
+    unit: mm
+    kind: design
+    source: design
+    note: how far the camera screw can slide along the plate
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20
+  bolt_clear_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under the head
+  head_clear_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cbore_depth:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: head sits 0.3 below the bottom face; 4.7 mm material leaves about 5.3 mm
+      of thread poking into the camera
+  coupon_l:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W=p.plate_w; T=p.plate_t; d=p.dovetail_h; L=p.plate_l\n\
+    \    pts=[(-W/2,0),(W/2,0),(W/2,T-d),(W/2-d,T),(-W/2+d,T),(-W/2,T-d)]\n    body=cq.Workplane('XZ').polyline(pts).close().extrude(L/2,both=True)\n\
+    \    sl=p.slot_len\n    hole=cq.Workplane('XY').slot2D(sl+p.bolt_clear_d,p.bolt_clear_d,angle=90).extrude(T)\n\
+    \    cb=cq.Workplane('XY').workplane(offset=T-p.cbore_depth).slot2D(sl+p.head_clear_d,p.head_clear_d,angle=90).extrude(p.cbore_depth)\n\
+    \    return body.cut(hole).cut(cb)\n"
+  print_orientation: camera face (wide flat face) on the bed, bevels and screw counterbore
+    facing up
+  use_orientation: 'flipped over: wide face up against the camera, bevelled edges
+    down in the tripod clamp'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    W=p.plate_w; T=p.plate_t; d=p.dovetail_h; L=p.coupon_l\n\
+    \    pts=[(-W/2,0),(W/2,0),(W/2,T-d),(W/2-d,T),(-W/2+d,T),(-W/2,T-d)]\n    body=cq.Workplane('XZ').polyline(pts).close().extrude(L/2,both=True)\n\
+    \    hole=cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(T)\n    cb=cq.Workplane('XY').workplane(offset=T-p.cbore_depth).circle(p.head_clear_d/2).extrude(p.cbore_depth)\n\
+    \    return body.cut(hole).cut(cb)\n"
+  print_orientation: wide face on the bed
+  use_orientation: set into the tripod clamp to check the fit
+hardware:
+- id: cam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: cam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: counterbore slot
+    role: head_seat
+  - part: plate
+    feature: 6.8 mm slot
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: clamp_fit
+  part: fit_coupon
+  feature: 38 mm bevelled edges
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - dovetail_h
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Drops into the opened clamp and locks firmly when the knob is tightened,
+      with no rocking
+- id: head_recess
+  part: plate
+  feature: counterbore
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - cbore_depth
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Bolt head sits at or just below the bottom face
+- id: thread_reach
+  part: plate
+  feature: material under head
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - cbore_depth
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: About 5 mm of thread sticks out of the top; the camera sits flat
+      without the screw bottoming out
+manual:
+- n: '1'
+  text: Print fit_coupon (about 10 minutes) with the wide face on the bed. Open the
+    clamp, drop the coupon in with the bevelled side down, and tighten the knob. If
+    it locks without rocking, go on. If it's too loose or won't go in, tell me how
+    far it's off.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Put the webcam bolt into the coupon's hole from the bevelled side. The head
+    should sit flush or a little below the surface, with about 5 mm of thread sticking
+    out of the wide face.
+  parts:
+  - fit_coupon
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '3'
+  text: Print the plate with the wide face on the bed. No supports needed. Use 4 walls
+    and 40% or more infill so it stays stiff.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Push the webcam bolt up through the slot from the bevelled side. Slide it
+    to where the camera will balance, then screw it into the camera's tripod socket
+    by hand until it's snug. The head is a 15 mm round head and you turn it with your
+    fingers. Don't over-tighten, since the threads are going into PLA.
+  parts:
+  - plate
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '5'
+  text: Drop the plate into the opened clamp with the bevelled side down, tighten
+    the knob, and give the camera a gentle tug before you let go of it.
+  parts:
+  - plate
+  hardware: []
+  tool: null

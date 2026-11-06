@@ -8,11 +8,17 @@ the results can mark it as a prediction. Anything else gets "I can't tell you ho
 A control arm gets a neutral second turn instead, so a gain from the report can be told apart from
 a second look.
 
+The tripod sample (docs/coupon-loop.md, "Tripod sample") also prints the final plate, as Dan did with the
+Arca plate: the report says whether it fits the clamp (only at the 38 mm width that was printed), whether the
+bolt's head fits its recess (the 13 mm recess that didn't and the 15 x 5 mm one that did) and, for a holed roof,
+the bridge check's prediction. It never names a cause or a fix.
+
 A design is graded with its coupons left out: once the coupon has been printed, its credit in
 nut.fit and wheel.fit no longer applies, and the final part has to land on a size that held. The
 saved turn 1 design is graded the same way, so the three grades share one rule.
 """
 import math
+import re
 import time
 from dataclasses import dataclass
 from functools import cache
@@ -22,8 +28,8 @@ from typing import Literal, Self
 import yaml
 from pydantic import BaseModel, Field
 
-from pbe.graders import nuts, wheel
-from pbe.graders.bridges import overhangs
+from pbe.graders import nuts, requirements, wheel
+from pbe.graders.bridges import is_holed_roof, overhangs
 from pbe.graders.sections import clear_width, holes_by_layer
 from pbe.parts import catalog
 from pbe.runner import agent, llm
@@ -38,10 +44,14 @@ ROOF_NOTE = "loose loops and tangles around the hole; hole partly closed"  # cou
 CANT_TELL = "I can't tell you how that one came out."
 ENDING = "Send me the design again with submit_design, changed or unchanged. I'll print the final part from what you send."
 NEUTRAL = "Before I print anything, take another look at your design. " + ENDING
+PRINTED_ENDING = "Send me the design again with submit_design, changed or unchanged, and I'll print it again from what you send."
+PRINTED_PLATE_MM = 38.0  # the one plate width that was printed and fit the clamp (tasks/tripod-plate/brief.md)
+PRINTED_WIDTH_TOL = 0.5  # mm: a plate this close to 38 reads as the printed width
 
 # "tighter than a record": smaller than the tightest size printed, which wouldn't take the nut or bearing,
 # so it won't either. The checks already read it that way (nuts.verdict, wheel._holds).
-Basis = Literal["coupon B record", "coupon E record", "tighter than a record", "bridge check prediction", "no record", "build error"]
+Basis = Literal["coupon B record", "coupon E record", "tighter than a record", "bridge check prediction", "no record", "build error",
+                "tripod plate record"]
 Arm = Literal["baseline", "feedback", "neutral"]
 
 
@@ -215,6 +225,55 @@ def coupon_report(task, sub, built) -> dict[str, list[ReportLine]]:
     return report
 
 
+# --- printing the final plate (the tripod sample) ---------------------------------------------------
+
+def _finding(findings, check):
+    return next((finding for finding in findings if finding.check == check), None)
+
+
+def clamp_line(findings) -> ReportLine:
+    """Fits the clamp only at the printed width; R2's 37 to 39 mm pass is an estimate, not a print."""
+    fit = _finding(findings, "R2")
+    width = re.match(r"([\d.]+) mm wide", fit.detail) if fit is not None else None
+    if fit is not None and fit.ok is True and width and abs(float(width.group(1)) - PRINTED_PLATE_MM) <= PRINTED_WIDTH_TOL:
+        return ReportLine("the clamp: it fits.", "tripod plate record")
+    return ReportLine(f"the clamp: {CANT_TELL}", "no record")
+
+
+def head_line(findings) -> ReportLine:
+    """R4 reads the recess against the two that were printed: 13 mm didn't take the head, 15 x 5 mm did."""
+    recess = _finding(findings, "R4")
+    if recess is not None and recess.ok is True:
+        return ReportLine("the bolt's head: it fits in its recess.", "tripod plate record")
+    if recess is not None and recess.ok is False:
+        return ReportLine("the bolt's head: it didn't fit in its recess.", "tripod plate record")
+    return ReportLine(f"the bolt's head: {CANT_TELL}", "no record")
+
+
+def holed_roof_line(mesh) -> list[ReportLine]:
+    if not any(is_holed_roof(found) for found in overhangs(mesh)):
+        return []
+    return [ReportLine(f"the roof the hole goes through: {ROOF_NOTE}.", "bridge check prediction")]
+
+
+def plate_report(task, sub, built) -> dict[str, list[ReportLine]]:
+    """The person's report on the final part(s), once printed: the clamp, the bolt's head and a holed roof."""
+    finals = [part for part in sub.parts if part.role == "final"]
+    if any(built.get(part.id) is None or not built[part.id].ok for part in finals):
+        return {", ".join(part.id for part in finals): [ReportLine("it didn't come out: the file wouldn't open.", "build error")]}
+    findings = requirements.grade(task, without_coupons(sub), {part.id: built[part.id] for part in finals})
+    lines = [clamp_line(findings), head_line(findings)]
+    for part in finals:
+        lines += holed_roof_line(built[part.id].mesh)
+    return {", ".join(part.id for part in finals): lines}
+
+
+def printed_text(report: dict[str, list[ReportLine]]) -> str:
+    """What the person says after printing everything in the design, coupons and final part alike."""
+    blocks = [f"{part_id}:\n" + "\n".join(f"- {line.text}" for line in lines) for part_id, lines in report.items()]
+    return "I printed what you sent. Here's how it came out:\n" + "\n".join(blocks) + "\n\n" + PRINTED_ENDING
+
+
 def feedback_text(report: dict[str, list[ReportLine]]) -> str:
     blocks = [f"{part_id}:\n" + "\n".join(f"- {line.text}" for line in lines) for part_id, lines in report.items()]
     several = len(report) > 1
@@ -249,16 +308,30 @@ def turn_outcome(error, submission, calls) -> TurnOutcome:
     return agent.outcome_of(error, submission)
 
 
-def second_turn(task, model, saved_messages, text, max_turns=SECOND_TURN_CALLS, max_tokens=32000, chat=llm.chat) -> SecondTurn:
-    """Continue a saved conversation with one message from the person, until the model resubmits."""
-    person = Person(task.hidden_facts)
-    trial_tools = agent.TrialTools(task, person)
+def facts_as_saved(task, hidden):
+    """The task's facts cut to the measurements a saved trial's person had (its record's `hidden`), so a
+    replay answers as turn 1 did even after a fact is added to the task, such as the clamp's width."""
+    facts = {}
+    for name, thing in (task.hidden_facts or {}).items():
+        kept = {key: value for key, value in thing.get("measurements", {}).items() if f"{name}.{key}" in hidden}
+        if kept:
+            facts[name] = {**thing, "measurements": kept}
+    return facts
+
+
+def second_turn(task, model, saved_messages, text, max_turns=SECOND_TURN_CALLS, max_tokens=32000, chat=llm.chat,
+                condition="can_ask", python=None, facts=None) -> SecondTurn:
+    """Continue a saved conversation with one message from the person, until the model resubmits. A
+    can_run_code trial keeps run_python (python: its PythonTool) and the tools it had in turn 1. facts:
+    what the person knows (facts_as_saved for a replay); the task's current facts if None."""
+    person = Person(task.hidden_facts if facts is None else facts)
+    trial_tools = agent.TrialTools(task, person, python)
     added = [{"role": "user", "content": text}]
     calls, error = [], None
     started = time.monotonic()
     for _ in range(max_turns):
         try:
-            response = chat(model, [*saved_messages, *added], tools=agent.tools(), max_tokens=max_tokens)
+            response = chat(model, [*saved_messages, *added], tools=agent.tools(condition), max_tokens=max_tokens)
         except llm.LLMError as e:
             error = str(e)
             break

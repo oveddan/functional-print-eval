@@ -1,0 +1,207 @@
+task: tripod-plate
+note: 'Updated the plate to address the hole-roof failure: the plate is 2 mm thicker
+  and the underside head pocket now transitions to the through-hole with a 45° conical
+  roof instead of a flat bridge. The clamp fit was confirmed on the previous version,
+  but this version is taller; re-check that the clamp still closes and retains it
+  before attaching a camera. Continue using the salvaged metal bolt, not a printed
+  screw.'
+questions: []
+params:
+  plate_top_width_mm:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Best-guess Arca-style width; previous version fit this clamp.
+  plate_bottom_width_mm:
+    value: 30.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Previous version fit the clamp.
+  plate_length_mm:
+    value: 50.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_thickness_mm:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: Increased from 8 mm to allow a self-supporting conical roof above the head
+      pocket.
+  lower_straight_height_mm:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  dovetail_height_mm:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_diameter_mm:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User measured approximately 15 mm.
+  bolt_head_height_mm:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User measured approximately 5 mm.
+  bolt_under_head_length_mm:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User measured approximately 10 mm.
+  bolt_thread_major_diameter_mm:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter for the 1/4-20 bolt.
+  bolt_pitch_mm:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clearance_hole_diameter_mm:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_pocket_diameter_mm:
+    value: 15.6
+    unit: mm
+    kind: design
+    source: design
+    note: 0.6 mm diametral clearance around measured head.
+  head_pocket_depth_mm:
+    value: 4.6
+    unit: mm
+    kind: design
+    source: design
+    note: Leaves the head about 0.4 mm proud for gripping below.
+parts:
+- id: camera_plate
+  role: final
+  material: PLA, high-speed PLA
+  code: "def build(p):\n    bw = p.plate_bottom_width_mm\n    tw = p.plate_top_width_mm\n\
+    \    z0 = p.lower_straight_height_mm\n    z1 = z0 + p.dovetail_height_mm\n   \
+    \ h = p.plate_thickness_mm\n    pts = [(-bw/2, 0), (bw/2, 0), (bw/2, z0), (tw/2,\
+    \ z1), (tw/2, h), (-tw/2, h), (-tw/2, z1), (-bw/2, z0)]\n    body = cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_length_mm).translate((0,\
+    \ p.plate_length_mm/2, 0))\n    hole_r = p.bolt_clearance_hole_diameter_mm / 2\n\
+    \    pocket_r = p.head_pocket_diameter_mm / 2\n    pocket_z = p.head_pocket_depth_mm\n\
+    \    # Main through-hole and head pocket open on the z=0 bed face.\n    through\
+    \ = cq.Workplane('XY').workplane(offset=-0.1).circle(hole_r).extrude(h + 0.2)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=-0.1).circle(pocket_r).extrude(pocket_z\
+    \ + 0.1)\n    # 45-degree conical transition: radial reduction equals rise, avoiding\
+    \ a flat bridge.\n    cone_h = pocket_r - hole_r\n    cone = cq.Solid.makeCone(pocket_r,\
+    \ hole_r, cone_h, cq.Vector(0, 0, pocket_z), cq.Vector(0, 0, 1))\n    return body.cut(through).cut(pocket).cut(cone)"
+  print_orientation: Narrow flat foot (z=0) on the bed; camera-contact face at z=10
+    mm.
+  use_orientation: Dovetail edges run along the clamp jaws; the metal 1/4-20 bolt
+    passes upward through the centered hole into the camera socket.
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_attachment
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: camera_plate
+    feature: underside counterbore and conical transition for bolt head
+    role: head_seat
+  - part: camera_plate
+    feature: centered 6.8 mm through-hole
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 socket
+criteria:
+- id: clamp_fit
+  part: camera_plate
+  feature: dovetail side faces and overall width
+  relation: clears
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - plate_top_width_mm
+  - plate_bottom_width_mm
+  - plate_thickness_mm
+  - dovetail_height_mm
+  check:
+    method: measure
+    ref: null
+    description: The previous version fit. This version is taller; verify it still
+      drops in and the jaws engage and retain it without force before attaching a
+      camera.
+- id: bolt_fit
+  part: camera_plate
+  feature: centered clearance hole and underside head pocket
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_head_diameter_mm
+  - bolt_head_height_mm
+  - bolt_under_head_length_mm
+  - bolt_clearance_hole_diameter_mm
+  - head_pocket_diameter_mm
+  - head_pocket_depth_mm
+  check:
+    method: measure
+    ref: null
+    description: Check that the salvaged bolt passes freely, its head is grippable
+      from below, and it engages the camera socket without bottoming out.
+manual:
+- n: '1'
+  text: Print camera_plate with its narrow, flat foot on the bed. Use several walls
+    and solid top/bottom layers.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Check the revised plate in the clamp without a camera. Although the previous
+    version fit, this version is taller. Do not force it; confirm the clamp closes
+    and retains it securely.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Insert the salvaged metal webcam bolt from the underside counterbore. Confirm
+    its head can be gripped and turned and the shank passes freely.
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '4'
+  text: Start the 1/4-20 bolt into the camera socket by hand. Stop if it binds or
+    bottoms out; do not force or overtighten. Use only for a light temporary setup,
+    and confirm the clamp is secure before use.
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: null

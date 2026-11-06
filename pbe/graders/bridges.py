@@ -43,6 +43,7 @@ class Overhang:
     ok: bool  # some direction's strands land on solid at both ends
     narrow: bool  # narrower than anything seen to tangle, so a failed strand test isn't settled
     strands: list = field(default_factory=list)  # (LineString, anchored) in the best direction
+    borders_hole: bool = False  # its outline runs along a hole its own layer encloses, such as the bolt's
 
 
 def _layer_at(mesh, z):
@@ -129,6 +130,13 @@ def _within(region, support, mm):
     return region.difference(support.buffer(mm)).area < 0.05
 
 
+def _borders_hole(region, layer, mm=1.0):
+    """Does at least mm of the region's outline run along a hole the layer encloses? A ring roof around a bolt
+    hole does, and so does a roof a slot cuts in two; a ledge whose free edge is the part's outside doesn't."""
+    rings = [ring for poly in (layer.geoms if hasattr(layer, "geoms") else [layer]) for ring in getattr(poly, "interiors", [])]
+    return sum(region.boundary.intersection(ring.buffer(0.05)).length for ring in rings) >= mm
+
+
 def _unsupported_regions(layer, below):
     """The parts of a layer with nothing under them, big enough to matter."""
     unsupported = layer.difference(below)
@@ -152,9 +160,16 @@ def overhangs(mesh: trimesh.Trimesh):
             angle, share, longest, ok, strands = assess(region, below)
             narrow = _within(region, below, bridging.narrowest_tangled_mm)
             found.append(Overhang(z=round(z - layer_h / 2, 2), region=region, support=below, best_angle=angle, anchored=share,
-                                  longest=longest, ok=ok, narrow=narrow, strands=strands))
+                                  longest=longest, ok=ok, narrow=narrow, strands=strands, borders_hole=_borders_hole(region, layer)))
         below = layer
     return found
+
+
+def is_holed_roof(overhang: Overhang) -> bool:
+    """A roof that fails the strand test, isn't a narrow ledge, and has a hole cut through it: the shape that
+    tangled on the Arca plate and coupon A's H cell, where strands end at the hole. The hole can be a ring
+    inside the roof or a slot that cuts it in two; either way it's a hole in the roof's own layer."""
+    return not overhang.ok and not overhang.narrow and overhang.borders_hole
 
 
 def svg(overhang: Overhang, size=520):

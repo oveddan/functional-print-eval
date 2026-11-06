@@ -3,7 +3,7 @@ import cadquery as cq
 import pytest
 import trimesh
 
-from pbe.graders.bridges import overhangs
+from pbe.graders.bridges import is_holed_roof, overhangs
 
 
 def mesh(shape, tmp_path):
@@ -31,6 +31,32 @@ def test_pocket_roofs(tmp_path, w, l, hole, ok):
     found = overhangs(mesh(block_with_pocket(w, l, hole), tmp_path))
     assert found, "the roof should need a bridge"
     assert all(o.ok for o in found) is ok, [(o.z, o.anchored, o.longest) for o in found]
+
+
+def roof_cut_by_slot():
+    """A 26 x 17 mm pocket roof with a 6 x 24 mm slot through it, cutting the roof in two strips
+    (GPT-6 Luna's tripod plate, pilot-tripod t3): no ring inside the roof, but still a hole through it."""
+    body = block_with_pocket(17, 26)
+    return body.cut(cq.Workplane("XY").workplane(offset=-1).rect(24, 6).extrude(12))
+
+
+def plate_stepping_out():
+    """A plate 30 mm wide for 3 mm, then 40 mm wide: 5 mm ledges whose free edge is the part's outside
+    (DeepSeek V4 Pro's can_run_code tripod t2)."""
+    base = cq.Workplane("XY").box(30, 55, 3, centered=(True, True, False))
+    return base.union(cq.Workplane("XY").workplane(offset=3).box(40, 55, 5, centered=(True, True, False)))
+
+
+@pytest.mark.parametrize("shape, holed", [
+    (lambda: block_with_pocket(10, 20, 5), True),   # the Arca plate's shape: strands end at the hole
+    (roof_cut_by_slot, True),                       # the slot is a hole in the roof's layer
+    (lambda: block_with_pocket(10, 20), False),     # the same roof closed: it passes
+    (lambda: block_with_pocket(60, 70), False),     # fails on span, with nothing cut through it
+    (plate_stepping_out, False),                    # fails, but its free edge is the outside
+])
+def test_a_holed_roof_is_a_failed_roof_with_a_hole_through_it(tmp_path, shape, holed):
+    found = overhangs(mesh(shape(), tmp_path))
+    assert any(is_holed_roof(o) for o in found) is holed
 
 
 def test_45_degree_chamfer_needs_no_bridge(tmp_path):

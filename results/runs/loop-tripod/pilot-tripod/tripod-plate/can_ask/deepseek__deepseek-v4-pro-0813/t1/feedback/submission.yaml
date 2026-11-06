@@ -1,0 +1,192 @@
+task: tripod-plate
+note: ''
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: datasheet
+    note: Arca-Swiss standard dovetail width; fits most clamps. Adjust if the friend's
+      clamp is narrower.
+  plate_l:
+    value: 55
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length; generous but shorter than most camera bases
+  plate_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Overall plate height; side walls tall enough for lips to grab
+  lip_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: datasheet
+    note: Arca-Swiss dovetail lip angle, approximately 45 degrees
+  base_t:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Floor thickness of the plate under the bolt
+  bolt_hole_d:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Clearance hole for 1/4-20 bolt; 1/4 inch is 6.35 mm
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: asked
+    note: 'Measured by person: webcam bolt head across'
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: asked
+    note: 'Measured by person: webcam bolt head height'
+  counterbore_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket for the bolt head, slightly larger than 15 mm head
+  clearance:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: General clearance for printed fits
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    # Solid plate body, bottom face\
+    \ at z=0\n    body = (cq.Workplane('XY')\n            .box(p.plate_l, p.plate_w,\
+    \ p.plate_h, centered=(True, True, False)))\n\n    # Dovetail: chamfer the two\
+    \ long top edges at 45 degrees so the\n    # clamp lips can grab. Chamfer distance\
+    \ = (plate_h - base_t), giving\n    # a 45-degree slope down to the base thickness.\n\
+    \    chamfer = p.plate_h - p.base_t\n    body = (body\n            .faces('>Z')\n\
+    \            .edges('|Y')\n            .chamfer(chamfer))\n\n    # Counterbore\
+    \ for the bolt head, opening DOWNWARD (from the bottom,\n    # z=0 up), so it\
+    \ is printed as clean vertical hole from the bed side\n    # and does not create\
+    \ an unsupported thin ring around the hole.\n    cb = (cq.Workplane('XY')\n  \
+    \        .circle(p.counterbore_d / 2 + p.clearance)\n          .extrude(p.counterbore_h\
+    \ if 'counterbore_h' in dir(p) else p.bolt_head_h))\n    # Use bolt_head_h so\
+    \ the head recesses flush; keep it shallow.\n    cb = (cq.Workplane('XY')\n  \
+    \        .circle(p.counterbore_d / 2 + p.clearance)\n          .extrude(p.bolt_head_h))\n\
+    \    body = body.cut(cb)\n\n    # Straight through hole for the bolt shank, full\
+    \ height, centered.\n    # Vertical hole => no overhang, no thin annular roof.\n\
+    \    through = (cq.Workplane('XY')\n               .circle(p.bolt_hole_d / 2 +\
+    \ p.clearance)\n               .extrude(p.plate_h + 1, both=True))\n    body =\
+    \ body.cut(through)\n\n    return body\n"
+  print_orientation: Bottom face (counterbore opening) on the bed, z=0 at the bottom.
+    The through hole is vertical, so no bridging; the dovetail chamfers print as gentle
+    45-degree overhangs on the top side.
+  use_orientation: Dovetail drops into the tripod clamp; camera base sits flat on
+    the top face; bolt goes up through the counterbore and hole into the camera socket
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    body = (cq.Workplane('XY')\n\
+    \            .box(20, p.plate_w, p.plate_h, centered=(True, True, False)))\n \
+    \   chamfer = p.plate_h - p.base_t\n    body = body.faces('>Z').edges('|Y').chamfer(chamfer)\n\
+    \    return body\n"
+  print_orientation: Bottom face on the bed, z=0
+  use_orientation: Drop it into the tripod clamp and check the lips grab before printing
+    the full plate
+hardware:
+- id: mount_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_mount
+  fastener: mount_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: counterbore
+    role: head_seat
+  - part: qr_plate
+    feature: through_hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 socket
+criteria:
+- id: dovetail_fits
+  part: fit_coupon
+  feature: dovetail profile
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Drop the coupon into the tripod clamp; the angled lips must grab
+      the chamfered sides and hold when the knob is tightened.
+- id: plate_sits_in_camera
+  part: qr_plate
+  feature: top face
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: Camera base sits flat on the plate top; bolt threads into the 1/4-20
+      socket.
+manual:
+- n: '1'
+  text: Print fit_coupon first. Drop it into the tripod clamp and tighten the knob.
+    If the lips grab and hold it securely, continue. If it's loose or won't drop in,
+    tell me.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print qr_plate (bottom face down).
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Place qr_plate so the dovetail drops into the tripod clamp. Tighten the clamp
+    knob.
+  parts: []
+  hardware: []
+  tool: null
+- n: '4'
+  text: Set the camera on the plate so its 1/4-20 socket lines up with the center
+    hole.
+  parts: []
+  hardware: []
+  tool: null
+- n: '5'
+  text: Push the salvaged webcam bolt up through the counterbore and thread it into
+    the camera socket. Hand-tighten.
+  parts: []
+  hardware:
+  - mount_bolt
+  tool: null
+- n: '6'
+  text: Temporary until you find the original plate — PLA is not rated for heavy loads,
+    so avoid leaving a heavy lens hanging.
+  parts: []
+  hardware: []
+  tool: null

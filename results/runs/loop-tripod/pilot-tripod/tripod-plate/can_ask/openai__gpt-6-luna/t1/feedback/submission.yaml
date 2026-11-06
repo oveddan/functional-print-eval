@@ -1,0 +1,186 @@
+task: tripod-plate
+note: 'Revised the bolt recess to use a sloped, self-supporting funnel instead of
+  a flat roof over the recess. The clamp fit and head recess dimensions remain the
+  same. This is still a temporary PLA camera support: inspect the new print closely,
+  keep a hand under the camera while testing, and don''t use over people or valuables.'
+questions: []
+params:
+  plate_width_bottom:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Nominal rail width used in the prior fit-tested plate.
+  plate_width_top:
+    value: 28.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  plate_thickness:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bevel_height:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_length:
+    value: 50.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_length:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_diameter:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: ''
+  bolt_head_height:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: ''
+  bolt_underhead_length:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: ''
+  head_pocket_diameter:
+    value: 15.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_pocket_depth:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: Cylindrical head recess depth; tapered funnel continues above it.
+  funnel_height:
+    value: 4.4
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree inward taper from head recess diameter to screw clearance hole.
+  screw_clearance_diameter:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rail_test_length:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w0 = p.plate_width_bottom / 2\n    w1 = p.plate_width_top\
+    \ / 2\n    h = p.plate_thickness\n    b = p.bevel_height\n    L = p.rail_test_length\n\
+    \    section = [(-w0, 0), (w0, 0), (w1, b), (w1, h), (-w1, h), (-w1, b)]\n   \
+    \ return cq.Workplane('XZ').polyline(section).close().extrude(L).translate((0,\
+    \ L/2, 0))"
+  print_orientation: Dovetail cross-section lies in XZ; length extrudes along Y; bottom
+    flat at z=0 on the bed.
+  use_orientation: Place trapezoidal bottom face in tripod clamp and check both angled
+    lips engage.
+- id: camera_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w0 = p.plate_width_bottom / 2\n    w1 = p.plate_width_top\
+    \ / 2\n    h = p.plate_thickness\n    b = p.bevel_height\n    L = p.plate_length\n\
+    \    section = [(-w0, 0), (w0, 0), (w1, b), (w1, h), (-w1, h), (-w1, b)]\n   \
+    \ body = cq.Workplane('XZ').polyline(section).close().extrude(L).translate((0,\
+    \ L/2, 0))\n    pocket = cq.Workplane('XY').workplane(offset=-0.1).circle(p.head_pocket_diameter/2).extrude(p.head_pocket_depth\
+    \ + 0.1)\n    channel = (cq.Workplane('XY').workplane(offset=-0.1).center(0, -L/4)\n\
+    \               .rect(p.head_pocket_diameter, L/2).extrude(p.head_pocket_depth\
+    \ + 0.1))\n    funnel = cq.Solid.makeCone(p.head_pocket_diameter/2, p.screw_clearance_diameter/2,\n\
+    \                               p.funnel_height, cq.Vector(0, 0, p.head_pocket_depth))\n\
+    \    through = cq.Workplane('XY').workplane(offset=-0.1).circle(p.screw_clearance_diameter/2).extrude(h\
+    \ + 0.2)\n    return body.cut(pocket).cut(channel).cut(funnel).cut(through)"
+  print_orientation: Dovetail cross-section lies in XZ; length extrudes along Y; bottom
+    flat at z=0 on the bed.
+  use_orientation: Top face supports camera; angled edges engage clamp. Bolt head
+    enters the underside pocket through the open short-end channel, bolt points upward.
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: rail-fit
+  part: fit_coupon
+  feature: dovetail rail under both clamp lips
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: The previous plate fitted the clamp. If the revised plate does not
+      seat fully or rocks, stop using it.
+- id: bolt-fit
+  part: camera_plate
+  feature: bolt head recess and 1/4-20 camera screw path
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Verify the bolt still slides into the recess from the short-end channel
+      and threads smoothly into the camera by hand.
+manual:
+- n: '1'
+  text: Print the revised camera_plate on its bottom face (flat side on the bed).
+    The sloped funnel above the head recess is intended to avoid the flat unsupported
+    roof that caused the previous defect.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Inspect the screw hole and funnel. Clear only loose strings; reject the part
+    if the hole is obstructed, badly formed, cracked, or delaminated. Do not force
+    the bolt through.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Slide the bolt head into the underside channel from the short end and centre
+    it in the round recess. Confirm the bolt threads smoothly into the camera socket
+    by hand, then snug it gently through the access channel.
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '4'
+  text: With a hand supporting the camera, place the plate in the clamp, verify both
+    lips capture it fully, gently tighten, and check for movement. Temporary/light
+    use only; don't use over people or valuables.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null

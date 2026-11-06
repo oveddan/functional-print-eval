@@ -1,0 +1,215 @@
+task: tripod-plate
+note: I couldn't get any dimensions for your tripod clamp. I assumed an Arca-Swiss-style
+  dovetail, 38 mm wide with 45° lips, because you described jaws with angled lips.
+  Print the small fit coupon first. The screw is your webcam bolt, not a printed thread.
+  A printed 1/4-20 would be weak and would risk stripping your camera's socket. Its
+  10 mm shank leaves about 5 mm engaged in the camera. If the camera socket is shallower
+  than that, it will bottom out before the plate is tight.
+questions:
+- text: What are the clamp's jaw opening and lip angle? I couldn't get either measurement,
+    so I guessed 38 mm and 45°.
+  answer: null
+params:
+  dovetail_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: Assumed Arca-Swiss-style clamp (38 mm). User could not measure the clamp;
+      verify with the fit coupon.
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bevel_h:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: Height of the angled lip faces; assumed
+  bevel_deg:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: Lip angle from vertical; assumed 45
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_travel:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Bolt slides +/-8 mm along the plate to balance the camera
+  bolt_hole_d:
+    value: 6.8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4 in = 6.35 mm shank plus 0.45 clearance
+  head_pocket_d:
+    value: 15.8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Bolt head about 15 mm plus 0.8 clearance
+  recess_d:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Head is 5 mm tall so it stands 2 mm proud for finger grip
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Under head
+  coupon_l:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    w=p.dovetail_w; t=p.plate_t; bh=p.bevel_h\n\
+    \    wb = w-2*bh*math.tan(math.radians(p.bevel_deg))\n    pts=[(-w/2,0),(w/2,0),(w/2,t-bh),(wb/2,t),(-wb/2,t),(-w/2,t-bh)]\n\
+    \    body=cq.Workplane('XZ').polyline(pts).close().extrude(-p.plate_l).translate((0,-p.plate_l/2,0))\n\
+    \    sl=cq.Workplane('XY').slot2D(2*p.slot_travel+p.bolt_hole_d,p.bolt_hole_d,90).extrude(t+1).translate((0,0,-0.5))\n\
+    \    rec=cq.Workplane('XY').workplane(offset=t-p.recess_d).slot2D(2*p.slot_travel+p.head_pocket_d,p.head_pocket_d,90).extrude(p.recess_d+1)\n\
+    \    return body.cut(sl).cut(rec)\n"
+  print_orientation: camera face (wide side) flat on the bed, dovetail pointing up
+  use_orientation: 'flipped: camera face up, dovetail down in the tripod clamp'
+- id: fit-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    w=p.dovetail_w; t=p.plate_t; bh=p.bevel_h\n\
+    \    wb = w-2*bh*math.tan(math.radians(p.bevel_deg))\n    pts=[(-w/2,0),(w/2,0),(w/2,t-bh),(wb/2,t),(-wb/2,t),(-w/2,t-bh)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().extrude(-p.coupon_l).translate((0,-p.coupon_l/2,0))\n"
+  print_orientation: wide face flat on the bed
+  use_orientation: slid into the tripod clamp to test fit
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: bolt slot
+    role: clearance
+  - part: plate
+    feature: head recess
+    role: head_seat
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: fit-coupon
+  feature: dovetail profile
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - dovetail_w
+  - bevel_h
+  - bevel_deg
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Slide the coupon into the tripod clamp and tighten the knob. It should
+      be held firmly, with the lips gripping the angled faces.
+- id: c2
+  part: plate
+  feature: bolt slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.45
+  params:
+  - bolt_hole_d
+  check:
+    method: measure
+    ref: null
+    description: The bolt shank slides freely along the slot.
+- id: c3
+  part: plate
+  feature: head recess
+  relation: contains
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - head_pocket_d
+  - recess_d
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: measure
+    ref: null
+    description: The bolt head sits in the recess and stands about 2 mm proud.
+manual:
+- n: '1'
+  text: Print the fit coupon first (about 5 minutes). Slide it into the tripod clamp
+    and tighten the knob. If it is loose or won't go in, tell me. I guessed the clamp
+    size (38 mm, 45° lips) and need to correct it before you print the plate.
+  parts:
+  - fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the plate with the wide face on the bed. 4 walls, 25% infill, no supports.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the bolt up through the slot from the dovetail side, so the head sits
+    in the recess.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Hold the plate against the camera base and screw the bolt into the camera's
+    1/4-20 socket. Turn the head with your fingers or a coin. It stands 2 mm proud.
+    Slide it along the slot to balance the camera, then tighten.
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Drop the plate's dovetail into the tripod clamp and tighten the knob. Keep
+    a hand on the camera at first, because PLA can creep or crack.
+  parts: []
+  hardware: []
+  tool: null

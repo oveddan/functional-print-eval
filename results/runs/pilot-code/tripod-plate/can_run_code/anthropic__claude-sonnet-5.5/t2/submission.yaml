@@ -1,0 +1,243 @@
+task: tripod-plate
+note: Several dimensions are guesses because the tripod measurements weren't available.
+  The plate's jaw profile comes from a typical 38 mm width and 45° bevel. Print the
+  coupon first to check the fit.
+questions:
+- text: What are the tripod's jaw gap, jaw length and lip angle? Could you measure
+    them?
+  answer: null
+- text: How deep is the camera's tripod socket? The bolt sticks out about 5.5 mm.
+  answer: null
+params:
+  jaw_gap:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: Narrowest gap between tripod jaw lips. Person could not measure it; 38 mm
+      is the common Arca-style width. Verify with the coupon.
+  fit_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Total clearance subtracted from the jaw gap for the narrow side
+  bevel_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the 45 deg tapered section; guessed to match the 'angled lips'
+  plate_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_l:
+    value: 55
+    unit: mm
+    kind: design
+    source: design
+    note: Length along the slide direction; real clamp length unknown
+  coupon_l:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Webcam bolt head, about 15 mm
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about 5 mm
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under head, about 10 mm
+  bolt_nom_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4 inch
+  bolt_clear_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole for 6.35 mm shank
+  head_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance for head recess
+  head_recess:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Head 5 mm + 0.5; leaves a 4.5 mm web so about 5.5 mm of thread sticks out
+  socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Camera 1/4-20 socket depth not measured; typical is 5-6 mm
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w_low = p.jaw_gap - p.fit_clear\n    w_hi = w_low + 2*p.bevel_h\n\
+    \    z_b = p.plate_t - p.bevel_h\n    pts = [(-w_hi/2,0),(w_hi/2,0),(w_hi/2,z_b),(w_low/2,p.plate_t),(-w_low/2,p.plate_t),(-w_hi/2,z_b)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(-p.plate_l)\n   \
+    \ body = body.translate((0,-p.plate_l/2,0))\n    web = p.plate_t - p.head_recess\n\
+    \    body = body.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(p.plate_t))\n\
+    \    rec = cq.Workplane('XY').workplane(offset=web).circle(p.bolt_head_d/2+p.head_clear).extrude(p.head_recess)\n\
+    \    return body.cut(rec)\n"
+  print_orientation: camera face (z=0, wide side) flat on the bed; the head recess
+    opens upward
+  use_orientation: 'flipped: camera face up against the camera bottom, narrow bevelled
+    side down into the tripod jaws'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w_low = p.jaw_gap - p.fit_clear\n    w_hi = w_low + 2*p.bevel_h\n\
+    \    z_b = p.plate_t - p.bevel_h\n    pts = [(-w_hi/2,0),(w_hi/2,0),(w_hi/2,z_b),(w_low/2,p.plate_t),(-w_low/2,p.plate_t),(-w_hi/2,z_b)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(-p.coupon_l)\n  \
+    \  return body.translate((0,-p.coupon_l/2,0))\n"
+  print_orientation: wide face flat on the bed
+  use_orientation: dropped into the tripod jaws to test the profile
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: head recess floor
+    role: head_seat
+  - part: plate
+    feature: centre hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: fit_coupon
+  feature: tapered rail profile
+  relation: engages
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - jaw_gap
+  - fit_clear
+  - bevel_h
+  check:
+    method: coupon
+    ref: null
+    description: Print the 15 mm coupon and drop it into the tripod jaws; it should
+      seat and be gripped when the knob is tightened. If it is loose or tight, change
+      jaw_gap or the bevel.
+- id: c2
+  part: plate
+  feature: head recess
+  relation: contains
+  hardware: bolt
+  clearance_mm: 0.5
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_recess
+  - head_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt head (about 15 x 5 mm) sits fully in the recess
+- id: c3
+  part: plate
+  feature: centre hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_nom_d
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: 1/4 inch shank passes through the hole
+- id: c4
+  part: plate
+  feature: bolt tip protrusion
+  relation: engages
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_len
+  - head_recess
+  - plate_t
+  - socket_depth
+  check:
+    method: measure
+    ref: null
+    description: About 5.5 mm of thread sticks out of the camera face. Check the camera
+      socket is deep enough.
+manual:
+- n: '1'
+  text: Print the fit coupon (15 mm long strip) first. It takes a few minutes.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the coupon into the tripod jaws with the narrow bevelled side down and
+    tighten the knob. If it fits, go on. If it is loose, tight or won't drop in, tell
+    me how and I'll change the jaw_gap and bevel.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '3'
+  text: Print the plate with the wide camera face on the bed. No supports needed.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Drop the webcam bolt in from the recess side, so the head sits in the recess
+    and the thread comes out of the camera face.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Hold the plate against the camera bottom and screw the bolt into the camera's
+    1/4-20 socket by turning the head. Hand-tight only. Then slide the plate into
+    the tripod jaws and tighten the clamp knob.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null

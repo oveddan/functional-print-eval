@@ -13,6 +13,7 @@ from typing import NamedTuple
 from shapely.ops import unary_union
 
 from pbe.graders.checks import Verdict
+from pbe.graders.nuts import MAX_DRILL_OUT, sentence_saying_to_clear_it
 from pbe.graders.sections import clear_width, holes, section
 
 MIN_RECESS = 1.0  # mm; a lead-in chamfer is shallower than this, and isn't a place for a head
@@ -36,6 +37,7 @@ class Bore:
     """A hole all the way through the plate's thickness."""
     widths: list  # clear width per layer, from the plate's z-low face to its z-high face
     layer: float  # layer thickness
+    drill_out: float = 0.0  # mm of closed layers across the bore that the manual says to clear
 
     @property
     def thickness(self):
@@ -92,19 +94,35 @@ def _layers(mesh, axis):
     return fracs[kept[0]:kept[-1] + 1]
 
 
-def _follow(layer_h, layers):
-    """Holes that run through every layer, followed from layer to layer by overlap."""
+def _follow(layer_h, layers, closed_ok=0):
+    """Holes that run through every layer, followed from layer to layer by overlap. Up to closed_ok
+    layers with nothing open over the hole are let through (a drill-out layer); they read as wide
+    as the narrower of the bore's layers on either side, the hole drilled through."""
     bores = []
     for start in layers[0]:
-        hole, widths = start, [clear_width(start)]
+        hole, widths, closed = start, [clear_width(start)], 0
         for found in layers[1:]:
             next_hole = next((candidate for candidate in found if candidate.intersects(hole)), None)
+            if next_hole is None and closed < closed_ok:
+                closed, widths = closed + 1, widths + [None]
+                continue
             if next_hole is None:
                 break
             hole, widths = next_hole, widths + [clear_width(next_hole)]
-        if len(widths) == len(layers):
-            bores.append(Bore(widths, layer_h))
+        if len(widths) == len(layers) and widths[-1] is not None:
+            bores.append(Bore(_drilled(widths), layer_h, drill_out=closed * layer_h))
     return bores
+
+
+def _drilled(widths):
+    """A closed layer's width once drilled: the narrower of the open layers just below and above it."""
+    below = [None] + widths[:-1]
+    for i, width in enumerate(widths):
+        if width is None:
+            above = next(w for w in widths[i + 1:] if w is not None)
+            widths[i] = min(below[i], above)
+            below = [None] + widths[:-1]
+    return widths
 
 
 def _gaps(solid):
@@ -113,25 +131,30 @@ def _gaps(solid):
     return [gap for gap in getattr(gaps, "geoms", [gaps]) if not gap.is_empty and clear_width(gap) >= MIN_OPENING]
 
 
-def _bores(mesh, axis, bolt_across):
+def _bores(mesh, axis, bolt_across, drill_out=False):
     """Holes that run the whole thickness, those the bolt fits if any do. If no closed hole fits it,
     the bolt may still pass where a recess is open at the side, as a channel the head slides in
-    along is (GPT-6 Luna's plate)."""
+    along is (GPT-6 Luna's plate). With drill_out (the manual says to clear a layer), a hole closed
+    by up to nuts.MAX_DRILL_OUT of layers counts, as the knob's bolt path does."""
     fracs = _layers(mesh, axis)
     layer_h = float(mesh.extents[axis]) * (fracs[1] - fracs[0])
-    closed = _follow(layer_h, [holes(mesh, axis, frac) for frac in fracs])
+    hole_layers = [holes(mesh, axis, frac) for frac in fracs]
+    closed = _follow(layer_h, hole_layers)
 
     def bolt_fits(bore):
         return bore.tightest >= bolt_across - TOL
     if any(bolt_fits(bore) for bore in closed):
         return [bore for bore in closed if bolt_fits(bore)]
+    drilled = _follow(layer_h, hole_layers, int((MAX_DRILL_OUT + TOL) / layer_h)) if drill_out else []
+    if any(bolt_fits(bore) for bore in drilled):
+        return [bore for bore in drilled if bolt_fits(bore)]
     opened = _follow(layer_h, [_gaps(unary_union(section(mesh, axis, frac))) for frac in fracs])
     return [bore for bore in opened if bolt_fits(bore)] or closed or opened
 
 
-def _main_bore(mesh, axis, bolt_across):
+def _main_bore(mesh, axis, bolt_across, drill_out=False):
     """The bolt's bore. With several, the one with the widest recess, or the narrowest if none has one."""
-    bores = _bores(mesh, axis, bolt_across)
+    bores = _bores(mesh, axis, bolt_across, drill_out)
 
     def widest_recess_then_narrowest(bore):
         return bore.recess().width, -bore.tightest
@@ -215,9 +238,11 @@ def bolt_hole(sub, built, bolt, too_tight, printed, head_stopped, head_passes):
         return None, "no plate built"
     if other := _other_fastener(sub, bolt):
         return other
-    bore = _main_bore(plate.mesh, axis, too_tight)
+    told = sentence_saying_to_clear_it(sub)
+    bore = _main_bore(plate.mesh, axis, too_tight, told is not None)
     if bore is None:
         return False, "no hole runs through the plate"
+    drilled = f"; a {bore.drill_out:.1f} mm drill-out layer the manual says to clear (\"{told}\")" if bore.drill_out else ""
     clear = bore.tightest
     if clear < too_tight - TOL:
         return False, f"{clear:.2f} mm clear at its tightest: a {too_tight} mm bolt won't pass"
@@ -229,13 +254,17 @@ def bolt_hole(sub, built, bolt, too_tight, printed, head_stopped, head_passes):
     if recess.depth >= MIN_RECESS and wide_end is not None and recess.end != wide_end:
         return False, "the head's recess opens on the narrow face: the head is on the camera's side, or the dovetail is upside down"
     if clear < printed - TOL or clear > head_stopped:
-        return None, f"{clear:.2f} mm clear at its tightest: no print has measured that"
-    return True, f"{clear:.2f} mm clear at its tightest"
+        return None, f"{clear:.2f} mm clear at its tightest: no print has measured that{drilled}"
+    return True, f"{clear:.2f} mm clear at its tightest{drilled}"
+
+
+def _drill_out_told(sub):
+    return sentence_saying_to_clear_it(sub) is not None
 
 
 def head_recess(sub, built, bolt, bolt_across, too_tight, fits, head_height):
     plate, axis = _plate(sub, built)
-    if plate is None or (bore := _main_bore(plate.mesh, axis, bolt_across)) is None:
+    if plate is None or (bore := _main_bore(plate.mesh, axis, bolt_across, _drill_out_told(sub))) is None:
         return None, "no bolt hole to read"
     if other := _other_fastener(sub, bolt):
         return None, other.detail  # a wrong bolt has already failed R3: one mistake counts once
@@ -254,7 +283,7 @@ def head_recess(sub, built, bolt, bolt_across, too_tight, fits, head_height):
 def reach(sub, built, bolt, bolt_across, bolt_length, min_reach):
     """How far the bolt gets past the plate's far face. The length is an assumption: see brief.md."""
     plate, axis = _plate(sub, built)
-    if plate is None or (bore := _main_bore(plate.mesh, axis, bolt_across)) is None:
+    if plate is None or (bore := _main_bore(plate.mesh, axis, bolt_across, _drill_out_told(sub))) is None:
         return None, "no bolt hole to read"
     if other := _other_fastener(sub, bolt):
         return None, other.detail

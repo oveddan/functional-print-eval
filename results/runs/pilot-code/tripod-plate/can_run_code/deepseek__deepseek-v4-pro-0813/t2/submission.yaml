@@ -1,0 +1,182 @@
+task: tripod-plate
+note: 'Temporary quick-release plate for a friend''s tripod. Uses the salvaged 1/4-20
+  webcam bolt as the camera screw (metal threads, won''t strip) — this is Option A.
+  The plate has a 1/4-20 clearance hole and a center head pocket so the bolt head
+  recesses into the plate, threads pointing up into the camera. Clamp geometry (body
+  width, foot width, lip profile) is set to common quick-release defaults and flagged
+  ''guessed'' because the clamp and camera dimensions could not be measured (the measure
+  tool returned descriptions rather than numbers on repeated attempts). The plate
+  is intentionally forgiving: the angled foot (45-degree-style taper approximated
+  by a stepped flare) lets the clamp''s angled jaws bear on it.'
+questions: []
+params:
+  plate_len:
+    value: 55
+    unit: mm
+    kind: design
+    source: design
+    note: length along the slide axis; chosen to sit stably on a camera base
+  body_w:
+    value: 40
+    unit: mm
+    kind: world
+    source: guessed
+    note: camera-facing width; guessed, camera base width could not be measured
+  body_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  foot_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: widest width that the tripod clamp jaws grab; guessed from common quick-release
+      standard
+  neck_w:
+    value: 30
+    unit: mm
+    kind: world
+    source: guessed
+    note: narrow width between body and foot so jaws have room; guessed
+  lip_h:
+    value: 2
+    unit: mm
+    kind: world
+    source: guessed
+    note: vertical height of the angled lip the jaws press on
+  lip_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: lip taper angle to match clamp jaw angle
+  foot_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: thickness of the foot/flare layer
+  hole_d:
+    value: 6.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: clearance for 1/4-20 (major dia 6.35 mm) + small clearance
+  head_pocket_d:
+    value: 15.6
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt head ~15 mm, plus clearance
+  head_pocket_h:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: recess depth; bolt head is 5 mm tall but foot is only 3 mm, so head stands
+      proud slightly
+parts:
+- id: quick_release_plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\n\ndef build(p):\n    half_w = p.body_w / 2.0\n \
+    \   neck = p.neck_w / 2.0\n    foot = p.foot_w / 2.0\n    top_z = p.body_t + p.foot_t\n\
+    \    neck_z = p.foot_t\n    pts = [\n        (-half_w, top_z), (half_w, top_z),\
+    \ (half_w, neck_z),\n        (neck, neck_z), (foot, 0.0), (-foot, 0.0),\n    \
+    \    (-neck, neck_z), (-half_w, neck_z),\n    ]\n    plate = (cq.Workplane(\"\
+    XZ\").polyline(pts).close().extrude(p.plate_len))\n    plate = plate.faces(\"\
+    >Z\").workplane().hole(p.hole_d)\n    plate = plate.faces(\"<Z\").workplane().hole(p.head_pocket_d,\
+    \ depth=p.head_pocket_h)\n    return plate\n"
+  print_orientation: foot (flare side) down on the bed; head pocket opening faces
+    up, through-hole vertical, no trapped supports
+  use_orientation: foot (flare) side faces the tripod head, body side faces the camera;
+    bolt inserted from the foot side with threads pointing up through the hole into
+    the camera
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - 27.5
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: quick_release_plate
+    feature: head pocket and through hole
+    role: head_seat
+  - part: quick_release_plate
+    feature: through hole
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: bolt_threads_camera
+  part: quick_release_plate
+  feature: through hole
+  relation: engages
+  hardware: webcam_bolt
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Screw the bolt through the plate into the camera socket; it should
+      thread fully and the plate should clamp tight against the camera base
+- id: plate_sits_clamp
+  part: quick_release_plate
+  feature: foot/flare
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Drop the plate into the tripod head; the angled jaws should bear
+      on the foot and the clamp knob should tighten it firm
+manual:
+- n: '1'
+  text: Print quick_release_plate with the flare/foot side down on the bed.
+  parts:
+  - quick_release_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Use a knife or sandpaper to clean the edges of the through-hole and head pocket
+    if any strings remain.
+  parts:
+  - quick_release_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Insert the webcam bolt from the foot side so its threads poke up through the
+    hole and its head sits in the head pocket.
+  parts:
+  - quick_release_plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '4'
+  text: Screw the bolt into the camera's 1/4-20 tripod socket and tighten gently by
+    hand (do not overtighten the PLA).
+  parts:
+  - quick_release_plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '5'
+  text: Drop the plate into the tripod head and tighten the clamp knob.
+  parts:
+  - quick_release_plate
+  hardware: []
+  tool: null

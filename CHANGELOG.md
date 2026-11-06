@@ -2,6 +2,84 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-06: The person tells a model the clamp takes 38 mm plates
+
+Asked about the clamp's width, the person in `tripod-plate` now says "38 mm (the width of plate it takes)" (`tasks/tripod-plate/hidden_facts.yaml`, `tripod_clamp.plate_width`). Dan's call, 2026-11-06: answer with the standard. Arca-Swiss-style plates are 38 mm wide with a 45° dovetail, per the vendor pages he was shown (Leofoto QP-38, Benro, Neewer; no official Arca-Swiss datasheet), and the 38 mm plate he printed fit this clamp. Only the width is given, not the angle.
+- No saved trial changes: hidden facts are read only while a trial runs. Saved trials answer the width with the clamp's style alone, so new tripod runs aren't comparable with saved ones on R2 or on declining. GPT-6.1 Sol declined all 7 of its tripod trials because the width wasn't recorded.
+- It was added after the tripod test-print sample below, so the replays continue conversations with the answers their first turn had. A replay now rebuilds its person from the saved trial's `hidden` list (`coupon_loop.facts_as_saved`), so resuming `loop-tripod`, for example to run Argon `can_run_code` t3's missing neutral arm, keeps the old answers too (Codex's review of PR 51). `tests/test_loop.py` checks it.
+- `tests/test_tripod_plate.py` checks the answer: the width when asked, everything recorded when nothing is named, and not the width when only the kind of clamp is asked.
+
+## 2026-11-06: R3 accepts a drill-out layer the manual says to clear
+
+`PLAN.md` says a drill-out layer passes, and the knob's bolt path already allowed one, but the tripod's bolt-hole reader (`bolted._bores`) followed only holes open in every layer. Opus 5.5's printed-arm design in the tripod test-print sample closes the slot with a 0.4 to 0.6 mm skin, and its manual says "From the top face, run a hobby knife round the inside of the slot and push the skin out". R3 failed it with "no hole runs through the plate".
+- `bolted._bores` now lets up to `nuts.MAX_DRILL_OUT` (3 layers) of closed layers through when the manual says to clear them (`nuts.sentence_saying_to_clear_it`, made public). R3's detail then quotes the sentence, and R4 and R5 read the same bore.
+- `nuts.OPENS_A_HOLE` also accepts "push, cut, knock, pop or punch ... out" when its object is a skin, layer, membrane, film, web or diaphragm, so "push the bolt out of the hole" still doesn't count. It's a text match, and the check quotes the sentence it matched.
+- **Evidence nothing else moved:** the tripod, knob and wheel runs regraded on a copy leave every `summary.csv` unchanged. 10 `grades.json` files differ in detail text only: tied bridge directions mirrored (the platform difference the README notes), and one knob's unscored pocket list in another order. Of the 71 records in `loop-tripod`, only Opus t3's printed arm changes, from fail R3 to pass.
+- **Tests:** `tests/test_tripod_plate.py` covers a 0.4 mm skin the manual says to clear (passes R3, R4 and R5), the same skin with no instruction (fails R3) and a 1.0 mm floor (fails R3). `tests/test_nut_knob.py` adds Opus's sentence and three lookalikes.
+
+## 2026-11-06: The test-print loop on the tripod: a printed plate, 24 holed roofs
+
+Dan's real loop on Estoa and the Arca plate was to print it, look and fix it. The holed roof, the most common tripod failure (24 of 62 trials), is what that loop caught. Dan approved three things on 2026-11-06:
+- the person prints the final plate too, not only the model's coupons;
+- the reply's wording, which names no cause or fix;
+- the spend.
+
+The rule for what counts as improving was pushed before the run (fda7554). Code: `coupon_loop.plate_report` and `printed_text`, and `scripts/coupon_loop.py --run loop-tripod`, whose `tripod_sample` picks the trials. A `can_run_code` trial keeps `run_python` and its 20 calls in the second turn. Tests in `tests/test_loop.py`. Full write-up: `docs/coupon-loop.md`, "Tripod sample".
+- **Sample:** every saved tripod design whose final part fails on a holed roof: 24 trials from 8 models.
+- **Arms:** the printed reply, or the neutral "take another look". Run `loop-tripod`.
+- **Cost:** $3.03, against a $3.00 cap and a $1.30 to $2.65 estimate. It stopped before Argon `can_run_code` t3's neutral arm.
+- **Roofs fixed:** 14 of 24 after the printed reply, and 2 of 23 after the neutral turn. Over the 23 matched trials that's 13 against 2.
+- **Whole-trial passes:** 3 against 2, or 4 against 2 once R3 accepts Opus t3's drill-out layer (entry above). Most fixed roofs still fail where they failed at baseline: the dovetail upside down, or straight sides.
+- **How they fixed it:**
+  - 8 flipped the plate so nothing bridges;
+  - 3 put a cone where the flat roof was;
+  - 2 used the stepped bridge the Estoa model invented after its test wall failed (Gemini 4 Argon t2 and `can_run_code` t3);
+  - 1 left a skin to push out (Opus t3).
+- **Opus t2 used a two-step roof** that the check still fails. That's unmeasured, and recorded in the write-up.
+- **Got worse:** 4 printed-arm designs, 3 of them real, and no neutral one.
+- **Hints:** none. Every reply said only "loose loops and tangles around the hole; hole partly closed", the words coupon A's H cell was recorded in, and `tests/test_loop.py` checks the reply names no technique.
+
+## 2026-11-06: A failed bridge check is a holed roof only when the mesh shows a hole
+
+`scripts/results_page.py` labelled every `bridges` failure "a roof with the bolt's hole cut through it", and `scripts/results_table.py` counted every trial that fails on `bridges` alone as resting on the holed-roof assumption. Two saved designs fail `bridges` without a holed roof. No verdict changes: the bridge check's pass, fail or not graded is untouched.
+- **The test (`bridges.is_holed_roof`).** An overhang is a holed roof when it fails the strand test, isn't a narrow ledge, and at least 1 mm of its outline runs along a hole its own layer encloses. `overhangs` records the last part as `borders_hole`. The coupon loop's narrower test (a ring inside the roof) would have missed a roof cut in two by a slot. It would also have counted a ledge with something supporting its middle. `pbe/runner/coupon_loop.py` keeps its own test unchanged, because both of its samples ran with it.
+- **The results page** works out each trial's holed parts from the rebuilt meshes. A failure on any other part is "A roof or ledge too wide to bridge, with no hole through it", a real failure (the strand test is backed by coupon C's cantilever) rather than Dan's call.
+- **Labels that change, over every saved run:**
+  - DeepSeek V4 Pro, `pilot-code` tripod t2: now a roof or ledge, not a holed roof. Its roof is a half-disc open to the plate's edge, plus side ledges (previous entry).
+  - Gemini 4 Argon, `pilot-nut-knob` M5 t2: now a roof or ledge. The underside of its 30 mm grip overhangs the 16 mm boss below, and 0% of strands are anchored. The ring test read the boss under it as a hole.
+  - GPT-6 Luna, `pilot-tripod` t3, keeps its holed-roof label (and its audit note), now from the mesh. A 6 mm slot cuts its recess roof in two, so the roof has no ring inside it.
+- **README.** The tripod table keeps 24 holed roofs. The knob table goes from 2 to 1, with the grip ledge on its own row. The assumption row (`results_table.py`) now counts 22 trials that fail on `bridges` alone on a holed roof, down from 23. `NOT_HOLED_ROOFS` lists Argon's knob with its reason, so the README check stays fast.
+- **Tests.** `tests/test_bridges.py` covers a ring hole, a slot cutting a roof in two, a closed roof, a 60 × 70 mm roof and a plate stepping out. `tests/test_results_page.py` checks the page's two labels on meshes with known answers. `tests/test_results_table.py` rebuilds each of the 23 trials that fail on `bridges` alone and checks that only the listed one isn't a holed roof (about 35 s with xdist; skipped where parts can't be built).
+
+## 2026-11-06: Two more `can_run_code` tripod trials per lineup model (issue 34)
+
+Pilot data. With one `can_run_code` trial per model, fewer code designs had a holed roof (1 of 4, against 12 of 19 without code). These trials test whether that holds. Dan approved the run on 2026-11-06 against an estimate of about $2.30. No check, task wording, prompt or earlier trial changes: `git diff` on `results/` shows only 12 new trial folders and 12 added `pilot-code/summary.csv` rows.
+
+**The run.** `pbe.eval --run pilot-code --condition can_run_code --task tripod-plate --trials 3 --budget 4.00` on the six lineup models, in bubblewrap 0.9.0 with the default 20 turns. Each t1 was already saved and was skipped, so this added t2 and t3. The 12 new trials cost $1.39: Argon $0.63, Opus $0.32, Sonnet $0.24, DeepSeek V4 Pro $0.11, Sol $0.09 and Haiku $0.01. That brings `pilot-code` to $2.55.
+- New verdicts: 1 pass, 7 fail, 1 not graded and 3 declined. The pass is Gemini 4 Argon's t2.
+- No design was sent back for a build error. In all 18 `can_run_code` trials, `build_on_submit` has nothing sent back, nothing accepted unbuilt and no trial out of turns while fixing.
+- DeepSeek V4 Pro didn't repeat t1's cost. Its t2 and t3 used 115,000 and 69,000 prompt tokens (t1 used 404,000) and cost $0.084 and $0.027. Its three code trials average $0.17, 10 times its `can_ask` mean of $0.017. Haiku never called `run_python` in any of its three trials, and Sol called it in two of three.
+
+**Code against no code, per model.** The no-code trials are `can_ask` in `pilot-tripod` (t1 to t3) and `all_given` in `pilot-tripod-given` (DeepSeek V4 Pro has no `all_given` trial). Holed roof means the verdict fails `bridges`, and a final part rebuilt from `submission.yaml` has a failing, non-narrow overhang with a hole through it. That's the test `coupon_loop.roof_lines` uses.
+
+| model | `can_run_code` t1, t2, t3 | holed roofs, with code | `can_ask` t1, t2, t3; `all_given` | holed roofs, without code |
+|---|---|---|---|---|
+| Haiku 5.5 | declined, declined, fail (`bridges` R2) | 1 of 1 design | fail, fail, fail; fail | 4 of 4 |
+| DeepSeek V4 Pro | fail (R5), fail (`bridges` R3 R4), not graded | 0 of 3 | fail, fail, fail; none | 1 of 3 |
+| GPT-6.1 Sol | declined, declined, declined | no design | declined ×3; declined | no design |
+| Sonnet 5.5 | fail (R3) ×3 | 0 of 3 | fail, fail, fail; not graded | 3 of 4 |
+| Gemini 4 Argon | fail (`bridges`), pass, fail (`bridges`) | 2 of 3 | pass, fail, pass; pass | 1 of 4 |
+| Opus 5.5 | pass, fail (R3), fail (`bridges`) | 1 of 3 | fail, fail, fail; fail | 3 of 4 |
+| **all** | 2 pass of 18 | **4 of 13** | 3 pass of 23 | **12 of 19** |
+
+- The gap held, at a smaller size: 4 of 13 code designs (31%) have a holed roof, against 12 of 19 without code (63%). Fisher's exact test gives p = 0.15 on those counts, and designs from one model aren't independent, so it's a hint, not a finding. Most of the gap is Sonnet: none of its three code plates has a holed roof, but all three have the dovetail upside down (R3 on the narrow face). Argon goes the other way, with 2 holed roofs in 3 against 1 in 4.
+- Passes are about the same: 2 of 18 with code (Opus t1, Argon t2) and 3 of 23 without (all Argon).
+- One more code design fails `bridges` without a holed roof: DeepSeek t2, a geometry slip. Its bolt hole and head recess are centred on the plate's edge (the plate spans y = -55 to 0 mm and the cuts sit at y = 0), so half of each is off the plate (R3 reads 3.30 mm clear). The roof over the recess is a half-disc open to the outside, and the plate steps from 30 to 40 mm wide at z = 3 mm, which leaves 5 × 55 mm ledges along its sides. The next entry gives this its own label on the results page.
+
+The README's results tables are regenerated (`scripts/results_table.py --write`): 163 trials, 47 pass, 71 fail, 35 not graded, 10 declined. The tripod's "What went wrong" table (now 62 trials), the tripod rows of "What wasn't graded" and the `can_run_code` lines are updated by hand from `results_page.issues_of` over the three tripod runs. The script's counts on the earlier 50 trials matched the old table.
+
+Commit stamps: the new trials are stamped `26963c3` (Haiku's) or with work-in-progress commits on this branch that add only saved trials. This PR's squashed commit replaces them.
+
 ## 2026-11-06: Slicer estimates leave out the printer's start and end sequences
 
 Dan: the X1C's start-up (homing, nozzle cleaning, calibration, purge line) depends on the printer, not the design, so it shouldn't count. `scripts/slice_estimates.py` now empties the machine preset's `machine_start_gcode` and `machine_end_gcode` before slicing, and drops the `total_s` columns that carried about 7 minutes of start per plate. The per-trial columns are now `final_print_s`, `test_print_s` and `all_print_s`. The estimates for the five runs are regenerated.

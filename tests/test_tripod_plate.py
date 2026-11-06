@@ -133,6 +133,12 @@ def build(p):
     recess = cq.Workplane("XY").workplane(offset=p.height - p.head_h).circle(p.head_d / 2).extrude(p.head_h)
     return plate.cut(recess).cut(cq.Workplane("XY").circle(p.hole / 2).extrude(p.height))
 """
+DRILL_OUT = OUTLINE + '''
+def build(p):
+    # the recess's roof is left closed; the hole starts p.skin above it, to be pushed out after printing
+    above = cq.Workplane("XY").workplane(offset=p.head_h + p.skin).circle(p.hole / 2).extrude(p.height)
+    return blank(p).cut(round_recess(p)).cut(above)
+'''
 TWO_HOLES = OUTLINE + '''
 def build(p):
     locating_pin = cq.Workplane("XY").center(0, 22).circle(2).extrude(p.height)
@@ -216,6 +222,9 @@ def test_the_person_answers_what_the_records_say():
     assert "about 15" in person.measure("webcam mount bolt", "head diameter")
     assert "about 5" in person.measure("bolt", "head height")
     assert "angled lips" in person.measure("tripod clamp", "what kind is it")
+    assert "38 mm" in person.measure("tripod clamp", "how wide a plate does it take")
+    assert "38 mm" in person.measure("tripod clamp")  # nothing named: everything recorded about it
+    assert "38 mm" not in person.measure("tripod clamp", "what kind is it")
     assert "1/4-20" in person.measure("my camera's bottom socket", "thread size")
 
 
@@ -224,3 +233,25 @@ def test_no_plate_says_so_rather_than_blaming_a_screw(tmp_path):
     sub.parts[0].role = "coupon"
     details = {f.check: f.detail for f in grade(checked(sub), tmp_path)}
     assert details["R3"] == "no plate built"
+
+
+def drill_out(skin, told):
+    """Opus 5.5's loop-tripod t3: the slot starts a skin above the recess's roof, which then prints solid."""
+    sub = design(code=DRILL_OUT)
+    sub.params["skin"] = sub.params["head_h"].model_copy(update={"value": skin})
+    if told:
+        sub.manual[0].text += " From the top face, run a hobby knife round the inside of the hole and push the skin out."
+    return sub
+
+
+@pytest.mark.parametrize("skin, told, r3", [
+    pytest.param(0.4, True, True, id="a-skin-the-manual-says-to-clear"),
+    pytest.param(0.4, False, False, id="a-skin-nobody-is-told-to-clear"),
+    pytest.param(1.0, True, False, id="a-floor-too-thick-to-push-out"),
+])
+def test_a_drill_out_layer_counts_only_if_thin_and_the_manual_says_to_clear_it(tmp_path, skin, told, r3):
+    findings = {f.check: f for f in grade(drill_out(skin, told), tmp_path)}
+    assert findings["R3"].ok is r3, findings["R3"].detail
+    assert findings["bridges"].ok is True
+    if r3:
+        assert "drill-out layer" in findings["R3"].detail and findings["R4"].ok is True and findings["R5"].ok is True

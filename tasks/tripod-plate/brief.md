@@ -56,7 +56,9 @@ says 10 mm: the real plate's 5 mm of plastic over the recess plus the "about 5 m
 session's model called for. R5 is only as good as that number, and the report must say so. There's no
 upper limit, because how deep a camera's socket goes isn't recorded.
 
-If a model asks, the person says "about 15 mm across, about 5 mm tall". The true head is somewhere over
+If a model asks, the person says "about 15 mm across, about 5 mm tall". Asked about the clamp's width, the person says 38 mm, the
+width of plate it takes (Dan, 2026-11-06): Arca-Swiss-style plates are 38 mm wide, and the 38 mm plate he printed fit.
+Trials saved before that answer the width only with the clamp's style. The true head is somewhere over
 13 mm, and those are the numbers Dan's plate ended up with.
 
 ## Which checks run

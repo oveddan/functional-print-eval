@@ -1,6 +1,12 @@
 """Run the coupon loop's sample (docs/coupon-loop.md): replay saved trials with one more turn, in two arms.
 
     uv run python scripts/coupon_loop.py --run loop-sample-2 --budget 3.00
+    uv run python scripts/coupon_loop.py --run loop-tripod --budget 3.00
+
+loop-sample and loop-sample-2 replay knob and wheel trials with a test coupon, and report on the coupons.
+loop-tripod replays the tripod designs whose final part fails on a holed roof, and reports on everything
+printed, the plate included (docs/coupon-loop.md, "Tripod sample"). A can_run_code trial keeps run_python
+and its turn limit in the second turn.
 
 Each replayed trial gets three folders under results/runs/<run>/<its folder under results/runs>/:
 baseline (the saved design, graded with its coupons left out), feedback and neutral, each with a
@@ -11,6 +17,7 @@ import argparse
 import csv
 import json
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,13 +26,18 @@ sys.path.insert(0, str(ROOT))
 from pbe.eval import PLATFORM, code_version, git, save_conversation  # noqa: E402
 from pbe.parts import submission  # noqa: E402
 from pbe.parts.build import build_parts  # noqa: E402
-from pbe.runner import coupon_loop, tasks  # noqa: E402
+from pbe.graders.bridges import is_holed_roof, overhangs  # noqa: E402
+from pbe.runner import agent, coupon_loop, python_tool, tasks  # noqa: E402
+from pbe.runner.python_tool import PythonTool  # noqa: E402
 from pbe.runner.trial_record import TrialRecord  # noqa: E402
 
 MODELS = ["anthropic/claude-sonnet-5.5", "deepseek/deepseek-v4.1-flash", "z-ai/glm-5.3-flash"]
 FAMILIES = ("nut-knob", "bearing-wheel")
 RUNS = ROOT / "results/runs"
-LOOP_RUNS = ("loop-sample", "loop-sample-2")  # replays, not trials to replay
+LOOP_RUNS = ("loop-sample", "loop-sample-2", "loop-tripod")  # replays, not trials to replay
+TRIPOD_RUNS = ("pilot-tripod", "pilot-tripod-given", "pilot-code")
+# the bridge check fails these on a broken shape, not a roof (scripts/results_page.py, BROKEN_ROOFS)
+BROKEN_ROOFS = {("pilot-tripod-given", "qwen/qwen3.8-flash", 1), ("pilot-tripod", "qwen/qwen3.8-flash", 1)}
 
 
 def sample():
@@ -38,6 +50,32 @@ def sample():
         sub = submission.load(folder / "submission.yaml")
         if any(part.role == "coupon" for part in sub.parts):
             yield folder, record, sub
+
+
+def fails_on_holed_roof(folder, record, sub):
+    """Does a final part fail `bridges` on a roof with a hole cut through it (bridges.is_holed_roof)?"""
+    failed = {finding.part for finding in record.counted_findings if finding.check == "bridges" and finding.ok is False}
+    finals = [part for part in sub.parts if part.role == "final" and part.id in failed]
+    if not finals or (folder.relative_to(RUNS).parts[0], record.model, record.trial) in BROKEN_ROOFS:
+        return False
+    with tempfile.TemporaryDirectory() as out:
+        built = build_parts(sub.model_copy(update={"parts": finals}), out)
+        return any(built[part.id].ok and any(is_holed_roof(found) for found in overhangs(built[part.id].mesh)) for part in finals)
+
+
+def tripod_sample():
+    """The saved tripod designs whose final part fails on a holed roof, in every condition: (folder, record, submission)."""
+    for run in TRIPOD_RUNS:
+        for folder, record in TrialRecord.all_in(RUNS / run):
+            if record.task != "tripod-plate" or not (folder / "submission.yaml").exists():
+                continue
+            sub = submission.load(folder / "submission.yaml")
+            if fails_on_holed_roof(folder, record, sub):
+                yield folder, record, sub
+
+
+SAMPLES = {"loop-sample": sample, "loop-sample-2": sample, "loop-tripod": tripod_sample}
+PRINTS_THE_PLATE = ("loop-tripod",)
 
 
 def spent(out):
@@ -84,9 +122,12 @@ def finish_grading(task, folder):
     record.save(folder)
 
 
-def run_arm(task, saved, arm, text, report, saved_messages, folder, replayed):
+def run_arm(task, saved, arm, text, report, saved_messages, folder, replayed, max_turns):
     already_paid = earlier_cost(folder)
-    turn = coupon_loop.second_turn(task, saved.model, saved_messages, text)
+    python = PythonTool.for_trial(task.id, folder / "workspace") if saved.condition == python_tool.CONDITION else None
+    turn = coupon_loop.second_turn(task, saved.model, saved_messages, text, max_turns=max_turns,
+                                   condition=saved.condition, python=python,
+                                   facts=coupon_loop.facts_as_saved(task, saved.hidden))
     record = coupon_loop.LoopRecord(
         task=saved.task, model=saved.model, arm=arm, replayed=replayed, outcome=turn.outcome, error=turn.error,
         turns=len(turn.calls), repairs=turn.repairs, measures=turn.measures,
@@ -116,12 +157,18 @@ def replay(folder, saved, sub, budget, out_root):
     replayed = str(folder.relative_to(RUNS))
     out = out_root / replayed
     task = tasks.load(saved.task)
-    coupons_only = sub.model_copy(update={"parts": [part for part in sub.parts if part.role == "coupon"]})
-    report = coupon_loop.coupon_report(task, sub, build_parts(coupons_only, out / "parts"))
+    if out_root.name in PRINTS_THE_PLATE:
+        built = build_parts(sub, out / "parts")
+        report = coupon_loop.coupon_report(task, sub, built) | coupon_loop.plate_report(task, sub, built)
+        printed, max_turns = coupon_loop.printed_text(report), agent.DEFAULT_MAX_TURNS[saved.condition]
+    else:
+        coupons_only = sub.model_copy(update={"parts": [part for part in sub.parts if part.role == "coupon"]})
+        report = coupon_loop.coupon_report(task, sub, build_parts(coupons_only, out / "parts"))
+        printed, max_turns = coupon_loop.feedback_text(report), coupon_loop.SECOND_TURN_CALLS
     if not (out / "baseline" / coupon_loop.FILE_NAME).exists():
         grade_baseline(task, saved, sub, out / "baseline", replayed)
     saved_messages = json.loads((folder / "transcript.json").read_text())
-    for arm, text in (("feedback", coupon_loop.feedback_text(report)), ("neutral", coupon_loop.NEUTRAL)):
+    for arm, text in (("feedback", printed), ("neutral", coupon_loop.NEUTRAL)):
         if is_settled(out / arm):
             continue
         if (out / arm / coupon_loop.FILE_NAME).exists() and stopped_while_grading(coupon_loop.LoopRecord.load(out / arm)):
@@ -130,7 +177,7 @@ def replay(folder, saved, sub, budget, out_root):
         if spent(out_root) >= budget:
             print(f"budget reached: ${spent(out_root):.4f}; stopping")
             return False
-        run_arm(task, saved, arm, text, report, saved_messages, out / arm, replayed)
+        run_arm(task, saved, arm, text, report, saved_messages, out / arm, replayed, max_turns)
     return True
 
 
@@ -165,7 +212,7 @@ def main():
     args = parser.parse_args()
     out_root = RUNS / args.run
     folders = []
-    for folder, saved, sub in sample():
+    for folder, saved, sub in SAMPLES[args.run]():
         folders.append(folder)
         if not replay(folder, saved, sub, args.budget, out_root):
             break

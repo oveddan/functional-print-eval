@@ -1,0 +1,163 @@
+task: tripod-plate
+note: ''
+questions:
+- text: Does the plate drop into the jaws and stay put? Please tell me what happens
+    so I can adjust plate_w and plate_l.
+  answer: null
+- text: Does the bolt hole pass the shank cleanly after reprinting?
+  answer: null
+params:
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length. Guessed. Jaw fit still unconfirmed; the clamp result was not
+      reported back, so this stays a guess.
+  plate_w:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: Plate width. Guessed. Must be wider than the jaw lip gap so the plate is
+      trapped under the lips; test-fit.
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Plate thickness.
+  pocket_d:
+    value: 15.5
+    unit: mm
+    kind: world
+    source: asked
+    note: Bolt head 15 mm across (user), plus 0.5 mm clearance. Confirmed fits.
+  pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: world
+    source: asked
+    note: Bolt head height 5 mm (user), plus 0.2 mm clearance. Confirmed fits.
+  clear_d:
+    value: 6.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Clearance for a 1/4 inch (6.35 mm) shank.
+  bolt_len_under_head:
+    value: 10
+    unit: mm
+    kind: world
+    source: asked
+    note: User-measured webcam bolt length under the head.
+parts:
+- id: plate
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(p.plate_l, p.plate_w, p.plate_t,\
+    \ centered=(True, True, False))\n    plate = plate.cut(cq.Workplane('XY').circle(p.clear_d\
+    \ / 2).extrude(p.plate_t))\n    z0 = p.plate_t - p.pocket_depth\n    pocket =\
+    \ cq.Workplane('XY').workplane(offset=z0).circle(p.pocket_d / 2).extrude(p.pocket_depth)\n\
+    \    return plate.cut(pocket)\n"
+  print_orientation: stud (top) face on the bed, so the bolt-head recess opens upward
+    and the bolt hole prints without bridging
+  use_orientation: flat on the tripod jaws with the bolt-head recess facing down,
+    bolt head underneath and 1/4-20 stud up
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: stud
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: bolt head pocket
+    role: head_seat
+  - part: plate
+    feature: clearance hole
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: head_pocket
+  part: plate
+  feature: bolt head pocket
+  relation: seats
+  hardware: bolt
+  clearance_mm: 0.5
+  params:
+  - pocket_d
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Pocket diameter and depth match the 15 mm x 5 mm bolt head with a
+      fit clearance. Confirmed by user print.
+- id: shank_clearance
+  part: plate
+  feature: clearance hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - clear_d
+  check:
+    method: measure
+    ref: null
+    description: Clearance hole passes the 1/4 inch shank freely. Hole was partly
+      closed on the previous print; re-check after reprint.
+- id: jaw_fit
+  part: plate
+  feature: plate outline
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_l
+  - plate_w
+  check:
+    method: template
+    ref: null
+    description: Plate drops into the tripod jaws and is held by the lips. Not yet
+      confirmed.
+manual:
+- n: '1'
+  text: Print the plate with its flat stud face (the side without the recess) on the
+    bed. The recess opens upward during printing, so the hole has no bridge to print
+    over.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Turn the plate over. Push the bolt head into the recess from underneath so
+    the shank passes up through the clearance hole. The head should sit flush in the
+    recess.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Test-fit the plate into the tripod jaws from above. If it does not drop in,
+    or rocks loosely, the plate needs a new width or length.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Screw the camera onto the protruding 1/4-20 stud and hand-tighten. Do not
+    use the camera as a lever on the printed plate.
+  parts: []
+  hardware: []
+  tool: null

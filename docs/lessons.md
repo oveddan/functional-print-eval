@@ -34,6 +34,14 @@ Raw material for Dan to rewrite. One lesson per entry, each with its evidence. N
 
 **A textbook answer can be wrong for this machine.** Haiku, DeepSeek Flash and Qwen draw the seat under the bearing's size, 21.85 to 21.9 mm, because a press fit is normally an interference. On this printer 22.0 won't take the bearing. DeepSeek Flash and Qwen even ship a coupon on t1, but it tries only sizes at or under 22.0, so it can't find one that holds. On t2 their coupons reach a size that holds, and R3 passes: the same model, a different idea of what to test. Evidence: `pilot-wheel`, `results/predictions/round2-coupons.yaml`.
 
+## What a test print teaches
+
+**Models know how to fix a holed roof; they don't see it coming.** 24 of 62 tripod plates have a roof with the bolt's hole through it. Told only how it printed, "loose loops and tangles around the hole; hole partly closed", with no cause or fix, 14 of 24 fixed it, against 2 of 23 after "take another look". They found four different fixes. 8 flipped the plate, 3 used a cone, 1 left a skin to push out, and 2 (Gemini 4 Argon) drew the stepped bridge the Estoa model invented after its own test wall failed. That's how Dan got there too: the model's first design failed, and the fix came after he showed it the print. Evidence: `results/runs/loop-tripod`, `docs/coupon-loop.md`.
+
+**A fix for one failure can surface the next one.** Most fixed plates still fail on what the report never mentioned, mostly the dovetail upside down, so passes went from 0 to 3. Three revisions got worse: a lost recess, a plate in pieces, a deck too thick for the bolt. Evidence: `loop-tripod`'s `loop.json`.
+
+**A check can fail a known fix.** R3 failed Opus's drill-out skin as "no hole runs through", though `PLAN.md` says a drill-out layer passes and the knob's check already allowed one. The tripod check had never met one. Evidence: `CHANGELOG.md`, 2026-11-06.
+
 ## What physical truth can decide
 
 **Most of what models try, no print has measured.** Models chose ribs, clips, snap lips and undersized pockets, and the fit table only speaks for plain pockets. On M5, 7 of 12 trials came back not graded on R4. A check must be able to say "I can't tell", and that rate is a result to report beside the pass rate. Evidence: `results/runs/pilot-nut-knob`, `summary.csv`'s `not_graded` column.
@@ -58,7 +66,7 @@ Raw material for Dan to rewrite. One lesson per entry, each with its evidence. N
 
 **When everyone asks, asking stops being a result.** All 34 tripod trials asked at least 3 questions, and 31 got the bolt head's size. The session this task came from asked about length only, so the transcript's mistake mostly didn't repeat. The one R4 failure had the answer; it's a CAD slip. A withheld fact only separates models if some of them don't think to ask for it. Evidence: `measures` and `revealed` in `pilot-tripod`'s `grades.json`; no head answer in DeepSeek Pro t2, Luna t2 and t3.
 
-**A person who can't answer shapes what comes back.** The person only knows the clamp's style, so every question about its size gets the same sentence. GLM asked 20 questions in t2. Several models write it up in their limitations as measuring not working. A real friend would say "I don't have calipers". Evidence: `limitations` in DeepSeek Pro t1, DeepSeek Flash t1, GLM t1 and t2.
+**A person who can't answer shapes what comes back.** The person only knows the clamp's style, so every question about its size gets the same sentence. GLM asked 20 questions in t2. Several models write it up in their limitations as measuring not working. A real friend would say "I don't have calipers". Evidence: `limitations` in DeepSeek Pro t1, DeepSeek Flash t1, GLM t1 and t2. Since 2026-11-06 the person answers the width with the standard, 38 mm, the Arca-Swiss width Dan's plate fit, so new runs won't show this.
 
 **Declining to guess scores the same as getting it wrong.** GPT-6.1 Sol handed in only a test piece on all three trials, and said why: the clamp's size isn't known and a bad guess could drop the camera. GPT-6 Luna did the same on t2. R1 fails them, next to designs with real faults. Whether that caution is a failure or the right answer to "how hard would it be" is a question for the task, not the grader. Evidence: `pilot-tripod`, Sol t1 to t3, Luna t2.
 
