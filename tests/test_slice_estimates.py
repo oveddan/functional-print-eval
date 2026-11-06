@@ -81,25 +81,25 @@ def a_part(role="final", status="sliced", **values):
     estimate = se.PartEstimate(run="r", task="t", condition="can_ask", model="m", trial=1, verdict="fail",
                                part=f"{role}-part", role=role, status=status, error="", warning="")
     if status == "sliced":
-        estimate.print_s, estimate.total_s, estimate.filament_m, estimate.filament_g = 100, 500, 1.5, 4.5
+        estimate.print_s, estimate.filament_m, estimate.filament_g = 500, 1.5, 4.5
     for key, value in values.items():
         setattr(estimate, key, value)
     return estimate
 
 
 def test_a_trial_adds_its_final_parts_and_test_prints_separately():
-    trial = se.trial_estimate([a_part(), a_part(), a_part("coupon", total_s=300, filament_g=1.0)])
+    trial = se.trial_estimate([a_part(), a_part(), a_part("coupon", print_s=300, filament_g=1.0)])
     assert (trial.final_parts, trial.test_print_parts, trial.parts_not_sliced) == (2, 1, 0)
-    assert (trial.final_total_s, trial.final_filament_g) == (1000, 9.0)
-    assert (trial.test_print_total_s, trial.test_print_filament_g) == (300, 1.0)
-    assert (trial.all_total_s, trial.all_filament_g) == (1300, 10.0)
+    assert (trial.final_print_s, trial.final_filament_g) == (1000, 9.0)
+    assert (trial.test_print_s, trial.test_print_filament_g) == (300, 1.0)
+    assert (trial.all_print_s, trial.all_filament_g) == (1300, 10.0)
 
 
 def test_a_trial_with_a_part_that_didnt_slice_has_no_totals():
     """A sum missing a part would read as the whole design's cost."""
     trial = se.trial_estimate([a_part(), a_part("coupon", status="not_built")])
     assert trial.parts_not_sliced == 1
-    assert trial.final_total_s is None and trial.all_filament_g is None
+    assert trial.final_print_s is None and trial.all_filament_g is None
 
 
 def test_trials_are_kept_apart():
@@ -124,6 +124,12 @@ def test_a_part_goes_onto_the_bed_without_turning(tmp_path):
     assert placed.extents == pytest.approx((10, 20, 30))
 
 
+def test_the_printers_start_and_end_sequences_are_left_out():
+    machine = {"name": "x1c", "machine_start_gcode": "G28\nG29", "machine_end_gcode": "M400", "layer_change_gcode": "M73"}
+    assert se.without_printer_sequences(machine) == {
+        "name": "x1c", "machine_start_gcode": "", "machine_end_gcode": "", "layer_change_gcode": "M73"}
+
+
 @pytest.mark.skipif(not se.slicer_binary().exists(), reason="Bambu Studio isn't installed here")
 def test_bambu_studio_slices_a_cube_with_the_fixed_presets(tmp_path):
     """End to end on this machine: a 20 mm cube at 0.20 mm, 2 walls and 15% infill in PLA is a few grams."""
@@ -135,4 +141,4 @@ def test_bambu_studio_slices_a_cube_with_the_fixed_presets(tmp_path):
     assert estimate.status == "sliced", estimate.error
     assert estimate.layers == 100
     assert 3 < estimate.filament_g < 5
-    assert 300 < estimate.print_s < estimate.total_s < 3600
+    assert 300 < estimate.print_s < 3600
