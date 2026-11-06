@@ -2,6 +2,18 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-05: M3 at +0.1 counts as holding, from Dan's memory of the print; 3 trials and 2 replays per sample now pass
+
+Dan, reviewing Gemini 4 Argon's M3 knob, on the print noted "really struggles to go in": "it was very hard to put in, but i could put it in", and "with force it goes in". `nuts.READ_AS` now reads that size as holding, which replaces Claude's earlier call that it was unsettled. The print record stays word for word. Nobody recorded turning it over, so that part is Claude's reading: it's tighter than +0.2, which holds.
+
+- **Saved trials, 3 verdicts change, all in `pilot-nut-knob-2`:** Sonnet 5.5's M3 t2 and t3 and DeepSeek V4.1 Flash's M3 t1 go from not graded to pass, each because its test print has a pocket that now holds. Haiku's M3 t1 stays a fail, with R4 no longer among its not graded checks. Totals: 46 pass, 64 fail, 34 not graded, 7 declined.
+- **Coupon loop:** the M3 replays were regraded in both samples. Sonnet's 5.60 and DeepSeek's 5.65 feedback designs now pass, so each sample's feedback arm passes 3 of 12 against the neutral arm's 1. Before this it was 1 of 12 each. `docs/coupon-loop.md` is corrected.
+- Gemini 4 Argon's two M3 knobs at +0.05 stay not graded, between +0.0 and +0.1.
+
+## 2026-11-05: The fit checks say why a test print doesn't rescue a design
+
+"No test coupon in the manual would catch it" was wrong on designs whose test print would show the size is wrong, such as Sonnet's M3 knob t1: its one 5.50 mm pocket wouldn't take the nut, so printing it finds the problem. Dan raised this while reviewing that verdict. R3 and R4 now say what's true: no test print in the manual, no size known to hold, or no param to apply the size with. The rule stays, and `docs/limitations.md` lists it as an assumption: at most 2 trials would change if it were relaxed. No verdict changes: regrading the knob and wheel runs left every `summary.csv` unchanged, and 31 saved trials took the new text, with the earlier text under `regrades`. The coupon loop samples keep the old wording.
+
 ## 2026-11-04: The lineup at 3 runs on the `can_ask` pilot tasks, and the first `can_run_code` trials (issue 34)
 
 Pilot data: one to three trials per model, task and condition. The code these runs used merged as #39. No check, task wording, prompt or saved trial changes.

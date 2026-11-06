@@ -51,9 +51,10 @@ FELL_OUT = {"M5": 0.3, "M8": 0.3}
 SETTLES = {"holds": True, "won't go in": False, "falls out": False}
 # Printed outcomes the checks read differently from how the record codes them, by (nut, clearance).
 # The record stays word for word. M3 +0.1 is coded "won't go in", but Dan's note says "really
-# struggles to go in": the nut went in, and nothing records whether that's usable, so it doesn't
-# settle the request either way (issue 15, item 5; Claude's call, which Dan delegated).
-READ_AS = {("M3", 0.1): "struggles to go in"}
+# struggles to go in", and on 2026-11-05 he said "it was very hard to put in, but i could put it in"
+# and "with force it goes in". So it presses in by hand. Nobody recorded turning it over; it's tighter
+# than +0.2, which holds, so it's read as holding too (issue 38).
+READ_AS = {("M3", 0.1): "holds"}
 
 
 class PrintedPocket(BaseModel):
@@ -360,20 +361,25 @@ def _reading(found, clearance, af, said):
     return reading
 
 
-def _coupon_rescue(sub, built, nut, label, part_id, found, af) -> Verdict | None:
+def _coupon_rescue(sub, built, nut, label, part_id, found, af) -> Verdict | str:
     """What the design's test coupons say, if one would have found a size that holds and the final
-    part's pocket follows a param; None if no coupon would catch the fit."""
+    part's pocket follows a param; otherwise why they don't get there, in words."""
+    coupons = coupons_in_the_manual(sub, built)
+    if not coupons:
+        return "no test print in the manual"
     sizes = _coupon_sizes(sub, built, nut, af)
+    if not sizes:
+        return f"test print {coupons[0][0]} has no pocket a nut could try"
+    first_coupon, _ = sizes[0]
     tries = [_pocket_holds(label, coupon_pocket, af) for _, coupon_pocket in sizes]
-    if not any(held is not False for held in tries):  # a coupon with only wrong sizes can't help
-        return None
+    if not any(held is not False for held in tries):  # finding out a size is wrong isn't finding one that holds
+        return f"test print {first_coupon} would show the size is wrong, but has no size known to hold"
     param = _param_that_moves_pocket(sub, part_id, found.across, af)
     if param is None:
-        return None
+        return f"test print {first_coupon} could find a size, but no param moves the pocket"
     if True in tries:
         coupon, good = sizes[tries.index(True)]
         return Verdict(True, f"test coupon {coupon} has {len(sizes)} pocket(s), with {good.across:.2f} holding, and the pocket follows param {param}")
-    first_coupon, _ = sizes[0]
     return Verdict(None, f"test coupon {first_coupon} has {len(sizes)} pocket(s), and no print has settled whether any of them holds")
 
 
@@ -392,10 +398,11 @@ def fit(sub, built, nut, label):
     holds = _holds(label, clearance) if found.plain else None
     if holds:
         return True, reading
-    # a size found on a plain coupon says nothing about a pocket with ribs or clips
-    rescue = _coupon_rescue(sub, built, nut, label, part.part_id, found, af) if found.plain else None
-    if rescue is None:
-        return holds, f"{reading}; no test coupon in the manual would catch it"
+    if not found.plain:  # a size found on a plain coupon says nothing about a pocket with ribs or clips
+        return holds, f"{reading}; test prints aren't counted for a pocket like this"
+    rescue = _coupon_rescue(sub, built, nut, label, part.part_id, found, af)
+    if isinstance(rescue, str):
+        return holds, f"{reading}; {rescue}"
     return rescue.ok, f"{reading}; {rescue.detail}"
 
 

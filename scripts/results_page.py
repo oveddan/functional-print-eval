@@ -66,8 +66,6 @@ def missing_record(family, check, detail):
             return "Not graded: a nut pocket with ribs or clips, never printed", "gap", "prints"
         if "no print has settled whether any of them holds" in detail:  # the grader doesn't say why, so neither do we
             return "Not graded: its test coupon's pockets are ribbed or sizes no print settled", "gap", "prints"
-        if "prints say struggles to go in" in detail:
-            return "Not graded: the prints say this size struggles to go in", "open", "prints"
         over = re.search(r"([+-]\d+\.\d+) over the", detail)
         if "prints say not measured" in detail and over:
             # coupon B printed each nut at 0.0 to 0.3 mm over its across-flats size
@@ -96,8 +94,6 @@ def failure(run, record, finding, note):
     family, check, detail = record.task.split("/")[0], finding.check, finding.detail
     if note and note["kind"] == "open" and "marked final" in note["note"]:
         return "Test coupon labelled as a final part", "open", "label"
-    if note and note["kind"] == "open" and "really struggles" in note["note"]:
-        return "Nut pocket a size the prints don't take", "open", "coupon"
     if check == "builds":
         return "Its code didn't run", "real", "build"
     if check == "connected_bodies":
