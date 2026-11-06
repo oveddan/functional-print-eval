@@ -2,6 +2,14 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-06: Slicer estimates of print time and filament per design
+
+The README asks which model reaches a working print fastest and with the least material, and nothing was sliced. `scripts/slice_estimates.py` rebuilds each saved design's parts as the results page does and slices each one offline with Bambu Studio's command line (02.08.02.61, installed here), using the setup Dan's test prints used: X1 Carbon 0.4 nozzle, 0.20mm Standard @BBL X1C, Generic PLA High Speed @BBL X1C. It writes `slice_estimates_parts.csv` and `slice_estimates.csv` beside each run's `summary.csv`. These are slicer estimates, not measured prints; no verdict, `grades.json` or `summary.csv` changes, and nothing talks to a printer. Method, research into other options and limits: `docs/slice-estimates.md`.
+- **Presets resolved in full.** Loaded as they are, Bambu's stock presets slice with filament density 0 (every part 0 g), because the command line doesn't follow `inherits`. The script writes each preset out with its parents and `include` templates. The resolved machine preset matches a project Dan saved from the app on 2026-10-14 setting for setting, start G-code included; the process preset differs only in number formatting.
+- **Run on** `pilot-tripod`, `pilot-tripod-given`, `pilot-nut-knob`, `pilot-nut-knob-2` and `pilot-wheel`: 119 trials, 252 parts, 231 sliced. The 21 not sliced are parts whose code doesn't build, each matching its saved verdict. Slicing `pilot-tripod` twice gave the same grams for every part and times within 1 s.
+- **First reading:** each plate carries about 7 minutes of start sequence, so for these small parts a test print adds a median 12 to 14 minutes before the final part, 1.5 to 2 times the final part's own time.
+- `tests/test_slice_estimates.py`: reading the G-code header, resolving presets, per-trial totals (blank when a part didn't slice), and a 20 mm cube sliced end to end where Bambu Studio is installed.
+
 ## 2026-11-05: M3 at +0.1 counts as holding, from Dan's memory of the print; 3 trials and 2 replays per sample now pass
 
 Dan, reviewing Gemini 4 Argon's M3 knob, on the print noted "really struggles to go in": "it was very hard to put in, but i could put it in", and "with force it goes in". `nuts.READ_AS` now reads that size as holding, which replaces Claude's earlier call that it was unsettled. The print record stays word for word. Nobody recorded turning it over, so that part is Claude's reading: it's tighter than +0.2, which holds.
