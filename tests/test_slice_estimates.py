@@ -87,24 +87,103 @@ def a_part(role="final", status="sliced", **values):
     return estimate
 
 
-def test_a_trial_adds_its_final_parts_and_test_prints_separately():
-    trial = se.trial_estimate([a_part(), a_part(), a_part("coupon", print_s=300, filament_g=1.0)])
+def a_plate(print_s, filament_g):
+    return se.PlateResult(se.SlicedPlate(print_s=print_s, total_s=print_s, filament_mm=filament_g * 330,
+                                         filament_g=filament_g, layers=50))
+
+
+def test_a_trials_final_parts_come_from_their_plate_not_a_sum():
+    """Two final parts sliced together (900 s) take less than each alone (500 + 500 s)."""
+    parts = [a_part(), a_part(), a_part("coupon", print_s=300, filament_g=1.0)]
+    trial = se.trial_estimate(parts, {"final": a_plate(900, 8.9)})
     assert (trial.final_parts, trial.test_print_parts, trial.parts_not_sliced) == (2, 1, 0)
-    assert (trial.final_print_s, trial.final_filament_g) == (1000, 9.0)
-    assert (trial.test_print_s, trial.test_print_filament_g) == (300, 1.0)
-    assert (trial.all_print_s, trial.all_filament_g) == (1300, 10.0)
+    assert (trial.final_print_s, trial.final_filament_g) == (900, 8.9)
+    assert (trial.test_print_s, trial.test_print_filament_g) == (300, 1.0)  # one test print is its own plate
+    assert (trial.all_print_s, trial.all_filament_g) == (1200, 9.9)
+    assert trial.plates == 2
+
+
+def test_every_plate_the_slicer_writes_is_counted(tmp_path):
+    """Parts that don't fit on one bed go onto plate_2 with no error, so reading plate 1 alone would drop them."""
+    (tmp_path / "plate_1.gcode").write_text(CUBE_HEADER)
+    (tmp_path / "plate_2.gcode").write_text(CUBE_HEADER.replace("total layer number: 100", "total layer number: 120"))
+    plate = se.combined(se.read_plates(tmp_path))
+    assert (plate.print_s, plate.filament_g, plate.layers) == (2 * 527, pytest.approx(7.32), 120)
+
+
+def test_a_trial_without_test_prints_spends_nothing_on_them():
+    trial = se.trial_estimate([a_part()], {})
+    assert (trial.test_print_s, trial.test_print_filament_g, trial.all_print_s) == (0, 0.0, 500)
+    assert trial.plates == 1
 
 
 def test_a_trial_with_a_part_that_didnt_slice_has_no_totals():
     """A sum missing a part would read as the whole design's cost."""
-    trial = se.trial_estimate([a_part(), a_part("coupon", status="not_built")])
+    trial = se.trial_estimate([a_part(), a_part("coupon", status="not_built")], {})
     assert trial.parts_not_sliced == 1
     assert trial.final_print_s is None and trial.all_filament_g is None
 
 
+def test_a_plate_that_didnt_slice_leaves_the_totals_blank_and_says_why():
+    failed = se.PlateResult(None, "Some objects are outside the plate. (code -51)")
+    trial = se.trial_estimate([a_part(), a_part()], {"final": failed})
+    assert trial.plate_error == "final: Some objects are outside the plate. (code -51)"
+    assert trial.final_print_s is None and trial.test_print_s is None
+
+
+def test_only_groups_of_several_parts_get_a_plate_and_only_when_every_part_sliced():
+    def job(trial, role, name):
+        return se.PartJob(run="r", folder=Path("."), task="t", condition="c", model="m", trial=trial, verdict="fail",
+                          part=name, role=role, stl=Path(f"{trial}-{name}.stl"))
+    jobs = [job(1, "final", "a"), job(1, "final", "b"), job(1, "coupon", "c"), job(2, "final", "a"),
+            job(2, "final", "b")]
+    parts = [a_part(trial=1), a_part(trial=1), a_part("coupon", trial=1), a_part(trial=2),
+             a_part(trial=2, status="not_sliced")]
+    plates = se.plate_jobs(jobs, parts)
+    assert [(plate.key[-1], plate.group, [stl.name for stl in plate.stls]) for plate in plates] == [
+        (1, "final", ["1-a.stl", "1-b.stl"])]
+
+
 def test_trials_are_kept_apart():
     second = a_part(trial=2)
-    assert [trial.trial for trial in se.trial_estimates([a_part(), second, a_part()])] == [1, 2]
+    assert [trial.trial for trial in se.trial_estimates([a_part(), second, a_part()], [])] == [1, 2]
+
+
+def test_presets_are_found_beside_the_app_or_a_binary(tmp_path, monkeypatch):
+    monkeypatch.delenv("BAMBU_STUDIO_PROFILES", raising=False)
+    app = tmp_path / "BambuStudio.app"
+    (app / "Contents/Resources/profiles/BBL").mkdir(parents=True)
+    assert se.profiles_dir(app) == app / "Contents/Resources/profiles/BBL"
+    assert se.profiles_dir(app / "Contents/MacOS/BambuStudio") == app / "Contents/Resources/profiles/BBL"
+    linux = tmp_path / "squashfs-root"
+    (linux / "resources/profiles/BBL").mkdir(parents=True)
+    # samefile: on macOS the file system ignores case, so the .app layout's "Resources" also finds "resources"
+    assert se.profiles_dir(linux / "bin/bambu-studio").samefile(linux / "resources/profiles/BBL")
+
+
+def test_presets_are_found_beside_a_program_named_by_a_relative_path(tmp_path, monkeypatch):
+    monkeypatch.delenv("BAMBU_STUDIO_PROFILES", raising=False)
+    (tmp_path / "resources/profiles/BBL").mkdir(parents=True)
+    monkeypatch.chdir(tmp_path)
+    assert se.profiles_dir(Path("./bambu-studio")).samefile(tmp_path / "resources/profiles/BBL")
+
+
+def test_a_program_named_by_a_relative_path_is_run_by_its_absolute_path(tmp_path, monkeypatch):
+    """The slicer runs in a temporary folder, where './bambu-studio' would name nothing."""
+    monkeypatch.chdir(tmp_path)
+    assert se.slicer_binary(Path("./bambu-studio")) == tmp_path.resolve() / "bambu-studio"
+
+
+def test_a_program_at_the_root_still_gets_its_folders_looked_in():
+    assert se.profile_candidates(Path("/bambu-studio"))[-1] == Path("/resources/profiles/BBL")
+
+
+def test_presets_can_be_named_and_a_missing_folder_says_how(tmp_path, monkeypatch):
+    monkeypatch.setenv("BAMBU_STUDIO_PROFILES", str(tmp_path / "BBL"))
+    assert se.profiles_dir(tmp_path / "anything") == tmp_path / "BBL"
+    monkeypatch.delenv("BAMBU_STUDIO_PROFILES")
+    with pytest.raises(FileNotFoundError, match="BAMBU_STUDIO_PROFILES"):
+        se.profiles_dir(tmp_path / "bin/bambu-studio")
 
 
 def test_the_slicers_own_reason_is_kept(tmp_path):
@@ -142,3 +221,24 @@ def test_bambu_studio_slices_a_cube_with_the_fixed_presets(tmp_path):
     assert estimate.layers == 100
     assert 3 < estimate.filament_g < 5
     assert 300 < estimate.print_s < 3600
+
+
+@pytest.mark.skipif(not se.slicer_binary().exists(), reason="Bambu Studio isn't installed here")
+def test_two_parts_on_one_plate_take_less_time_than_each_alone(tmp_path):
+    """The reason a trial's totals come from its plate: the same filament, less time."""
+    trimesh.creation.cylinder(radius=6, height=4).export(tmp_path / "spacer.stl")
+    presets = se.write_presets(tmp_path)
+    alone = se.slice_plate([tmp_path / "spacer.stl"], presets).plate
+    together = se.slice_plate([tmp_path / "spacer.stl", tmp_path / "spacer.stl"], presets).plate
+    assert together.print_s < 2 * alone.print_s
+    assert together.filament_g == pytest.approx(2 * alone.filament_g, abs=0.02)
+
+
+@pytest.mark.skipif(not se.slicer_binary().exists(), reason="Bambu Studio isn't installed here")
+def test_parts_too_big_for_one_bed_are_counted_on_every_plate(tmp_path):
+    trimesh.creation.box((180, 180, 2)).export(tmp_path / "big.stl")
+    presets = se.write_presets(tmp_path)
+    one = se.slice_plate([tmp_path / "big.stl"], presets)
+    two = se.slice_plate([tmp_path / "big.stl", tmp_path / "big.stl"], presets)
+    assert (one.plates, two.plates) == (1, 2)
+    assert two.plate.filament_g == pytest.approx(2 * one.plate.filament_g, abs=0.05)
