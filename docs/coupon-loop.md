@@ -220,3 +220,73 @@ Every one of these came from the reply's single line about the roof ("loose loop
 - **The width the person gives.** Several turn-2 notes say the clamp's width is still a guess. The person now answers it (the next CHANGELOG entry), but only for runs after this one.
 
 **What it shows, and what it can't.** In 24 matched trials, being told how the roof printed fixed 14 roofs, and a second look fixed 2. That's a large gap for a sample this size, but it's one replay per arm of trials chosen because they failed, graded by the same check that wrote the reply. It says that these models, told the outcome, nearly always know at least one fix for a holed roof. It doesn't say how often a first design avoids the problem: that's the main eval's 24 failures out of 62 tripod trials.
+
+## Estoa sample: printing and putting the box together, written before the run
+
+Written 2026-11-06, before any model call for this sample, and pushed before the run. Every replay record in `results/runs/loop-estoa/` names the commit it ran from. Dan asked for it on 2026-11-06 ("can we rerun from failures to give it a chance to fix? ... describe the failure, and it can re-print").
+
+**Why.** None of the 17 graded Estoa light designs (`pilot-estoa`) passes on the records. The tripod sample showed that being told how a roof printed fixed far more roofs than a second look. This sample asks the same question of a whole assembly. The person prints everything, screws the disk on, puts the boards in, hangs the box and plugs in the charger, then says what went wrong.
+
+**What the reply says.** One line for each check that fails on the records, in the words of someone who put the box together. It never names a cause, a size or a fix (`coupon_loop.ESTOA_LINES`, `estoa_lines`, `printed_text`). Where a check's reason names more than one problem, each gets its own line, and a line is said once. Each line names what it rests on:
+- **An Estoa record** (what happened to Dan): inserts in thin posts bulged and sat crooked (R4); the charger plug wouldn't seat (R3); screws bottomed out or stripped (R2); screw heads stood proud of the back (R7).
+- **Dan's calipers**: the disk's screws don't line up with the holes (R1).
+- **Plain geometry**, which anyone would see on putting it together: the boards don't fit or the box doesn't close around them (R5, R3), screw tips come out of the back or hit the ESP32 (R2), it won't hang on the wall screws (R6, one line per keyhole problem).
+- **The bridge check's prediction**: a holed roof gets coupon A's words, as in the tripod sample. Any other failing overhang gets "the overhang about N mm up printed with loose, sagging loops under it."
+- A check that passes, or that no record decides, gets no line. The person doesn't report what they can't know.
+It ends: "Send me the design again with submit_design, changed or unchanged, and I'll print it again from what you send."
+
+**Sample.** Every saved `pilot-estoa` trial with a design that fails a check on the records: 14 trials from 6 models: Haiku 5.5 and Gemini 4 Argon 3 each; Opus 5.5, Sonnet 5.5, DeepSeek V4 Pro and GPT-6.1 Sol 2 each. Left out: Opus t2, Sonnet t2 and DeepSeek V4 Pro t2, which fail nothing on the records, and GPT-6.1 Sol t1, which handed in no design. Selection is code (`scripts/coupon_loop.py`, `estoa_sample`). The baseline is graded again from the saved design, and the dry run checked that it fails the same checks the records do.
+
+**Arms.** The printed reply above, and the neutral "take another look" turn. A second turn gets 8 calls, as the first turn did, and the person answers measurements as in the saved trial. Budget: $8.00 (estimated $3 to $6: 28 turns at about a third of a first turn's $0.35 average, more for the dearer models).
+
+**At most two prints.** A box this size takes hours and a lot of filament per print. So the person prints it twice at most: the saved design is the first print, and each arm's turn-2 design is the second. Neither arm gets a third. Dan raised this on 2026-11-06 ("if they print the box twice and it fails, we probably don't want to print it a third time"). A loop that lets a model keep reprinting would measure persistence more than what one report teaches. What two prints cost in hours and grams is read from the slicer estimates (#52) once this branch is on main, and reported per arm, not used as a check.
+
+**What counts as improving.**
+- **Main measure: checks fixed.** For each arm, the count of baseline-failing checks that pass in turn 2, over all trials. A turn with no design fixes nothing. The loop's effect is the printed arm's count minus the neutral arm's.
+- **Whole-trial verdicts** per arm: pass, fail, not graded, no design. Also given under the labelled assumptions (`pbe.assumptions`), marked as such.
+- **Got worse:** a check that passed at baseline and fails in turn 2, per arm.
+- **Per check:** which failures the reply fixes and which it doesn't, read from the counts, with what each turn-2 note says it changed. That's a reading, labelled as such.
+
+**What it can't show.** 14 trials, one replay per arm: a difference of one or two could be chance. The same checks that wrote the reply grade the fix, so a pass is the check's call, not a print's. Nothing here was printed. Lines resting on geometry describe what the checks found, in a person's words, and no record says a person saw exactly that. The trials are designs that already failed.
+
+## Estoa sample: result
+
+Run `loop-estoa`, 2026-11-06, from 09c6ed7 (the rule above, pushed before the first model call). It spent $7.14 of its $8.00 budget. Every replay is in `results/runs/loop-estoa/`, with its reply, transcript, design and grades.
+
+Two things interrupted it, and both were redone:
+- **The key's limit.** Partway through, the OpenRouter key reached its own $30 total limit. GPT-6.1 Sol's four arms were saved as errors and ran once Dan raised the limit to $40.
+- **A harness bug, found by Codex on PR 23.** The second turn offered a design schema without `assembly`, which `submit_design` requires for this task. Most models sent it anyway, copied from their first turn. Six arms didn't and were told "assembly is required": DeepSeek V4 Pro t1 and t3 in both arms, which all ended with no design, and GPT-6.1 Sol t2 in both. Those six were marked as harness errors and ran again from 05d8be9, with the schema fixed and the same replies. Each original is kept beside it as `<arm>-schema-bug/loop.schema-bug.json`, and its cost counts. Every other arm submitted with `assembly`, so the bug didn't touch what it was graded on.
+
+**Main measure: checks fixed.** The 14 baselines fail 32 checks between them.
+
+| Arm | Fixed (passes in turn 2) | Cleared (passes, or no record decides it) | Got worse |
+|---|---|---|---|
+| Printed reply | 10 | 21 | 2 |
+| Neutral turn | 1 | 2 | 3 |
+
+"Cleared" counts a check that no longer fails but that no record decides, such as an insert post between the sizes printed. A design that doesn't build clears nothing. Undecided checks are graded under the labelled assumptions below.
+
+**Whole-trial verdicts** (on the records; under the assumptions in brackets):
+
+| Arm | Pass | Fail | Not graded | No design |
+|---|---|---|---|---|
+| Printed reply | 1 (1) | 8 (11) | 5 (2) | 0 |
+| Neutral turn | 0 (0) | 14 (14) | 0 (0) | 0 |
+
+- **The pass:** Gemini 4 Argon t2. Its baseline failed only `bridges`, on a holed roof over the USB opening. After the one-line reply about that roof, it passes every check on the records.
+- **What the printed reply fixed, check by check** (failing at baseline, then in turn 2):
+  - Roofs and overhangs (`bridges`, 11 failing): 4 pass (Haiku t3, Argon t1 and t2, Sol t3), 3 are undecided (Haiku t1, Opus t3, Argon t3), 3 still fail (Haiku t2, Sonnet t1, DeepSeek t3), and DeepSeek t1's new design doesn't build.
+  - Insert posts (R4, 6 failing): 2 pass (Haiku t1, Opus t3), and 4 move between the sizes printed, so no record decides them (Haiku t2, Opus t1, Sonnet t1 and t3).
+  - Hanging it (R6, 6 failing): none pass. Sonnet t1 and t3 and Sol t2 become undecided, and all three Haiku designs still fail. It's the check the reply fixes least. Every Haiku keyhole, before and after, puts the round entry above the slot. The format says +y is up, against gravity, so the check reads them correctly. This is failure class C7, "Works in the orientation it's used" (seed `keyholes-point-down`), not a new class: in this sample, C7 is the class the printed reply fixes least.
+  - The perfboard's fit (R5, 3 failing): Argon t3 fixed; Sol t2 and DeepSeek t3 not.
+  - The ESP32 outside the box (R3, 2 failing): Sol t3 and DeepSeek t3 still fail.
+  - One each: the disk's screws (R2, Haiku t3), the box coming apart (`connected_bodies`, Opus t3) and screw heads proud of the back (R7, DeepSeek t3) are fixed. The disk's holes (R1, DeepSeek t3) become undecided.
+- **DeepSeek V4 Pro, with the schema fixed:** t1's new designs don't build in either arm, from errors in its own CadQuery (`box()` without a height; a union with nothing to union). t3's printed arm fixed R7 and R1 but broke its keyholes (R6).
+- **Got worse:** printed arm, DeepSeek t1 (doesn't build) and t3 (R6). Neutral arm, DeepSeek t1 (doesn't build), and Argon t2 and Sol t3 (the perfboard's fit, R5).
+- **Cost:** most turns cost $0.01 to $0.47. Argon t3's printed turn cost $1.27.
+
+**What it shows, and what it can't.** In 14 matched trials, being told what went wrong fixed 10 checks outright, and a second look fixed 1. The same checks wrote the reply and graded the fix, and nothing was printed. A lot of the printed arm's gain moves from "fail" to "not graded": the records can't tell whether a thicker insert post or a reshaped keyhole works, so 11 of its 14 designs still fail under the assumptions. One replay per arm.
+
+**Wording changed after the run.** Dan reviewed the reply's lines on 2026-11-06 and changed two, for runs after this one; the replies this run sent are kept in each `loop.json`:
+- R2, a screw that bottoms out: "they bottom out before the disk is held tight" became "they hit the bottom of their holes before they tighten, so the disk stays loose."
+- R3 had one line for every way the charger can't reach the port. It now has one per reason the check gives: the opening doesn't line up with the port (plastic in front of it), the plug's head doesn't fit through the opening, and the plastic runs into the port itself. In this run only Sol t3 failed R3, on the ESP32 sitting outside the box, which kept its own line.

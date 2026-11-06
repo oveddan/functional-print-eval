@@ -34,7 +34,7 @@ from pbe.runner.trial_record import TrialRecord  # noqa: E402
 MODELS = ["anthropic/claude-sonnet-5.5", "deepseek/deepseek-v4.1-flash", "z-ai/glm-5.3-flash"]
 FAMILIES = ("nut-knob", "bearing-wheel")
 RUNS = ROOT / "results/runs"
-LOOP_RUNS = ("loop-sample", "loop-sample-2", "loop-tripod")  # replays, not trials to replay
+LOOP_RUNS = ("loop-sample", "loop-sample-2", "loop-tripod", "loop-estoa")  # replays, not trials to replay
 TRIPOD_RUNS = ("pilot-tripod", "pilot-tripod-given", "pilot-code")
 # the bridge check fails these on a broken shape, not a roof (scripts/results_page.py, BROKEN_ROOFS)
 BROKEN_ROOFS = {("pilot-tripod-given", "qwen/qwen3.8-flash", 1), ("pilot-tripod", "qwen/qwen3.8-flash", 1)}
@@ -74,7 +74,14 @@ def tripod_sample():
                 yield folder, record, sub
 
 
-SAMPLES = {"loop-sample": sample, "loop-sample-2": sample, "loop-tripod": tripod_sample}
+def estoa_sample():
+    """The saved Estoa light designs that fail a check on the records (docs/coupon-loop.md, "Estoa sample")."""
+    for folder, record in TrialRecord.all_in(RUNS / "pilot-estoa"):
+        if record.task == "estoa-light" and record.failed_checks and (folder / "submission.yaml").exists():
+            yield folder, record, submission.load(folder / "submission.yaml")
+
+
+SAMPLES = {"loop-sample": sample, "loop-sample-2": sample, "loop-tripod": tripod_sample, "loop-estoa": estoa_sample}
 PRINTS_THE_PLATE = ("loop-tripod",)
 
 
@@ -157,7 +164,13 @@ def replay(folder, saved, sub, budget, out_root):
     replayed = str(folder.relative_to(RUNS))
     out = out_root / replayed
     task = tasks.load(saved.task)
-    if out_root.name in PRINTS_THE_PLATE:
+    if out_root.name == "loop-estoa":  # print it all and put it together: the report follows the baseline's failures
+        if not (out / "baseline" / coupon_loop.FILE_NAME).exists():
+            grade_baseline(task, saved, sub, out / "baseline", replayed)
+        baseline = coupon_loop.LoopRecord.load(out / "baseline")
+        report = coupon_loop.estoa_report(baseline.findings, out / "baseline" / "parts")
+        printed, max_turns = coupon_loop.printed_text(report), agent.DEFAULT_MAX_TURNS[saved.condition]
+    elif out_root.name in PRINTS_THE_PLATE:
         built = build_parts(sub, out / "parts")
         report = coupon_loop.coupon_report(task, sub, built) | coupon_loop.plate_report(task, sub, built)
         printed, max_turns = coupon_loop.printed_text(report), agent.DEFAULT_MAX_TURNS[saved.condition]

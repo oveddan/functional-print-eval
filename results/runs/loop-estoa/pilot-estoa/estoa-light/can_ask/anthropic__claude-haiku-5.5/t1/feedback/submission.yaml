@@ -1,0 +1,494 @@
+task: estoa-light
+note: ''
+questions:
+- text: 'Which way does the ESP32 USB port sit off the centreline: toward +y (up when
+    the box hangs) or -y? I assumed +y.'
+  answer: null
+- text: What is the perfboard thickness, and how tall is the tallest component on
+    it? I assumed 1.6 mm and that everything fits under the 16 mm ESP32 height.
+  answer: null
+- text: 'Please measure the USB-C wall charger: body length, width and thickness,
+    so I can confirm the wall hole and charger clearance.'
+  answer: null
+- text: Can you check whether the ESP32 overhangs the perfboard end? 63.17 + 7.53
+    = 70.7 mm, slightly over the 70 mm board.
+  answer: null
+- text: Are the wall screws 100 mm apart with the keyholes at 80 mm above centre fine,
+    and are they in studs or 1/4 inch anchors?
+  answer: null
+params:
+  disc_od:
+    value: 241.6
+    unit: mm
+    kind: world
+    source: measured
+    note: 'Derived: hole-to-edge readings 102.54 and 102.24 plus hole centre offset
+      18.4 give radii 120.94 and 120.64; averaged.'
+  disc_hole_d:
+    value: 3.3
+    unit: mm
+    kind: world
+    source: measured
+    note: two small holes near centre
+  disc_hole_spacing:
+    value: 33.5
+    unit: mm
+    kind: world
+    source: measured
+    note: 'centre to centre: 30.2 edge-to-edge + 3.3 hole diameter. Holes at 3 and
+      9 o''clock, input wires at 12 o''clock'
+  disc_t:
+    value: 1.6
+    unit: mm
+    kind: world
+    source: guessed
+    note: disc board thickness not measured
+  box_od:
+    value: 240
+    unit: mm
+    kind: design
+    source: design
+    note: close to disc diameter so the later sides can meet it; fits the 256 mm bed
+  wall_t:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: rim and side wall thickness
+  plate_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: back plate thickness
+  box_h:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: back plate underside to disc back face
+  standoff_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: back plate top to perfboard underside
+  pb_l:
+    value: 70
+    unit: mm
+    kind: world
+    source: measured
+    note: perfboard long side, along x
+  pb_w:
+    value: 50
+    unit: mm
+    kind: world
+    source: measured
+    note: perfboard short side, along y
+  pb_t:
+    value: 1.6
+    unit: mm
+    kind: world
+    source: guessed
+    note: perfboard thickness not measured
+  pb_cx:
+    value: 70
+    unit: mm
+    kind: design
+    source: design
+    note: perfboard centre x; USB end toward the +x wall
+  pb_hole_d:
+    value: 2.4
+    unit: mm
+    kind: world
+    source: measured
+    note: corner hole diameter
+  pb_hole_edge:
+    value: 0.9
+    unit: mm
+    kind: world
+    source: measured
+    note: hole edge to board edge
+  pilot_d:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: guessed
+    note: pilot hole for M2 self-tapping screws in PLA; test fit
+  standoff_d:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: corner standoff diameter
+  boss_d:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: bosses under the two disc screws, widened so the insert does not bulge the
+      wall
+  insert_hole_d:
+    value: 4.3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3x4x5 insert hole
+  insert_len:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3x4x5 insert length
+  kh_head_d:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: keyhole head width, clears 9 mm head
+  recess_depth:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: head channel depth from back face, head ~3 mm
+  kh_spacing:
+    value: 100
+    unit: mm
+    kind: design
+    source: design
+    note: centre-to-centre of the two wall screws
+  kh_y:
+    value: 80
+    unit: mm
+    kind: design
+    source: design
+    note: top end of keyhole slot above box centre; wide head hole sits at the bottom
+  kh_slot:
+    value: 4.6
+    unit: mm
+    kind: design
+    source: design
+    note: 'slot width for #8 shank'
+  kh_slot_len:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: distance from wide hole centre to slot top
+  usb_bottom:
+    value: 12.54
+    unit: mm
+    kind: world
+    source: measured
+    note: bottom of ESP32 USB-C receptacle above perfboard top
+  usb_h:
+    value: 3.2
+    unit: mm
+    kind: world
+    source: measured
+    note: receptacle height
+  usb_w:
+    value: 10.67
+    unit: mm
+    kind: world
+    source: measured
+    note: receptacle width, for reference
+  usb_y:
+    value: 3.99
+    unit: mm
+    kind: world
+    source: measured
+    note: receptacle offset from ESP32 centreline; assumed +y, to confirm
+  usb_hole_d:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: round wall hole for the USB-C plug; round top prints without a bridge
+parts:
+- id: box
+  role: final
+  material: PLA matte white
+  code: "import cadquery as cq\n\ndef build(p):\n    R = p.box_od / 2.0\n    ri =\
+    \ R - p.wall_t\n    H = p.box_h\n    t = p.plate_t\n    P = p.standoff_h\n   \
+    \ hx = p.disc_hole_spacing / 2.0\n\n    body = cq.Workplane('XY').circle(R).extrude(t)\n\
+    \    ring = cq.Workplane('XY').circle(R).circle(ri).extrude(H)\n    body = body.union(ring)\n\
+    \    for sx in (-1, 1):\n        boss = cq.Workplane('XY').center(sx * hx, 0).circle(p.boss_d\
+    \ / 2.0).extrude(H)\n        body = body.union(boss)\n\n    x0 = p.pb_cx - p.pb_l\
+    \ / 2.0\n    x1 = p.pb_cx + p.pb_l / 2.0\n    e = p.pb_hole_edge + p.pb_hole_d\
+    \ / 2.0\n    yc = p.pb_w / 2.0 - e\n    corners = [(x0 + e, yc), (x0 + e, -yc),\
+    \ (x1 - e, yc), (x1 - e, -yc)]\n    pillars = cq.Workplane('XY').workplane(offset=t).pushPoints(corners).circle(p.standoff_d\
+    \ / 2.0).extrude(P - t)\n    body = body.union(pillars)\n    pilots = cq.Workplane('XY').workplane(offset=P\
+    \ - 4.0).pushPoints(corners).circle(p.pilot_d / 2.0).extrude(5.0)\n    body =\
+    \ body.cut(pilots)\n\n    ins_pts = [(-hx, 0), (hx, 0)]\n    pockets = cq.Workplane('XY').workplane(offset=H\
+    \ - p.insert_len - 0.5).pushPoints(ins_pts).circle(p.insert_hole_d / 2.0).extrude(p.insert_len\
+    \ + 1.5)\n    body = body.cut(pockets)\n\n    for sx in (-1, 1):\n        x =\
+    \ sx * p.kh_spacing / 2.0\n        yb = p.kh_y - p.kh_slot_len\n        yt = p.kh_y\n\
+    \        ym = (yb + yt) / 2.0\n        through_hole = cq.Workplane('XY').workplane(offset=-1).center(x,\
+    \ yb).circle(p.kh_head_d / 2.0).extrude(t + 2)\n        slot = cq.Workplane('XY').workplane(offset=-1).center(x,\
+    \ ym).rect(p.kh_slot, p.kh_slot_len).extrude(t + 2)\n        slot_end = cq.Workplane('XY').workplane(offset=-1).center(x,\
+    \ yt).circle(p.kh_slot / 2.0).extrude(t + 2)\n        channel = cq.Workplane('XY').workplane(offset=-1).center(x,\
+    \ ym).rect(p.kh_head_d, p.kh_slot_len).extrude(p.recess_depth + 1)\n        channel_end\
+    \ = cq.Workplane('XY').workplane(offset=-1).center(x, yt).circle(p.kh_head_d /\
+    \ 2.0).extrude(p.recess_depth + 1)\n        body = body.cut(through_hole).cut(slot).cut(slot_end).cut(channel).cut(channel_end)\n\
+    \n    z_port = (P + p.pb_t) + p.usb_bottom + p.usb_h / 2.0\n    hole = cq.Workplane('YZ',\
+    \ origin=(110, 0, 0)).center(p.usb_y, z_port).circle(p.usb_hole_d / 2.0).extrude(15)\n\
+    \    body = body.cut(hole)\n    return body\n"
+  print_orientation: back plate flat on the bed (z=0 on bed), walls up
+  use_orientation: z=0 against the wall, +z out of the wall, box hung as it sits
+hardware:
+- id: disc
+  ref: own:led-disk
+  qty: 1
+- id: perfboard
+  ref: own:perfboard
+  qty: 1
+- id: esp32
+  ref: own:esp32
+  qty: 1
+- id: insert
+  ref: insert M3x4x5
+  qty: 2
+- id: disc_screw
+  ref: ISO 4762 M3x6
+  qty: 2
+- id: standoff_screw
+  ref: own:m2x6-self-tapping
+  qty: 4
+joints:
+- id: disc-j1
+  fastener: disc_screw
+  axis_origin:
+  - 16.75
+  - 0.0
+  - 31.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: insert pocket +x boss
+    role: insert
+  nut: null
+  external: null
+- id: disc-j2
+  fastener: disc_screw
+  axis_origin:
+  - -16.75
+  - 0.0
+  - 31.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: insert pocket -x boss
+    role: insert
+  nut: null
+  external: null
+criteria:
+- id: disc-holes
+  part: box
+  feature: insert pockets in 12 mm bosses at x=+-16.75
+  relation: seats
+  hardware: insert
+  clearance_mm: null
+  params:
+  - disc_hole_spacing
+  - insert_hole_d
+  - boss_d
+  check:
+    method: measure
+    ref: null
+    description: Insert pockets 4.3 mm, aligned with the disc's 3.3 mm holes at 33.5
+      mm spacing
+- id: usb-clear
+  part: box
+  feature: +x wall round hole for USB-C plug
+  relation: clears
+  hardware: esp32
+  clearance_mm: null
+  params:
+  - usb_hole_d
+  - usb_y
+  - usb_bottom
+  check:
+    method: measure
+    ref: null
+    description: Charger plug enters the ESP32 receptacle through the 10 mm round
+      hole
+manual:
+- n: '1'
+  text: Print the box with the back plate flat on the bed, walls up. No supports are
+    needed.
+  parts:
+  - box
+  hardware: []
+  tool: null
+- n: '2'
+  text: Heat-set the two M3x4x5 inserts into the pockets at the tops of the two 12
+    mm bosses, flush with the boss tops. Go slowly and keep the insert square to the
+    pocket; if it bulges the boss, stop and let it cool.
+  parts:
+  - box
+  hardware:
+  - insert
+  tool: soldering iron with heat-set tip
+- n: '3'
+  text: Fit the ESP32 onto the perfboard headers, USB-C port toward the nearest long-edge
+    corner. Set the perfboard on the four standoffs and drive the M2x6 self-tapping
+    screws into the standoffs through the corner holes.
+  parts:
+  - box
+  hardware:
+  - perfboard
+  - esp32
+  - standoff_screw
+  tool: null
+- n: '4'
+  text: Route the four wires from the perfboard to the disc input connector at the
+    12 o'clock edge of the disc.
+  parts:
+  - box
+  hardware:
+  - perfboard
+  - disc
+  tool: null
+- n: '5'
+  text: 'Hang the box: place the 10 mm round end of each keyhole over a wall screw
+    head, then slide the box DOWN so the shank drops into the slot and the head sits
+    in the channel behind the plate.'
+  parts:
+  - box
+  hardware: []
+  tool: null
+- n: '6'
+  text: Set the disc onto the top rim and the two bosses with its holes over the inserts.
+    Fasten with the two M3x6 screws from the LED side.
+  parts:
+  - box
+  hardware:
+  - disc
+  - disc_screw
+  tool: 2.5 mm hex key
+- n: '7'
+  text: Plug the USB-C charger into the ESP32 port through the round wall hole on
+    the +x side of the box.
+  parts:
+  - box
+  hardware:
+  - esp32
+  tool: null
+assembly:
+  parts:
+  - origin:
+    - 0.0
+    - 0.0
+    - 0.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    part: box
+  items:
+  - origin:
+    - 0.0
+    - 0.0
+    - 30.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: disc
+  - origin:
+    - 70.0
+    - 0.0
+    - 9.6
+    x_axis:
+    - 0.0
+    - -1.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: perfboard
+  - origin:
+    - 92.67
+    - 3.99
+    - 23.74
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: esp32
+  screws:
+  - item: disc_screw
+    head:
+    - 16.75
+    - 0.0
+    - 31.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: disc_screw
+    head:
+    - -16.75
+    - 0.0
+    - 31.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: standoff_screw
+    head:
+    - 37.1
+    - 22.9
+    - 9.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: standoff_screw
+    head:
+    - 37.1
+    - -22.9
+    - 9.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: standoff_screw
+    head:
+    - 102.9
+    - 22.9
+    - 9.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: standoff_screw
+    head:
+    - 102.9
+    - -22.9
+    - 9.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0

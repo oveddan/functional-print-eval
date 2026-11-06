@@ -25,6 +25,7 @@ from pbe.parts.submission import Submission
 from pbe.runner import build_on_submit, llm, python_tool
 from pbe.runner.measure import Person
 from pbe.runner.python_tool import PythonTool
+from pbe.runner.tasks import TaskFormat
 from pbe.runner.trial_record import BuildOnSubmit, ModelCall, Settings, TrialRecord
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -112,11 +113,23 @@ SUBMIT_LINE_BUILDS_FIRST = ("- submit_design(...): hand in the finished design. 
                             "build, you get its error back to fix. A design whose parts all build ends the conversation.")
 
 
-@cache
-def tools(condition="can_ask"):
+def _design_schema(assembly):
+    """submit_design's parameters. `assembly` appears only for a task whose format.yaml asks for it,
+    and is then required; every other task gets exactly the schema it had before the field existed."""
     design = _inline(Submission.model_json_schema())
     design["properties"].pop("task")  # the runner fills it in
     design["required"] = [r for r in design["required"] if r != "task"]
+    field = design["properties"].pop("assembly")
+    if assembly:
+        schema = next(option for option in field["anyOf"] if option.get("type") == "object")
+        design["properties"]["assembly"] = {**schema, "description": field["description"]}
+        design["required"].append("assembly")
+    return design
+
+
+@cache
+def tools(condition="can_ask", assembly=False):
+    design = _design_schema(assembly)
     submit = SUBMIT_BUILDS_FIRST if condition == python_tool.CONDITION else SUBMIT
 
     def function_tool(name, description, parameters):
@@ -286,12 +299,30 @@ class TrialTools:
         self.limitations.append(arguments)
         return "Noted. Continue with what you have."
 
+    def _own_parts_missing(self, submission) -> list[str]:
+        """The person's own parts (format.yaml) a design for an assembly task doesn't list in its hardware."""
+        if not self.task.format.assembly:
+            return []
+        listed = {item.ref for item in submission.hardware}
+        return [f"own:{part.id}" for part in self.task.format.own_hardware
+                if part.kind != "screw" and f"own:{part.id}" not in listed]
+
     def submit_design(self, arguments):
+        if not self.task.format.assembly:
+            # not in this task's schema: ignored, as any unknown field was before `assembly` existed
+            arguments = {key: value for key, value in arguments.items() if key != "assembly"}
         try:
             submission = Submission.model_validate({**arguments, "task": self.task.id})
         except ValidationError as e:
             self.repairs += 1
             return f"That isn't a valid submission. Fix these and call submit_design again:\n{e}"
+        if self.task.format.assembly and submission.assembly is None:
+            self.repairs += 1
+            return "That isn't a valid submission. Fix this and call submit_design again:\nassembly is required for this design."
+        if missing := self._own_parts_missing(submission):
+            self.repairs += 1  # DeepSeek left them out twice in pilot-estoa, so no check could read where they went
+            return ("That isn't a valid submission. Fix this and call submit_design again:\n"
+                    f"hardware has to list the person's own parts, and assembly has to place them: {', '.join(missing)} missing.")
         if self.python is not None:
             built = build_on_submit.build(self.python, submission)
             if built.errors:
@@ -311,8 +342,39 @@ class TrialTools:
                              accepted_unbuilt=self.accepted_unbuilt)
 
 
-def system_prompt(max_turns, python: PythonTool | None = None):
+OWN_PARTS = """
+## Their own parts
+The person has these too, for this design only. Refer to each by its reference, such as "own:{first}". What isn't listed hasn't been measured: ask them.
+
+```yaml
+{parts}```
+"""
+ASSEMBLY_RULE = ("- Say where each final part and each of their own parts with a frame goes in the finished piece, and where "
+                 "each screw goes, in `assembly`.")
+
+
+def own_parts_text(task_format: TaskFormat) -> str:
+    listed = [{"ref": f"own:{part.id}", **part.model_dump(exclude={"id"}, exclude_none=True)} for part in task_format.own_hardware]
+    return yaml.safe_dump(listed, sort_keys=False, allow_unicode=True, width=1000)
+
+
+def _with_task_format(text, task_format: TaskFormat | None):
+    """The prompt with what the task's format.yaml adds. A task without one gets the prompt unchanged."""
+    if task_format is None:
+        return text
+    if task_format.own_hardware:
+        before_how_to_work = "\n## How to work"
+        assert text.count(before_how_to_work) == 1
+        section = OWN_PARTS.format(first=task_format.own_hardware[0].id, parts=own_parts_text(task_format))
+        text = text.replace(before_how_to_work, section + before_how_to_work)
+    if task_format.assembly:
+        text = f"{text}\n{ASSEMBLY_RULE}"
+    return text
+
+
+def system_prompt(max_turns, python: PythonTool | None = None, task_format: TaskFormat | None = None):
     text = SYSTEM.format(setup=setup_text(), hardware=hardware_text(), max_turns=max_turns)
+    text = _with_task_format(text, task_format)
     if python is None:
         return text
     assert text.count(SUBMIT_LINE) == 1
@@ -323,7 +385,7 @@ def system_prompt(max_turns, python: PythonTool | None = None):
 
 
 def opening_messages(task, condition, person, max_turns, python: PythonTool | None = None):
-    system = system_prompt(max_turns, python)
+    system = system_prompt(max_turns, python, task.format)
     return [{"role": "system", "content": system}, {"role": "user", "content": first_message(task, condition, person)}]
 
 
@@ -369,7 +431,8 @@ def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, c
     started = time.monotonic()
     for _ in range(max_turns):
         try:
-            response = chat(model, messages, tools=tools(condition), max_tokens=max_tokens, **llm.caching_params(model))
+            response = chat(model, messages, tools=tools(condition, task.format.assembly), max_tokens=max_tokens,
+                            **llm.caching_params(model))
         except llm.LLMError as e:
             error = str(e)
             break

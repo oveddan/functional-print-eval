@@ -15,7 +15,7 @@ body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);padding-bloc
 h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.05;text-wrap:balance;margin:0}
 h1{font-size:44px}h2{font-size:30px}h3{font-size:21px}
 p{margin:0;max-width:72ch}
-.dim{color:var(--dim)}.mono{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+.dim{color:var(--dim)}.jump{font-size:15px}.jump .link{all:unset;cursor:pointer;color:var(--accent);text-decoration:underline}.jump .link:focus-visible{outline:2px solid var(--accent)}.mono{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
 header,section{display:grid;gap:12px;min-width:0}
 button{font:500 14px var(--body);color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 11px;cursor:pointer}
 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -27,7 +27,7 @@ tr.pick{cursor:pointer}tr.pick:hover td{background:var(--plate)}
 .n{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;padding-right:16px}
 .stamp,.badge{display:inline-block;font:600 12.5px var(--body);padding:1px 8px;border-radius:3px;white-space:nowrap}
 .pass{color:var(--pass);background:var(--pass-bg)}.fail,.real,.decided{color:var(--fail);background:var(--fail-bg)}
-.not_graded,.gap{color:var(--ng);background:var(--ng-bg)}.open{color:var(--accent);background:var(--panel);border:1px solid var(--accent)}
+.not_graded,.gap,.format{color:var(--ng);background:var(--ng-bg)}.open{color:var(--accent);background:var(--panel);border:1px solid var(--accent)}
 .no_design{color:var(--dim);background:var(--plate)}
 .declined{color:var(--dim);background:var(--panel);border:1px solid currentColor}
 .chip{display:inline-block;font:600 11.5px var(--body);letter-spacing:.04em;text-transform:uppercase;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--dim)}
@@ -70,6 +70,9 @@ dialog::backdrop{background:rgb(0 0 0 / .55)}
 .part[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
 .part:focus-visible{outline:2px solid var(--accent)}
 .part .shot{aspect-ratio:1}
+.layers{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13.5px}.layers label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.swatch{display:inline-block;width:12px;height:12px;border-radius:2px}
+.part.assembled .shot{display:grid;place-items:center;font:600 13px var(--body);color:var(--accent)}
 .part span{overflow-wrap:anywhere;line-height:1.2}
 .report{font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--plate);border-radius:4px;padding:8px 10px;display:grid;gap:4px;overflow-wrap:anywhere}
 .arms{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -84,6 +87,7 @@ dialog::backdrop{background:rgb(0 0 0 / .55)}
 <h1>What each model designed</h1>
 <p>Every design here came from one request and was graded by code against the test prints on record. <b>None of these designs was printed.</b> A "test coupon" is the small test piece a model designed and asked the person to print first. Click a trial to see each part in 3D, every check, and what went wrong.</p>
 <p class="dim">"Not graded" means no recorded print can decide that check. It isn't a fail and it isn't a pass. "Declined" means the model said it couldn't design the part without a measurement nobody recorded; that's neither either. Checks on a test coupon are shown but don't count toward the verdict. The M5 spacer, a control every model passed, isn't shown. Built by <span class="mono">scripts/results_page.py</span> from the saved runs.</p>
+<p id="jump" class="jump"></p>
 </header>
 
 <section>
@@ -111,7 +115,7 @@ dialog::backdrop{background:rgb(0 0 0 / .55)}
 <dialog id="detail" aria-labelledby="dtitle">
 <div class="dhead"><div><h2 id="dtitle"></h2><p id="dsub" class="dim"></p></div><button id="dclose">Close</button></div>
 <div class="dbody">
-<div><div class="viewer"><canvas id="view"></canvas><p id="viewcap" class="dim mono"></p></div></div>
+<div><div class="viewer"><canvas id="view"></canvas><div id="layers" class="layers"></div><p id="viewcap" class="dim mono"></p></div></div>
 <div id="dcontent"></div>
 </div>
 </dialog>
@@ -193,7 +197,8 @@ function card(t) {
                  t.condition === "all_given" ? `<span class="chip">All given</span>` : ""].join("");
   return `<button class="card" data-id="${t.id}" aria-label="Open ${esc(short(t.model))} trial ${t.trial}">${shot}
     <span class="head"><span class="stamp ${t.verdict}">${VERDICT[t.verdict]}</span><span class="mono dim">t${t.trial} · $${t.cost.toFixed(3)}</span></span>
-    ${chips ? `<span class="chips">${chips}</span>` : ""}<span class="issue">${esc(issueLine(t))}</span></button>`;
+    ${chips ? `<span class="chips">${chips}</span>` : ""}<span class="issue">${esc(issueLine(t))}</span>${t.assumed && t.assumed.findings.length
+      ? `<span class="issue"><b>With assumptions:</b> ${esc(t.assumed.verdict)}</span>` : ""}</button>`;
 }
 
 function visible(t) {
@@ -211,7 +216,7 @@ function list() {
     const models = [...new Set(ts.map(t => t.model))].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
     const rows = models.map(m => `<div class="row"><div>${esc(short(m))}</div><div class="cards">${
       ts.filter(t => t.model === m).sort((a, b) => a.condition.localeCompare(b.condition) || a.trial - b.trial).map(card).join("")}</div></div>`).join("");
-    return `<div class="task"><h2>${esc(task)}</h2>
+    return `<div class="task" id="task-${esc(task.replace(/[^a-z0-9]+/gi, "-"))}"><h2>${esc(task)}</h2>
       <details><summary>The request</summary><blockquote>${esc(brief.request)}</blockquote>${brief.why ? `<p class="dim">${esc(brief.why)}</p>` : ""}</details>
       <div class="counts"><span><b>${ts.length}</b> trials</span><span><b>${count("pass")}</b> pass</span><span><b>${count("fail")}</b> fail</span><span><b>${count("not_graded")}</b> not graded</span></div>
       ${rows}</div>`;
@@ -219,6 +224,11 @@ function list() {
   document.getElementById("tasks").innerHTML = html || `<p class="dim">No trials match.</p>`;
 }
 
+function jumpBar() {  // every task, with its trial count, linked to its place in the list below
+  const tasks = [...new Set(TRIALS.map(t => t.task))].sort();
+  document.getElementById("jump").innerHTML = "<b>Jump to a task:</b> " + tasks.map(task =>
+    `<button class="link" data-jump="${esc(task.replace(/[^a-z0-9]+/gi, "-"))}">${esc(task)}</button> <span class="dim">(${TRIALS.filter(t => t.task === task).length})</span>`).join(" · ");
+}
 function draw() { groupsBar(); list(); }
 
 // ---- one trial ----
@@ -262,14 +272,19 @@ function openTrial(t, push = true) {
       <span><span class="badge ${i.kind}">${esc(KIND[i.kind])}</span></span><span class="help"><b>Would help:</b> ${esc(HELP[i.help])}</span></li>`).join("")}</ul>`
     : `<p>Passed every check.</p>`;
   const asked = t.asked.length ? `<section><h3>What it asked the person</h3><ul class="plain">${t.asked.map((q, i) => `<li>${esc(q)}<br><span class="dim">${esc(t.answers[i])}</span></li>`).join("")}</ul></section>` : "";
-  const audit = t.audit ? `<p class="dim"><b>Audit note, 3 November:</b> ${esc(t.audit.note)}</p>` : "";
-  const parts = t.parts.length ? `<div class="partlist">${t.parts.map(p => partButton(p, "Its design")).join("")}</div>` : `<p class="dim">No part built.</p>`;
-  document.getElementById("dcontent").innerHTML = `<div class="box"><h3>What went wrong</h3>${issues}${audit}</div>
+  const audit = t.audit ? `<p class="dim"><b>Audit note, ${esc(t.audit.date || "3 November")}:</b> ${esc(t.audit.note)}</p>` : "";
+  const assumed = t.assumed && t.assumed.findings.length ? `<div class="box"><h3>With assumptions: ${esc(t.assumed.verdict)}</h3>
+      <p class="dim">No record decides these checks, so they're graded again under a stated assumption. The verdict above, from the records alone, doesn't change.</p>
+      <ul class="issues">${t.assumed.findings.map(a => `<li><span><span class="mono">${esc(a.check)}</span> <span class="stamp ${a.ok === true ? "pass" : a.ok === false ? "fail" : "not_graded"}">${a.ok === true ? "Pass" : a.ok === false ? "Fail" : "Still not graded"}</span></span>
+      <span>${esc(a.detail.replace(/^Under the assumption: /, ""))}</span><span class="dim"><b>Assumes:</b> ${esc(a.assumption)}</span></li>`).join("")}</ul></div>` : "";
+  const assembledButton = t.scene ? `<button class="part assembled" data-scene="${t.id}" aria-pressed="false"><span class="shot">Assembled</span><span>everything in place</span></button>` : "";
+  const parts = t.parts.length ? `<div class="partlist">${assembledButton}${t.parts.map(p => partButton(p, "Its design")).join("")}</div>` : `<p class="dim">No part built.</p>`;
+  document.getElementById("dcontent").innerHTML = `<div class="box"><h3>What went wrong</h3>${issues}${audit}</div>${assumed}
     <section><h3>Parts it designed</h3>${parts}</section>${loopSection(t)}
     <section><h3>Every check</h3>${checksTable(t.findings)}</section>${asked}`;
   const dlg = document.getElementById("detail");
   if (!dlg.open) dlg.showModal();
-  const first = document.querySelector("#dcontent .part[data-name]:not([data-name=''])");
+  const first = document.querySelector("#dcontent .part[data-scene]") || document.querySelector("#dcontent .part[data-name]:not([data-name=''])");
   if (first) select(first); else { clearView(); document.getElementById("viewcap").textContent = "No part small enough to show in 3D."; }
   if (push) { try { history.replaceState(null, "", "#" + t.id); } catch (e) {} }
 }
@@ -284,14 +299,63 @@ function setup() {
   camera.up.set(0, 0, 1);
   const loop = () => { requestAnimationFrame(loop); if (document.getElementById("detail").open) { controls.update(); renderer.render(scene, camera); } };
   loop();
-  three = {canvas, renderer, scene, camera, controls, mesh: null};
+  three = {canvas, renderer, scene, camera, controls, mesh: null, layers: {}};
 }
 function parseStl(buf) {
   const view = new DataView(buf), n = view.getUint32(80, true), pos = new Float32Array(n * 9);
   for (let i = 0; i < n; i++) for (let j = 0; j < 9; j++) pos[i * 9 + j] = view.getFloat32(84 + i * 50 + 12 + j * 4, true);
   const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.computeVertexNormals(); return g;
 }
-function clearView() { if (three && three.mesh) { three.scene.remove(three.mesh); three.mesh.geometry.dispose(); three.mesh = null; } }
+function clearView() {
+  if (!three) return;
+  if (three.mesh) { three.scene.remove(three.mesh); three.mesh.geometry.dispose(); three.mesh = null; }
+  Object.values(three.layers).flat().forEach(m => { three.scene.remove(m); m.geometry.dispose(); });
+  three.layers = {};
+  document.getElementById("layers").innerHTML = "";
+}
+async function stlGeometry(name) {
+  const r = await fetch(`stl/${name}.txt`);
+  if (!r.ok) throw new Error(r.status);
+  return parseStl(Uint8Array.from(atob(await r.text()), c => c.charCodeAt(0)).buffer);
+}
+// the assembled view: printed parts in place, the person's parts, screws and failures, each a layer to switch
+async function showScene(t) {
+  const cap = document.getElementById("viewcap");
+  if (!window.THREE) { cap.textContent = "The 3D viewer didn't load."; return; }
+  if (!three) setup();
+  const {canvas, renderer, scene, camera, controls} = three, token = ++loading;
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+  camera.aspect = canvas.clientWidth / canvas.clientHeight; camera.updateProjectionMatrix();
+  cap.textContent = "Assembled (loading)";
+  clearView();
+  const box = new THREE.Box3();
+  try {
+    for (const layer of t.scene.layers) {
+      const marks = layer.key === "problem" || layer.key === "assumed";
+      const see = {printed: 0.35, disk: 0.5}[layer.key] ?? 1;  // see-through, so what's inside the box shows
+      const material = new THREE.MeshStandardMaterial({color: layer.color, roughness: 0.55, side: THREE.DoubleSide,
+        transparent: see < 1 || marks, opacity: see, depthWrite: see === 1 && !marks, depthTest: !marks});
+      const meshes = [];
+      for (const part of layer.parts) {
+        const g = await stlGeometry(part.name);
+        if (token !== loading) return;
+        const mesh = new THREE.Mesh(g, material);
+        if (part.matrix) { mesh.matrixAutoUpdate = false; mesh.matrix.fromArray(part.matrix); }
+        if (marks) mesh.renderOrder = 3;
+        scene.add(mesh); mesh.updateMatrixWorld(true); meshes.push(mesh);
+        if (layer.key === "printed") box.expandByObject(mesh);
+      }
+      three.layers[layer.key] = meshes;
+      if (layer.key === "disk") meshes.forEach(m => m.visible = false);  // it covers the whole box: off until asked for
+    }
+  } catch (e) { cap.textContent = "Assembled (couldn't load: " + e.message + ")"; return; }
+  document.getElementById("layers").innerHTML = t.scene.layers.map(l =>
+    `<label><input type="checkbox" data-layer="${l.key}" ${l.key === "disk" ? "" : "checked"}> <span class="swatch" style="background:${l.color}"></span>${esc(l.label)}</label>`).join("");
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  controls.target.copy(sphere.center);
+  camera.position.set(sphere.center.x + sphere.radius * 1.3, sphere.center.y - sphere.radius * 1.9, sphere.center.z + sphere.radius * 1.5);
+  cap.textContent = "Assembled, from where the design says each part goes · drag to turn, scroll to zoom";
+}
 let loading = 0;
 async function show(name, caption) {
   const cap = document.getElementById("viewcap");
@@ -317,12 +381,15 @@ async function show(name, caption) {
 }
 function select(btn) {
   document.querySelectorAll("#dcontent .part").forEach(b => b.setAttribute("aria-pressed", b === btn));
-  if (btn.dataset.name) show(btn.dataset.name, btn.dataset.caption);
+  if (btn.dataset.scene) { showScene(TRIALS.find(t => t.id === btn.dataset.scene)); return; }
+  if (btn.dataset.name) { clearView(); show(btn.dataset.name, btn.dataset.caption); }
   else document.getElementById("viewcap").textContent = btn.dataset.caption + ": too big to show in 3D";
 }
 
 // ---- events ----
 document.addEventListener("click", e => {
+  const j = e.target.closest("[data-jump]");
+  if (j) { state.family = null; state.group = "all"; state.verdict = "all"; draw(); document.getElementById("task-" + j.dataset.jump)?.scrollIntoView({behavior: "smooth"}); return; }
   const g = e.target.closest("[data-group]"); if (g) { state.group = g.dataset.group; draw(); return; }
   const v = e.target.closest("[data-verdict]"); if (v) { state.verdict = v.dataset.verdict; draw(); return; }
   if (e.target.closest("[data-clear]")) { state.family = null; draw(); return; }
@@ -330,6 +397,7 @@ document.addEventListener("click", e => {
   if (row) { state.family = row.dataset.family; state.group = "all"; state.verdict = "all"; draw(); document.getElementById("groups").scrollIntoView({behavior: "smooth"}); return; }
   const c = e.target.closest(".card"); if (c) { openTrial(TRIALS.find(t => t.id === c.dataset.id)); return; }
   const p = e.target.closest("#dcontent .part"); if (p) { select(p); return; }
+  const l = e.target.closest("[data-layer]"); if (l && three) { (three.layers[l.dataset.layer] || []).forEach(m => m.visible = l.checked); return; }
 });
 document.addEventListener("keydown", e => {
   const row = e.target.closest && e.target.closest("tr[data-family]");
@@ -339,5 +407,5 @@ document.getElementById("dclose").addEventListener("click", () => document.getEl
 document.getElementById("detail").addEventListener("close", () => { try { history.replaceState(null, "", location.pathname); } catch (e) {} });
 function fromHash() { const t = TRIALS.find(t => "#" + t.id === location.hash); if (t) openTrial(t, false); }
 window.addEventListener("hashchange", fromHash);
-where(); loopsum(); draw(); fromHash();
+where(); loopsum(); jumpBar(); draw(); fromHash();
 </script>

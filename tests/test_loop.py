@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pbe.parts import submission
 from pbe.parts.build import build_parts
-from pbe.runner import coupon_loop, tasks
+from pbe.runner import agent, coupon_loop, tasks
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "results/runs"
@@ -189,6 +189,21 @@ def test_the_printed_reply_names_no_cause_or_fix(tmp_path):
         assert word not in text.lower()
 
 
+def test_a_second_turn_offers_the_same_design_schema_as_the_first():
+    """An assembly task's second turn has to offer `assembly`, which submit_design requires there (Codex on PR 23:
+    without it, DeepSeek V4 Pro's four Estoa arms spent their calls on repairs and handed in nothing)."""
+    offered = []
+
+    def chat(model, messages, tools=None, max_tokens=None):
+        offered.append(tools)
+        return {"choices": [{"message": {"role": "assistant", "content": "ok"}}], "usage": {"cost": 0.0}}
+    for task_id in ("estoa-light", "tripod-plate"):
+        task = tasks.load(task_id)
+        coupon_loop.second_turn(task, "fake", [], coupon_loop.NEUTRAL, max_turns=1, chat=chat)
+        assert offered[-1] == agent.tools("can_ask", task.format.assembly)
+    assert offered[0] != offered[1]  # the Estoa light's has assembly, the tripod's doesn't
+
+
 def test_a_can_run_code_trial_keeps_run_python_in_its_second_turn():
     offered = []
 
@@ -211,3 +226,42 @@ def test_a_replay_answers_with_the_facts_its_first_turn_had():
     assert "angled lips" in then.measure("tripod clamp", "what kind is it")
     assert "about 15" in then.measure("webcam bolt", "head diameter")
     assert "38 mm" in Person(task.hidden_facts).measure("tripod clamp", "how wide a plate does it take")
+
+
+def estoa_finding(check, ok, detail, part="box"):
+    from pbe.graders.checks import Finding
+    return Finding(check=check, part=part, ok=ok, detail=detail, failure_class="")
+
+
+def test_the_estoa_report_says_what_went_wrong_for_each_failed_check_and_nothing_else(tmp_path):
+    findings = [estoa_finding("R1", True, "lines up"), estoa_finding("R3", None, "not measured"),
+                estoa_finding("R4", False, "the disk screw's insert has 2.1 mm of plastic around it"),
+                estoa_finding("R2", False, "the left screw bottoms out 1.2 mm short; the right screw's tip comes out of the back")]
+    lines = coupon_loop.estoa_lines(findings, tmp_path)
+    assert texts(lines) == [
+        "the inserts: the posts around them softened and bulged as I pressed them in, and the inserts sit crooked.",
+        "the disk's screws: they hit the bottom of their holes before they tighten, so the disk stays loose.",
+        "the disk's screws: their tips come out of the back."]
+    assert [line.basis for line in lines] == ["Estoa record", "Estoa record", "geometry"]
+
+
+def test_the_estoa_report_says_a_line_once_and_names_no_cause_or_fix(tmp_path):
+    findings = [estoa_finding("R7", False, "a wall screw stands 2 mm proud"),
+                estoa_finding("R7", False, "a wall screw stands 2 mm proud", part="lid")]
+    lines = coupon_loop.estoa_lines(findings, tmp_path)
+    assert len(lines) == 1
+    for _, entries in coupon_loop.ESTOA_LINES.items():
+        for _, text, _ in entries:
+            assert not any(word in text for word in ("should", "try ", "make it", "increase", "move "))
+    assert coupon_loop.printed_text(coupon_loop.estoa_report(findings, tmp_path)).startswith("I printed what you sent.")
+
+
+def test_the_estoa_report_says_which_way_the_charger_is_stopped(tmp_path):
+    def said(detail):
+        return texts(coupon_loop.estoa_lines([estoa_finding("R3", False, detail)], tmp_path))
+    assert said("something stands right in front of the socket") == [
+        "the charger: the opening in the box doesn't line up with the ESP32's port; there's plastic in front of it."]
+    assert said("printed plastic stands where the socket itself is") == [
+        "the ESP32: it won't sit where the box puts it; the plastic runs into its USB port."]
+    assert said("8.0 mm or more out from the socket, the way in is no roomier than the 11.5 x 8.5 mm opening") == [
+        "the charger: the plug's head doesn't fit through the opening, so it can't get far enough in to connect to the ESP32."]

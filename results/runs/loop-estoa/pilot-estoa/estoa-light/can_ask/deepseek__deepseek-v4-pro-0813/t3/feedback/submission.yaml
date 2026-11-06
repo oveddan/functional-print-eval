@@ -1,0 +1,365 @@
+task: estoa-light
+note: 'Corrected box. Fixes: (1) all pilot holes blind, so no screw tip/head pokes
+  out the back; (2) disk bosses rise from base to rim, disk mounts on rim with screws
+  in from the front; (3) USB-C slot is a clean axis-aligned through-rectangle in the
+  +x wall; (4) depth 40 mm so electronics sit fully inside; (5) coupon to verify disc
+  screw spacing.'
+questions: []
+params:
+  disk_d:
+    value: 208
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  disk_holes_c_c:
+    value: 33.5
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  disk_thick:
+    value: 1.6
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  box_wall:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  base_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  box_depth:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  perf_l:
+    value: 70
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  perf_w:
+    value: 50
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  perf_corner_hole_d:
+    value: 2.4
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  perf_corner_hole_inset:
+    value: 2.1
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  perf_standoff_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  m3_head_d:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_pilot_d:
+    value: 2.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  usbc_w:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  usbc_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  usbc_z:
+    value: 20.6
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+parts:
+- id: box
+  role: final
+  material: matte white PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    Ro = p.disk_d/2 + p.box_wall\n\
+    \    Ri = p.disk_d/2\n    base = cq.Workplane('XY').circle(Ro).extrude(p.base_t)\n\
+    \    wall = cq.Workplane('XY').circle(Ro).circle(Ri).extrude(p.box_depth)\n  \
+    \  box = base.union(wall)\n\n    hr = p.disk_holes_c_c/2\n    boss_d = p.m3_head_d\
+    \ + 6\n    boss = cq.Workplane('XY').circle(boss_d/2).extrude(p.box_depth - p.base_t)\n\
+    \    for x in (-hr, hr):\n        box = box.union(boss.translate((x, 0, p.base_t)))\n\
+    \n    pilot = cq.Workplane('XY').circle(p.m3_pilot_d/2).extrude(p.box_depth -\
+    \ p.base_t - 2)\n    for x in (-hr, hr):\n        box = box.cut(pilot.translate((x,\
+    \ 0, p.base_t + 2)))\n\n    sd = p.perf_corner_hole_d + 4.5\n    ix = p.perf_corner_hole_inset\n\
+    \    px = [-p.perf_l/2 + ix, p.perf_l/2 - ix]\n    py = [-p.perf_w/2 + ix, p.perf_w/2\
+    \ - ix]\n    stall = cq.Workplane('XY').circle(sd/2).extrude(p.perf_standoff_h)\n\
+    \    for sx in px:\n        for sy in py:\n            box = box.union(stall.translate((sx,\
+    \ sy, p.base_t)))\n\n    spilot = cq.Workplane('XY').circle(p.m3_pilot_d/2).extrude(p.perf_standoff_h\
+    \ - 3)\n    for sx in px:\n        for sy in py:\n            box = box.cut(spilot.translate((sx,\
+    \ sy, p.base_t + 3)))\n\n    slot = cq.Workplane('XY').box(4*p.box_wall, p.usbc_w,\
+    \ p.usbc_h)\n    box = box.cut(slot.translate(((Ro+Ri)/2, 0, p.usbc_z)))\n\n \
+    \   return box\n"
+  print_orientation: base face down on the bed, walls pointing up
+  use_orientation: base against the wall; open side faces out, disc mounts onto the
+    rim/bosses
+- id: disk_boss_coupon
+  role: coupon
+  material: matte white PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    hr = p.disk_holes_c_c/2\n   \
+    \ boss_d = p.m3_head_d + 6\n    plate = cq.Workplane('XY').rect(60, 30).extrude(p.base_t)\n\
+    \    boss = cq.Workplane('XY').circle(boss_d/2).extrude(8)\n    plate = plate.union(boss.translate((-hr,\
+    \ 0, p.base_t)))\n    plate = plate.union(boss.translate((hr, 0, p.base_t)))\n\
+    \    pilot = cq.Workplane('XY').circle(p.m3_pilot_d/2).extrude(6)\n    plate =\
+    \ plate.cut(pilot.translate((-hr, 0, p.base_t + 2)))\n    plate = plate.cut(pilot.translate((hr,\
+    \ 0, p.base_t + 2)))\n    return plate\n"
+  print_orientation: plate flat on the bed, bosses up
+  use_orientation: n/a
+hardware:
+- id: own_led_disk
+  ref: own:led-disk
+  qty: 1
+- id: own_perfboard
+  ref: own:perfboard
+  qty: 1
+- id: own_esp32
+  ref: own:esp32
+  qty: 1
+- id: m3_disk_screw
+  ref: ISO 4762 M3x12
+  qty: 2
+- id: m3_perf_screw
+  ref: ISO 4762 M3x8
+  qty: 4
+joints:
+- id: disk_1
+  fastener: m3_disk_screw
+  axis_origin:
+  - 16.75
+  - 0.0
+  - 40.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: disk_mount_boss_pilot
+    role: thread
+  nut: null
+  external: null
+- id: disk_2
+  fastener: m3_disk_screw
+  axis_origin:
+  - -16.75
+  - 0.0
+  - 40.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: disk_mount_boss_pilot
+    role: thread
+  nut: null
+  external: null
+- id: perf_1
+  fastener: m3_perf_screw
+  axis_origin:
+  - -32.9
+  - -22.9
+  - 11.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: perf_standoff_pilot
+    role: thread
+  nut: null
+  external: null
+- id: perf_2
+  fastener: m3_perf_screw
+  axis_origin:
+  - 32.9
+  - -22.9
+  - 11.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: perf_standoff_pilot
+    role: thread
+  nut: null
+  external: null
+- id: perf_3
+  fastener: m3_perf_screw
+  axis_origin:
+  - -32.9
+  - 22.9
+  - 11.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: perf_standoff_pilot
+    role: thread
+  nut: null
+  external: null
+- id: perf_4
+  fastener: m3_perf_screw
+  axis_origin:
+  - 32.9
+  - 22.9
+  - 11.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: perf_standoff_pilot
+    role: thread
+  nut: null
+  external: null
+criteria: []
+manual: []
+assembly:
+  parts:
+  - origin:
+    - 0.0
+    - 0.0
+    - 0.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    part: box
+  items:
+  - origin:
+    - 0.0
+    - 0.0
+    - 40.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: own_led_disk
+  - origin:
+    - 0.0
+    - 0.0
+    - 11.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: own_perfboard
+  - origin:
+    - 22.67
+    - 0.0
+    - 20.6
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: own_esp32
+  screws:
+  - item: m3_disk_screw
+    head:
+    - 16.75
+    - 0.0
+    - 41.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m3_disk_screw
+    head:
+    - -16.75
+    - 0.0
+    - 41.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m3_perf_screw
+    head:
+    - -32.9
+    - -22.9
+    - 12.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m3_perf_screw
+    head:
+    - 32.9
+    - -22.9
+    - 12.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m3_perf_screw
+    head:
+    - -32.9
+    - 22.9
+    - 12.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m3_perf_screw
+    head:
+    - 32.9
+    - 22.9
+    - 12.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0

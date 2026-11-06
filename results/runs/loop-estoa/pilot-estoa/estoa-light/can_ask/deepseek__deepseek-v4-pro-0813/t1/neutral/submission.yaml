@@ -1,0 +1,535 @@
+task: estoa-light
+note: 'Reworked into a complete back box: heat-set-insert bosses for the disk''s two
+  M3 holes, four M2 posts for the perfboard, a top USB-C opening for the ESP32''s
+  port, a top wire gap for the disk''s 4-wire connector, and two keyhole slots to
+  hang it on wall screws.'
+questions: []
+params:
+  disk_radius:
+    value: 104.2
+    unit: mm
+    kind: world
+    source: measured
+    note: hole outside-to-edge 102.54 + hole radius 1.65
+  disk_hole_offset:
+    value: 16.75
+    unit: mm
+    kind: world
+    source: measured
+    note: half of hole-centre spacing (30.2 + 3.3)/2; holes at 3 and 9 o'clock
+  disk_hole_d:
+    value: 3.3
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  insert_hole_d:
+    value: 4.3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: heat-set insert M3x4x5 hole_d
+  insert_depth:
+    value: 4.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: insert length 4 + small extra
+  boss_r:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rim_radius:
+    value: 108.2
+    unit: mm
+    kind: design
+    source: design
+    note: disk_radius + wall
+  wall:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  depth:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  post_r:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  post_top:
+    value: 7.6
+    unit: mm
+    kind: design
+    source: design
+    note: perfboard underside height; = mount_z - perf thickness
+  m2_pilot_d:
+    value: 1.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pilot_depth:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  perf_hole_center_inset:
+    value: 2.1
+    unit: mm
+    kind: world
+    source: measured
+    note: 0.9 to hole edge + hole radius 1.2
+  perf_w:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  perf_l:
+    value: 70.0
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  usb_slot_w:
+    value: 18.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  usb_slot_h:
+    value: 13.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  usb_x:
+    value: 14.15
+    unit: mm
+    kind: world
+    source: measured
+    note: derived from header columns 8-18 + 3.99 off-centre
+  usb_y:
+    value: 27.47
+    unit: mm
+    kind: world
+    source: measured
+    note: port distance from perfboard +y edge (7.53) -> 35-7.53
+  usb_z:
+    value: 23.34
+    unit: mm
+    kind: world
+    source: measured
+    note: mount_z 9.2 + 12.54 bottom + 1.6 half-port
+  wire_slot_w:
+    value: 16.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hang_x:
+    value: 50.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hang_y:
+    value: 72.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hang_hole_d:
+    value: 9.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hang_slot_w:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hang_slot_l:
+    value: 18.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  mount_z:
+    value: 9.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  perf_thickness:
+    value: 1.6
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+parts:
+- id: box
+  role: final
+  material: PLA (matte white)
+  code: "import cadquery as cq\n\ndef build(p):\n    R = p.rim_radius\n    box = (cq.Workplane('XY').circle(R).extrude(p.depth)\n\
+    \           .cut(cq.Workplane('XY').circle(p.disk_radius)\n                .translate((0,\
+    \ 0, p.wall)).extrude(p.depth - p.wall)))\n\n    for sx in (p.disk_hole_offset,\
+    \ -p.disk_hole_offset):\n        box = box.union(cq.Workplane('XY').circle(p.boss_r).center(sx,\
+    \ 0).extrude(p.depth))\n        box = box.cut(cq.Workplane('XY').center(sx, 0).circle(p.insert_hole_d\
+    \ / 2)\n                      .translate((0, 0, p.depth - p.insert_depth)).extrude(p.insert_depth))\n\
+    \n    cx = p.perf_w / 2 - p.perf_hole_center_inset\n    cy = p.perf_l / 2 - p.perf_hole_center_inset\n\
+    \    for (px, py) in ((cx, cy), (-cx, cy), (cx, -cy), (-cx, -cy)):\n        box\
+    \ = box.union(cq.Workplane('XY').circle(p.post_r).center(px, py).extrude(p.post_top))\n\
+    \        box = box.cut(cq.Workplane('XY').center(px, py).circle(p.m2_pilot_d /\
+    \ 2)\n                      .translate((0, 0, p.post_top - p.pilot_depth)).extrude(p.pilot_depth))\n\
+    \n    box = box.cut(cq.Workplane('XY').box(p.usb_slot_w, p.wall + 8, p.usb_slot_h)\n\
+    \                  .translate((p.usb_x, p.rim_radius - p.wall / 2, p.usb_z)))\n\
+    \n    box = box.cut(cq.Workplane('XY').box(p.wire_slot_w, p.wall + 8, p.depth)\n\
+    \                  .translate((0, p.rim_radius - p.wall / 2, p.depth / 2)))\n\n\
+    \    for hx in (p.hang_x, -p.hang_x):\n        k = (cq.Workplane('XY').circle(p.hang_hole_d\
+    \ / 2).center(hx, p.hang_y)\n             .union(cq.Workplane('XY').rect(p.hang_slot_w,\
+    \ p.hang_slot_l)\n                    .center(hx, p.hang_y - p.hang_slot_l / 2)))\n\
+    \        box = box.cut(k.extrude(p.wall))\n\n    return box\n"
+  print_orientation: back face (z=0) flat on the bed, opening facing up
+  use_orientation: back against the wall, +z out toward the disc/viewer, +y up
+hardware:
+- id: h_disk
+  ref: own:led-disk
+  qty: 1
+- id: h_perf
+  ref: own:perfboard
+  qty: 1
+- id: h_esp
+  ref: own:esp32
+  qty: 1
+- id: h_disk_screw
+  ref: ISO 4762 M3x10
+  qty: 2
+- id: h_insert
+  ref: insert M3x4x5
+  qty: 2
+- id: h_perf_screw
+  ref: own:m2x6-self-tapping
+  qty: 4
+joints:
+- id: j_insert_l
+  fastener: h_insert
+  axis_origin:
+  - 16.75
+  - 0.0
+  - 30.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: disk_insert_boss_left
+    role: insert
+  nut: null
+  external: null
+- id: j_insert_r
+  fastener: h_insert
+  axis_origin:
+  - -16.75
+  - 0.0
+  - 30.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: disk_insert_boss_right
+    role: insert
+  nut: null
+  external: null
+- id: j_screw_l
+  fastener: h_disk_screw
+  axis_origin:
+  - 16.75
+  - 0.0
+  - 30.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: disk_insert_boss_left
+    role: thread
+  nut: null
+  external: null
+- id: j_screw_r
+  fastener: h_disk_screw
+  axis_origin:
+  - -16.75
+  - 0.0
+  - 30.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: disk_insert_boss_right
+    role: thread
+  nut: null
+  external: null
+- id: j_p1
+  fastener: h_perf_screw
+  axis_origin:
+  - 22.9
+  - 32.9
+  - 9.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: perf_post_tl
+    role: thread
+  nut: null
+  external: null
+- id: j_p2
+  fastener: h_perf_screw
+  axis_origin:
+  - -22.9
+  - 32.9
+  - 9.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: perf_post_tr
+    role: thread
+  nut: null
+  external: null
+- id: j_p3
+  fastener: h_perf_screw
+  axis_origin:
+  - 22.9
+  - -32.9
+  - 9.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: perf_post_bl
+    role: thread
+  nut: null
+  external: null
+- id: j_p4
+  fastener: h_perf_screw
+  axis_origin:
+  - -22.9
+  - -32.9
+  - 9.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: perf_post_br
+    role: thread
+  nut: null
+  external: null
+criteria:
+- id: c_usb
+  part: box
+  feature: usb_opening
+  relation: clears
+  hardware: h_esp
+  clearance_mm: 1.0
+  params:
+  - usb_slot_w
+  - usb_slot_h
+  - usb_x
+  - usb_z
+  check:
+    method: measure
+    ref: null
+    description: 'After printing, try plugging the USB-C cable in: the plug must pass
+      through the top opening cleanly. If the port actually faces down (rows reversed),
+      mirror the opening.'
+- id: c_disk
+  part: box
+  feature: disk_insert_boss
+  relation: seats
+  hardware: h_disk_screw
+  clearance_mm: null
+  params:
+  - disk_hole_offset
+  - disk_hole_d
+  check:
+    method: measure
+    ref: null
+    description: Lay the disc on the box front and confirm both M3 holes line up over
+      the two bosses before heat-setting the inserts.
+manual:
+- n: '1'
+  text: Print the box flat on its back face (opening up).
+  parts:
+  - box
+  hardware: []
+  tool: null
+- n: '2'
+  text: Heat-set the two M3x4x5 inserts into the two bosses on the box's front face
+    (one at 3 o'clock, one at 9 o'clock).
+  parts:
+  - box
+  hardware:
+  - h_insert
+  tool: soldering iron (heat-set tip)
+- n: '3'
+  text: Mount the perfboard (ESP32 facing out toward the disc) onto the four posts
+    using four M2 self-tapping screws through its corner holes.
+  parts:
+  - box
+  hardware:
+  - h_perf_screw
+  tool: null
+- n: '4'
+  text: Hang the box on the two wall screws using the keyhole slots.
+  parts:
+  - box
+  hardware: []
+  tool: null
+- n: '5'
+  text: Route the disc's 4-wire connector through the top gap and plug it into the
+    perfboard, then screw the disc to the box with the two M3x10 screws through the
+    disc's two holes into the inserts. Plug the USB-C charger into the ESP32's port
+    through the top opening.
+  parts:
+  - box
+  hardware:
+  - h_disk_screw
+  tool: null
+assembly:
+  parts:
+  - origin:
+    - 0.0
+    - 0.0
+    - 0.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    part: box
+  items:
+  - origin:
+    - 0.0
+    - 0.0
+    - 30.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: h_disk
+  - origin:
+    - 0.0
+    - 0.0
+    - 9.2
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: h_perf
+  - origin:
+    - 14.15
+    - 27.47
+    - 23.34
+    x_axis:
+    - 0.0
+    - 1.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: h_esp
+  screws:
+  - item: h_disk_screw
+    head:
+    - 16.75
+    - 0.0
+    - 30.0
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: h_disk_screw
+    head:
+    - -16.75
+    - 0.0
+    - 30.0
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: h_perf_screw
+    head:
+    - 22.9
+    - 32.9
+    - 9.2
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: h_perf_screw
+    head:
+    - -22.9
+    - 32.9
+    - 9.2
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: h_perf_screw
+    head:
+    - 22.9
+    - -32.9
+    - 9.2
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: h_perf_screw
+    head:
+    - -22.9
+    - -32.9
+    - 9.2
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0

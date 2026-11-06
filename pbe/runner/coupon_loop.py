@@ -51,7 +51,7 @@ PRINTED_WIDTH_TOL = 0.5  # mm: a plate this close to 38 reads as the printed wid
 # "tighter than a record": smaller than the tightest size printed, which wouldn't take the nut or bearing,
 # so it won't either. The checks already read it that way (nuts.verdict, wheel._holds).
 Basis = Literal["coupon B record", "coupon E record", "tighter than a record", "bridge check prediction", "no record", "build error",
-                "tripod plate record"]
+                "tripod plate record", "Estoa record", "Dan's calipers", "geometry"]
 Arm = Literal["baseline", "feedback", "neutral"]
 
 
@@ -268,6 +268,78 @@ def plate_report(task, sub, built) -> dict[str, list[ReportLine]]:
     return {", ".join(part.id for part in finals): lines}
 
 
+# --- printing and putting together the Estoa box (the Estoa sample) ----------------------------------
+
+# What the person sees, by check and by the reason the check gave, for each failure on the records. Each says what
+# happened, never why or how to fix it, and names what it rests on: an Estoa record, Dan's readings, or plain
+# geometry a person would see on putting it together (docs/coupon-loop.md, "Estoa sample").
+ESTOA_LINES = {
+    "R1": [("", "the disk: its screws don't line up with the holes in the box.", "Dan's calipers")],
+    "R2": [("bottoms out", "the disk's screws: they hit the bottom of their holes before they tighten, so the disk stays loose.",
+            "Estoa record"),
+           ("comes out of the back", "the disk's screws: their tips come out of the back.", "geometry"),
+           ("into the ESP32", "the disk's screws: they run into the ESP32.", "geometry"),
+           ("of plastic around its thread", "the disk's screws: they strip out of the plastic.", "Estoa record"),
+           ("", "the disk's screws: they don't hold the disk; there's nothing for them to bite into.", "geometry")],
+    "R3": [("isn't inside the box", "the ESP32: the box doesn't close around it.", "geometry"),
+           ("right in front of the socket", "the charger: the opening in the box doesn't line up with the ESP32's port; "
+            "there's plastic in front of it.", "geometry"),
+           ("where the socket itself is", "the ESP32: it won't sit where the box puts it; the plastic runs into its USB port.",
+            "geometry"),
+           ("", "the charger: the plug's head doesn't fit through the opening, so it can't get far enough in to connect "
+            "to the ESP32.", "Estoa record")],
+    "R4": [("", "the inserts: the posts around them softened and bulged as I pressed them in, and the inserts sit crooked.",
+            "Estoa record")],
+    "R5": [("isn't inside the box", "the perfboard: the box doesn't close around it.", "geometry"),
+           ("", "the perfboard: it doesn't fit in the box.", "geometry")],
+    "R6": [("from straight up", "hanging it: it won't drop onto the wall screws.", "geometry"),
+           ("its entry is", "hanging it: the screw heads don't go into the keyholes.", "geometry"),
+           ("too wide to hold", "hanging it: the screw heads pull straight through the slots.", "geometry"),
+           ("narrower than a #8", "hanging it: the screws don't fit in the slots.", "geometry"),
+           ("as far as the screws stand out", "hanging it: the screw heads don't fit behind the slots.", "geometry"),
+           ("rest inside the entry", "hanging it: it slips off the wall screws.", "geometry"),
+           ("nothing in the back", "hanging it: there's nothing on the back to hang it by.", "geometry"),
+           ("", "hanging it: it won't hang on the wall screws.", "geometry")],
+    "R7": [("", "the back: screw heads stick out of it, so it won't sit flat on the wall.", "Estoa record")],
+}
+
+
+def estoa_lines(findings, parts_dir: Path) -> list[ReportLine]:
+    """The person's report on the Estoa box once printed and put together: one line per thing that went wrong on
+    the records. A check no record decides gets no line, and neither does one that passed."""
+    lines = []
+    for finding in findings:
+        if finding.ok is not False or finding.test_print:
+            continue
+        if finding.check == "builds":
+            lines.append(ReportLine(f"{finding.part}: it didn't come out: the file wouldn't open.", "build error"))
+        elif finding.check == "connected_bodies":
+            lines.append(ReportLine(f"{finding.part}: it came off the bed in separate pieces.", "geometry"))
+        elif finding.check == "bridges":
+            mesh_path = parts_dir / f"{finding.part}.stl"
+            holed = mesh_path.exists() and any(is_holed_roof(found) for found in overhangs(trimesh_load(mesh_path)))
+            height = re.search(r"first at z = (-?[\d.]+) mm", finding.detail)
+            where = f"about {float(height.group(1)):.0f} mm up" if height else "partway up"
+            text = (f"{finding.part}: the roof the hole goes through: {ROOF_NOTE}." if holed
+                    else f"{finding.part}: the overhang {where} printed with loose, sagging loops under it.")
+            lines.append(ReportLine(text, "bridge check prediction"))
+        elif finding.check in ESTOA_LINES:
+            for words in finding.detail.split("; "):
+                text, basis = next((text, basis) for match, text, basis in ESTOA_LINES[finding.check] if match in words)
+                if all(line.text != text for line in lines):
+                    lines.append(ReportLine(text, basis))
+    return lines
+
+
+def trimesh_load(path):
+    import trimesh
+    return trimesh.load(path, force="mesh")
+
+
+def estoa_report(findings, parts_dir: Path) -> dict[str, list[ReportLine]]:
+    return {"the light": estoa_lines(findings, parts_dir)}
+
+
 def printed_text(report: dict[str, list[ReportLine]]) -> str:
     """What the person says after printing everything in the design, coupons and final part alike."""
     blocks = [f"{part_id}:\n" + "\n".join(f"- {line.text}" for line in lines) for part_id, lines in report.items()]
@@ -331,7 +403,8 @@ def second_turn(task, model, saved_messages, text, max_turns=SECOND_TURN_CALLS, 
     started = time.monotonic()
     for _ in range(max_turns):
         try:
-            response = chat(model, [*saved_messages, *added], tools=agent.tools(condition), max_tokens=max_tokens)
+            response = chat(model, [*saved_messages, *added], tools=agent.tools(condition, task.format.assembly),
+                            max_tokens=max_tokens)
         except llm.LLMError as e:
             error = str(e)
             break

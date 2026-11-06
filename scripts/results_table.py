@@ -15,6 +15,8 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from pbe.assumptions import Assumed
+from pbe.runner import tasks as task_files
 from pbe.runner.trial_record import TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -30,11 +32,17 @@ SMOKE_RUNS = ("cloud-smoke", "cloud-smoke-2")  # one Haiku spacer each, to test 
 NOT_HOLED_ROOFS = {
     ("nut-knob/M5", "can_ask", "google/gemini-4-argon", 2):
         "the underside of its 30 mm grip overhangs the 16 mm boss below: a ledge whose free edge is the outside",
+    ("estoa-light", "can_ask", "deepseek/deepseek-v4-pro-0813", 1):
+        "a closed roof over the whole box, 208 mm across: every strand lands, but none spans that far",
+    ("estoa-light", "can_ask", "google/gemini-4-argon", 1):
+        "its round rim bridges 39 mm over the USB opening; the strands end at the rim's curved outer edge",
 }
 
-# Whose words each task's request is, as of issue 35. Only the tripod's was approved by Dan before it ran.
+# Whose words each task's request is, as of issue 35. The tripod's and the Estoa light's were approved by Dan
+# before they ran.
 WORDING = {
     "tripod-plate": "Dan's own words, approved by Dan",
+    "estoa-light": "drafted from Dan's answers, approved by Dan",
     "bearing-wheel": "draft by Claude, not reviewed by Dan: exploratory",
     "nut-knob": "draft, not approved by Dan: exploratory",
     "m5-spacer": "control, draft wording: exploratory",
@@ -73,6 +81,48 @@ def counted_records() -> list[TrialRecord]:
     for run_dir in sorted(path for path in RUNS.iterdir() if path.is_dir() and path.name not in SMOKE_RUNS):
         found += [record for _, record in TrialRecord.all_in(run_dir)]
     return found
+
+
+def assumed_trials(task: str) -> list[tuple[TrialRecord, Assumed]]:
+    """A task's graded trials whose undecided checks were graded under its assumptions (pbe.assumptions)."""
+    found = []
+    for run_dir in sorted(path for path in RUNS.iterdir() if path.is_dir() and path.name not in SMOKE_RUNS):
+        for folder, record in TrialRecord.all_in(run_dir):
+            if record.task == task and (assumed := Assumed.load_if_saved(folder)) is not None:
+                found.append((record, assumed))
+    return found
+
+
+def word(ok) -> str:
+    return "pass" if ok is True else "fail" if ok is False else "not graded"
+
+
+def checks_table(task: str) -> list[str]:
+    """Each check across a task's graded designs: what the records decide, then with the assumptions too."""
+    trials = assumed_trials(task)
+    if not trials:
+        return []
+    checks = list(dict.fromkeys(finding.check for record, _ in trials for finding in record.counted_findings))
+    lines = [f"Each check across the {len(trials)} graded designs (one verdict per design), on the records alone and then with the assumptions below "
+             "(`python -m pbe.assumptions`). A check the records decide never changes.", "",
+             "| Check | Pass | Fail | Not graded | With assumptions: pass | fail | not graded |",
+             "|---|---|---|---|---|---|---|"]
+    worst = {False: 0, None: 1, True: 2}
+    for check in checks:
+        on_records, assumed = Counter(), Counter()
+        for record, under in trials:  # one verdict per design: the worst over its parts, as the trial's verdict takes it
+            oks = [f.ok for f in record.counted_findings if f.check == check]
+            if not oks:
+                continue
+            ok = min(oks, key=worst.get)
+            on_records[word(ok)] += 1
+            assumed[word(next((a.ok for a in under.findings if a.check == check), None) if ok is None else ok)] += 1
+        lines.append(f"| {check} | {on_records['pass']} | {on_records['fail']} | {on_records['not graded']} | "
+                     f"{assumed['pass']} | {assumed['fail']} | {assumed['not graded']} |")
+    verdicts = Counter(under.verdict for _, under in trials)
+    lines += ["", f"Verdicts with the assumptions, of {len(trials)} graded designs: {verdicts['pass']} pass, "
+              f"{verdicts['fail']} fail, {verdicts['not graded']} not graded."]
+    return lines
 
 
 def tally_by(records: list[TrialRecord], key) -> dict:
@@ -125,6 +175,8 @@ def section(records: list[TrialRecord]) -> str:
     for task in tasks:
         lines += ["", f"### `{task}` ({WORDING.get(family(task), 'wording status not recorded')})", ""]
         lines += task_table([record for record in records if record.task == task])
+        if extra := checks_table(task):
+            lines += ["", *extra]
     return "\n".join(lines)
 
 
@@ -159,7 +211,24 @@ def assumptions(records: list[TrialRecord]) -> str:
         "Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | "
         f"{only_bridges} trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |",
     ]
+    for task in sorted({record.task for record in records}):
+        lines += assumption_rows(task)
     return "\n".join(lines)
+
+
+def assumption_rows(task: str) -> list[str]:
+    """A task's stated assumptions (requirements.yaml), each with the verdicts it decides. These never change
+    the verdicts above them: they grade only what the records leave undecided, and are reported apart."""
+    rows = []
+    trials = assumed_trials(task)
+    for requirement in task_files.load(task).requirements:
+        if requirement.assume is None:
+            continue
+        decided = Counter(word(finding.ok) for _, under in trials for finding in under.findings
+                          if finding.check == requirement.id and finding.ok is not None)
+        rows.append(f"| {requirement.assume.text} Source: {requirement.assume.source}. | {task} {requirement.id} | "
+                    f"Graded apart: {decided['pass']} pass, {decided['fail']} fail of the {task} designs it decides |")
+    return rows
 
 
 def markers(name: str) -> tuple[str, str]:

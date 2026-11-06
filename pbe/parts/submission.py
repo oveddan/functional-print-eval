@@ -102,6 +102,53 @@ class Question(BaseModel):
     answer: str | None = None
 
 
+# Only tasks with a format.yaml that asks for it get `assembly` in their tool schema
+# (pbe/runner/agent.py); every other task's schema, prompt and saved files stay as they were.
+Vector = tuple[float, float, float]
+ASSEMBLY_FRAME = (
+    "The finished piece as it's used, in mm: z = 0 is the plane it rests against (the wall, the desk), and +z points away "
+    "from it; +y points up, against gravity; +x completes a right-handed frame (to the right as you face the piece)")
+PERPENDICULAR = 0.01  # largest |cos| between x_axis and z_axis that still counts as square
+
+
+class Placement(BaseModel):
+    """Where something's own frame goes in the finished piece."""
+    origin: Vector = Field(description="Where its own (0, 0, 0) goes")
+    x_axis: Vector = Field(description="Where its own +x points")
+    z_axis: Vector = Field(description="Where its own +z points; at right angles to x_axis")
+
+    @model_validator(mode="after")
+    def axes_are_square(self):
+        x_length, z_length = (sum(value * value for value in axis) ** 0.5 for axis in (self.x_axis, self.z_axis))
+        if x_length < 1e-9 or z_length < 1e-9:
+            raise ValueError("x_axis and z_axis can't be zero")
+        cos = sum(along_x * along_z for along_x, along_z in zip(self.x_axis, self.z_axis)) / (x_length * z_length)
+        if abs(cos) > PERPENDICULAR:
+            raise ValueError(f"x_axis {self.x_axis} and z_axis {self.z_axis} aren't at right angles")
+        return self
+
+
+class PartPlacement(Placement):
+    part: str = Field(description="The id of a final part in `parts`; its own frame is the one its code builds it in")
+
+
+class ItemPlacement(Placement):
+    item: str = Field(description="The id of an item in `hardware` whose catalog entry defines its own frame")
+
+
+class ScrewPlacement(BaseModel):
+    item: str = Field(description="The id of a screw in `hardware`; one entry per screw, as many as its qty")
+    head: Vector = Field(description="The centre of the underside of its head, in the finished piece's frame")
+    direction: Vector = Field(description="The way it points, head to tip")
+
+
+class Assembly(BaseModel):
+    """Where everything goes in the finished piece."""
+    parts: list[PartPlacement] = Field(description="Every final part, once")
+    items: list[ItemPlacement] = Field(description="Every item in `hardware` whose catalog entry defines a frame, once")
+    screws: list[ScrewPlacement] = Field(default_factory=list, description="Every screw in `hardware`, one entry per screw")
+
+
 class Submission(BaseModel):
     task: str
     note: str = ""
@@ -112,6 +159,7 @@ class Submission(BaseModel):
     joints: list[Joint] = Field(default_factory=list)
     criteria: list[Criterion] = Field(default_factory=list)
     manual: list[Step] = Field(default_factory=list)
+    assembly: Assembly | None = Field(None, description=ASSEMBLY_FRAME)
 
     @model_validator(mode="after")
     def references_resolve(self):
@@ -120,9 +168,39 @@ class Submission(BaseModel):
         errors = self._part_id_errors(part_ids) + self._hardware_errors()
         errors += self._joint_errors(part_ids, hardware_ids) + self._criterion_errors(part_ids, hardware_ids)
         errors += self._manual_errors(part_ids, hardware_ids)
+        if self.assembly is not None and not errors:
+            errors += self._assembly_errors()
         if errors:
             raise ValueError("; ".join(errors) + f". Part ids: {sorted(part_ids)}; hardware ids: {sorted(hardware_ids)}")
         return self
+
+    def dump(self) -> dict:
+        """As saved: a submission without an assembly saves exactly as before the field existed."""
+        return self.model_dump(exclude={"assembly"} if self.assembly is None else None)
+
+    def resolved(self, item: "HardwareItem") -> dict:
+        return catalog.resolve(item.ref, task=self.task)
+
+    def _assembly_errors(self):
+        placed_parts = [placement.part for placement in self.assembly.parts]
+        finals = [part.id for part in self.parts if part.role == "final"]
+        errors = [f"assembly: {part} isn't a final part" for part in placed_parts if part not in finals]
+        errors += [f"assembly: place final part {part} exactly once" for part in finals if placed_parts.count(part) != 1]
+        by_id = {item.id: item for item in self.hardware}
+        framed = [item.id for item in self.hardware if "frame" in self.resolved(item)]
+        placed_items = [placement.item for placement in self.assembly.items]
+        errors += [f"assembly: {item} has no frame to place (only items whose catalog entry defines one)"
+                   for item in placed_items if item not in framed]
+        errors += [f"assembly: place {item} exactly {by_id[item].qty} time(s)" for item in framed
+                   if placed_items.count(item) != by_id[item].qty]
+        screws = [item.id for item in self.hardware if self.resolved(item)["kind"] == "screw"]
+        placed_screws = [placement.item for placement in self.assembly.screws]
+        errors += [f"assembly: {item} isn't a screw in hardware" for item in placed_screws if item not in screws]
+        errors += [f"assembly: give each of the {by_id[item].qty} {item} screw(s) a place" for item in screws
+                   if placed_screws.count(item) != by_id[item].qty]
+        errors += [f"assembly: screw {placement.item} has no direction" for placement in self.assembly.screws
+                   if not any(placement.direction)]
+        return errors
 
     def _part_id_errors(self, part_ids):
         # a part id becomes a file name when the part is built
@@ -136,7 +214,7 @@ class Submission(BaseModel):
         errors = []
         for item in self.hardware:
             try:
-                catalog.resolve(item.ref)
+                self.resolved(item)
             except KeyError as e:
                 errors.append(f"hardware {item.id}: {e}")
         return errors

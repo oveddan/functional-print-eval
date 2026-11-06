@@ -2,12 +2,235 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-06: R2 checks a disk screw's whole shank against the ESP32, and needs a nut that fits it
+
+Two Codex findings on PR 23, left open on 2026-11-04 because they could move saved verdicts; Dan asked on
+2026-11-06 to fix every open finding.
+- **The whole shank:** R2 tested only the screw's tip against the ESP32's envelope, so an M3 x 30 that ran right
+  through the ESP32 and ended below it passed where an M3 x 20 ending in it failed. It now tests points every
+  0.25 mm from the board's back face to the tip (`enclosure._among_electronics`).
+- **A nut that fits:** R2 accepted any nut in the hardware for a clearance hole, so an M5 nut held M3 screws. It
+  now needs a nut of the screw's size and takes that nut's height and width from the catalog (`enclosure._nut_for`).
+- Tests: `m3x30-runs-right-through-the-esp32` and `m5-nuts-on-m3-disk-screws`, both failing before the fix.
+- **Saved verdicts:** none move. Regrading `pilot-estoa` and every design in `loop-estoa` (baselines and both arms)
+  gives the same verdict on every check.
+
+## 2026-11-06: The test-print loop on the Estoa light (`loop-estoa`): the person prints it all and says what went wrong
+
+Dan asked (2026-11-06) to replay the Estoa failures with the failure described, so the model can send a new design.
+The protocol was written and pushed before any model call (`docs/coupon-loop.md`, "Estoa sample"), including at
+most two prints, at Dan's suggestion.
+- **The reply** (`coupon_loop.ESTOA_LINES`): one line per failing check, in a person's words, never a cause or fix,
+  each naming what it rests on (an Estoa record, Dan's calipers, plain geometry, or the bridge check).
+- **Result, 14 trials, $7.14:** of 32 failing checks, the printed reply fixed 10 and the neutral turn 1.
+  Gemini 4 Argon t2 passes every check on the records after the reply. Keyholes that point down (R6) are the
+  failure the reply fixes least: all three Haiku designs send them pointing down again. Dan grouped it under C7
+  (works in the orientation it's used), not a class of its own. GPT-6.1 Sol's arms first stopped on the
+  OpenRouter key's $30 limit and ran after Dan raised it.
+- **A harness bug, found by Codex:** the second turn's tools left `assembly` out of the design schema
+  (`coupon_loop.second_turn` now passes `task.format.assembly`; a test). Six arms that left it out were told
+  "assembly is required", and DeepSeek V4 Pro's four ended with no design. Those six ran again with the same replies;
+  the originals are kept as `<arm>-schema-bug/`. Now DeepSeek t1's designs don't build (its own CadQuery errors)
+  and t3's printed arm fixes two checks and breaks one.
+- **Reply wording Dan changed after the run** (for later runs): R2's "bottom out" line in plainer words, and R3
+  split by reason: the opening doesn't line up with the port, the plug's head doesn't fit through, or the plastic
+  runs into the port.
+
 ## 2026-11-06: The tripod test-print sample's last neutral arm
 
 The `loop-tripod` run had stopped at its $3.00 cap before Gemini 4 Argon's `can_run_code` t3 got its neutral arm. Dan asked to finish it. `scripts/coupon_loop.py --run loop-tripod --budget 3.25` skipped every saved arm and ran that one, from 8c1a4f8, with the person cut back to the facts its first turn had, so it didn't get the clamp-width answer. It cost $0.14, so the run cost $3.16 in all.
 - **Result:** after "take another look" it still fails `bridges`, so it fixed nothing and broke nothing. Its printed arm had stepped the roof but lost the recess, failing R3.
 - **The sample, now complete:** after the printed reply 14 of 24 roofs are fixed, against 2 of 24 after the neutral turn. That's 12 more roofs fixed by being told how the roof printed. Whole-trial passes are unchanged: 3 against 2, or 4 against 2 with the R3 drill-out fix.
 - **Updated:** `docs/coupon-loop.md`, and the "2 of 23" in the README, `docs/lessons.md` and `docs/limitations.md`. `loop-tripod/summary.csv` gains that trial's neutral verdict.
+
+## 2026-11-05: Estoa light: stated assumptions for what the records can't decide, more trials, and own parts required
+
+Dan asked (2026-11-05) to grade the checks the records leave open under assumptions, said plainly to be
+assumptions. The verdicts from the records don't change.
+- **`assume` in requirements.yaml**: a sentence, its source, and the grader arguments it replaces.
+  `python -m pbe.assumptions --run RUN` grades only a trial's undecided checks with it and writes `assumed.json`
+  beside `grades.json`. The README lists each one with what it decides, and gives a per-check table for the
+  task on the records and with the assumptions; the results page shows both on each trial.
+- The four (`tasks/estoa-light/requirements.yaml`):
+  - R1: each disk hole at the middle of Dan's readings, 16.85 mm out;
+  - R2: the disk 1.6 mm thick (the standard board, and the Estoa model's value);
+  - R4: an insert holds with at least 2.85 mm of plastic, halfway between the 1.85 that bulged and the 3.85 that
+    held (halfway itself holds: Opus t2's 10 mm posts leave exactly 2.85);
+  - R6: wall-screw heads 9 mm across (Dan bought them at most that), so a keyhole works if its entry passes the
+    head and its slot carries it clear of the entry; `enclosure.keyholes` takes `head` for it.
+  - R3 and R5 get none: the only open cases fail elsewhere, and R3's would lean on the USB-C spec, which Dan set
+    aside as a pass mark.
+- On the first seven trials, the assumptions decided 11 open checks and no design passed: Sonnet t2 (nothing failed
+  on the records) fails R4 at 2.35 mm; Opus fails R6 (an 8 mm slot doesn't carry a 9 mm head clear); Argon fails
+  R2 (an M3 x 8 bottoms out 6.0 mm behind a 1.6 mm disk).
+- **The person's own parts are required in an assembly task's hardware.** DeepSeek left them out in t1 and again in
+  t2, so nothing made it place them and six checks couldn't read either design. `submit_design` now sends such a
+  design back for repair (`TrialTools._own_parts_missing`; a test). Trials before this keep their verdicts.
+- **Two more trials per lineup model** (Dan, 2026-11-05): `pilot-estoa` now holds 18 trials, three per model,
+  $6.03 in all. A first attempt stopped when the OpenRouter credit ran out (HTTP 402); those trials were saved as
+  infrastructure errors and run again once Dan topped it up. Two killed mid-call left empty folders, removed.
+  On the records: 0 pass, 14 fail, 3 not graded (Opus t2, Sonnet t2, DeepSeek t2), 1 no submission (Sol t1).
+  With the assumptions: **1 pass (Opus t2)**, 15 fail, 1 not graded (DeepSeek t2, which placed none of the person's
+  parts). Opus t2 failed nothing on the records: 10 mm lid posts leave 2.85 mm of plastic (R4, halfway, so it holds
+  under the assumption), and its 10 mm entry and 11 mm slot carry a 9 mm head clear (R6).
+- Per check over the 17 graded designs (README): `bridges` fails 11; R4 fails 6 on the records and 7 with the
+  assumptions; R6 fails 6 and 7. R1 fails once (DeepSeek t3 put the disk inside plastic), and R7 once.
+- **Two more grader faults the new trials found**, each checked against the design, fixed, with a test that fails
+  before the fix:
+  - R7 counted GPT 6.1 Sol t2's declared wall screws as standing 17 mm out of the back. A screw standing in one of
+    the back's keyholes is now taken as a wall screw. Sol t2 R7: fail -> pass.
+  - R2 looked for a nut only past the end of the plastic, and failed Gemini 4 Argon t3's captive nuts, slid into
+    slots across its pillars 3.5 to 6.3 mm behind the disk. A void along the screw as wide as the nut across flats
+    (5.5 mm, ISO 4032 M3; new `nut_af` argument) and as deep as the nut now holds one. Argon t3 R2: fail -> pass.
+- Checked and kept as the models' own: Sol t3's box has no side wall between about 3 and 36 mm up (R3, R5); Sol t2
+  cut a 96 mm full-height opening in the wall (R5; the request asks for a box "all closed up"); Argon t3's
+  perfboard runs 5.5 mm into its round wall (R5); Sonnet t3's keyholes have 5 mm of solid plastic beside the slot
+  and no pocket for the head (R6); Opus t3's lid came out in 10 pieces.
+- **The results page shows each Estoa design assembled** (Dan, 2026-11-06): the printed parts where the design
+  places them (see-through), the person's parts as simple solids from their measurements (the disk, off by default,
+  at the checks' estimated 120.5 mm radius and 1.6 mm), every screw, and each failed check drawn where it fails:
+  red on the records, orange under an assumption. Each layer can be turned off. Built by
+  `scripts/assembly_scene.py` from the reasons the checks give, so a mark shows where to look, not a second grading.
+- **For Dan to decide: Argon t2 fails only `bridges`.** Its front rim bridges 40 mm over the USB opening (within
+  the 50 mm the printer has bridged cleanly), but the bridge follows the round rim, so most strands end at the
+  curved outer edge: 22% land on solid at both ends, against the check's 95%. No print shows whether a curved rim
+  bridge like that prints. Under R4's assumption the detail text names the roomiest insert that passes rather than
+  the tightest; the verdict is the same.
+
+## 2026-11-04: First Estoa light run (`pilot-estoa`); five grader faults it found, fixed and regraded
+
+Run `pilot-estoa`, `can_ask`, one trial each on the six lineup models plus a second Sonnet trial: 7 trials,
+$2.22 in all. Dan asked for it (Sonnet first, then the rest). Final verdicts after the fixes below, regraded
+with `--regrade` (no new model calls): no model passes. 5 fail, 1 not graded (Sonnet t2), 1 no submission
+(GPT 6.1 Sol ran out of its 8 turns fixing schema errors in `submit_design`).
+
+| model | verdict | fails | not graded | cost |
+|---|---|---|---|---|
+| Claude Haiku 5.5 | fail | bridges, R4, R6 (slot points down) | R1, R2, R3 | $0.04 |
+| Claude Opus 5.5 | fail | R4 | R2, R6 | $0.45 |
+| Claude Sonnet 5.5 t1 | fail | bridges, R4, R6 (slot 8.4 mm) | R1, R5 | $0.40 |
+| Claude Sonnet 5.5 t2 | not graded | none | R1, R4, R6 | $0.44 |
+| DeepSeek V4 Pro | fail | bridges | R1 to R6 (placed none of the person's parts) | $0.02 |
+| Gemini 4 Argon | fail | bridges | R2, R6 | $0.69 |
+| GPT 6.1 Sol | no submission | | | $0.19 |
+
+What the models did, from the transcripts:
+- Every model that asked anything asked for the disk's holes, and none guessed them: the request says there are
+  two. Opus checked them on a template and Argon on a test print, so their R1 passes whatever the true spacing.
+- Three of the six designs put the inserts in 8 mm bosses with 4.3 mm holes (R4: 1.85 mm of plastic), the posts
+  that bulged in Estoa.
+- No design repeated the 11.5 mm USB opening; R3 passes for four, and Haiku's 14 x 6 mm is not graded.
+- Bridges fail on four of six designs.
+- Every model asked the disk's diameter or thickness, which Dan never measured, and got "I can't measure that".
+
+Grader faults the run found, each checked against the design's geometry, fixed, and given a test that fails
+before the fix (`tests/test_estoa_light.py`):
+- **R2, an insert behind a skin:** Sonnet t1's disk screws pass a 1 mm skin's 3.4 mm hole into inserts pressed
+  in from the inside. R2 read only the hole at the surface and failed it as "a clearance hole and no nut". It now
+  looks along the screw for an insert's hole and counts the thread from where it starts. Sonnet t1 R2: fail →
+  pass (4.2 mm of thread).
+- **R1, a blind insert pocket:** Opus and Haiku put the inserts in blind pockets. R1 read the pocket's solid
+  bottom, and for Haiku a 0.36 mm sliver 4 mm away, as where the screw had to go, and failed both as missing
+  the hole ("by at least inf mm" for Opus). It now stops where the hole a screw can reach ends, and leaves
+  bottoming out to R2. Haiku R1: fail → not graded (inserts hold one spot, and no template checks it).
+- **R2, a disk never placed:** DeepSeek listed none of the person's parts, so its assembly placed none; R2
+  crashed. It's now not graded, as R1, R3 and R5 already were.
+- **R6, a square-ended slot:** Sonnet t2's slots have square ends. R6 took the slot's direction towards its far
+  corner, read it 11 degrees off and probed the lip beside the pocket, 10 mm instead of 3. It now runs from the
+  entry through the slot's centre. Sonnet t2 R6: fail → not graded (9.6 mm of travel, short of the 12 that hung).
+- **R5, a big opening in one wall:** Argon's 40 x 18 mm USB cutout let R5's one probe from the board's centre
+  leave the box, and it called the perfboard outside. A side is now open only if it's open from the centre and
+  all four corners. Argon R5: fail → pass.
+
+One fault on the person's side: Sonnet t1 asked for "screws you will hang it on" and got no answer, so it
+guessed 8 mm heads and cut 8.4 mm slots. `hidden_facts.yaml` now takes "hang" for the wall screws; t2 got the
+answer. Sonnet t1's R6 failure stands, but part of it is the eval's.
+
+The README's results (`scripts/results_table.py --write`) now count the run: 158 trials, $14.73, and an
+`estoa-light` table, its wording "drafted from Dan's answers, approved by Dan". Trials failing on `bridges`
+alone go from 21 to 23 (DeepSeek and Argon here).
+
+The results page (`scripts/results_page.py`, https://claude.ai/artifact/8FoztxxrwV6ioveQhz8gY6) shows the run:
+estoa-light diagnoses in the builder (it fell back to the tripod's wording for a task it didn't know), an audit
+note per trial dated 4 November, and a card's failures listed before what no record decides. Its thumbnails are
+now embedded in the page: one artifact version holds at most 512 files, and the 99 trials' meshes and renders
+came to 525.
+
+What the run shows about the format: DeepSeek left the person's own parts out of its hardware list, so nothing
+required it to place them and six checks couldn't read its design. Requiring every own part in an assembly
+task's hardware is a follow-up.
+
+## 2026-11-04: Estoa light task: the box behind the disk, and an optional `assembly` in the format
+
+A new task, `tasks/estoa-light/`, from Estoa, Dan's wall light: the box that sits behind an LED disk, holds
+the perfboard with its ESP32, takes a USB-C charger straight into the ESP32's own port, and hangs on two wall
+screws. No model was called for this change and nothing under `results/` changed. The request is drafted from
+Dan's answers on the review page, and he approved the final wording on 2026-11-04.
+
+- **`assembly`, optional and per task.** A design can now say where each printed part, each of the
+  person's own parts and each screw goes in the finished piece (`pbe/parts/submission.py`). Only a task
+  whose `format.yaml` asks for it gets the field in submit_design's schema, where it's required. Every
+  other task's schema, prompt and saved submissions are unchanged: the tool lists and opening messages
+  for m5-spacer, tripod-plate, bearing-wheel and nut-knob/M5, in `can_ask` and `all_given`, are
+  byte-identical to the branch this starts from (compared before and after the change), and a
+  submission without an assembly saves without the key. An `assembly` a model sends to a task that
+  didn't ask for it is dropped, as any unknown field was before.
+- **The person's own parts, per task.** `format.yaml`'s `own_hardware` lists them in that task's prompt
+  only, as `own:<id>` references with the frame each is placed by and none of its dimensions.
+- **Seven checks** in `pbe/graders/enclosure.py`, reading the piece through `pbe/graders/placed.py`: R1
+  a screw through each of the disk's holes goes into the box wherever Dan's readings put the hole (C1);
+  R2 the disk's screws hold and don't bottom out or reach the ESP32 (C3); R3 a plug reaches the ESP32's
+  port from outside (C5); R4 inserts sit in posts like those that held (C3); R5 the perfboard is inside
+  and the ESP32 has room (C5); R6 keyholes that run up (C7); R7 nothing proud of the back (C5). Every
+  limit's record is in the brief's table; three are labelled estimates. `enclosure.post_screws`, a check
+  for screws through a board into posts, stays in the module for a later task.
+- **R3, refined with Dan:** it passes only the printed 14 x 8.5 mm opening, and fails only like the
+  record: no roomier than 11.5 x 8.5 mm, 4 mm or more out from the port (Estoa's tunnel ended 4 mm short
+  of this ESP32's port), where the plug's boot stops and its bare metal can't reach. A small opening right
+  at the port is not graded. The USB-C spec's largest boot (12.35 x 6.5 mm, possibly 12.85 x 7.0) is in a
+  new `catalog/connectors.yaml` to explain the gap, read through a search summary because usb.org is
+  blocked from cloud sessions; it isn't a pass mark, and models don't see it.
+- **A design that tests first passes too** (Dan), as the nut pockets do: R1 if a template or test print
+  checks the disk's hole pattern and one of its params moves the box's holes (Estoa placed them from a
+  printout, and they fit); R3 if a test print the manual uses has an opening of 14 x 8.5 mm or more in a
+  wall at least as thick as the final one, and a param moves the final opening's width. Each param is
+  checked by changing it and rebuilding. Inserts get no such path: no test print of an insert was made.
+- **Dan's answers on the review page** (2026-11-04) changed the first draft: the USB-C breakout is gone,
+  and the charger plugs straight into the ESP32 ("ignore the USB-C breakout for the simplicity of this
+  task"); the request says there are two holes that the datasheet doesn't show; there's no glass: the
+  front and sides are transparent PLA and the back box matte white, and the request still asks only for
+  the box; it names M3 screws for the disk, because R1 and R2 grade an M3 and a review of the wording
+  found the request never said so; four wires run from the perfboard to the disk. With the
+  breakout went its check on screws bottoming out in blind inserts; the plug check moved to the ESP32's
+  port, where the 11.5 mm record actually happened.
+- `hidden_facts.yaml` holds only Dan's readings from the facts relayed on issue 17, each with its
+  session and time, plus values from the Estoa model labelled as such. What he never measured (the disk's
+  diameter and thickness, the perfboard's thickness) answers "I can't measure that".
+
+Evidence:
+- The reference (`reference.yaml`, a two-part CadQuery box) passes all 15 findings: the 7 checks and each part's build, connectedness, bed fit and bridges.
+- `tests/test_estoa_light.py`: versions of the real Estoa mistakes each fail only the check aimed at
+  them: an 11.5 mm USB opening set back from the port (R3), keyholes pointing down (R6), the disk's holes
+  guessed 30 mm apart with no template (R1), 7.5 mm insert posts (R4), an M3 x 20 that reaches the ESP32
+  (R2), screw heads on the back (R7). Reward hacks fail: boards declared outside the box, a disk floating
+  in front, no keyholes, a port declared inside the wall. Designs unlike the reference pass, two of them by
+  testing first. The cases between records come back not graded.
+- Writing the tests found three faults, all fixed before commit: an early reference layout put a screw
+  inside a corner post; R4 read a 3.6 mm clearance hole as an insert's (its band now starts at 3.9 mm,
+  above M3's coarse clearance of 3.6 in ISO 273); and R4, reading an insert in a post standing free in the
+  box, took the post's own hole for part of the cavity. The shared `sections.holes()` had the same
+  pattern; it was fixed on its own in the stack below this branch.
+- From a Linux cloud session, with parts built under bubblewrap and no `PBE_NO_SANDBOX`, on main
+  at c064fe4: the full suite passes, 403 passed and 55 skipped, every skip a Docker variant of the
+  run_python and build-on-submit tests (no Docker daemon in the VM; their bubblewrap versions pass).
+  `tests/test_estoa_light.py` alone: 47 passed, in under 3 minutes on 4 cores. Every `--reference` passes:
+  m5-spacer, tripod-plate, bearing-wheel, nut-knob M3, M5 and M8, and estoa-light (15 of 15). CI gets a
+  job for the new tests and estoa-light in its reference loop.
+- Codex's two findings on `enclosure.py`, both confirmed and fixed with a test each that fails before the fix:
+  R2 now counts thread only as deep as the plastic around the hole (an insert behind a pocket that leaves
+  2.5 mm of plastic fails; 3.5 mm passes), and R5's clearance over the ESP32 reads the disk as well as the
+  printed parts (a window in the front with the disk 11 mm above the perfboard fails). The reference's
+  verdicts don't move. `tests/test_estoa_light.py`: 50 passed.
 
 ## 2026-11-06: The person tells a model the clamp takes 38 mm plates
 

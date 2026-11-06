@@ -10,10 +10,15 @@ def section(mesh, axis, frac):
     """The cross-section across `axis` at `frac` of the part's length, as polygons
     with their holes. The plane is axis-aligned, so the other two coordinates are the
     plane's; XOR of the section's loops nests the holes inside their outlines."""
-    normal = np.eye(3)[axis]
     low, high = mesh.bounds[:, axis]
+    return section_at(mesh, axis, low + frac * (high - low))
+
+
+def section_at(mesh, axis, value):
+    """The cross-section across `axis` where that coordinate is `value`, as polygons with their holes."""
+    normal = np.eye(3)[axis]
     origin = mesh.bounds.mean(axis=0)
-    origin[axis] = low + frac * (high - low)
+    origin[axis] = value
     cut = mesh.section(plane_origin=origin, plane_normal=normal)
     if cut is None:
         return []
@@ -74,6 +79,12 @@ def clear_width(hole):
     """The diameter of the largest circle that fits in the hole. For a hex pocket, its
     across-flats."""
     return 2 * hole.boundary.distance(polylabel(hole, tolerance=0.001))
+
+
+def clear_circle(hole):
+    """The largest circle that fits in the hole: (its centre, its diameter)."""
+    centre = polylabel(hole, tolerance=0.001)
+    return centre, 2 * hole.boundary.distance(centre)
 
 
 def single_final(sub, built):

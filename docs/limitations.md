@@ -96,3 +96,39 @@ From a part's 3D file alone, the check predicts whether each bridged region (pla
 - **Slicer as a second opinion.** This is now the top extension: coupon C's tunnel showed the slicer's bridge direction can differ from the best one. Slice with Bambu Studio's command line and compare where it lays bridge infill with what the check predicts.
 - **Other designs.** Run the check blind on Estoa's sealed leg-pocket hole, from the `local-lights` git history, and on any new design before it's printed.
 - **A model-facing task.** Show a model a part and ask which overhangs will print cleanly, scored against real prints. That tests whether a model understands printing, separately from whether it applies that when designing.
+
+## Box-and-boards checks (`pbe/graders/enclosure.py`) and the assembly they read (`pbe/graders/placed.py`)
+
+### What they claim
+
+From a design's parts and its `assembly` (where each printed part, each of the person's boards and each
+screw goes in the finished piece), the checks say whether screws through a board's own holes go into the
+box, whether screws bottom out or fall short, whether a plug reaches a socket, whether heat-set inserts sit
+in posts like the ones that held, whether a board and what stands on it fit, whether keyholes hang the
+piece, and whether anything stands proud of its back. The first task using them is `tasks/estoa-light/`,
+and its brief gives every limit's source.
+
+### Constraints
+
+- **The design's own word on where things go.** Boards and screws aren't meshes: the checks put them where
+  the `assembly` says. A screw declared where the geometry has no hole for it isn't caught, and a socket
+  declared poking out through a wall isn't either, because the board's outline behind its socket isn't
+  reliably recorded.
+- **Records from one build.** Every limit comes from Estoa (one person, one printer, mostly one agent's
+  mistakes) or from geometry. Several are labelled estimates around a single print that worked: the
+  keyhole slot range, the insert hole range, the disk's and perfboard's thickness.
+- **Unmeasured parts.** The disk's diameter and thickness, the perfboard's thickness and the USB-C plug's
+  moulded head were never measured, so the checks that depend on them use ranges or say not graded.
+- **Kinematic and static.** No weight, pull-out strength, flex or heat. A post's bulging is read from its
+  wall thickness alone, though the posts that bulged were also tall and printed at 100% infill.
+- **One way to hang.** Only closed keyholes are recognised. Other ways of hanging get not graded.
+- **Closed meshes only.** The probes intersect solids with manifold3d; a part whose mesh isn't closed
+  gets not graded on these checks.
+
+### Future work
+
+- Check each declared screw against the geometry: a hole along its whole shank, a head that rests on
+  something.
+- The disk's wire path, once where its connector sits is recorded.
+- The glass ring in quarters, the second version of the task, with a split-ring check.
+- Show the datasheet to every condition as an image in the first message.

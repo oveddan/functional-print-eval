@@ -1,0 +1,198 @@
+task: estoa-light
+note: >
+  Reference solution, written for this task (it isn't a port of Estoa's OpenSCAD, which was a battery-powered box
+  with a mirror and a radar). A closed-back body hangs on two keyholes; the perfboard with the ESP32 sits on posts on
+  its floor, with the ESP32's own USB-C port facing an opening in the bottom wall; a front plate screws onto the body,
+  and the disk screws to the front plate through its two holes, with nuts on the inside. Values the person gave are
+  "measured"; the rest are design choices or labelled assumptions.
+params:
+  # the disk (Dan's calipers, 602ba611): 30.2 between the holes' inner edges + 3.3 holes = 33.5 centre to centre;
+  # the edge readings put them 33.9 apart on a 242 mm disk. Midway: 16.85 from the centre each. The disk is
+  # turned a quarter turn, input wires to the side, so its holes run up and down and clear the perfboard.
+  disk_hole_x:   {value: 16.85, kind: world, source: measured, note: "half of 33.5 to 33.9, the two ways Dan's readings give the spacing"}
+  disk_hole:     {value: 3.3, kind: world, source: measured, note: the disk's hole diameter}
+  disk_t:        {value: 1.6, kind: world, source: guessed, note: "the disk's thickness; never measured, so screw lengths leave room either side"}
+  # the perfboard and the ESP32 on it
+  pb_x:          {value: -35, kind: design, source: design, note: "perfboard centre in the body, across; beside the disk's screws"}
+  pb_from_port:  {value: 37, kind: design, source: design, note: "the perfboard's centre, up from the ESP32 port's mouth"}
+  pb_hole_dx:    {value: 22.9, kind: world, source: measured, note: "half of 45.8: 2.4 mm corner holes, 0.9 mm from the edges of a 50 mm board"}
+  pb_hole_dy:    {value: 32.9, kind: world, source: measured, note: half of 65.8, along the 70 mm side}
+  pb_t:          {value: 1.6, kind: world, source: guessed, note: "perfboard thickness; not measured"}
+  pb_standoff:   {value: 6, kind: design, source: design, note: room for solder joints under the perfboard}
+  esp32_h:       {value: 16, kind: world, source: asked, note: "the ESP32 stands about 16 mm above the perfboard in its headers"}
+  esp32_room:    {value: 5, kind: design, source: design, note: "room above the ESP32 (the Estoa box was made 3 mm deeper after it only just cleared), and above the USB opening"}
+  m2_pilot:      {value: 1.6, kind: design, source: design, note: pilot hole for an M2 self-tapping screw in PLA}
+  # the ESP32's own USB-C port, which the charger plugs into
+  port_x:        {value: -35, kind: design, source: design, note: "the port's centre, across: the ESP32 sits mid-board"}
+  port_up:       {value: 14.14, kind: world, source: asked, note: "port centre above the perfboard's top: receptacle bottom 12.54 above it and about 3.2 tall, from the Estoa model, not a measurement Dan's messages show"}
+  port_in:       {value: 2, kind: design, source: design, note: "the port's mouth sits this far inside the bottom wall"}
+  usb_w:         {value: 14, kind: world, source: design, note: "opening for the plug's moulded head; 14 x 8.5 let a laptop's straight plug seat fully in Estoa"}
+  usb_h:         {value: 8.5, kind: world, source: design, note: the opening's height}
+  # inserts and posts
+  insert_hole:   {value: 4.3, kind: hardware, source: catalog, note: hole for an M3 x 4 x 5 heat-set insert}
+  corner_post:   {value: 12.5, kind: design, source: design, note: "front plate posts, webbed into the corners; 12 mm posts held inserts in Estoa, 8 mm ones bulged"}
+  corner_deep:   {value: 8, kind: design, source: design, note: "insert hole depth for the front plate's M3 x 8s, which reach 6.4 mm"}
+  # the box
+  size:          {value: 160, kind: design, source: design, note: "body outline; sits inside the disk's shadow"}
+  wall:          {value: 3, kind: design, source: design, note: side walls}
+  back:          {value: 2.4, kind: design, source: design, note: "back wall; thinner than the 3.5 mm the wall screws stand out"}
+  plate:         {value: 5, kind: design, source: design, note: front plate thickness}
+  head_d:        {value: 5.5, kind: hardware, source: catalog, note: ISO 4762 M3 head diameter}
+  head_h:        {value: 3, kind: hardware, source: catalog, note: ISO 4762 M3 head height}
+  screw_hole:    {value: 3.4, kind: design, source: design, note: M3 clearance}
+  disk_hole_d:   {value: 3.4, kind: design, source: design, note: "the front plate's holes for the disk's screws: M3 clearance, so a screw finds the disk's hole wherever it is"}
+  nut_pockets:   {value: 1, unit: count, kind: design, source: design, note: "1: nuts behind the disk's screws, in pockets on the inside"}
+  nut_af:        {value: 5.8, kind: hardware, source: catalog, note: "M3 nut, 5.5 across flats, plus room"}
+  nut_deep:      {value: 2.6, kind: hardware, source: catalog, note: "M3 nut is 2.4 tall"}
+  wire_hole:     {value: 12, kind: design, source: design, note: "for the four wires from the perfboard to the disk"}
+  step:          {value: 0.2, kind: design, source: design, note: one layer per bridging step over the counterbores}
+  # keyholes for #8 round-head wall screws (heads 9 mm at most, about 3.5 mm out from the wall)
+  key_x:         {value: 50, kind: design, source: design, note: "keyholes 100 mm apart"}
+  key_y:         {value: 40, kind: design, source: design, note: "the keyhole entries' height"}
+  key_entry:     {value: 10.5, kind: world, source: design, note: "lets a 9 mm head through; 10.5 hung the Estoa piece"}
+  key_slot:      {value: 4.8, kind: world, source: design, note: "passes a #8 shank, holds its head"}
+  key_travel:    {value: 12, kind: design, source: design, note: "the slot runs this far up from the entry's centre"}
+  key_up:        {value: 1, unit: count, kind: design, source: design, note: "+1: the slots run up from the entries, so the piece drops onto the screws"}
+parts:
+  - id: body
+    role: final
+    material: PLA
+    print_orientation: Back face on the bed; the walls, posts and keyholes are all vertical, and the USB-C opening's top is a short bridge.
+    use_orientation: Back against the wall, hung on the keyholes, USB-C opening at the bottom. Its own frame is the finished piece's.
+    code: |
+      def stadium(width, height):
+          return cq.Workplane("XZ").slot2D(width, height, 0)
+
+      def keyhole(p, side):
+          entry = cq.Workplane("XY").center(side * p.key_x, p.key_y).circle(p.key_entry / 2).extrude(p.back)
+          run = p.key_up * p.key_travel
+          slot = (cq.Workplane("XY").center(side * p.key_x, p.key_y + run / 2)
+                  .slot2D(abs(run) + p.key_slot, p.key_slot, 90).extrude(p.back))
+          return entry.union(slot)
+
+      def build(p):
+          inner = p.size / 2 - p.wall
+          height = p.back + p.pb_standoff + p.pb_t + p.esp32_h + p.esp32_room
+          body = cq.Workplane("XY").rect(p.size, p.size).extrude(height)
+          body = body.cut(cq.Workplane("XY").workplane(offset=p.back).rect(2 * inner, 2 * inner).extrude(height))
+          # front plate posts in the corners, webbed into both walls, with inserts from the top
+          corner = inner - p.corner_post / 2
+          for sx in (-1, 1):
+              for sy in (-1, 1):
+                  post = cq.Workplane("XY").workplane(offset=p.back).center(sx * corner, sy * corner).rect(p.corner_post, p.corner_post).extrude(height - p.back)
+                  hole = cq.Workplane("XY").workplane(offset=height - p.corner_deep).center(sx * corner, sy * corner).circle(p.insert_hole / 2).extrude(p.corner_deep)
+                  body = body.union(post).cut(hole)
+          # perfboard posts at its four corner holes, with pilots for M2 self-tapping screws; long side up and down
+          mouth_y = -inner + p.port_in
+          pb_y = mouth_y + p.pb_from_port
+          post_top = p.back + p.pb_standoff
+          for sx in (-1, 1):
+              for sy in (-1, 1):
+                  x, y = p.pb_x + sx * p.pb_hole_dx, pb_y + sy * p.pb_hole_dy
+                  post = cq.Workplane("XY").workplane(offset=p.back).center(x, y).circle(3).extrude(p.pb_standoff)
+                  pilot = cq.Workplane("XY").workplane(offset=post_top - 5).center(x, y).circle(p.m2_pilot / 2).extrude(5)
+                  body = body.union(post).cut(pilot)
+          # the opening for the plug, from the ESP32 port's mouth out through the bottom wall
+          port_z = post_top + p.pb_t + p.port_up
+          opening = stadium(p.usb_w, p.usb_h).extrude(p.port_in + p.wall + 1)
+          body = body.cut(opening.translate((p.port_x, mouth_y, port_z)))
+          for side in (-1, 1):
+              body = body.cut(keyhole(p, side))
+          return body
+  - id: front
+    role: final
+    material: PLA
+    print_orientation: Front face on the bed. The nut pockets open upward; each counterbore's roof steps in one layer at a time.
+    use_orientation: On the body's open front, screwed into its corner posts; the disk screws onto it.
+    code: |
+      def build(p):
+          corner = p.size / 2 - p.wall - p.corner_post / 2
+          plate = cq.Workplane("XY").rect(p.size, p.size).extrude(p.plate)
+          for side in (-1, 1):
+              hole = cq.Workplane("XY").center(0, side * p.disk_hole_x).circle(p.disk_hole_d / 2).extrude(p.plate)
+              plate = plate.cut(hole)
+              if p.nut_pockets:
+                  pocket = (cq.Workplane("XY").workplane(offset=p.plate - p.nut_deep).center(0, side * p.disk_hole_x)
+                            .polygon(6, p.nut_af / 0.8660254).extrude(p.nut_deep))
+                  plate = plate.cut(pocket)
+          deep = p.head_h + 0.4
+          for sx in (-1, 1):
+              for sy in (-1, 1):
+                  at = cq.Workplane("XY").center(sx * corner, sy * corner)
+                  counterbore = at.circle(p.head_d / 2 + 0.35).extrude(deep)
+                  strip = cq.Workplane("XY").workplane(offset=deep).center(sx * corner, sy * corner).rect(p.screw_hole, p.head_d + 0.7).extrude(p.step)
+                  square = cq.Workplane("XY").workplane(offset=deep).center(sx * corner, sy * corner).rect(p.screw_hole, p.screw_hole).extrude(2 * p.step)
+                  hole = at.circle(p.screw_hole / 2).extrude(p.plate)
+                  plate = plate.cut(counterbore).cut(strip).cut(square).cut(hole)
+          wires = cq.Workplane("XY").center(-35, 40).circle(p.wire_hole / 2).extrude(p.plate)
+          return plate.cut(wires)
+hardware:
+  - {id: disk, ref: "own:led-disk"}
+  - {id: perfboard, ref: "own:perfboard"}
+  - {id: esp32, ref: "own:esp32"}
+  - {id: disk-screw, ref: "ISO 4762 M3x10", qty: 2}
+  - {id: disk-nut, ref: "ISO 4032 M3", qty: 2}
+  - {id: plate-screw, ref: "ISO 4762 M3x8", qty: 4}
+  - {id: insert, ref: "insert M3x4x5", qty: 4}
+  - {id: pb-screw, ref: "own:m2x6-self-tapping", qty: 4}
+assembly:
+  parts:
+    - {part: body, origin: [0, 0, 0], x_axis: [1, 0, 0], z_axis: [0, 0, 1]}
+    # the plate is modelled front face down: flipped over, its front at 31 + 5
+    - {part: front, origin: [0, 0, 36], x_axis: [-1, 0, 0], z_axis: [0, 0, -1]}
+  items:
+    # a quarter turn: the disk's own x (its hole line) runs up, its input wires to the left
+    - {item: disk, origin: [0, 0, 36], x_axis: [0, 1, 0], z_axis: [0, 0, 1]}
+    # perfboard top face: back 2.4 + standoff 6 + board 1.6; its long side up and down, 37 mm above the port
+    - {item: perfboard, origin: [-35, -38, 10], x_axis: [1, 0, 0], z_axis: [0, 0, 1]}
+    # the ESP32's port: mouth 2 mm inside the bottom wall, facing down, 14.14 mm above the perfboard
+    - {item: esp32, origin: [-35, -75, 24.14], x_axis: [0, -1, 0], z_axis: [0, 0, 1]}
+  screws:
+    - {item: disk-screw, head: [0, 16.85, 37.6], direction: [0, 0, -1]}
+    - {item: disk-screw, head: [0, -16.85, 37.6], direction: [0, 0, -1]}
+    - {item: plate-screw, head: [70.75, 70.75, 32.6], direction: [0, 0, -1]}
+    - {item: plate-screw, head: [-70.75, 70.75, 32.6], direction: [0, 0, -1]}
+    - {item: plate-screw, head: [70.75, -70.75, 32.6], direction: [0, 0, -1]}
+    - {item: plate-screw, head: [-70.75, -70.75, 32.6], direction: [0, 0, -1]}
+    - {item: pb-screw, head: [-12.1, -5.1, 10], direction: [0, 0, -1]}
+    - {item: pb-screw, head: [-57.9, -5.1, 10], direction: [0, 0, -1]}
+    - {item: pb-screw, head: [-12.1, -70.9, 10], direction: [0, 0, -1]}
+    - {item: pb-screw, head: [-57.9, -70.9, 10], direction: [0, 0, -1]}
+criteria:
+  - id: C1
+    part: front
+    feature: disk screw holes
+    relation: clears
+    hardware: disk-screw
+    params: [disk_hole_x, disk_hole]
+    check: {method: template, description: "Print the front plate's hole pattern at 1:1 and lay the disk on it: both screws must drop through."}
+  - id: C2
+    part: body
+    feature: USB-C opening
+    relation: clears
+    params: [usb_w, usb_h]
+    check: {method: none, description: "The charger's plug seats fully in the ESP32's port through the opening."}
+manual:
+  - n: "1"
+    text: Print the body back face down and the front plate front face down, with no supports.
+    parts: [body, front]
+  - n: "2"
+    text: Melt the four inserts into the corner posts, flush with their tops.
+    parts: [body]
+    hardware: [insert]
+    tool: soldering iron with a wide tip
+  - n: "3"
+    text: Screw the perfboard to its four posts with the M2 self-tapping screws, ESP32 facing out of the box and its USB-C port toward the opening at the bottom.
+    parts: [body]
+    hardware: [perfboard, esp32, pb-screw]
+  - n: "4"
+    text: Drop the two M3 nuts into the pockets on the inside of the front plate, then lay the disk on the front with its input wires to the left, push the M3 x 10 screws through its two holes and the plate, and tighten into the nuts. Feed the four wires through the hole and connect them to the perfboard.
+    parts: [front]
+    hardware: [disk, disk-screw, disk-nut]
+  - n: "5"
+    text: Screw the front plate onto the body with the four M3 x 8 screws.
+    parts: [body, front]
+    hardware: [plate-screw]
+  - n: "6"
+    text: Put two screws in the wall 100 mm apart and level, leaving about 3.5 mm out. Hang the box on them through the keyholes and push it down, then plug the charger into the ESP32 from below.
+    parts: [body]

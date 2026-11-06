@@ -86,7 +86,7 @@ def trial_folder(run_dir, task, condition, model, trial):
 def save_conversation(folder, messages, sub):
     (folder / "transcript.json").write_text(json.dumps(messages, indent=1))
     if sub:
-        (folder / "submission.yaml").write_text(yaml.safe_dump(sub.model_dump(), sort_keys=False, allow_unicode=True))
+        (folder / "submission.yaml").write_text(yaml.safe_dump(sub.dump(), sort_keys=False, allow_unicode=True))
 
 
 def grade_and_save(task, sub, folder, record):

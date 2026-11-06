@@ -55,9 +55,29 @@ def _standard_part(ref, standard, size, length):
     raise KeyError(f"no hardware to {standard}")
 
 
-def resolve(ref: str) -> dict:
+TASK_FORMAT = "format.yaml"  # tasks/<family>/format.yaml: what one task adds to the format and the prompt
+
+
+def task_format(task_id) -> dict:
+    """What a task adds to the submission format, or {} for a task that adds nothing."""
+    path = ROOT / "tasks" / str(task_id).split("/")[0] / TASK_FORMAT
+    return yaml.safe_load(path.read_text()) if task_id and path.exists() else {}
+
+
+def _own(key, task_id):
+    """One of the person's own parts, listed for one task only (its format.yaml's own_hardware)."""
+    for item in task_format(task_id).get("own_hardware", []):
+        if item["id"] == key:
+            return dict(item)
+    raise KeyError(f"no own:{key} in this task's own parts")
+
+
+def resolve(ref: str, task: str | None = None) -> dict:
     """Dimensions for a reference such as "ISO 4762 M5x30", "ISO 4032 M5",
-    "ISO 7089 M5", "insert M3x4x5", "608ZZ" or "salvaged:webcam-mount-bolt"."""
+    "ISO 7089 M5", "insert M3x4x5", "608ZZ" or "salvaged:webcam-mount-bolt", or "own:led-disk"
+    for a part the task lists as the person's own."""
+    if ref.startswith("own:"):
+        return _own(ref.split(":", 1)[1], task)
     if ref.startswith("salvaged:"):
         return _salvaged(ref.split(":", 1)[1])
     if bearing := _bearing(ref):

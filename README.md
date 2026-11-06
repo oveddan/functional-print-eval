@@ -132,6 +132,7 @@ You need:
 - git;
 - a sandbox for building model-written parts: **bubblewrap** (`bwrap`) on Linux, or `sandbox-exec`, which ships with macOS. Without one, parts don't build unless you set `PBE_NO_SANDBOX=1`, which is only for a throwaway container or VM;
 - on Linux, `libgl1` for CadQuery's kernel, and `fontconfig` with a font for parts with text.
+- optional: [Bambu Studio](https://bambulab.com/en/download/studio), only for print-time and filament estimates (`scripts/slice_estimates.py <run>...`). The checks and the eval don't need it. The script looks for the macOS app at `/Applications/BambuStudio.app`; elsewhere, set `BAMBU_STUDIO` to the program and, if its presets aren't found beside it, `BAMBU_STUDIO_PROFILES` to its `profiles/BBL` folder. `docs/slice-estimates.md` has the method and its limits.
 
 On Ubuntu 24.04:
 
@@ -219,6 +220,14 @@ uv run python -m pbe.eval --run my-run --task tripod-plate --model anthropic/cla
 - **Prompt caching:** Claude models ask for OpenRouter's prompt caching; every model gets the same messages and tools, byte for byte (issue 34, `tests/test_caching.py`). Each trial saved since records `settings.prompt_caching`. Trials saved before had no caching, so their Claude costs are full price. `scripts/cost_report.py <run>...` gives cost per trial and per turn by model.
 - **`can_run_code`** lets the model run Python before handing in. That code runs in bubblewrap on Linux, or in Docker with the image from `scripts/build_run_python_image.sh`. Docker on macOS hasn't been tested; a Linux cloud machine is the tested route. The saved runs `pilot-code-smoke` (one trial) and `pilot-code` (three per lineup model on the tripod) used it, under bubblewrap (issue 34).
 
+### Print-time and filament estimates (optional, needs Bambu Studio)
+
+```bash
+uv run python scripts/slice_estimates.py pilot-tripod loop-estoa
+```
+
+It slices each saved design with Bambu's stock X1C presets, offline, and writes `slice_estimates.csv` (per trial) and `slice_estimates_parts.csv` (per part) beside each run's `summary.csv`. It changes no grade. These are slicer estimates, not timed prints.
+
 ### Building the submission ZIP
 
 ```bash
@@ -263,14 +272,14 @@ Every condition also has `report_limitation`, which changes nothing and records 
 ## Results
 
 <!-- results:start (written by scripts/results_table.py; don't edit by hand) -->
-163 trials of 12 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 3 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
+181 trials of 12 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 3 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
 
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
-| `can_ask` | 134 | 43 | 54 | 33 | 4 | 0 | $10.24 |
+| `can_ask` | 152 | 43 | 68 | 36 | 4 | 1 | $16.26 |
 | `can_run_code` | 19 | 3 | 10 | 1 | 5 | 0 | $2.55 |
-| **all** | **163** | 47 | 71 | 35 | 10 | 0 | $13.90 |
+| **all** | **181** | 47 | 85 | 38 | 10 | 1 | $19.93 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
@@ -287,6 +296,35 @@ Every condition also has `report_limitation`, which changes nothing and records 
 | `can_ask` | openai/gpt-6.1-sol | 3 | 1 | 1 | 1 | 0 | 0 | $0.48 |
 | `can_ask` | qwen/qwen3.8-flash | 2 | 0 | 1 | 1 | 0 | 0 | $0.10 |
 | `can_ask` | z-ai/glm-5.3-flash | 2 | 0 | 1 | 1 | 0 | 0 | $0.12 |
+
+### `estoa-light` (drafted from Dan's answers, approved by Dan)
+
+| Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
+|---|---|---|---|---|---|---|---|---|
+| `can_ask` | anthropic/claude-haiku-5.5 | 3 | 0 | 3 | 0 | 0 | 0 | $0.09 |
+| `can_ask` | anthropic/claude-opus-5.5 | 3 | 0 | 2 | 1 | 0 | 0 | $1.55 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 3 | 0 | 2 | 1 | 0 | 0 | $1.41 |
+| `can_ask` | deepseek/deepseek-v4-pro-0813 | 3 | 0 | 2 | 1 | 0 | 0 | $0.07 |
+| `can_ask` | google/gemini-4-argon | 3 | 0 | 3 | 0 | 0 | 0 | $2.40 |
+| `can_ask` | openai/gpt-6.1-sol | 3 | 0 | 2 | 0 | 0 | 1 | $0.51 |
+
+Each check across the 17 graded designs (one verdict per design), on the records alone and then with the assumptions below (`python -m pbe.assumptions`). A check the records decide never changes.
+
+| Check | Pass | Fail | Not graded | With assumptions: pass | fail | not graded |
+|---|---|---|---|---|---|---|
+| builds | 17 | 0 | 0 | 17 | 0 | 0 |
+| connected_bodies | 16 | 1 | 0 | 16 | 1 | 0 |
+| bed_fit | 17 | 0 | 0 | 17 | 0 | 0 |
+| bridges | 4 | 11 | 2 | 4 | 11 | 2 |
+| R1 | 9 | 1 | 7 | 14 | 1 | 2 |
+| R2 | 8 | 1 | 8 | 10 | 3 | 4 |
+| R3 | 9 | 2 | 6 | 9 | 2 | 6 |
+| R4 | 2 | 6 | 9 | 4 | 7 | 6 |
+| R5 | 10 | 3 | 4 | 10 | 3 | 4 |
+| R6 | 1 | 6 | 10 | 6 | 7 | 4 |
+| R7 | 16 | 1 | 0 | 16 | 1 | 0 |
+
+Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not graded.
 
 ### `m5-spacer` (control, draft wording: exploratory)
 
@@ -528,7 +566,11 @@ These are treated as true without a print that shows them for that exact case. T
 |---|---|---|
 | The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (43 pass, 2 fail), so all 9 tripod passes |
 | One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (34 pass, 7 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 22 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
+| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 23 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
+| Each hole's centre is at the middle of where Dan's readings put it, 16.85 mm out. Source: the middle of 16.60 to 17.11, from Dan's calipers; no reading pins it closer. | estoa-light R1 | Graded apart: 5 pass, 0 fail of the estoa-light designs it decides |
+| The disk's board is 1.6 mm thick, and each hole's centre is 16.85 mm out. Source: 1.6 mm is the standard circuit board thickness and what the Estoa model used; the holes as in R1's assumption. | estoa-light R2 | Graded apart: 2 pass, 2 fail of the estoa-light designs it decides |
+| An insert holds with at least 2.85 mm of plastic around it, and its post bulges with less. Source: halfway between the 1.85 mm that bulged and the 3.85 mm that held; no print in between. Halfway itself holds (2.80 to 2.85 within the checker's 0.02 mm reading tolerance). | estoa-light R4 | Graded apart: 2 pass, 1 fail of the estoa-light designs it decides |
+| The wall screws' heads are 9 mm across, so a keyhole works if its entry passes a 9 mm head and its slot carries the head clear of the entry, in place of matching the one keyhole that hung (10.5 mm entry, 12 mm slot). Source: Dan bought #8 round heads 9 mm across at most; the rest is geometry. | estoa-light R6 | Graded apart: 5 pass, 1 fail of the estoa-light designs it decides |
 <!-- assumptions:end -->
 
 ### Whose calls these are

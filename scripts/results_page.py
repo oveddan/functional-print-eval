@@ -6,7 +6,9 @@ tool would have let the model do better. Coupon loop trials also show each repla
 
 Reads the saved runs, the coupon loop's replays (results/runs/loop-sample*/) and the audit notes in
 scripts/results_page_audit.json. A part whose mesh isn't on this machine (parts/ isn't committed) is
-built again from the saved design first. Writes results/local/results-page/: index.html, thumbs/ and stl/.
+built again from the saved design first. Writes results/local/results-page/: index.html and stl/ (the 3D
+meshes), plus thumbs/. The thumbnails are also embedded in index.html, so a published page needs only the page
+and its meshes: one artifact version holds at most 512 files, and the meshes alone are about half that.
 """
 import argparse
 import base64
@@ -18,6 +20,7 @@ from multiprocessing import Pool
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import assembly_scene  # noqa: E402  the assembled view: parts in place, the person's parts, screws, failures
 import gallery  # noqa: E402  the gallery's renderer and part list, so both pages render parts the same way
 
 import trimesh  # noqa: E402
@@ -26,13 +29,14 @@ from pbe.graders.bridges import is_holed_roof, overhangs  # noqa: E402
 from pbe.parts import submission  # noqa: E402
 from pbe.parts.build import build_parts  # noqa: E402
 from pbe.runner import coupon_loop  # noqa: E402
+from pbe.assumptions import Assumed  # noqa: E402
 from pbe.runner.trial_record import TrialRecord  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "results/local/results-page"
 TEMPLATE = Path(__file__).with_name("results_page_template.html")
 AUDIT = Path(__file__).with_name("results_page_audit.json")
-RUNS = ["pilot-nut-knob", "pilot-nut-knob-2", "pilot-tripod", "pilot-tripod-given", "pilot-wheel"]
+RUNS = ["pilot-nut-knob", "pilot-nut-knob-2", "pilot-tripod", "pilot-tripod-given", "pilot-wheel", "pilot-estoa"]
 LOOP_RUNS = {1: "loop-sample", 2: "loop-sample-2"}
 
 HELP = {
@@ -44,12 +48,14 @@ HELP = {
     "label": "Clearer instructions on marking a part as a test coupon",
     "prints": "Not the model's fault: needs more recorded prints",
     "reader": "Not the model's fault: the checker can't read this shape yet",
+    "placed": "Make it say where the person's own parts go (the format let it skip them)",
 }
 KIND = {"real": "Real failure", "decided": "Real failure (Dan decided)", "open": "Dan to decide", "gap": "Records can't decide",
-        "declined": "Declined: neither a pass nor a fail"}
+        "declined": "Declined: neither a pass nor a fail", "format": "The format let it skip this"}
 # a not-graded check that only follows from another failure, which is already counted
 CONSEQUENCE = ("didn't build", "no plate built", "no bolt hole to read", "expected one printed part", "no hex pocket",
-               "a final part didn't build", "no wheel to read", "no final part", "no seat to read")
+               "a final part didn't build", "no wheel to read", "no final part", "no seat to read",
+               "already failed", "no heat-set inserts")
 BROKEN_ROOFS = {("pilot-tripod-given", "qwen/qwen3.8-flash", 1), ("pilot-tripod", "qwen/qwen3.8-flash", 1)}
 MAIN_PART = ("wheel", "roller", "knob", "plate")  # the part a trial is about, shown first
 OUTCOME_WORDS = {"error": "didn't run: an infrastructure error", "token_limit": "no design: every call stopped at the token limit",
@@ -58,12 +64,51 @@ OUTCOME_WORDS = {"error": "didn't run: an infrastructure error", "token_limit": 
 
 # ---- what went wrong, and what would have helped ----
 
+def estoa_missing(check, detail):
+    """An Estoa light check no record decides."""
+    if "isn't placed once" in detail:
+        return "Not graded: the design doesn't say where the person's parts go", "format", "placed"
+    if check == "R1":
+        return "Not graded: inserts hold the disk's screws at one spot, and nothing checks the holes first", "gap", "prints"
+    if check == "R2":
+        return "Not graded: the screws may bottom out; the disk's thickness was never measured", "gap", "prints"
+    if check == "R3":
+        return "Not graded: a USB opening between the size that stopped plugs and the one that seated", "gap", "prints"
+    if check == "R4":
+        return "Not graded: insert posts between the ones that bulged and the ones that held", "gap", "prints"
+    if check == "R5":
+        return "Not graded: plastic near the perfboard, where its parts' places aren't recorded", "gap", "prints"
+    if check == "R6" and "reads only keyholes" in detail:
+        return "Not graded: it hangs some other way, and the checker reads only keyholes", "gap", "reader"
+    if check == "R6":
+        return "Not graded: keyholes between the ones that hung and the ones that wouldn't", "gap", "prints"
+    return "Not graded: no record decides this", "gap", "prints"
+
+
+def estoa_failure(check):
+    """An Estoa light check that failed."""
+    return {
+        "connected_bodies": ("Geometry slip: a part in pieces", "real", "render"),
+        "bed_fit": ("A part too big for the printer's bed", "real", "render"),
+        "bridges": ("Overhangs that won't bridge", "real", "checks"),
+        "R1": ("The box's holes miss the disk's holes", "real", "render"),
+        "R2": ("The disk's screws don't hold, or hit something", "real", "checks"),
+        "R3": ("The USB-C plug can't reach the ESP32's port", "real", "coupon"),
+        "R4": ("Insert posts as thin as Estoa's that bulged", "real", "checks"),
+        "R5": ("The perfboard or the ESP32 doesn't fit", "real", "render"),
+        "R6": ("Keyholes that can't hang it", "real", "checks"),
+        "R7": ("A screw stands out of the back", "real", "render"),
+    }.get(check, ("Geometry slip", "real", "render"))
+
+
 def missing_record(family, check, detail):
     """A check no recorded print can decide: which record is missing."""
     if "slits split" in detail:
         return "Not graded: a pocket shape the checker can't read", "gap", "reader"
     if check == "bridges":
         return "Not graded: a roof ledge 1.5 to 3 mm wide, never printed", "gap", "prints"
+    if family == "estoa-light":
+        return estoa_missing(check, detail)
     if family == "nut-knob":
         if "ribs" in detail:
             return "Not graded: a nut pocket with ribs or clips, never printed", "gap", "prints"
@@ -112,6 +157,8 @@ def failure(run, record, finding, note, holed_roofs):
         return "Test coupon labelled as a final part", "open", "label"
     if check == "builds":
         return "Its code didn't run", "real", "build"
+    if family == "estoa-light":
+        return estoa_failure(check)
     if check == "connected_bodies":
         return "Geometry slip: a part in pieces", "real", "render"
     if check == "bridges":
@@ -156,8 +203,11 @@ def issues_of(run, record, note, holed_roofs):
         else:
             diagnosis = failure(run, record, finding, note, holed_roofs)
         family, kind, help_key = diagnosis
+        if kind == "format" and any(issue["family"] == family for issue in found):
+            continue  # one part left unplaced leaves every check that reads it ungraded: one issue, not six
         found.append({"check": finding.check, "part": finding.part, "family": family, "kind": kind, "help": help_key})
-    return found
+    # failures first, so a card's first line is what went wrong rather than what no record decides
+    return sorted(found, key=lambda issue: issue["kind"] in ("gap", "format"))
 
 
 # ---- parts, rebuilt where this machine doesn't have them ----
@@ -181,12 +231,20 @@ def trial_card(run, folder, record, audit, rounds, renders):
     has_coupon = sub is not None and any(part.role == "coupon" for part in sub.parts)
     parts.sort(key=lambda part: (part["role"] != "final", not any(word in part["id"].lower() for word in MAIN_PART)))
     findings = [finding.model_dump() for finding in record.findings]
+    assumed = Assumed.load_if_saved(folder)
+    try:
+        scene = assembly_scene.scene(sub, record, assumed, folder / "parts", OUT / "stl", slug,
+                                     {part["id"]: part["name"] for part in parts if part["viewer"]})
+    except Exception as e:  # the view is a help for reading the trial: one that can't be drawn mustn't stop the page
+        print(f"no assembled view for {key}: {type(e).__name__}: {e}", file=sys.stderr)
+        scene = None
     return {"key": key, "id": re.sub(r"[^a-z0-9]+", "-", key.lower()).strip("-"), "run": run, "task": record.task,
             "condition": record.condition, "model": record.model, "trial": record.trial, "verdict": gallery.verdict(record),
             "cost": record.cost_usd, "asked": [m.what or m.item for m in record.measures], "answers": [m.reply for m in record.measures],
             "findings": findings, "parts": parts,
             "audit": audit.get(key), "issues": issues_of(run, record, audit.get(key), holed_roof_parts(folder, record)),
-            "group": "loop" if key in rounds else ("coupon" if has_coupon else "none"), "rounds": rounds.get(key, [])}
+            "group": "loop" if key in rounds else ("coupon" if has_coupon else "none"), "rounds": rounds.get(key, []),
+            "assumed": assumed.model_dump() if assumed else None, "scene": scene}
 
 
 # ---- the coupon loop's replays ----
@@ -309,8 +367,8 @@ def main():
     for trial in trials:  # a part that didn't render shows as "no render"
         design_parts = trial["parts"] + [part for entry in trial["rounds"] for name in ("feedback", "neutral") for part in entry[name]["parts"]]
         for part in design_parts:
-            render = f"thumbs/{part['name']}.png"
-            part["thumb"] = render if (OUT / render).exists() else ""
+            render = OUT / "thumbs" / f"{part['name']}.png"
+            part["thumb"] = f"data:image/png;base64,{base64.b64encode(render.read_bytes()).decode()}" if render.exists() else ""
     write_page(trials, sorted({trial["task"] for trial in trials}))
     print(f"{len(trials)} trials, {Counter(t['group'] for t in trials)}, {Counter(t['verdict'] for t in trials)}; {OUT / 'index.html'}",
           file=sys.stderr)
