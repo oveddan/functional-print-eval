@@ -186,16 +186,16 @@ Written 2026-11-06, before any model call for this sample, and pushed before the
 
 ## Tripod sample: result
 
-Run `loop-tripod`, 2026-11-06, from fda7554 (the rule above, pushed before the first model call). It stopped at the $3.00 budget after spending $3.03 ($1.74 on the printed arm, $1.29 on the neutral one): 23 trials got both arms, and Gemini 4 Argon's `can_run_code` t3 got only the printed arm. The estimate was $1.30 to $2.65; the `can_run_code` turns, with up to 20 calls, cost more than the 30 to 60% of a first turn the estimate assumed. Every replay is in `results/runs/loop-tripod/`, with its reply, transcript, design and grades.
+Run `loop-tripod`, 2026-11-06, from fda7554 (the rule above, pushed before the first model call). It stopped at the $3.00 budget after spending $3.03: 23 trials got both arms, and Gemini 4 Argon's `can_run_code` t3 got only the printed arm. Its neutral arm ran later the same day, from 8c1a4f8, with the person cut back to the facts its first turn had (`coupon_loop.facts_as_saved`). It cost $0.14, bringing the run to $3.16: $1.74 on the printed arm and $1.43 on the neutral one. The estimate was $1.30 to $2.65; the `can_run_code` turns, with up to 20 calls, cost more than the 30 to 60% of a first turn the estimate assumed. Every replay is in `results/runs/loop-tripod/`, with its reply, transcript, design and grades.
 
-**Main measure: roofs fixed.** After the printed reply, 14 of 24 designs pass `bridges` on every final part. After the neutral turn, 2 of 23 do. Over the 23 trials with both arms it's 13 against 2, so the printed reply fixed 11 more roofs than a second look.
+**Main measure: roofs fixed.** After the printed reply, 14 of 24 designs pass `bridges` on every final part. After the neutral turn, 2 of 24 do, so the printed reply fixed 12 more roofs than a second look. (Before Argon `can_run_code` t3's neutral arm ran, it was 14 of 24 against 2 of 23, or 13 against 2 on the 23 matched trials. That arm didn't fix its roof.)
 
 **Secondary: whole-trial verdicts.** Every trial failed at baseline.
 
 | Arm | Trials | Pass | Fail | Not graded | No design |
 |---|---|---|---|---|---|
 | Printed reply | 24 | 3 | 18 | 3 | 0 |
-| Neutral turn | 23 | 2 | 21 | 0 | 0 |
+| Neutral turn | 24 | 2 | 22 | 0 | 0 |
 
 The printed arm's passes are Sonnet 5.5 t2, Gemini 4 Argon t2 and Argon's `can_run_code` t1. The neutral arm's are Argon's `can_run_code` t1 (which passed both ways) and DeepSeek V4.1 Flash t1. Most fixed roofs still fail elsewhere, on what failed at baseline as well: the dovetail upside down (Sonnet t1 and t3, Luna's two) or straight sides (Haiku, GLM t3).
 
@@ -219,4 +219,4 @@ Every one of these came from the reply's single line about the roof ("loose loop
 - **R3 failed a drill-out layer.** Opus t3 closed the slot with a 0.4 to 0.6 mm skin, and its manual says to "push the skin out". `PLAN.md` says a drill-out layer passes, and the knob's bolt path already allowed one (`nuts.MAX_DRILL_OUT`, 3 layers, with a manual sentence saying to clear it). The tripod's bolt-hole reader didn't. `bolted._bores` now lets up to 3 closed layers through when the manual says to clear them, and `nuts.OPENS_A_HOLE` also accepts "push, cut, knock, pop or punch ... out" when the thing pushed out is a skin, layer, membrane, film, web or diaphragm. Graded again with the fix, Opus t3's printed arm passes every check, so the printed arm has 4 passes and 3 designs that got worse. No other arm in this run changes, and no saved trial's verdict changes (regrading the tripod, knob and wheel runs on a copy left every `summary.csv` the same). The numbers above are as the run graded them; `loop.json` keeps those grades.
 - **The width the person gives.** Several turn-2 notes say the clamp's width is still a guess. The person now answers it (the next CHANGELOG entry), but only for runs after this one.
 
-**What it shows, and what it can't.** In 23 matched trials, being told how the roof printed fixed 13 roofs, and a second look fixed 2. That's a large gap for a sample this size, but it's one replay per arm of trials chosen because they failed, graded by the same check that wrote the reply. It says that these models, told the outcome, nearly always know at least one fix for a holed roof. It doesn't say how often a first design avoids the problem: that's the main eval's 24 failures out of 62 tripod trials.
+**What it shows, and what it can't.** In 24 matched trials, being told how the roof printed fixed 14 roofs, and a second look fixed 2. That's a large gap for a sample this size, but it's one replay per arm of trials chosen because they failed, graded by the same check that wrote the reply. It says that these models, told the outcome, nearly always know at least one fix for a holed roof. It doesn't say how often a first design avoids the problem: that's the main eval's 24 failures out of 62 tripod trials.
