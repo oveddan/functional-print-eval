@@ -1,0 +1,190 @@
+task: nut-knob/M5
+note: Single-piece, approximately 29.4 mm across, with a recessed M5 hex-nut pocket.
+  The nut is pressed into a nominal 7.85 mm-across-flats socket; the pocket floor
+  prevents it being pushed through the far side, and a 5.6 mm clearance bore continues
+  through the knob. The nut-side opening faces upward during printing. Press the nut
+  in by hand; the slight nominal interference is intended to retain it when inverted.
+  Printed fit depends on printer calibration and the actual nut tolerance, so do not
+  force a nut that will not seat with firm hand pressure.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across-flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal height
+  knob_thickness:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  core_radius:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_radius:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_pitch_radius:
+    value: 10.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  socket_af:
+    value: 7.85
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal across-flats press-fit target for the nut
+  socket_floor_z:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  socket_leadin_h:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  socket_entry_af:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance bore for M5 shank
+  hex_circumdiam_factor:
+    value: 1.154700538
+    unit: mm
+    kind: design
+    source: design
+    note: 'Conversion from hex across-flats to vertex-to-vertex diameter: 2/sqrt(3)'
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA)
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.core_radius).extrude(p.knob_thickness)\n\
+    \    for i in range(p.lobe_count):\n        a = 2.0 * math.pi * i / p.lobe_count\n\
+    \        x = p.lobe_pitch_radius * math.cos(a)\n        y = p.lobe_pitch_radius\
+    \ * math.sin(a)\n        lobe = cq.Workplane(\"XY\").center(x, y).circle(p.lobe_radius).extrude(p.knob_thickness)\n\
+    \        body = body.union(lobe)\n\n    top_z = p.knob_thickness\n    lead_z =\
+    \ top_z - p.socket_leadin_h\n    main_h = lead_z - p.socket_floor_z\n    socket_diam\
+    \ = p.socket_af * p.hex_circumdiam_factor\n    entry_diam = p.socket_entry_af\
+    \ * p.hex_circumdiam_factor\n\n    socket = (cq.Workplane(\"XY\")\n          \
+    \    .workplane(offset=p.socket_floor_z)\n              .polygon(6, socket_diam)\n\
+    \              .extrude(main_h))\n    lead = (cq.Workplane(\"XY\")\n         \
+    \   .workplane(offset=lead_z)\n            .polygon(6, socket_diam)\n        \
+    \    .workplane(offset=p.socket_leadin_h)\n            .polygon(6, entry_diam)\n\
+    \            .loft())\n    body = body.cut(socket.union(lead))\n    bore = cq.Workplane(\"\
+    XY\").circle(p.bolt_clear_d / 2.0).extrude(p.knob_thickness)\n    return body.cut(bore)"
+  print_orientation: Print with the flat underside (z=0) on the bed and the nut-pocket
+    opening facing upward. The through-bore is vertical; no supports should be needed.
+  use_orientation: Press the M5 nut into the hex pocket from its open face until it
+    rests on the pocket floor. The nut is recessed below the pocket opening. Pass
+    an M5 bolt through the opening-side nut; its shank continues through the central
+    clearance bore and out the opposite face.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_retention
+  part: hand_knob
+  feature: 7.85 mm AF hex press-fit nut socket with recessed opening
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - socket_af
+  - socket_entry_af
+  - nut_h
+  - socket_floor_z
+  - knob_thickness
+  check:
+    method: none
+    ref: null
+    description: Press in by hand and verify the nut remains captured when the knob
+      is turned upside down; fit depends on actual nut size and printer calibration.
+- id: bolt_passage
+  part: hand_knob
+  feature: 5.6 mm central through-bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: Clearance passage for an M5 bolt shank; bolt head is not intended
+      to pass through the bore.
+- id: nut_stop
+  part: hand_knob
+  feature: blind nut-pocket floor around the through-bore
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - socket_floor_z
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: The floor supports the nut and the smaller through-bore prevents
+      pushing the nut through the far side.
+manual:
+- n: '1'
+  text: Print the hand_knob with its flat underside on the build plate and the hex
+    pocket opening upward. Remove any brim or debris from the pocket and bore.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M5 nut with the hex pocket and press it straight in by
+    hand until it bottoms on the pocket floor. It should sit recessed below the opening.
+    Do not hammer it or force it if it will not seat with firm hand pressure.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Check that the nut stays in place with the knob inverted. Pass an M5 bolt
+    through the nut from the pocket side; the shank goes through the nut and continues
+    out through the central bore on the opposite side. The bolt head does not fit
+    through the bore.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null

@@ -1,0 +1,209 @@
+task: m5-spacer
+note: 'One printed part: a 12 mm diameter by 20 mm long sleeve with a 5.4 mm through
+  bore (M5 shank + 0.4 mm clearance) and 0.8 mm chamfers on both ends of the OD and
+  the bore. Printed standing up so the bore prints round and no bridge is involved.
+  Your own bolt and the plates could not be measured, so: the print includes a 6 mm
+  test coupon with the identical cross-section to check bore fit cheaply, step 3 checks
+  bolt reach before assembly, and the M5x40 screw listed is only a suggested length
+  - your existing bolt is what actually goes in.'
+questions: []
+params:
+  bore_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: M5 shank + 0.4 mm diametral clearance. Through bore, printed vertical so
+      it stays round. Test on the coupon first; if the bolt drags, go to 5.6.
+  bolt_major_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M5 nominal shank diameter
+  chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in on both ends, on the OD and on the bore
+  coupon_len:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: short stub with the identical cross-section, to check bore fit cheaply before
+      printing the 20 mm spacer
+  spacer_len:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: 20 mm long, as requested; this is the gap it holds between the two plates
+  spacer_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: asked
+    note: 12 mm across, as requested
+parts:
+- id: spacer
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    h = p.spacer_len\n    ro = p.spacer_od / 2.0\n    rb =\
+    \ p.bore_d / 2.0\n    c = p.chamfer\n    ring = (cq.Workplane(\"XY\")\n      \
+    \      .circle(ro).extrude(h)\n            .cut(cq.Workplane(\"XY\").workplane(offset=-1.0).circle(rb).extrude(h\
+    \ + 2.0)))\n    ring = ring.faces(\">Z\").chamfer(c)\n    ring = ring.faces(\"\
+    <Z\").chamfer(c)\n    return ring"
+  print_orientation: 'standing on end: the annular face at z = 0 sits on the bed,
+    spacer axis vertical'
+  use_orientation: print as modelled, no rotation, no supports; annular footprint
+    is about 89 mm2 so no brim needed
+- id: test_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    h = p.coupon_len\n    ro = p.spacer_od / 2.0\n    rb =\
+    \ p.bore_d / 2.0\n    c = p.chamfer\n    ring = (cq.Workplane(\"XY\")\n      \
+    \      .circle(ro).extrude(h)\n            .cut(cq.Workplane(\"XY\").workplane(offset=-1.0).circle(rb).extrude(h\
+    \ + 2.0)))\n    ring = ring.faces(\">Z\").chamfer(c)\n    ring = ring.faces(\"\
+    <Z\").chamfer(c)\n    return ring"
+  print_orientation: standing on end, exactly as the spacer is, so the bore prints
+    the same way
+  use_orientation: print as modelled, same layer height and walls as the spacer, on
+    the same plate
+hardware:
+- id: m5_bolt
+  ref: ISO 4762 M5x40
+  qty: 1
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_washer
+  ref: ISO 7089 M5
+  qty: 2
+joints:
+- id: spacer_on_bolt
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: bore
+    role: clearance
+  nut: m5_nut
+  external: null
+criteria:
+- id: bore_clears_bolt
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.4
+  params:
+  - bore_d
+  - bolt_major_d
+  check:
+    method: coupon
+    ref: test_coupon
+    description: The bolt shank must slide through the bore freely; proven on the
+      coupon before the spacer is trusted.
+- id: ends_seat_on_plates
+  part: spacer
+  feature: end_faces
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_len
+  - chamfer
+  check:
+    method: measure
+    ref: spacer_len
+    description: Both flat ends seat squarely on the plates so the gap is exactly
+      20 mm; the chamfers mean contact is the 0.8 mm inner ring of each face, so the
+      plates must be flat there.
+- id: wall_carries_clamp
+  part: spacer
+  feature: wall
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  - bore_d
+  check:
+    method: none
+    ref: null
+    description: 3.3 mm radial wall carries the clamp load; snug only, no torque,
+      and expect slow creep if left loaded or in warmth.
+- id: bolt_length_enough
+  part: spacer
+  feature: bore
+  relation: engages
+  hardware: m5_bolt
+  clearance_mm: null
+  params:
+  - spacer_len
+  check:
+    method: measure
+    ref: spacer_len
+    description: 'Bolt must reach: 20 mm spacer + both plates + 2 washers (1.0 mm
+      each) + nut (4.7 mm) + about 3 mm of thread past the nut.'
+manual:
+- n: '1'
+  text: Slice spacer and test_coupon together, both standing on end (flat ring face
+    down, axis vertical), 0.2 mm layers, no supports. A couple of perimeters over
+    sparse infill makes a stiffer spacer than solid infill.
+  parts:
+  - spacer
+  - test_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Push your M5 bolt through the bore of test_coupon by hand. It should slide
+    freely. If it binds, set bore_d to 5.6 mm and reprint rather than forcing the
+    coupon.
+  parts:
+  - test_coupon
+  hardware:
+  - m5_bolt
+  tool: hands only
+- n: '3'
+  text: 'Check reach before assembling: bolt length must cover 20 mm of spacer plus
+    both plate thicknesses plus two washers (1.0 mm each) plus the nut (4.7 mm), with
+    about 3 mm of thread past the nut. The bolt listed (M5x40) is only a suggestion
+    - your own bolt is what goes in, and it was not measured, so this is the step
+    that catches a short one.'
+  parts:
+  - spacer
+  hardware:
+  - m5_bolt
+  - m5_nut
+  - m5_washer
+  tool: null
+- n: '4'
+  text: 'Assemble: bolt head with an m5_washer against plate 1, plate 1, the spacer
+    over the shank, plate 2, then m5_washer and m5_nut. Use an ISO 10511 M5 nyloc
+    if the joint sees vibration. The washers matter: their 10 mm OD spreads the load
+    over the spacer''s end face instead of the nut edge biting into the PLA.'
+  parts:
+  - spacer
+  hardware:
+  - m5_bolt
+  - m5_nut
+  - m5_washer
+  tool: 10 mm spanner
+- n: '5'
+  text: Snug the nut only. A 3.3 mm PLA wall will cold-flow under real clamp load,
+    so retorque after a day if the joint has to stay rigid.
+  parts:
+  - spacer
+  hardware:
+  - m5_nut
+  tool: 10 mm spanner

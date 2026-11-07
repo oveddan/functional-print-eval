@@ -1,0 +1,192 @@
+task: nut-knob/M3
+note: 'One-piece PLA hand knob with an integral through-hole and a blind, hexagonal
+  press-fit nut pocket. The M3 nut is inserted from the chamfered end; it sits 0.5
+  mm below that face on a solid stop, so it cannot pass through the far side. The
+  nut pocket is deliberately snug (5.45 mm across flats for a catalog 5.5 mm nut).
+  FDM press fits vary: if the nut is too tight, lightly scrape/deburr the pocket;
+  if it is loose, this print may not retain it reliably. The open pocket mouth is
+  needed to install the nut; the nut does not protrude beyond the knob. Print in the
+  stated orientation in PLA, with no supports.'
+questions: []
+params:
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Maximum outside diameter, including the scalloped grip.
+  knob_height:
+    value: 12.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut width across flats.
+  nut_height:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut thickness.
+  m3_nominal_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M3 bolt diameter.
+  pocket_af:
+    value: 5.45
+    unit: mm
+    kind: design
+    source: design
+    note: Across flats of the straight press-fit portion; tune if your printer's fit
+      differs.
+  pocket_depth:
+    value: 2.9
+    unit: mm
+    kind: design
+    source: design
+    note: Leaves a 9.6 mm solid stop below the pocket.
+  mouth_af:
+    value: 6.2
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfered lead-in opening across flats.
+  lead_depth:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole for the M3 bolt shank.
+  flute_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_radius:
+    value: 1.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_center_radius:
+    value: 10.35
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    h = p.knob_height\n    r = p.knob_od\
+    \ / 2.0\n    part = cq.Workplane(\"XY\").circle(r).extrude(h)\n\n    # Vertical\
+    \ finger scallops, cut around the outside while retaining a flat bed face.\n \
+    \   for i in range(int(p.flute_count)):\n        a = 2.0 * math.pi * i / int(p.flute_count)\n\
+    \        x = p.flute_center_radius * math.cos(a)\n        y = p.flute_center_radius\
+    \ * math.sin(a)\n        cutter = cq.Workplane(\"XY\").center(x, y).circle(p.flute_radius).extrude(h)\n\
+    \        part = part.cut(cutter)\n\n    # M3 bolt passage through the knob and\
+    \ the solid floor of the nut pocket.\n    bore = cq.Workplane(\"XY\").circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(h)\n    part = part.cut(bore)\n\n    # Hex nut pocket opens at\
+    \ the top. A tapered hex lead-in eases hand insertion.\n    circ_factor = 1.0\
+    \ / math.cos(math.pi / 6.0)\n    pocket = (cq.Workplane(\"XY\")\n            \
+    \  .workplane(offset=h - p.pocket_depth)\n              .polygon(6, p.pocket_af\
+    \ * circ_factor)\n              .extrude(p.pocket_depth))\n    lead = (cq.Workplane(\"\
+    XY\")\n            .workplane(offset=h - p.lead_depth)\n            .polygon(6,\
+    \ p.pocket_af * circ_factor)\n            .workplane(offset=p.lead_depth)\n  \
+    \          .polygon(6, p.mouth_af * circ_factor)\n            .loft(combine=True))\n\
+    \    part = part.cut(pocket).cut(lead)\n    return part"
+  print_orientation: Place the broad circular bolt-exit face (z=0) flat on the bed;
+    axis vertical. No supports required.
+  use_orientation: Insert the M3 hex nut into the chamfered pocket at the upper end
+    until it rests on the pocket floor. The bolt enters through the opposite flat
+    face and threads into the captive nut.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: hand_knob
+  feature: hex nut pocket and lead-in
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - pocket_depth
+  - mouth_af
+  check:
+    method: none
+    ref: null
+    description: Pocket is modeled as a snug hand press fit; verify the nut seats
+      fully and remains retained when inverted. Fit is printer-dependent.
+- id: bolt_passage
+  part: hand_knob
+  feature: axial through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - m3_nominal_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Confirm the intended M3 bolt shank passes freely through the 3.4
+      mm hole.
+- id: nut_stop
+  part: hand_knob
+  feature: blind pocket floor
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - knob_height
+  - nut_height
+  check:
+    method: none
+    ref: null
+    description: The blind pocket floor prevents the nut being pushed through the
+      far face; the nut is recessed below the pocket mouth.
+manual:
+- n: '1'
+  text: Print the hand_knob part flat on its bolt-exit face, with the nut pocket opening
+    upward. Use PLA and no supports.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the ISO 4032 M3 nut into the chamfered hex pocket by hand until it seats
+    against the bottom stop. Check that it is recessed and does not fall out when
+    the knob is turned upside down.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Pass your M3 bolt through the central hole from the flat bolt-exit face and
+    thread it into the captive nut. The bolt is not included in this design; choose
+    its length for your application.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null

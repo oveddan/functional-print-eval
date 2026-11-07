@@ -1,0 +1,230 @@
+task: m5-spacer
+note: 'A plain cylindrical spacer for an M5 bolt: 20 mm long, 12 mm OD, 5.5 mm through
+  clearance bore (M5 bolt max ~5.0 mm dia, so ~0.5 mm diametral play), with 0.5 mm-deep
+  lead-in counterbores at both ends so the bolt finds the hole easily. Printed standing
+  on end (axis vertical) — a vertical through-bore needs no bridging or supports and
+  keeps the hole round and true. A 4 mm-long "coupon" of the same tube prints alongside
+  as a go/no-go fit check on the bolt before you commit to a batch. I couldn''t get
+  the plate-hole diameter measured, so I assumed a standard ~5.5 mm M5 clearance hole
+  in the plates; the 12 mm OD bridges anything up to ~9.5 mm. If the plates are counterbored
+  or drilled bigger than that, the spacer would sink into the hole and the OD needs
+  a flange instead — worth a look before printing a set.'
+questions:
+- text: Can you measure the hole in the plates the bolt goes through (and any counterbore)?
+    The spacer's 12 mm end face needs to land on solid material.
+  answer: Couldn't measure — assumed ~5.5 mm clearance hole.
+- text: Is 12 mm the outer diameter, and is the 20 mm length the finished distance
+    between the plates (not including anything the spacer sits in)?
+  answer: Taken as OD 12 mm, free length 20 mm.
+- text: How many spacers do you need?
+  answer: Not stated; print as many copies as needed — each one is 12 mm across and
+    20 mm tall, so dozens fit on the bed.
+params:
+  length:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: spacer free length, set by the request; also the gap between the plates
+  od:
+    value: 12
+    unit: mm
+    kind: design
+    source: asked
+    note: outer diameter, set by the request
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M5 nominal thread diameter (actual OD ~4.9-5.0)
+  bore_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_d + 0.5 mm diametral clearance, ISO 279 medium fit; vertical bore prints
+      near nominal
+  lead_in:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: radial enlargement of the bore at each end, to guide the bolt in
+  lead_in_depth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: depth of the lead-in counterbore at each end
+  coupon_len:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: length of the throwaway fit-check coupon
+  plate_hole_d:
+    value: 5.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: assumed clearance hole in the plates; could not be measured. Must stay under
+      ~9.5 mm (incl. any counterbore) or the spacer sinks into it
+parts:
+- id: spacer_m5_20
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.od / 2.0\n    r = p.bore_d / 2.0\n    L = p.length\n\
+    \    cb_r = r + p.lead_in\n    cb_h = p.lead_in_depth\n\n    # solid body, axis\
+    \ on +Z, one end face on the bed at z = 0\n    part = cq.Workplane(\"XY\").circle(R).extrude(L)\n\
+    \n    # through clearance bore, run past both ends so the cut is clean\n    part\
+    \ = part.cut(cq.Workplane(\"XY\", origin=(0, 0, -1.0)).circle(r).extrude(L + 2.0))\n\
+    \n    # lead-in counterbores at both ends (widen, never narrow, the bore)\n  \
+    \  part = part.cut(cq.Workplane(\"XY\", origin=(0, 0, -0.1)).circle(cb_r).extrude(cb_h\
+    \ + 0.1))\n    part = part.cut(cq.Workplane(\"XY\", origin=(0, 0, L - cb_h)).circle(cb_r).extrude(cb_h\
+    \ + 0.1))\n    return part"
+  print_orientation: 'standing on end: bore axis along +Z, lower end face flat on
+    the bed at z = 0'
+  use_orientation: same as printed - the spacer's axis is vertical, its two flat ends
+    face the two plates
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    R = p.od / 2.0\n    r = p.bore_d / 2.0\n    L = p.coupon_len\n\
+    \    cb_r = r + p.lead_in\n    cb_h = p.lead_in_depth\n\n    # same tube as the\
+    \ spacer, only 4 mm long: a bolt-fit go/no-go gauge\n    part = cq.Workplane(\"\
+    XY\").circle(R).extrude(L)\n    part = part.cut(cq.Workplane(\"XY\", origin=(0,\
+    \ 0, -1.0)).circle(r).extrude(L + 2.0))\n    part = part.cut(cq.Workplane(\"XY\"\
+    , origin=(0, 0, -0.1)).circle(cb_r).extrude(cb_h + 0.1))\n    part = part.cut(cq.Workplane(\"\
+    XY\", origin=(0, 0, L - cb_h)).circle(cb_r).extrude(cb_h + 0.1))\n    return part"
+  print_orientation: 'standing on end: bore axis along +Z, lower end face flat on
+    the bed at z = 0'
+  use_orientation: not used in the assembly; discarded after the fit check
+hardware:
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+- id: m5_locknut
+  ref: ISO 10511 M5
+  qty: 1
+joints:
+- id: bolt_through_spacer
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 20.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: spacer_m5_20
+    feature: bore
+    role: clearance
+  nut: m5_locknut
+  external: M5 clearance holes in the two plates (not part of this design)
+criteria:
+- id: bolt_slides_in_bore
+  part: spacer_m5_20
+  feature: bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.5
+  params:
+  - bore_d
+  - bolt_d
+  - lead_in
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Slide the spacer onto the M5 bolt (or use the 4 mm coupon first).
+      It should push on by hand with no forcing. If it binds, the bore printed small:
+      work the bolt through a few times, or raise bore_d by 0.1 mm and reprint.'
+- id: end_face_bridges_plate_hole
+  part: spacer_m5_20
+  feature: bottom_face
+  relation: supports
+  hardware: null
+  clearance_mm: 1.25
+  params:
+  - od
+  - plate_hole_d
+  check:
+    method: measure
+    ref: plate hole diameter
+    description: 'The spacer''s 12 mm flat end must sit on solid plate, not span into
+      an opening: the plate hole, including any counterbore, must be smaller than
+      about 9.5 mm so at least 1.25 mm of annulus overlaps the plate on each side
+      of the bore.'
+- id: sets_plate_gap_20mm
+  part: spacer_m5_20
+  feature: top_face
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - length
+  check:
+    method: measure
+    ref: null
+    description: With the bolt snug and the plates clamped, the plate faces should
+      end up 20.0 mm apart. Check with a ruler or caliper against the bolt before
+      the nut is fully tightened.
+manual:
+- n: '1'
+  text: Print spacer_m5_20 and fit_coupon together, standing on end exactly as modelled
+    (flat end face on the bed, bore vertical). No supports, no raft, no brim needed
+    - the part is a 12 mm column with an open hole right through it. Print as many
+    copies of the spacer as you need; they pack at 13 mm centres.
+  parts:
+  - spacer_m5_20
+  - fit_coupon
+  hardware: []
+  tool: Bambu X1C, PLA, 0.4 mm nozzle, 0.2 mm layers
+- n: '2'
+  text: 'Fit check first: push the M5 bolt through fit_coupon. It should slide in
+    by hand. Only then trust a full-length spacer - if it binds, either ream it by
+    working the bolt through, or add 0.1 mm to bore_d and reprint.'
+  parts:
+  - fit_coupon
+  - spacer_m5_20
+  hardware:
+  - m5_bolt
+  tool: null
+- n: '3'
+  text: 'Before assembling, glance at the plate holes: the 12 mm end of the spacer
+    has to land on solid material. If a plate is drilled or counterbored wider than
+    about 9.5 mm, the spacer will dip into the hole instead of setting the gap - stop
+    and tell me, and I''ll widen the ends into a flange.'
+  parts:
+  - spacer_m5_20
+  hardware: []
+  tool: caliper or ruler
+- n: '4'
+  text: 'Assemble: put the M5 bolt through the first plate''s hole, slide the spacer
+    onto the protruding bolt, then the second plate, then the nut. The lead-in counterbores
+    at each end of the bore start the bolt for you.'
+  parts:
+  - spacer_m5_20
+  hardware:
+  - m5_bolt
+  - m5_locknut
+  tool: null
+- n: '5'
+  text: 'Snug the nut up - around 1 N-m, wrench finish hand-tight plus a quarter turn.
+    Do not crank it: PLA takes permanent set under clamp load, and an over-tightened
+    spacer will slowly squeeze itself shorter and let the gap close.'
+  parts: []
+  hardware:
+  - m5_locknut
+  tool: 4 mm hex driver / 8 mm wrench
+- n: '6'
+  text: After the first day under load, check the nut and re-tighten once, then leave
+    it. The nylon-insert lock nut (ISO 10511 M5) holds the setting far better against
+    a plain nut.
+  parts: []
+  hardware:
+  - m5_locknut
+  - m5_bolt
+  tool: null

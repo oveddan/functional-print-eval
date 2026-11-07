@@ -1,0 +1,292 @@
+task: tripod-plate
+note: 'Temporary quick-release plate for a jaw-style tripod head (38 mm plate width,
+  plate drops in from above). The camera screw is NOT printed: your salvaged webcam-mount
+  bolt is a real 1/4"-20 and the camera socket is confirmed 1/4-20, so a printed thread
+  would only add risk. The bolt drops into the plate''s 7.2 mm hole from below; its
+  ~15 mm head cannot pass the hole, so the bolt hangs captive — it can''t get lost.
+  Its ~5 mm head height lifts the plate off the clamp floor, leaving ~5 mm of thread
+  inside the camera (10 mm shank - 5 mm plate). Since the clamp''s channel length,
+  jaw thickness range, floor pin, and your camera''s socket depth couldn''t be pinned
+  down this session (the measurement answers repeated), the design adapts instead:
+  a fit coupon tests jaw grip and bolt fit first; the plate''s length and thickness
+  can be trued up by sanding; and 1 mm seat shims fix shallow camera sockets. Print
+  and use order: coupon → plate + shims. PLA is a temporary material only — it will
+  creep under load over weeks, so replace it with the real plate when you find or
+  buy one.'
+questions:
+- text: Which clamp and camera details are still unverified?
+  answer: The jaw clamp's channel length, maximum grippable thickness, any floor pin,
+    and the camera socket depth were not reliably measured (answers repeated), so
+    these are handled by the coupon test, sanding allowance, and shims.
+params:
+  clamp_plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: jaw clamp accepts ~38 mm wide plates
+  plate_side_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: total side clearance so the plate never binds in the jaws
+  plate_length:
+    value: 55
+    unit: mm
+    kind: design
+    source: guessed
+    note: channel length could not be measured; if the plate bottoms out in the channel,
+      sand the rounded nose 2-3 mm at a time
+  plate_thickness:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: with the bolt head (5 mm) under it, the plate sits 5-10 mm above the clamp
+      floor and leaves ~5 mm of thread in the camera
+  center_hole_d:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: clears the 6.35 mm 1/4-20 shank, small enough that the ~15 mm bolt head
+      cannot pass through
+  bolt_head_dia:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: measured on the webcam-mount bolt
+  bolt_head_height:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: measured; acts as the riser between clamp floor and plate
+  bolt_shank_length:
+    value: 10
+    unit: mm
+    kind: world
+    source: measured
+    note: measured under the head; sets ~5 mm thread engagement with the 5 mm plate
+  thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ASME 1/4-20, matches camera socket
+  camera_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: toothpick measurement did not come back; handled adaptively with 1 mm seat
+      shims
+  shim_dia:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: clears the jaws (clamp closes to 38 mm) and gives the camera a wider seat
+      than the plate hole alone
+  shim_thickness:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: each shim reduces thread engagement by 1 mm to prevent the bolt bottoming
+      in a shallow socket
+parts:
+- id: qr_plate
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    L = p.plate_length\n    W = p.clamp_plate_width - p.plate_side_clearance\n\
+    \    T = p.plate_thickness\n    d = p.center_hole_d\n    return (cq.Workplane(\"\
+    XY\")\n            .box(L, W, T, centered=(True, True, False))\n            .faces(\"\
+    >Z\").workplane().hole(d)\n            .edges(\"<X\").fillet(2))"
+  print_orientation: flat, bottom face on the bed
+  use_orientation: horizontal in the clamp, rounded nose leading, camera side up
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    W = p.clamp_plate_width - p.plate_side_clearance\n   \
+    \ T = p.plate_thickness\n    H = p.bolt_head_height\n    HD = p.bolt_head_dia\n\
+    \    Lc = 25.0\n    block = cq.Workplane(\"XY\").box(HD, Lc, H, centered=(True,\
+    \ True, False))\n    sect = (cq.Workplane(\"XY\", origin=(0, 0, H))\n        \
+    \    .box(Lc, W, T, centered=(True, True, False))\n            .faces(\">Z\").workplane().hole(p.center_hole_d))\n\
+    \    return block.union(sect)"
+  print_orientation: head-proxy block on the bed, plate section up (as modeled)
+  use_orientation: dropped into the clamp, same orientation as printed
+- id: seat_shim
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    return (cq.Workplane(\"XY\")\n            .circle(p.shim_dia\
+    \ / 2)\n            .extrude(p.shim_thickness)\n            .faces(\">Z\").workplane().hole(p.center_hole_d))"
+  print_orientation: flat on the bed
+  use_orientation: flat on top of the plate, under the camera
+hardware:
+- id: cam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: j_bolt_plate
+  fastener: cam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: center hole, 7.2 mm through
+    role: clearance
+  - part: qr_plate
+    feature: underside annulus around the center hole
+    role: head_seat
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: jaw_grip
+  part: qr_plate
+  feature: side faces (width and thickness) gripped by the clamp jaws
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_plate_width
+  - plate_side_clearance
+  - plate_thickness
+  - bolt_head_height
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Drop fit_coupon into the clamp and close the knob: the jaws must
+      grip the coupon''s upper thin section (which sits 5-10 mm above the floor, exactly
+      where the real plate sits on the bolt head). If the coupon binds, sand its sides
+      0.3 mm at a time; if the jaws cannot reach it, stop and report.'
+- id: bolt_slide
+  part: qr_plate
+  feature: 7.2 mm center hole vs 6.35 mm bolt shank
+  relation: clears
+  hardware: cam_bolt
+  clearance_mm: null
+  params:
+  - center_hole_d
+  - bolt_head_dia
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Push the webcam bolt down through the coupon''s hole: it must slide
+      freely by hand.'
+- id: bolt_capture
+  part: qr_plate
+  feature: center hole (7.2 mm) captures the 15 mm bolt head
+  relation: contains
+  hardware: cam_bolt
+  clearance_mm: null
+  params:
+  - bolt_head_dia
+  - center_hole_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Pull the bolt hard: its 15 mm head must stop against the coupon''s
+      plate section and never pull through.'
+- id: plate_length_fits
+  part: qr_plate
+  feature: plate length vs clamp channel depth
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_length
+  check:
+    method: none
+    ref: null
+    description: The finished plate should drop fully into the channel. If it bottoms
+      before sitting flush, sand the rounded nose 2-3 mm at a time and retry.
+- id: thread_engagement
+  part: qr_plate
+  feature: 'stack: bolt head 5 mm + plate 5 mm leaves ~5 mm of 1/4-20 thread in the
+    camera'
+  relation: engages
+  hardware: cam_bolt
+  clearance_mm: null
+  params:
+  - bolt_shank_length
+  - plate_thickness
+  - camera_socket_depth
+  - thread_pitch
+  check:
+    method: none
+    ref: null
+    description: Assembled off the tripod, the camera must screw down flush onto the
+      plate with no wobble. If it stops early (bolt reaching the bottom of the socket),
+      slip a seat_shim over the bolt onto the plate and re-thread; add the second
+      shim if needed.
+manual:
+- n: '1'
+  text: 'Print the fit_coupon first. Drop it into the tripod''s clamp and close the
+    knob: the jaws should grip its upper thin section firmly. If it won''t drop in,
+    sand the coupon''s sides lightly (0.3 mm at a time) until it slides with only
+    a little wobble; if the jaws close without gripping it, the clamp can''t reach
+    this height — stop and tell me.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Test the bolt: push it down through the coupon''s hole. It should slide freely
+    by hand, and the wide head must stop underneath. Pull it hard — it must not pull
+    through. If it''s tight, open the hole slightly with a 7 mm+ drill or sandpaper
+    rolled into a tube.'
+  parts:
+  - fit_coupon
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '3'
+  text: Print the qr_plate and three copies of seat_shim (PLA, 3 walls, ~35% infill).
+  parts:
+  - qr_plate
+  - seat_shim
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'Assemble OFF the tripod: insert the bolt from below through the plate''s
+    center hole so its head hangs under the plate (it can''t fall through). Thread
+    the camera onto the bolt two or three turns. Then hold the bolt''s head — small
+    pliers, or a screwdriver if the head has a recess — and keep screwing the camera
+    down until it sits snugly on the plate with no wobble. The bolt hangs captive;
+    the camera''s weight is carried by the plate, not the bolt.'
+  parts:
+  - qr_plate
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '5'
+  text: If the camera stops turning before it sits flush on the plate (the bolt is
+    bottoming in the camera's socket), unscrew the camera a little, slip one seat_shim
+    over the bolt so it rests on the plate, and re-thread the camera onto the shim.
+    If it still won't seat, add the second shim.
+  parts:
+  - seat_shim
+  hardware: []
+  tool: null
+- n: '6'
+  text: Drop the whole assembly (plate with bolt and camera) into the clamp, rounded
+    nose first, and tighten the knob. Check the plate can't be wiggled; tighten harder
+    if needed.
+  parts: []
+  hardware: []
+  tool: null
+- n: '7'
+  text: 'To detach: loosen the knob, lift the assembly off the tripod, and unscrew
+    the camera from the bolt. The bolt stays hanging in the plate.'
+  parts: []
+  hardware: []
+  tool: null

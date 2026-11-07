@@ -1,0 +1,170 @@
+task: nut-knob/M3
+note: ''
+questions:
+- text: I could not get your M3 nut's across-flats measured, so the pocket is designed
+    from the catalog value (5.5 mm) with a 0.2 mm press fit (pocket 5.3 mm). If the
+    nut is too tight or loose in a test print, change pocket_af by about 0.1 mm and
+    reprint.
+  answer: null
+params:
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Requested 20 mm across
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats, nominal
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  pocket_af:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: Across flats of hex pocket, 0.2 mm under nut AF so the nut press-fits by
+      hand into PLA. Adjust if the nut is loose or too hard to push in
+  pocket_depth:
+    value: 2.7
+    unit: mm
+    kind: design
+    source: design
+    note: Nut height + 0.3 mm; nut seats against the top wall, open at the bottom
+  hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole for M3 bolt through the top wall; smaller than the nut so
+      the nut cannot exit the top
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Overall knob height
+  flute_n:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: Grip grooves around the rim
+  flute_r:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each grip groove cutter
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "import math\n\ndef build(p):\n    R = p.knob_od / 2.0\n    body = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    body = body.faces('>Z').edges().fillet(1.0)\n    # hex nut pocket, open at\
+    \ the bottom (z=0)\n    d_circ = p.pocket_af / math.cos(math.pi / 6)\n    pocket\
+    \ = cq.Workplane('XY').polygon(6, d_circ).extrude(p.pocket_depth)\n    # clearance\
+    \ hole through the top wall (smaller than nut AF so nut is retained)\n    hole\
+    \ = cq.Workplane('XY').workplane(offset=p.pocket_depth - 0.01).circle(p.hole_d\
+    \ / 2.0).extrude(p.knob_h)\n    body = body.cut(pocket).cut(hole)\n    # grip\
+    \ grooves around the rim\n    for i in range(int(p.flute_n)):\n        a = 2 *\
+    \ math.pi * i / p.flute_n\n        x = R * math.cos(a)\n        y = R * math.sin(a)\n\
+    \        g = cq.Workplane('XY').center(x, y).circle(p.flute_r).extrude(p.knob_h)\n\
+    \        body = body.cut(g)\n    return body\n"
+  print_orientation: Flat, open nut pocket face down on the bed (z=0 is the nut-entry
+    face); no supports needed
+  use_orientation: Nut-entry face toward the work, bolt passes up through the knob's
+    top wall
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut-pocket
+  part: knob
+  feature: hex nut pocket, open at bottom
+  relation: contains
+  hardware: nut
+  clearance_mm: -0.2
+  params:
+  - pocket_af
+  - nut_af
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Nut slides in by hand, seats snug, does not fall out when knob is
+      inverted
+- id: bolt-clear
+  part: knob
+  feature: top clearance hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes freely through the top hole
+- id: nut-retain
+  part: knob
+  feature: top wall above nut pocket
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - hole_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Nut cannot be pushed through the top wall; hole is smaller than nut
+      AF
+manual:
+- n: '1'
+  text: Print the knob with the open nut-pocket face on the bed. No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M3 hex nut with the hexagonal pocket opening at the bottom of the
+    knob. Press it straight in by hand until it seats against the top of the pocket.
+    It should be snug; do not force it past the seat.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the knob over and check the nut stays in. It is retained by friction
+    in the hex pocket and by the top wall, which is smaller than the nut.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread the M3 bolt up through the workpiece and into the nut through the bottom
+    opening, then through the top hole. Tighten by turning the knob.
+  parts:
+  - knob
+  hardware: []
+  tool: null

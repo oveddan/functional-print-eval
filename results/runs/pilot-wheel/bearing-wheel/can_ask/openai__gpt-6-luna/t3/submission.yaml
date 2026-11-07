@@ -1,0 +1,195 @@
+task: bearing-wheel
+note: This is a best-judgment flat-tread prototype because the old tread/track profile
+  could not be measured. Confirm the old wheel rode on a flat track before relying
+  on it; if it was grooved or crowned, this profile may not track safely. PLA can
+  wear or creep under load, so check it frequently and replace it if it cracks or
+  loosens. The bearings must be retained by their outer races in the wheel, while
+  the bolt/support clamps only the inner races. The supplied M8 bolt's length and
+  the closet-door bracket are unknown; check that the existing axle arrangement fits
+  before installation.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old-wheel diameter reported by user.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old-wheel width reported by user.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User measured one 608 bearing approximately 22 mm across.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 608 bearing width.
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User reports having an M8 bolt; actual bolt not measured.
+  axle_bore_d:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: Designed clearance bore for the reported M8 bolt.
+  seat_d:
+    value: 22.2
+    unit: mm
+    kind: design
+    source: design
+    note: Starting bearing-seat diameter; check with the fit coupon and adjust if
+      needed.
+  seat_depth:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Leaves each bearing about 0.2 mm proud of the wheel face, helping keep the
+      wheel body clear of the support.
+  edge_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Small edge break on the tread edges.
+  coupon_od:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  washer_id:
+    value: 8.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 washer inside diameter.
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 washer outside diameter.
+parts:
+- id: wheel
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    # Wheel axis is Z; it prints flat on one side.\n    body\
+    \ = cq.Workplane('XY').circle(p.wheel_od / 2).extrude(p.wheel_width)\n    body\
+    \ = body.edges('%Circle').chamfer(p.edge_chamfer)\n    # Through-bore for the\
+    \ M8 axle.\n    body = body.cut(cq.Workplane('XY').circle(p.axle_bore_d / 2).extrude(p.wheel_width))\n\
+    \    # Opposed bearing seats, with a central web separating the bearings.\n  \
+    \  front = cq.Workplane('XY').circle(p.seat_d / 2).extrude(p.seat_depth)\n   \
+    \ rear = cq.Workplane('XY').workplane(offset=p.wheel_width - p.seat_depth).circle(p.seat_d\
+    \ / 2).extrude(p.seat_depth)\n    body = body.cut(front).cut(rear)\n    return\
+    \ body"
+  print_orientation: Lay on either flat side; wheel axis vertical (Z), as modeled.
+    No supports intended.
+  use_orientation: Wheel axis is the M8 bolt axis; bearings enter from opposite sides
+    and the flat cylindrical tread rolls on the track.
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    # Short annular test piece for checking one bearing-seat\
+    \ fit before the wheel.\n    outer = cq.Workplane('XY').circle(p.coupon_od / 2).extrude(p.coupon_t)\n\
+    \    bore = cq.Workplane('XY').circle(p.seat_d / 2).extrude(p.coupon_t)\n    return\
+    \ outer.cut(bore)"
+  print_orientation: Print flat on the bed, as modeled, with the hole axis vertical.
+  use_orientation: Press one bearing into the coupon bore to check the fit; this is
+    a test piece, not part of the installed wheel.
+hardware:
+- id: m8_washers
+  ref: ISO 7089 M8
+  qty: 2
+joints: []
+criteria:
+- id: bearing_fit
+  part: wheel
+  feature: Opposed 608 bearing outer-race seats
+  relation: seats
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - bearing_od
+  - seat_d
+  - seat_depth
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Print the coupon first and test the actual bearing. It should press
+      in firmly without cracking the coupon; if it will not enter, increase seat_d
+      slightly and reprint the coupon.
+- id: axle_clearance
+  part: wheel
+  feature: Through axle bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - axle_bore_d
+  check:
+    method: measure
+    ref: null
+    description: Check the user's M8 bolt passes freely through the printed bore.
+manual:
+- n: '1'
+  text: Print the fit_coupon first. Test one of the actual bearings in its hole. If
+    the fit is too tight to seat without excessive force, increase seat_d by 0.1 mm
+    and reprint the coupon; if loose, decrease it by 0.1 mm. Use the tested value
+    for the wheel.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the wheel flat on one side, without supports. Check the wheel for cracks
+    or rough/failed layers, and verify the M8 bolt passes through the center bore.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608 bearing into each counterbore from opposite faces until seated.
+    The bearings should be snug in the wheel; avoid hammering directly on the bearing
+    races.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Pass the M8 bolt through both bearing inner races and the existing door bracket.
+    Use one ISO 7089 M8 washer at each end so the support bears on the inner races
+    rather than rubbing the wheel or outer races; secure the bolt using the door's
+    existing retention arrangement.
+  parts:
+  - wheel
+  hardware:
+  - m8_washers
+  tool: null
+- n: '5'
+  text: Before rehanging the door, spin the wheel by hand and verify it turns freely
+    without the wheel body rubbing the bracket. Check that the tread matches the track
+    and that the bolt is securely retained.
+  parts: []
+  hardware: []
+  tool: null

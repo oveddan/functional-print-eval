@@ -1,0 +1,208 @@
+task: nut-knob/M5
+note: '30mm hand knob with a captured M5 hex nut pressed in from the underside (no
+  glue). Bolt enters from the pocket side, threads through the nut, and exits the
+  top. Key fit decision: the hexagonal pocket''s across-flats is set slightly undersize
+  (7.9mm vs nut 8.0mm) to grip the nut''s flats and hold it when inverted; the nut''s
+  chamfered corners clear the pocket corners. A lead-in hex (8.6mm) guides the nut
+  in. A coupon lets the maker verify press force and retention before the full knob.'
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Requested knob diameter
+  knob_h:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: Knob height for finger grip
+  scallop_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_depth:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of each finger scallop into the rim
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across-flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  pocket_af:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats of the press region; 0.1mm undersize on the nut flats for a
+      hand press fit that holds when inverted. Verify with the coupon.
+  pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth to closed floor; nut sits 0.5mm recessed from the open face so it
+      is fully inside
+  lead_af:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: Lead-in hex at the mouth, looser than the nut so it starts easily
+  lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clearance_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance bore for the M5 bolt shank through the floor to the top
+  plate_w:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon plate width
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon plate thickness
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\nK = 2.0 / math.sqrt(3.0)\n\ndef hexprism(af,\
+    \ h, z0=0.0):\n    return cq.Workplane(\"XY\").polygon(6, af * K).extrude(h).translate((0,\
+    \ 0, z0))\n\ndef build(p):\n    knob = cq.Workplane(\"XY\").circle(p.knob_d /\
+    \ 2.0).extrude(p.knob_h)\n\n    if p.scallop_count > 0:\n        rc = p.knob_d\
+    \ / 2.0 + p.scallop_r - p.scallop_depth\n        cutters = None\n        for i\
+    \ in range(int(p.scallop_count)):\n            a = 2.0 * math.pi * i / p.scallop_count\n\
+    \            c = (cq.Workplane(\"XY\")\n                 .center(rc * math.cos(a),\
+    \ rc * math.sin(a))\n                 .circle(p.scallop_r)\n                 .extrude(p.knob_h\
+    \ + 4.0))\n            cutters = c if cutters is None else cutters.union(c)\n\
+    \        knob = knob.cut(cutters)\n\n    lead = hexprism(p.lead_af, p.lead_h,\
+    \ 0.0)\n    press = hexprism(p.pocket_af, p.pocket_depth - p.lead_h, p.lead_h)\n\
+    \    knob = knob.cut(lead.union(press))\n\n    hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(p.knob_h)\n    return knob.cut(hole)\n"
+  print_orientation: Flat open end (nut pocket mouth) down on the bed; bolt bore vertical
+  use_orientation: Nut pocket faces down; the M5 bolt enters from the pocket side,
+    threads through the nut, and exits the top
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\nK = 2.0 / math.sqrt(3.0)\n\ndef hexprism(af,\
+    \ h, z0=0.0):\n    return cq.Workplane(\"XY\").polygon(6, af * K).extrude(h).translate((0,\
+    \ 0, z0))\n\ndef build(p):\n    plate = cq.Workplane(\"XY\").rect(p.plate_w, p.plate_w).extrude(p.plate_t)\n\
+    \    lead = hexprism(p.lead_af, p.lead_h, 0.0)\n    press = hexprism(p.pocket_af,\
+    \ p.pocket_depth - p.lead_h, p.lead_h)\n    plate = plate.cut(lead.union(press))\n\
+    \    hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d / 2.0).extrude(p.plate_t)\n\
+    \    return plate.cut(hole)\n"
+  print_orientation: Flat, pocket mouth down on the bed
+  use_orientation: Pocket face up to press the nut in and test
+hardware:
+- id: nut1
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_seats
+  part: knob
+  feature: nut pocket
+  relation: contains
+  hardware: nut1
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Press the nut into the pocket by hand; it should seat fully below
+      the open face.
+- id: nut_retained
+  part: knob
+  feature: nut pocket mouth
+  relation: engages
+  hardware: nut1
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Invert the coupon and shake; the nut must stay in the pocket without
+      glue.
+- id: bolt_clears
+  part: knob
+  feature: bolt bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Pass an M5 bolt through the bore to the nut and out the top; it should
+      turn freely.
+manual:
+- n: '1'
+  text: Print the fit-test coupon first (nut_fit_coupon).
+  parts:
+  - nut_fit_coupon
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Press the M5 hex nut (ISO 4032 M5) into the coupon's pocket by hand. Invert
+    and shake the coupon; the nut must stay in. If it drops out or cannot be pressed
+    in, the pocket size needs adjusting before printing the knob.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut1
+  tool: hands
+- n: '3'
+  text: Print the knob.
+  parts:
+  - knob
+  hardware: []
+  tool: 3D printer
+- n: '4'
+  text: Press the M5 nut into the knob's pocket from the open underside until it seats
+    (it will sit just below the flat face).
+  parts:
+  - knob
+  hardware:
+  - nut1
+  tool: hands
+- n: '5'
+  text: Thread the knob-and-nut onto your M5 bolt from the pocket side; keep turning
+    the knob to tighten the bolt. The bolt passes through the nut and out the top
+    of the knob.
+  parts:
+  - knob
+  hardware:
+  - nut1
+  tool: hands

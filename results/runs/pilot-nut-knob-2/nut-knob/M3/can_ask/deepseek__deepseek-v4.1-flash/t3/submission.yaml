@@ -1,0 +1,433 @@
+task: nut-knob/M3
+note: 'Hand knob for an M3 bolt: one printed piece, 20 mm across, fluted for finger
+  grip. An ISO 4032 M3 nut presses into a vertical hex pocket by hand (interference
+  fit, no glue) and is held by friction; the pocket is blind, so the nut bottoms on
+  a 7.3 mm-thick floor whose only opening is a Ø3.4 through hole — the nut can never
+  be pushed out the far side. The bolt enters that Ø3.4 hole in the bearing face,
+  runs up through the body, threads through the nut and emerges from the mouth at
+  the top, so it goes right through the nut and out the other side.
+
+
+  Mechanics: when you hand-tighten the knob onto the bolt, the bolt''s tension pushes
+  the nut *down* against the pocket floor, so the tightening load is carried by the
+  floor, not by the press fit. The press fit only has to hold the 0.6 g nut against
+  gravity when the knob is turned over. When you loosen, the load reverses and the
+  press fit takes it, so keep the interference as large as you can still press in
+  by hand.
+
+
+  Because I could not measure your nut or bolt, the pocket size is a design value
+  (5.50 mm across flats = line-to-line with the catalog nut AF) and must be chosen
+  from the fit coupon: print the coupon first, press your nut into the three pockets
+  (5.40 / 5.50 / 5.60), and use the smallest one that presses in by hand and holds
+  the nut when the coupon is held pocket-down and shaken. Set pocket_af to that value
+  before slicing the knob. If 5.50 works, print the knob as supplied.
+
+
+  Bolt length: the bolt''s threaded length above the workpiece must be at least the
+  knob''s height (10 mm) for the tip to emerge from the mouth; a shorter bolt still
+  tightens but stays inside. An ISO 4762 M3x20 (17 mm of shank) exits for workpieces
+  up to about 7 mm thick.'
+questions: []
+params:
+  knob_od:
+    value: 20.0
+    unit: mm
+    kind: world
+    source: asked
+    note: user asked for 'about 20 mm across' — the knob's overall diameter
+  knob_h:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: grip height; also the bolt reach needed for the tip to exit the mouth
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across flats; could not be measured, so catalog value
+      used
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 nominal shank diameter
+  pocket_af:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: hex pocket across flats = nut_af line-to-line; final value chosen from the
+      fit coupon (5.40/5.50/5.60)
+  pocket_af_a:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: coupon pocket A, 0.05 mm per side interference (1 dot)
+  pocket_af_b:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: coupon pocket B, line-to-line (2 dots)
+  pocket_af_c:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: coupon pocket C, 0.05 mm per side clearance (3 dots)
+  pocket_depth:
+    value: 2.7
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.3 mm, so the nut sits fully inside, its outer face 0.3 mm below
+      the mouth
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_d + 0.4 mm clearance hole through the floor and body
+  mouth_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg hex lead-in at the pocket mouth to start the nut square
+  flute_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: grip scallops around the rim
+  flute_depth:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: radial depth of each scallop (also its half-width at the rim)
+  coupon_h:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon thickness; wall around each pocket is 6.8 mm, comparable to the knob's
+      7.25 mm
+  coupon_pitch:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: spacing between coupon pockets
+  coupon_depth:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon width in y
+  dot_d:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: diameter of the marker dimples identifying each coupon pocket
+  dot_depth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: depth of the marker dimples
+parts:
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import cadquery as cq\nimport math\n\ndef _hexpts(af, cx=0.0, cy=0.0):\n\
+    \    # regular hexagon, across-flats = af, first vertex on +x\n    r = af / math.sqrt(3.0)\n\
+    \    return [(cx + r*math.cos(i*math.pi/3.0), cy + r*math.sin(i*math.pi/3.0))\
+    \ for i in range(6)]\n\ndef build(p):\n    h = p.coupon_h\n    afs = [p.pocket_af_a,\
+    \ p.pocket_af_b, p.pocket_af_c]\n    n = len(afs)\n    width = p.coupon_pitch*(n\
+    \ - 1) + 24.0\n    plate = cq.Workplane(\"XY\").box(width, p.coupon_depth, h,\
+    \ centered=(True, True, False))\n    z_floor = h - p.pocket_depth\n    z0 = h\
+    \ - p.mouth_chamfer\n    for i, af in enumerate(afs):\n        x = (i - 0.5*(n\
+    \ - 1))*p.coupon_pitch\n        # hex nut pocket, opening at the top face\n  \
+    \      plate = plate.cut(cq.Workplane(\"XY\", origin=(0.0, 0.0, z_floor))\n  \
+    \                        .polyline(_hexpts(af, x, 0.0)).close()\n            \
+    \              .extrude(p.pocket_depth + 1.0))\n        # hex lead-in chamfer\
+    \ at the mouth\n        plate = plate.cut(cq.Workplane(\"XY\", origin=(0.0, 0.0,\
+    \ z0))\n                          .polyline(_hexpts(af, x, 0.0)).close()\n   \
+    \                       .workplane(offset=p.mouth_chamfer + 1.0)\n           \
+    \               .polyline(_hexpts(af + 2.0*(p.mouth_chamfer + 1.0), x, 0.0)).close()\n\
+    \                          .loft(ruled=True))\n        # bolt clearance hole through\
+    \ the floor (the shoulder the nut cannot pass)\n        plate = plate.cut(cq.Workplane(\"\
+    XY\", origin=(x, 0.0, -1.0))\n                          .circle(0.5*p.bolt_clear_d).extrude(z_floor\
+    \ + 1.0))\n        # marker dimples: 1 dot = 5.40, 2 dots = 5.50, 3 dots = 5.60\n\
+    \        for j in range(i + 1):\n            dx = (j - 0.5*i)*2.0\n          \
+    \  plate = plate.cut(cq.Workplane(\"XY\", origin=(x + dx, 3.0 - 0.5*p.coupon_depth,\
+    \ h - p.dot_depth))\n                              .circle(0.5*p.dot_d).extrude(p.dot_depth\
+    \ + 0.5))\n    return plate"
+  print_orientation: 'Flat on the bed: the bottom face (z=0) sits on the bed, the
+    three hex pockets open upward. No supports, no bridges.'
+  use_orientation: As printed for the test; flip it pocket-down to check the nut stays
+    in. The pockets copy the knob's pocket exactly (same AF, same depth, same lead-in,
+    same 6.8 mm wall).
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import cadquery as cq\nimport math\n\ndef _hexpts(af, cx=0.0, cy=0.0):\n\
+    \    # regular hexagon, across-flats = af, first vertex on +x\n    r = af / math.sqrt(3.0)\n\
+    \    return [(cx + r*math.cos(i*math.pi/3.0), cy + r*math.sin(i*math.pi/3.0))\
+    \ for i in range(6)]\n\ndef build(p):\n    h = p.knob_h\n    # body: plain cylinder,\
+    \ then scallop the rim for grip\n    body = cq.Workplane(\"XY\").circle(0.5*p.knob_od).extrude(h)\n\
+    \    n = int(p.flute_count)\n    if n > 0:\n        pts = [(0.5*p.knob_od*math.cos(2.0*math.pi*i/n),\n\
+    \                0.5*p.knob_od*math.sin(2.0*math.pi*i/n)) for i in range(n)]\n\
+    \        flutes = (cq.Workplane(\"XY\", origin=(0.0, 0.0, -1.0))\n           \
+    \       .pushPoints(pts).circle(p.flute_depth).extrude(h + 2.0))\n        body\
+    \ = body.cut(flutes)\n    # blind hex nut pocket, opening at the top face (z =\
+    \ h)\n    z_floor = h - p.pocket_depth\n    body = body.cut(cq.Workplane(\"XY\"\
+    , origin=(0.0, 0.0, z_floor))\n                    .polyline(_hexpts(p.pocket_af)).close()\n\
+    \                    .extrude(p.pocket_depth + 1.0))\n    # 45 deg hex lead-in\
+    \ at the pocket mouth\n    z0 = h - p.mouth_chamfer\n    body = body.cut(cq.Workplane(\"\
+    XY\", origin=(0.0, 0.0, z0))\n                    .polyline(_hexpts(p.pocket_af)).close()\n\
+    \                    .workplane(offset=p.mouth_chamfer + 1.0)\n              \
+    \      .polyline(_hexpts(p.pocket_af + 2.0*(p.mouth_chamfer + 1.0))).close()\n\
+    \                    .loft(ruled=True))\n    # bolt clearance hole from the bearing\
+    \ face up into the pocket floor\n    body = body.cut(cq.Workplane(\"XY\", origin=(0.0,\
+    \ 0.0, -1.0))\n                    .circle(0.5*p.bolt_clear_d).extrude(z_floor\
+    \ + 1.0))\n    return body"
+  print_orientation: 'Pocket opening up: the bearing face (the flat disc with the
+    Ø3.4 hole that touches the workpiece in use) is on the bed at z=0, the hex pocket
+    opens at the top. Vertical walls throughout, no bridges, no supports.'
+  use_orientation: Same as printed. Bearing face down on the workpiece, hex pocket
+    facing up and away from the workpiece. Nut pressed into the pocket from the top;
+    the M3 bolt enters the Ø3.4 hole in the bearing face from below, threads through
+    the nut and exits the mouth at the top.
+hardware:
+- id: nut_m3
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt_m3
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: nut_into_knob
+  fastener: nut_m3
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: hand_knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  - part: hand_knob
+    feature: pocket_floor
+    role: head_seat
+  nut: null
+  external: null
+- id: bolt_through_knob
+  fastener: bolt_m3
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: hand_knob
+    feature: bolt_clearance_hole
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: c1_press_fit
+  part: hand_knob
+  feature: hex_nut_pocket
+  relation: engages
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - pocket_af_a
+  - pocket_af_b
+  - pocket_af_c
+  - pocket_depth
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Press the ISO 4032 M3 nut into all three coupon pockets by hand
+      (thumb, or lay the nut on the table and push the coupon down onto it). Then
+      hold the coupon pocket-down and tap it: the nut must stay in. Use the smallest
+      AF that presses by hand and holds; set pocket_af to it and re-slice the knob.
+      If none holds, drop to 5.30; if all are too tight, go up to 5.70.'
+- id: c2_shoulder_stops_nut
+  part: hand_knob
+  feature: pocket_floor
+  relation: supports
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_depth
+  - nut_af
+  - bolt_clear_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Press the nut into a coupon pocket until it bottoms on the floor,
+      then push hard from the pocket side with a pin or your thumb: the nut must not
+      pass through, because the floor''s only opening is Ø3.4.'
+- id: c3_nut_fully_inside
+  part: hand_knob
+  feature: pocket_mouth_recess
+  relation: contains
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: After pressing, the nut's outer face must sit 0.3 mm below the knob's
+      mouth face (pocket_depth 2.7 - nut_h 2.4). Feel it with a fingernail or measure
+      with calipers.
+- id: c4_bolt_clears
+  part: hand_knob
+  feature: bolt_clearance_hole
+  relation: clears
+  hardware: bolt_m3
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: Pass the M3 bolt through the bearing-face hole and turn it up through
+      the nut; it must run freely and emerge from the mouth. Calipers on the hole
+      should read about 3.4 mm.
+- id: c5_coupon_af
+  part: fit_coupon
+  feature: hex_pockets
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - pocket_af_a
+  - pocket_af_b
+  - pocket_af_c
+  check:
+    method: measure
+    ref: null
+    description: 'Calipers across the flats of each coupon pocket: 5.40 (1 dot), 5.50
+      (2 dots), 5.60 (3 dots), each within about ±0.10 mm of nominal. If the whole
+      set reads tight or loose, shift pocket_af accordingly.'
+manual:
+- n: '1'
+  text: Slice fit_coupon. STL as supplied, PLA, 0.2 mm layers, 0.4 mm nozzle, no supports,
+    no brim. The flat face with no pockets goes on the bed; the three hex pockets
+    open upward.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: Bambu Lab X1C
+- n: '2'
+  text: 'Press your ISO 4032 M3 nut into each of the three pockets, hex aligned with
+    the pocket hex. Push with your thumb, or lay the nut on the table and press the
+    coupon down onto it. Note which pockets go in by hand and which are too tight.
+    The pockets are labelled by dimples on the top face beside them: 1 dot = 5.40
+    mm, 2 dots = 5.50 mm, 3 dots = 5.60 mm.'
+  parts:
+  - fit_coupon
+  hardware:
+  - nut_m3
+  tool: null
+- n: '3'
+  text: Turn the coupon pocket-down over a table and tap or shake it. The nut must
+    stay in. Pick the SMALLEST across-flats that both presses in by hand and holds
+    the nut upside down. If that is 5.50 mm, print the knob exactly as supplied; otherwise
+    edit the pocket_af value in the hand_knob code to the winning number (try 5.30
+    if nothing holds, 5.70 if everything is too tight) and re-slice.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut_m3
+  tool: null
+- n: '4'
+  text: Slice hand_knob. PLA, 0.2 mm layers, no supports. Bearing face (the flat disc
+    with the small Ø3.4 hole) on the bed, hex pocket opening up. About 3 g and 25
+    minutes.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: Bambu Lab X1C
+- n: '5'
+  text: Press the nut into the knob's hex pocket from the top opening, keeping the
+    hex aligned with the pocket. Push it down until it stops on the pocket floor.
+    Its outer face should end up 0.3 mm below the mouth face, i.e. fully inside the
+    knob. A light tap with a mallet handle is fine if your thumb is not enough; do
+    not force a pocket that is clearly too small — reprint with the next size up.
+  parts:
+  - hand_knob
+  hardware:
+  - nut_m3
+  tool: null
+- n: '6'
+  text: Hold the knob upside down (mouth down) and shake it. The nut must stay in
+    with no glue. If it drops out, reprint the knob with pocket_af one step smaller
+    (5.40, then 5.30).
+  parts:
+  - hand_knob
+  hardware:
+  - nut_m3
+  tool: null
+- n: '7'
+  text: Insert the M3 bolt from the bearing side (the face with the Ø3.4 hole) and
+    turn it up through the knob until it threads into the nut and the tip emerges
+    from the mouth. It should turn smoothly the whole way.
+  parts:
+  - hand_knob
+  hardware:
+  - bolt_m3
+  - nut_m3
+  tool: 3 mm hex key
+- n: '8'
+  text: 'Use: with the bolt through your workpiece and its head on the far side, screw
+    the knob down onto the exposed thread, bearing face toward the workpiece, and
+    hand-tighten by gripping the scalloped rim. Tightening presses the nut down onto
+    the pocket floor, so the load is taken by the printed shoulder and the nut cannot
+    be pushed out the far side. Loosening pulls the nut the other way, so leave the
+    press fit as tight as you can still assemble by hand.'
+  parts:
+  - hand_knob
+  hardware:
+  - bolt_m3
+  - nut_m3
+  tool: null
+- n: '9'
+  text: The bolt's threaded length above the workpiece must be at least 10 mm (the
+    knob's height) for the tip to come out of the mouth; a shorter bolt still tightens
+    but its tip stays inside the knob.
+  parts:
+  - hand_knob
+  hardware:
+  - bolt_m3
+  tool: null

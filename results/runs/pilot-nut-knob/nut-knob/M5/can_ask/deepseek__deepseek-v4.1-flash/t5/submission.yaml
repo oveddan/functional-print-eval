@@ -1,0 +1,485 @@
+task: nut-knob/M5
+note: 'Hand knob Ø30 �� with a captive M5 hex nut. The pocket is 8.10 mm across flats
+  (0.10 mm clearance on the nut''s 8.0), so the nut drops in and seats using only
+  thumb pressure — no clamp, no glue, and the pocket''s hex flats still drive the
+  nut so it cannot spin. Retention is geometric, not friction: three 0.9 x 1.4 mm
+  PLA fingers stand in notches at alternate hex corners and carry a 0.25 mm barb whose
+  flat underside ends up 0.3 mm above the seated nut''s top face. The barb''s ramp
+  lets the nut''s bottom face push the finger outward (~0.15 mm, ~1 % strain, elastic)
+  as it descends; once the nut''s top face passes, the finger springs back over it.
+  Hanging 0.02 N of nut cannot cam three fingers open, so it stays in when inverted.
+  The nut seats on a pocket floor 9.3 mm thick with only a Ø5.8 bolt bore through
+  it, so it can never be pushed out the far side, and the bolt''s tip leaves through
+  the pocket mouth. Printed upright on its flat underside: every wall vertical, no
+  bridges, no supports. Print the coupon first — it is the same pocket, fingers, seat
+  and bore in a small block, so the snap and the hand-press can be proven before touching
+  the knob.'
+questions:
+- text: 'The nut''s across-flats and height could not be measured, so the pocket uses
+    the ISO 4032 catalog values (8.0 mm across flats, 4.7 mm high) plus 0.10 mm clearance.
+    If your nut is noticeably different, the coupon in step 2 will show it: too tight
+    means the pocket needs the 0.10 mm clearance increased, too loose is harmless
+    because the fingers do the retaining.'
+  answer: null
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut across flats; the person could not measure theirs, catalog
+      value used
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height; person could not measure
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal thread diameter
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: about 30 mm across, per the request
+  knob_h:
+    value: 14.0
+    unit: mm
+    kind: design
+    source: design
+    note: short enough to grip, tall enough for nut + 9.3 mm floor
+  edge_chamfer:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: top rim chamfer so the mouth edge is comfortable
+  nut_recess:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: nut's top face sits this far below the knob top face = fully inside
+  pocket_af:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'nut_af + 0.10, a hand-drop clearance: fit does not retain, the barbs do'
+  lead_in_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in frustum depth at the mouth
+  lead_in_w:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in widening per side, i.e. 24 deg from vertical
+  corner_notch_d:
+    value: 2.6
+    unit: mm
+    kind: design
+    source: design
+    note: corner notch that frees the nut's sharp corners and houses each finger
+  finger_count:
+    value: 3
+    unit: count
+    kind: design
+    source: design
+    note: barbs at alternate hex corners, 120 deg apart
+  finger_t:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: radial thickness of the cantilever finger
+  finger_w:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: tangential width of the finger
+  finger_gap:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: finger inner face stands this far outside the nut's corner radius (4.619)
+  barb_protrusion:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: 0.25 hook; leaves ~0.15 mm of overlap over the nut's corner after it passes
+  barb_lift:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: barb's flat underside sits this far above the seated nut's top face
+  barb_ramp_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ramp height above the barb underside
+  bolt_clear_d:
+    value: 5.8
+    unit: mm
+    kind: design
+    source: design
+    note: M5 clearance bore through the floor; < nut 8.0 AF, so the nut cannot pass
+  bolt_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: countersink at the underside so the bolt starts easily
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: grip flutes
+  flute_d:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: flute cutter diameter
+  flute_r:
+    value: 15.6
+    unit: mm
+    kind: design
+    source: design
+    note: 'flute cutter centre radius: 2.9 mm deep grip scallops'
+  flute_z0:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: flutes start above the flat bed-contact disc
+  coupon_l:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon block length
+  coupon_w:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon block width
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "import math\nimport cadquery as cq\n\n\ndef _hexpts(af, rot=0.0):\n    R\
+    \ = af / math.sqrt(3.0)\n    return [(R * math.cos(math.radians(rot + 60.0 * i)),\n\
+    \             R * math.sin(math.radians(rot + 60.0 * i))) for i in range(6)]\n\
+    \n\ndef _hexprism(af, z0, h, rot=0.0):\n    return (cq.Workplane(\"XY\").workplane(offset=z0)\n\
+    \            .polyline(_hexpts(af, rot)).close()\n            .extrude(h))\n\n\
+    \ndef _hexfrustum(af_lo, z_lo, af_hi, z_hi, rot=0.0):\n    return (cq.Workplane(\"\
+    XY\").workplane(offset=z_lo)\n            .polyline(_hexpts(af_lo, rot)).close()\n\
+    \            .workplane(offset=(z_hi - z_lo))\n            .polyline(_hexpts(af_hi,\
+    \ rot)).close()\n            .loft(ruled=True))\n\n\ndef _finger(p, seat, r_face,\
+    \ r_tip, z_ledge, z_top, w_t):\n    # XZ profile: vertical cantilever post on\
+    \ the pocket floor, with a barb\n    # whose flat underside (z_ledge) faces down\
+    \ and whose ramp rises outward.\n    x0 = r_face\n    x1 = r_face + p.finger_t\n\
+    \    z_root = seat - 0.6\n    pts = [(x0, z_root), (x1, z_root), (x1, z_top),\
+    \ (x0, z_top),\n           (r_tip, z_ledge), (x0, z_ledge)]\n    return (cq.Workplane(\"\
+    XZ\").polyline(pts).close()\n            .extrude(w_t / 2.0, both=True))\n\n\n\
+    def build(p):\n    top = float(p.knob_h)\n    seat = top - p.nut_recess - p.nut_h\
+    \   # pocket floor = nut seat\n    nut_top = top - p.nut_recess\n\n    # body\
+    \ of revolution, top rim chamfered\n    body = (cq.Workplane(\"XZ\")\n       \
+    \     .moveTo(0.0, 0.0)\n            .lineTo(p.knob_d / 2.0, 0.0)\n          \
+    \  .lineTo(p.knob_d / 2.0, top - p.edge_chamfer)\n            .lineTo(p.knob_d\
+    \ / 2.0 - p.edge_chamfer, top)\n            .lineTo(0.0, top)\n            .close()\n\
+    \            .revolve(360.0, (0.0, 0.0, 0.0), (0.0, 1.0, 0.0)))\n\n    # grip\
+    \ flutes\n    for i in range(int(p.flute_count)):\n        a = 2.0 * math.pi *\
+    \ i / int(p.flute_count)\n        body = body.cut(cq.Workplane(\"XY\").workplane(offset=p.flute_z0)\n\
+    \                        .center(p.flute_r * math.cos(a), p.flute_r * math.sin(a))\n\
+    \                        .circle(p.flute_d / 2.0)\n                        .extrude(top\
+    \ - p.flute_z0 + 2.0))\n\n    # nut pocket and mouth lead-in\n    body = body.cut(_hexprism(p.pocket_af,\
+    \ seat, top - seat + 0.5))\n    body = body.cut(_hexfrustum(p.pocket_af, top -\
+    \ p.lead_in_h,\n                                p.pocket_af + 2.0 * p.lead_in_w,\
+    \ top + 1.0))\n\n    # corner notches (free the nut's corners, give each finger\
+    \ room to bend)\n    Rp = p.pocket_af / math.sqrt(3.0)\n    for i in range(6):\n\
+    \        a = math.radians(60.0 * i)\n        body = body.cut(cq.Workplane(\"XY\"\
+    ).workplane(offset=seat)\n                        .center(Rp * math.cos(a), Rp\
+    \ * math.sin(a))\n                        .circle(p.corner_notch_d / 2.0)\n  \
+    \                      .extrude(top - seat + 0.5))\n\n    # elastic barbed fingers,\
+    \ unioned back into their notches\n    r_face = p.nut_af / math.sqrt(3.0) + p.finger_gap\n\
+    \    r_tip = r_face - p.barb_protrusion\n    z_ledge = nut_top + p.barb_lift\n\
+    \    z_top = z_ledge + p.barb_ramp_h\n    for i in range(int(p.finger_count)):\n\
+    \        f = _finger(p, seat, r_face, r_tip, z_ledge, z_top, p.finger_w)\n   \
+    \     body = body.union(f.rotate((0, 0, 0), (0, 0, 1),\n                     \
+    \              360.0 / int(p.finger_count) * i))\n\n    # bolt clearance bore\
+    \ through the floor + underside countersink\n    body = body.cut(cq.Workplane(\"\
+    XY\").workplane(offset=-1.0)\n                    .circle(p.bolt_clear_d / 2.0).extrude(seat\
+    \ + 1.0))\n    body = body.cut(cq.Workplane(obj=cq.Solid.makeCone(\n        p.bolt_clear_d\
+    \ / 2.0 + p.bolt_chamfer, p.bolt_clear_d / 2.0,\n        p.bolt_chamfer, cq.Vector(0,\
+    \ 0, 0), cq.Vector(0, 0, 1))))\n    return body\n"
+  print_orientation: Flat Ø30 underside on the bed (z = 0); the nut pocket mouth faces
+    up. All walls vertical, no overhangs beyond the 0.25 mm barb ledges, no bridges,
+    no supports.
+  use_orientation: Pocket mouth up while pressing the nut in; bolt threads in from
+    the flat underside, tip exits through the mouth.
+- id: coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "import math\nimport cadquery as cq\n\n\ndef _hexpts(af, rot=0.0):\n    R\
+    \ = af / math.sqrt(3.0)\n    return [(R * math.cos(math.radians(rot + 60.0 * i)),\n\
+    \             R * math.sin(math.radians(rot + 60.0 * i))) for i in range(6)]\n\
+    \n\ndef _hexprism(af, z0, h, rot=0.0):\n    return (cq.Workplane(\"XY\").workplane(offset=z0)\n\
+    \            .polyline(_hexpts(af, rot)).close()\n            .extrude(h))\n\n\
+    \ndef _hexfrustum(af_lo, z_lo, af_hi, z_hi, rot=0.0):\n    return (cq.Workplane(\"\
+    XY\").workplane(offset=z_lo)\n            .polyline(_hexpts(af_lo, rot)).close()\n\
+    \            .workplane(offset=(z_hi - z_lo))\n            .polyline(_hexpts(af_hi,\
+    \ rot)).close()\n            .loft(ruled=True))\n\n\ndef _finger(p, seat, r_face,\
+    \ r_tip, z_ledge, z_top, w_t):\n    x0 = r_face\n    x1 = r_face + p.finger_t\n\
+    \    z_root = seat - 0.6\n    pts = [(x0, z_root), (x1, z_root), (x1, z_top),\
+    \ (x0, z_top),\n           (r_tip, z_ledge), (x0, z_ledge)]\n    return (cq.Workplane(\"\
+    XZ\").polyline(pts).close()\n            .extrude(w_t / 2.0, both=True))\n\n\n\
+    def build(p):\n    top = float(p.knob_h)\n    seat = top - p.nut_recess - p.nut_h\n\
+    \    nut_top = top - p.nut_recess\n\n    body = cq.Workplane(\"XY\").box(p.coupon_l,\
+    \ p.coupon_w, top,\n                                   centered=(True, True, False))\n\
+    \n    body = body.cut(_hexprism(p.pocket_af, seat, top - seat + 0.5))\n    body\
+    \ = body.cut(_hexfrustum(p.pocket_af, top - p.lead_in_h,\n                   \
+    \             p.pocket_af + 2.0 * p.lead_in_w, top + 1.0))\n\n    Rp = p.pocket_af\
+    \ / math.sqrt(3.0)\n    for i in range(6):\n        a = math.radians(60.0 * i)\n\
+    \        body = body.cut(cq.Workplane(\"XY\").workplane(offset=seat)\n       \
+    \                 .center(Rp * math.cos(a), Rp * math.sin(a))\n              \
+    \          .circle(p.corner_notch_d / 2.0)\n                        .extrude(top\
+    \ - seat + 0.5))\n\n    r_face = p.nut_af / math.sqrt(3.0) + p.finger_gap\n  \
+    \  r_tip = r_face - p.barb_protrusion\n    z_ledge = nut_top + p.barb_lift\n \
+    \   z_top = z_ledge + p.barb_ramp_h\n    for i in range(int(p.finger_count)):\n\
+    \        f = _finger(p, seat, r_face, r_tip, z_ledge, z_top, p.finger_w)\n   \
+    \     body = body.union(f.rotate((0, 0, 0), (0, 0, 1),\n                     \
+    \              360.0 / int(p.finger_count) * i))\n\n    body = body.cut(cq.Workplane(\"\
+    XY\").workplane(offset=-1.0)\n                    .circle(p.bolt_clear_d / 2.0).extrude(seat\
+    \ + 1.0))\n    body = body.cut(cq.Workplane(obj=cq.Solid.makeCone(\n        p.bolt_clear_d\
+    \ / 2.0 + p.bolt_chamfer, p.bolt_clear_d / 2.0,\n        p.bolt_chamfer, cq.Vector(0,\
+    \ 0, 0), cq.Vector(0, 0, 1))))\n    return body\n"
+  print_orientation: Block sits on its bottom face (z = 0); nut pocket mouth up. Same
+    orientation and layers as the knob.
+  use_orientation: Pocket mouth up to press the nut in; flip it to test that the nut
+    cannot fall out.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_bolt
+  ref: ISO 4762 M5x20
+  qty: 1
+joints:
+- id: bolt-through-captive-nut
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: flat underside, bolt head face at z = 0
+    role: head_seat
+  - part: knob
+    feature: bolt clearance bore Ø5.8 through the pocket floor
+    role: clearance
+  - part: knob
+    feature: hex nut pocket, nut seated on the floor at z = 8.3
+    role: nut_pocket
+  nut: m5_nut
+  external: null
+criteria:
+- id: c1_nut_presses_by_hand
+  part: knob
+  feature: hex nut pocket mouth and lead-in, 8.10 mm across flats
+  relation: clears
+  hardware: m5_nut
+  clearance_mm: 0.1
+  params:
+  - nut_af
+  - pocket_af
+  - lead_in_h
+  - lead_in_w
+  check:
+    method: coupon
+    ref: coupon
+    description: Hold the coupon pocket-mouth up and press the nut in with your thumb
+      only. It must travel to the floor without a clamp or hammer, i.e. the knob's
+      0.10 mm-per-side clearance is a hand fit on your printer.
+- id: c2_nut_retained_upright_down
+  part: knob
+  feature: three elastic barbed fingers at alternate pocket corners
+  relation: engages
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - finger_count
+  - finger_t
+  - finger_w
+  - barb_protrusion
+  - barb_lift
+  - barb_ramp_h
+  check:
+    method: coupon
+    ref: coupon
+    description: Turn the coupon mouth-down and tap it on the bench, then shake. The
+      nut must stay in; it should only come free if you pry it with a fingernail or
+      pliers. This is the same finger/ledge geometry as the knob.
+- id: c3_nut_cannot_pass_far_side
+  part: knob
+  feature: pocket floor (nut seat) pierced only by the Ø5.8 bolt bore
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - bolt_clear_d
+  - nut_h
+  check:
+    method: measure
+    ref: calipers at the flat underside
+    description: 'Measure the through-bore at the underside: 5.8 mm, smaller than
+      the nut''s 8.0 mm across flats and its 9.24 mm corner span, so pressing the
+      nut from the mouth can never push it out the far side.'
+- id: c4_nut_fully_inside
+  part: knob
+  feature: 1.0 mm nut recess below the top face
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - nut_recess
+  - nut_h
+  - knob_h
+  check:
+    method: measure
+    ref: straightedge across the pocket mouth
+    description: 'After pressing the nut in, lay a straightedge across the mouth:
+      the nut''s top face sits about 1.0 mm below the knob''s top face, so no part
+      of the nut is proud of the knob.'
+- id: c5_bolt_passes_through
+  part: knob
+  feature: Ø5.8 floor bore, nut bore, and open pocket mouth above the nut
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.8
+  params:
+  - bolt_clear_d
+  - bolt_d
+  - nut_recess
+  check:
+    method: coupon
+    ref: coupon
+    description: Push the M5x20 bolt into the bore from the coupon's flat underside
+      and turn it by hand until it threads through the nut; the threaded tip must
+      come out of the pocket mouth, i.e. through and out the other side.
+- id: c6_grip_across
+  part: knob
+  feature: Ø30 grip body with 8 flutes
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_d
+  - flute_count
+  - flute_r
+  - flute_d
+  check:
+    method: measure
+    ref: calipers across the grip
+    description: 'Measure across the fluted grip at its widest: 30 mm, matching the
+      requested ~30 mm across, so it can be gripped and turned by hand.'
+manual:
+- n: '1'
+  text: Print the two parts (knob and coupon) in PLA at 0.2 mm layers with the flat
+    underside on the bed and the nut pocket mouth facing up. No supports, no brim
+    needed. Print the coupon first — it is the same pocket, fingers, seat and bore
+    in a small block, so a mistake costs minutes, not the knob.
+  parts:
+  - knob
+  - coupon
+  hardware: []
+  tool: printer
+- n: '2'
+  text: 'Fit test on the coupon: hold it with the pocket mouth up, drop the M5 nut
+    in, and press it straight down with your thumb. It should go in with hand pressure
+    and you should feel/hear the three fingers click over its top face. If it will
+    not go, scrape the pocket''s six flats lightly with a knife and try again — do
+    not force it with a clamp.'
+  parts:
+  - coupon
+  hardware:
+  - m5_nut
+  tool: thumb
+- n: '3'
+  text: 'Retention test on the coupon: turn it mouth-down over the bench and tap it.
+    The nut must stay in. Then pry the nut out with a fingernail or pliers — it is
+    reusable — and keep it for the knob.'
+  parts:
+  - coupon
+  hardware:
+  - m5_nut
+  tool: null
+- n: '4'
+  text: 'Press the M5 nut into the knob the same way: pocket mouth up, nut flat and
+    square to the pocket, thumb pressure until it seats on the floor and the barbs
+    click. Its top face ends up about 1 mm inside the pocket.'
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: thumb
+- n: '5'
+  text: 'Check the far side: push hard on the nut from the mouth. It stops on the
+    pocket floor — the only opening below it is the Ø5.8 bolt bore, so it cannot be
+    pushed through.'
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '6'
+  text: Turn the knob upside down and shake it. The nut stays captured by the three
+    barbs. This is the finished, glue-free nut retention.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '7'
+  text: 'Thread the bolt in from the flat underside: push the M5x20 bolt into the
+    Ø5.8 bore and turn it by hand. It picks up the nut''s thread, passes through the
+    nut, and its tip comes out of the pocket mouth. Turn until the socket head meets
+    the underside face.'
+  parts:
+  - knob
+  hardware:
+  - m5_bolt
+  - m5_nut
+  tool: null
+- n: '8'
+  text: Grip the flutes and turn the knob. The pocket's hex flats hold the nut so
+    it cannot spin, and the barbs stop it lifting out while you work. To remove, turn
+    the knob off the bolt; the nut stays in the knob.
+  parts:
+  - knob
+  hardware:
+  - m5_bolt
+  - m5_nut
+  tool: null

@@ -1,0 +1,427 @@
+task: bearing-wheel
+note: 'Roller wheel rebuilt skateboard-style: printed Ø50x14 hub carries both 608s
+  back-to-back in a Ø21.9 press-fit bore (faces flush); a printed 2 mm thrust washer
+  makes the total stack 16 mm = the old wheel width, so ride height is preserved.
+  Axle = ISO 4762 M8x50 socket screw (22 mm smooth grip keeps threads out of the bearing
+  bores; the user''s own M8 bolt substitutes if long enough — manual step 5), clamped
+  washer+head to nyloc through the bracket; the ISO 10511 M8 nyloc squeezes the bearing
+  inner races onto the bolt so the hub spins freely and never rubs the bracket (nyloc
+  face Ø~14.4 stays inside the Ø21.9 bore mouth). ASSUMPTIONS (measuring only returned
+  the bolt shank ~8 mm): tread left FLAT (most bypass-door bottom guides are flat/channels)
+  — if the track is a round rail, reprint the hub with groove_w = rail Ø + 1 and groove_d
+  ≈ 0.4 x rail Ø (params already in the code, 0 = flat). Bracket hole assumed to need
+  opening to Ø8.5 (conditional manual step). Bolt tail is likely long → cut-to-length
+  step included. Press fit is verified first via the coupon before printing the hub.'
+questions: []
+params:
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal bore 8.0 (their caliper reading 7.94)
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal OD 22.000 -0.008; their 21.22 reading was a jaw-pinch artifact
+      per catalog
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: nominal 608 width; their width reading missing
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M8 nominal; their shank measured 'about 8 mm', confirming M8
+  bolt_len:
+    value: 50
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8x50 chosen; grip 22 mm so the full bearing stack sits on smooth
+      shank
+  bolt_len_min:
+    value: 40.6
+    unit: mm
+    kind: design
+    source: design
+    note: head 8 + washer 1.6 + bracket 4 + thrust 2 + hub 14 + nyloc 8 + 3 threads;
+      scales with bracket_grip
+  bracket_grip:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: bracket thickness at the axle hole could not be measured; stamped bracket
+      assumed 3-5 mm
+  bracket_hole_d:
+    value: 8.5
+    unit: mm
+    kind: world
+    source: unknown
+    note: could not be measured; target is that the M8 bolt slides through
+  bore_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: press lead-in at both bore mouths
+  head_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8 socket head height
+  hub_bore_d:
+    value: 21.9
+    unit: mm
+    kind: design
+    source: design
+    note: 0.10 mm interference press fit for the 608 outer race
+  hub_od:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: = old_wheel_od so ride height is unchanged
+  hub_width:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: = 2 x bearing_w; both bearings back-to-back, faces flush with hub faces
+  groove_d:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: 0 = flat tread; if the track is a round rail set to ~0.4 x rail Ø
+  groove_w:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: 0 = flat tread; if the track is a round rail set to rail Ø + 1
+  nyloc_af:
+    value: 13
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M8 across flats
+  nyloc_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M8 height
+  old_wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: 'your words: ''about 50 mm across'''
+  old_wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: 'your words: ''about 16 mm wide'''
+  rim_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: outer edge chamfers so the wheel enters a guide channel cleanly
+  tw_id:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt shank clearance
+  tw_od:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: spans the bracket face, stays inside the hub bore mouth
+  tw_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: = old_wheel_w - hub_width; keeps the wheel at the old axial position
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8, sits under the bolt head on the door side
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 thickness
+parts:
+- id: wheel_hub
+  role: final
+  material: PLA (black)
+  code: "def build(p):\n    R = p.hub_od / 2.0\n    W = p.hub_width\n    r = p.hub_bore_d\
+    \ / 2.0\n    c = p.bore_chamfer\n    e = p.rim_chamfer\n    gw = p.groove_w\n\
+    \    gd = p.groove_d\n\n    z0, z1 = e, W - e\n    pts = [(r + c, 0.0), (R - e,\
+    \ 0.0), (R, z0)]\n    if gd > 0 and gw > 0:\n        zc = W / 2.0\n        pts\
+    \ += [(R, zc - gw / 2.0), (R - gd, zc), (R, zc + gw / 2.0)]\n    pts += [(R, z1),\
+    \ (R - e, W), (r + c, W), (r, W - c), (r, c)]\n    prof = cq.Workplane(\"XZ\"\
+    ).polyline(pts).close()\n    return prof.revolve(360, (0, 0), (0, 1))"
+  print_orientation: flat side face on the bed, exactly as modeled (part is symmetric,
+    either face works)
+  use_orientation: 'bore axis along the bolt: vertical for a bottom roller, horizontal
+    for top-hung; symmetric so either works'
+- id: thrust_washer
+  role: final
+  material: PLA (black)
+  code: "def build(p):\n    return (cq.Workplane(\"XY\")\n            .circle(p.tw_od\
+    \ / 2.0)\n            .circle(p.tw_id / 2.0)\n            .extrude(p.tw_t))"
+  print_orientation: flat on the bed, as modeled
+  use_orientation: flat against the bracket face, on the bolt
+- id: coupon_bearing_fit
+  role: coupon
+  material: PLA (black)
+  code: "def build(p):\n    r = p.hub_bore_d / 2.0\n    c = p.bore_chamfer\n    R\
+    \ = 16.0\n    W = 6.0\n    pts = [(r + c, 0.0), (R, 0.0), (R, W), (r + c, W),\
+    \ (r, W - c), (r, c)]\n    return cq.Workplane(\"XZ\").polyline(pts).close().revolve(360,\
+    \ (0, 0), (0, 1))"
+  print_orientation: flat on the bed, as modeled
+  use_orientation: flat on the bench for the press-fit test
+hardware:
+- id: axle_bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+- id: washer_m8
+  ref: ISO 7089 M8
+  qty: 1
+- id: locknut_m8
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: thrust_washer
+    feature: centre hole Ø8.5 — bolt shank passes through; washer back face rests
+      on the bracket face
+    role: clearance
+  - part: wheel_hub
+    feature: centre bore through both 608 inner races (Ø8.0 stack) — wheel spins on
+      the stationary bolt
+    role: clearance
+  nut: null
+  external: 'door-bracket axle hole: must accept the Ø8 bolt (open to Ø8.5 if under);
+    washer + bolt head clamp the bracket from the door side'
+- id: axle_nut
+  fastener: locknut_m8
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 14.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel_hub
+    feature: far 608 inner-race face — nyloc face clamps it; Ø~14.4 across-corners
+      stays inside the Ø21.9 bore mouth, clear of the hub face
+    role: nut_pocket
+  nut: null
+  external: 'M8x50 socket screw: thread run-out at 22 mm from under-head; nyloc engages
+    ~7.6 mm of thread at its seat'
+criteria:
+- id: bearing_press
+  part: wheel_hub
+  feature: Ø21.9 bearing bore
+  relation: contains
+  hardware: bearing_608
+  clearance_mm: null
+  params:
+  - hub_bore_d
+  - bearing_od
+  check:
+    method: coupon
+    ref: coupon_bearing_fit
+    description: 'press one 608 into the coupon bore: firm press; once flush the outer
+      race must not rotate or pull out by hand. Too loose -> reprint hub with hub_bore_d
+      -0.05; too tight -> warm part in hot water while pressing or reprint +0.05'
+- id: bolt_clears_bearings
+  part: wheel_hub
+  feature: assembled bearing bore stack
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: null
+  params:
+  - bearing_bore
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: Ø8.0 inner-race stack vs Ø8.0 shank; catalog M8x50 has a 22 mm smooth
+      grip so the full stack rides on smooth shank
+- id: nyloc_clears_hub
+  part: wheel_hub
+  feature: far face annulus Ø21.9-50
+  relation: clears
+  hardware: locknut_m8
+  clearance_mm: null
+  params:
+  - nyloc_af
+  - hub_bore_d
+  check:
+    method: none
+    ref: null
+    description: nyloc face circle (~Ø14.4 across corners) stays inside the Ø21.9
+      bore mouth and never touches the rotating hub face
+- id: thrust_locates_wheel
+  part: thrust_washer
+  feature: front face Ø22
+  relation: supports
+  hardware: bearing_608
+  clearance_mm: null
+  params:
+  - tw_od
+  - tw_t
+  check:
+    method: none
+    ref: null
+    description: front face bears on the near outer-race face and hub face annulus;
+      2 mm standoff keeps the hub face off the bracket; total stack 2+14 = 16 = old
+      wheel width
+- id: bracket_hole_fit
+  part: thrust_washer
+  feature: centre hole Ø8.5
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: null
+  params:
+  - tw_id
+  - bolt_d
+  check:
+    method: measure
+    ref: door-bracket axle hole
+    description: the M8 bolt must slide through the bracket hole; drill or file to
+      Ø8.5 if it is smaller
+- id: profile_match
+  part: wheel_hub
+  feature: tread Ø50 x 16 stack (flat)
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - hub_od
+  - old_wheel_od
+  - tw_t
+  - hub_width
+  - groove_w
+  - groove_d
+  check:
+    method: none
+    ref: null
+    description: replaces the old Ø50x16 wheel so ride height holds; verify the tread
+      against the track - reprint with groove params if the track is a round rail
+manual:
+- n: '1'
+  text: Print coupon_bearing_fit flat, no supports. Press one 608ZZ into its bore
+    (vise between two flat blocks, or slow clamping pressure). It must need firm force
+    and, once flush, the outer race must NOT spin or pull out by hand. Too loose ->
+    reprint the hub with hub_bore_d 0.05 smaller; won't go in -> warm the coupon in
+    hot water while pressing, or reprint 0.05 larger.
+  parts:
+  - coupon_bearing_fit
+  hardware: []
+  tool: vise or clamp
+- n: '2'
+  text: Print wheel_hub and thrust_washer flat on the bed, no supports needed.
+  parts:
+  - wheel_hub
+  - thrust_washer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press both 608ZZ into wheel_hub, one from each face, until each outer face
+    is flush with its hub face (vise between two flat scrap blocks). They end up back-to-back,
+    touching in the middle, faces flush both sides.
+  parts:
+  - wheel_hub
+  hardware:
+  - bearing_608
+  tool: null
+- n: '4'
+  text: 'Check the bracket''s axle hole: the axle bolt must slide through. If it is
+    smaller, drill or file it to Ø8.5 mm. (If the old axle screwed into a threaded
+    hole instead, just thread the bolt in — the rest of the assembly is identical.)'
+  parts:
+  - thrust_washer
+  hardware: []
+  tool: null
+- n: '5'
+  text: 'Assemble on the axle bolt, from the door side: bolt head -> ISO 7089 M8 washer
+    -> through the bracket hole -> thrust_washer -> wheeled wheel_hub -> ISO 10511
+    M8 nyloc. Hold the nyloc with a 13 mm wrench and tighten until the stack is snug:
+    the bearing inner races must be clamped (no sideways wobble) while the wheel still
+    spins freely by hand. That clamp is what keeps the wheel from sliding off. (Your
+    own M8 bolt can substitute if it''s at least the bracket thickness + ~41 mm long
+    — keep threads out of the bearings if you can.)'
+  parts:
+  - thrust_washer
+  - wheel_hub
+  hardware:
+  - axle_bolt
+  - washer_m8
+  - locknut_m8
+  - bearing_608
+  tool: 13 mm wrench
+- n: '6'
+  text: 'Check protrusion: the M8x50 leaves ~20 mm of bolt past the nyloc, which can
+    foul the floor or the adjacent door. Thread the nyloc ~10 mm past the intended
+    cut line, cut the bolt with a hacksaw, file the end, then unscrew the nyloc to
+    clean the threads before final tightening. Aim to leave ~3-5 mm of thread proud
+    of the nyloc.'
+  parts: []
+  hardware:
+  - locknut_m8
+  - axle_bolt
+  tool: hacksaw, file
+- n: '7'
+  text: 'Sanity check after tightening: wheel spins freely, no sideways rock. If it
+    rocks, tighten the nyloc a touch more; if it drags, back off slightly — the nyloc''s
+    nylon insert keeps it from loosening.'
+  parts: []
+  hardware:
+  - axle_bolt
+  tool: null
+- n: '8'
+  text: 'Hang the door: the wheel should roll freely and sit centred on the track.
+    If a wheel face rubs the bracket, add a second thrust_washer. If the track turns
+    out to be a round rail rather than a flat guide, reprint wheel_hub with groove_w
+    ~ rail diameter + 1 mm and groove_d ~ 0.4 x rail diameter.'
+  parts:
+  - wheel_hub
+  - thrust_washer
+  hardware: []
+  tool: null

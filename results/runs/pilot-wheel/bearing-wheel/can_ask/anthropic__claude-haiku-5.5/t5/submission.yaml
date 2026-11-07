@@ -1,0 +1,217 @@
+task: bearing-wheel
+note: Design is for an 8 mm bolt and two 608 bearings. Tread is a plain cylinder with
+  0.8 mm edge chamfers; I did not know the old wheel's groove profile. If the door
+  track has a groove or the old wheel had a crown, this may not track correctly.
+questions:
+- text: What is the bolt's total length from under the head to the tip? Needed to
+    confirm it passes through the bearings, spacer, wheel, and bracket.
+  answer: null
+- text: Does the old wheel's rolling surface have a groove or a crown? If it's a flat
+    tread, this design works; if it's grooved, the tread profile needs to match the
+    track.
+  answer: null
+- text: Does the bearing press in snugly, or does it wobble?
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel, about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel, about 16 mm wide
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD nominal 22.000. Earlier reading 21.22 was taken with the bearing
+      pinched at an angle; re-measure if the press fit seems wrong
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: measured about 7 mm
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: measured 7.94 on the bearing; nominal 8
+  bolt_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user's M8 bolt shank, about 8 mm
+  bolt_len:
+    value: 40
+    unit: mm
+    kind: world
+    source: unknown
+    note: not measured. Must be long enough to pass through the bearings, the spacer,
+      the wheel, and the door bracket plus a nut or washer. Confirm before use
+  pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: press-fit allowance so the bearing pocket is slightly smaller than the bearing
+      OD
+  pocket_d:
+    value: 21.8
+    unit: mm
+    kind: design
+    source: design
+    note: bearing_od minus pocket_clear
+  lip_w:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: central stop ring width between the two bearings
+  lip_bore:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: clearance around the bearing's outer race edge; keeps the bolt path clear
+  spacer_len:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: length of tube between the two inner races on the bolt
+  spacer_od:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: approximate 608 inner race OD
+  spacer_id:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: clears the 8 mm bolt
+  edge_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od / 2.0\n    w = p.wheel_w\n    body = cq.Workplane('XY').circle(R).extrude(w)\n\
+    \    body = body.faces('>Z or <Z').edges('not %CIRCLE or %CIRCLE').chamfer(p.edge_chamfer)\n\
+    \    bore = cq.Workplane('XY').circle(p.lip_bore / 2.0).extrude(w)\n    body =\
+    \ body.cut(bore)\n    pocket_depth = p.bearing_w + (w - 2 * p.bearing_w - p.lip_w)\
+    \ / 2.0\n    pk = p.pocket_d / 2.0\n    pocket1 = cq.Workplane('XY').circle(pk).extrude(pocket_depth)\n\
+    \    pocket2 = cq.Workplane('XY').workplane(offset=w - pocket_depth).circle(pk).extrude(pocket_depth)\n\
+    \    return body.cut(pocket1).cut(pocket2)\n"
+  print_orientation: wheel flat on the bed (axis vertical, z=0 is one face)
+  use_orientation: axis horizontal on the bolt, rolling on the track
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od / 2.0).circle(p.spacer_id\
+    \ / 2.0).extrude(p.spacer_len)\n"
+  print_orientation: tube standing on its end (axis vertical)
+  use_orientation: on the bolt between the two inner races
+hardware:
+- id: bearing_a
+  ref: 608ZZ
+  qty: 1
+- id: bearing_b
+  ref: 608ZZ
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+joints: []
+criteria:
+- id: c_bearing_a
+  part: wheel
+  feature: bearing pocket, first side (z 0 to 7)
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - pocket_d
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: Press the bearing into the pocket until it sits flush at the wheel
+      face. It should be snug and not wobble.
+- id: c_bearing_b
+  part: wheel
+  feature: bearing pocket, second side (z 9 to 16)
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - pocket_d
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: Same check for the second bearing from the opposite face.
+- id: c_bolt_clear
+  part: wheel
+  feature: centre bore for the bolt
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - lip_bore
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: The 8 mm bolt slides freely through the wheel bore and spacer.
+manual:
+- n: '1'
+  text: Print the wheel and the spacer flat on the bed. Remove supports if any, and
+    clean out the bearing pockets.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into each pocket from the wheel's two faces, pressing
+    on the outer ring only, until it sits flush. If the fit is loose, the wheel will
+    not run true; if it is too tight to press with fingers, sand the pocket slightly.
+  parts:
+  - wheel
+  hardware:
+  - bearing_a
+  - bearing_b
+  tool: hand or vise
+- n: '3'
+  text: Slide the bolt through the first bearing's inner race, then the spacer, then
+    the second bearing's inner race. The bearings' inner races must be able to turn
+    freely on the bolt. If the bolt is tight in the 8 mm bore, sand the bolt lightly.
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  - bearing_a
+  - bearing_b
+  tool: null
+- n: '4'
+  text: Mount the bolt through your door bracket and tighten it. Check that the wheel
+    spins freely and that the bolt is long enough. Confirm the bolt length before
+    final use.
+  parts: []
+  hardware: []
+  tool: null

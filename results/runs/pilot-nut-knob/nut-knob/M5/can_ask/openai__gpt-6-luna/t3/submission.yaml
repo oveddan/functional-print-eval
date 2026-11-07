@@ -1,0 +1,216 @@
+task: nut-knob/M5
+note: One-piece knob with a blind internal M5 hex-nut pocket and a 5.6 mm through-bore.
+  The nut is inserted from the top; the pocket floor stops it being pushed through
+  the far side, while the M5 bolt passes through the nut and exits the bottom. Since
+  printed press-fit tolerances vary, print the small coupon first, test your nut,
+  then set `pocket_af` in the knob to the tightest coupon size that you can press
+  in by hand and that stays put when inverted. The coupon is only a fit test; the
+  finished knob itself is one piece.
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal outside diameter.
+  knob_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: Starting value; tune using the coupon. Nut nominal AF is 8.0 mm.
+  nut_depth:
+    value: 5.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nut thickness is 4.7 mm; the extra depth recesses it below the knob face.
+  bolt_clearance_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance for an M5 bolt through the knob.
+  grip_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: Shallow perimeter scallops.
+  grip_cut_r:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_radius:
+    value: 16.4
+    unit: mm
+    kind: design
+    source: design
+    note: Scallop cutter center radius from knob axis.
+  coupon_l:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_w:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_floor:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pitch:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_af_lo:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_af_mid:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_af_hi:
+    value: 8.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    knob = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2).extrude(p.knob_h)\n    # Shallow vertical scallops provide finger grip\
+    \ without reducing the nominal size much.\n    for i in range(int(p.grip_count)):\n\
+    \        a = 2 * math.pi * i / p.grip_count\n        x, y = p.grip_cut_radius\
+    \ * math.cos(a), p.grip_cut_radius * math.sin(a)\n        cut = cq.Workplane('XY').center(x,\
+    \ y).circle(p.grip_cut_r).extrude(p.knob_h)\n        knob = knob.cut(cut)\n  \
+    \  # Bolt passage from the bed-side face to the blind nut pocket.\n    bore =\
+    \ cq.Workplane('XY').circle(p.bolt_clearance_d / 2).extrude(p.knob_h)\n    knob\
+    \ = knob.cut(bore)\n    # Hex pocket opens at the top; its flat floor captures\
+    \ the nut on the far side.\n    hex_diameter = p.pocket_af / math.cos(math.pi\
+    \ / 6)\n    socket = (cq.Workplane('XY').workplane(offset=p.knob_h - p.nut_depth)\n\
+    \              .polygon(6, hex_diameter).extrude(p.nut_depth + 0.02))\n    return\
+    \ knob.cut(socket)\n"
+  print_orientation: Print flat on the circular bottom face (z=0), with the hex-nut
+    opening facing upward. No supports should be needed.
+  use_orientation: Grip the scalloped outside and turn; the nut is recessed into the
+    upper face. The bolt enters from the nut side and projects through the opposite,
+    flat bottom face.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    coupon = cq.Workplane('XY').box(p.coupon_l,\
+    \ p.coupon_w, p.coupon_t, centered=(True, True, False))\n    afs = [p.coupon_af_lo,\
+    \ p.coupon_af_mid, p.coupon_af_hi]\n    for x, af in zip([-p.coupon_pitch, 0,\
+    \ p.coupon_pitch], afs):\n        d = af / math.cos(math.pi / 6)\n        socket\
+    \ = (cq.Workplane('XY').workplane(offset=p.coupon_floor).center(x, 0)\n      \
+    \            .polygon(6, d).extrude(p.coupon_t - p.coupon_floor + 0.02))\n   \
+    \     eject = cq.Workplane('XY').center(x, 0).circle(5.6 / 2).extrude(p.coupon_floor\
+    \ + 0.02)\n        coupon = coupon.cut(socket).cut(eject)\n    return coupon\n"
+  print_orientation: Print flat on the bed, as modeled, with the three hex sockets
+    facing upward.
+  use_orientation: Temporary fit test only. Press the M5 nut into each socket from
+    above; the small underside holes let you push it back out for the next test.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: hand_knob
+  feature: internal hex nut pocket
+  relation: engages
+  hardware: m5_nut
+  clearance_mm: 0.0
+  params:
+  - pocket_af
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Test the nut in each of the coupon sockets. Choose the largest opening
+      that still holds the nut when the coupon is inverted, then set the knob pocket_af
+      to that value.
+- id: nut_retained
+  part: hand_knob
+  feature: blind pocket floor
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - nut_depth
+  check:
+    method: none
+    ref: null
+    description: Pocket floor is solid apart from the M5 bolt bore; the nut cannot
+      pass through that bore.
+- id: bolt_passage
+  part: hand_knob
+  feature: central through-bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Confirm the intended M5 bolt shank passes through the 5.6 mm bore.
+manual:
+- n: '1'
+  text: Print the fit_coupon flat, then press your M5 nut into the three sockets.
+    Invert the coupon and choose the largest socket that holds the nut without it
+    falling out, while still allowing hand insertion. Push the nut out through the
+    underside eject hole before testing the next socket.
+  parts:
+  - fit_coupon
+  hardware:
+  - m5_nut
+  tool: null
+- n: '2'
+  text: Set the hand_knob parameter pocket_af to the chosen coupon value and print
+    hand_knob flat on its circular bottom face, with the nut pocket facing upward.
+    The knob is the single finished part.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the nut into the top hex pocket until it rests on the pocket floor.
+    It should sit below the top face. Screw the knob onto your M5 bolt; the bolt passes
+    through the nut and exits the bottom bore.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null

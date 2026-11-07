@@ -1,0 +1,173 @@
+task: nut-knob/M5
+note: One-piece, 30 mm hand knob for a captive ISO 4032 M5 nut. The nut presses into
+  the recessed hex pocket from the bottom; the pocket roof stops it being pushed through
+  the far side. A continuous 5.6 mm axial clearance bore lets an M5 bolt enter from
+  the top, thread through the nut, and emerge from the bottom. The nut's catalog dimensions
+  were used because you could not measure yours; the 7.9 mm pocket across flats is
+  a deliberate press-fit choice, so fit may vary with printer calibration and nut
+  tolerances.
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Approximate outside diameter requested.
+  knob_h:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_cut_r:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_center_r:
+    value: 15.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across flats.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal height.
+  pocket_af:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across flats; 0.1 mm nominal interference per flat relative to
+      catalog nut AF.
+  pocket_depth:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Roof is the far-side stop; nut seated against it is recessed about 1.3 mm
+      from the insertion face.
+  pocket_entry_af:
+    value: 8.8
+    unit: mm
+    kind: design
+    source: design
+    note: Hex lead-in opening across flats.
+  lead_h:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_nom_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal diameter.
+  bolt_clear_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Through-bore clearance for the M5 bolt.
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    import math\n    def hex_pts(af):\n        r = af / math.sqrt(3.0)\n\
+    \        return [(r * math.cos(math.radians(a)), r * math.sin(math.radians(a)))\
+    \ for a in (0, 60, 120, 180, 240, 300)]\n\n    body = cq.Workplane(\"XY\").circle(p.knob_d\
+    \ / 2.0).extrude(p.knob_h)\n    # Six shallow vertical scallops provide finger\
+    \ grip.\n    for i in range(p.grip_count):\n        a = 2.0 * math.pi * i / p.grip_count\n\
+    \        x = p.grip_cut_center_r * math.cos(a)\n        y = p.grip_cut_center_r\
+    \ * math.sin(a)\n        cutter = cq.Workplane(\"XY\").center(x, y).circle(p.grip_cut_r).extrude(p.knob_h)\n\
+    \        body = body.cut(cutter)\n\n    # Nut enters from z=0. The hexagonal roof\
+    \ at pocket_depth captures it;\n    # the axial bore passes through that roof\
+    \ and the far side of the knob.\n    pocket = cq.Workplane(\"XY\").polyline(hex_pts(p.pocket_af)).close().extrude(p.pocket_depth)\n\
+    \    lead_in = (cq.Workplane(\"XY\").polyline(hex_pts(p.pocket_entry_af)).close()\n\
+    \               .workplane(offset=p.lead_h).polyline(hex_pts(p.pocket_af)).close()\n\
+    \               .loft(combine=True))\n    through_bore = cq.Workplane(\"XY\").circle(p.bolt_clear_d\
+    \ / 2.0).extrude(p.knob_h)\n    return body.cut(pocket).cut(lead_in).cut(through_bore)"
+  print_orientation: Print upright with the recessed hex-nut insertion face on the
+    build plate (z=0); the through-bore is vertical.
+  use_orientation: Insert the M5 nut from the recessed bottom face. The opposite,
+    flat face is the bolt-entry side.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: knob
+  feature: hex_nut_pocket
+  relation: engages
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - pocket_depth
+  check:
+    method: none
+    ref: null
+    description: Press the nut in by hand until it seats against the pocket roof;
+      check it remains captured when the knob is turned upside down.
+- id: bolt_through
+  part: knob
+  feature: axial_bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.6
+  params:
+  - bolt_nom_d
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: Pass an M5 bolt through the axial bore and engage it with the captured
+      nut; the bolt should emerge from the insertion side.
+manual:
+- n: '1'
+  text: Print the knob upright, with the recessed hex-nut insertion face on the build
+    plate. Let the print cool before fitting the nut.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align an ISO 4032 M5 nut with the bottom hex pocket and press it in by hand,
+    keeping its faces aligned with the pocket. Push until it stops against the internal
+    roof; its lower face will be recessed from the knob face.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down and check the nut stays in place. From the opposite
+    face, feed an M5 bolt through the axial bore, thread it through the nut, and continue
+    until the bolt emerges from the recessed bottom opening.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null

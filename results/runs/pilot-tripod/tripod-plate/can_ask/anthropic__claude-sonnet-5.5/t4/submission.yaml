@@ -1,0 +1,257 @@
+task: tripod-plate
+note: Printing it is not hard, but I could only get the plate width (38 mm). I couldn't
+  get the clamp gap height, the edge profile, the plate length, the camera socket
+  depth, or whether there is a locating pin. Plate thickness (7.2 mm) and length (60
+  mm) are guesses. Print the 15-minute fit coupon first. I used your salvaged 1/4-20
+  bolt as the screw rather than printing a thread, because printed 1/4-20 threads
+  in PLA are weak and unreliable. The bolt head sits in a slotted pocket under the
+  plate. You screw the camera onto the bolt, and tightening pulls the head up against
+  the pocket floor. The bolt head hasn't been checked in the clamp. If the clamp has
+  a rectangular, dovetail or Arca-style profile instead of a flat edge, the plate
+  edges need reshaping. The bolt sticks up about 8 mm above the plate, which may be
+  more than a shallow camera socket takes. Stop turning when it feels snug.
+questions:
+- text: What is the gap height of the tripod clamp, meaning the thickness of the plate
+    it takes?
+  answer: null
+- text: 'What is the edge profile of the plate: square, or a chamfered or dovetail
+    shape?'
+  answer: null
+- text: How deep is the camera's 1/4-20 socket?
+  answer: null
+- text: Does the clamp have a locating pin or notch that the plate must catch on?
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Width of plate the tripod clamp accepts, as reported. Plate thickness, edge
+      profile and length were not obtainable.
+  fit_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Total width taken off for print tolerance. Check with the coupon.
+  plate_t:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: guessed
+    note: Set by the bolt head pocket (5.2 deep) plus a 2.0 floor. The clamp gap height
+      is UNKNOWN. Check with the coupon.
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: guessed
+    note: Clamp length unknown. 60 mm is a guess.
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: About 15 mm, as reported for the salvaged webcam bolt
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: About 5 mm
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Under the head, about 10 mm
+  pocket_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Extra diameter around the head and shank
+  slot_travel:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Bolt position adjustment along the plate, for balancing the camera
+  floor_t:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: Plate material between the head pocket and the camera
+  coupon_l:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the test slice
+  camera_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Not obtainable. About 8 mm of thread sticks up above the plate (bolt_len
+      - floor_t). If the socket is shallower, stop tightening when it is snug.
+parts:
+- id: plate
+  role: final
+  material: PLA, black, 4 walls, 40% gyroid infill
+  code: "def build(p):\n    w = p.plate_w - p.fit_clear\n    body = cq.Workplane('XY').box(w,\
+    \ p.plate_l, p.plate_t, centered=(True, True, False))\n    depth = p.plate_t -\
+    \ p.floor_t\n    slot_w = p.bolt_d + p.pocket_clear\n    slot = cq.Workplane('XY').slot2D(slot_w\
+    \ + p.slot_travel, slot_w, 90).extrude(p.plate_t)\n    pocket_w = p.bolt_head_d\
+    \ + p.pocket_clear\n    pocket = (cq.Workplane('XY').workplane(offset=p.plate_t\
+    \ - depth)\n              .slot2D(pocket_w + p.slot_travel, pocket_w, 90).extrude(depth\
+    \ + 1))\n    return body.cut(slot).cut(pocket)\n"
+  print_orientation: Top face (the face the camera sits on) flat on the bed. The head
+    pocket opens upward, so no supports are needed.
+  use_orientation: Top face up under the camera. The bolt head pocket faces down into
+    the tripod clamp.
+- id: fit_coupon
+  role: coupon
+  material: PLA, black
+  code: "def build(p):\n    w = p.plate_w - p.fit_clear\n    return cq.Workplane('XY').box(w,\
+    \ p.coupon_l, p.plate_t, centered=(True, True, False))\n"
+  print_orientation: Flat on the bed, same face down as the plate
+  use_orientation: Slide into the tripod clamp to test the fit. Not part of the final
+    assembly.
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 2.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: head_pocket
+    role: head_seat
+  - part: plate
+    feature: bolt_slot
+    role: clearance
+  nut: null
+  external: Camera base 1/4-20 socket
+criteria:
+- id: c1
+  part: plate
+  feature: plate width and thickness vs. tripod clamp
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - fit_clear
+  - plate_t
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Slide the coupon into the clamp. It should go in without force and
+      be held when the clamp is tightened. If it is loose or tight, adjust fit_clear
+      or plate_t.
+- id: c2
+  part: plate
+  feature: head_pocket
+  relation: contains
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - pocket_clear
+  - plate_t
+  - floor_t
+  check:
+    method: measure
+    ref: null
+    description: The bolt head should sit fully inside the pocket without sticking
+      out of the plate underside.
+- id: c3
+  part: plate
+  feature: bolt_slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - pocket_clear
+  check:
+    method: measure
+    ref: null
+    description: The bolt shank should slide freely in the slot.
+- id: c4
+  part: plate
+  feature: exposed bolt thread
+  relation: engages
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_len
+  - floor_t
+  - camera_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: About 8 mm of thread stands above the plate. It should thread into
+      the camera and pull the camera snug against the plate.
+manual:
+- n: '1'
+  text: Print the fit_coupon first (about 15 minutes). Slide it into the tripod clamp.
+    It should go in without force and hold when you tighten the clamp. If it's loose
+    or tight, or the clamp gap is thicker or thinner than the coupon, tell me the
+    clamp gap. Then change plate_t or fit_clear before printing the plate.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the plate with its flat top face on the bed. No supports are needed.
+    Use 4 walls and about 40% infill for strength.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the salvaged 1/4-20 bolt up through the slot from the pocket side, so
+    the head sits in the pocket and the thread sticks out of the flat top face.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Slide the bolt along the slot to where you want it, usually under the camera's
+    centre of gravity. Hold the plate still and screw the camera onto the bolt by
+    turning the camera. Stop when it is snug. If the thread bottoms out in the camera
+    before it is tight, don't force it.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Slide the plate into the tripod clamp and tighten the clamp. Check that the
+    camera is held firmly before you let go of it. This is a temporary part, so don't
+    leave a heavy camera on it unattended.
+  parts:
+  - plate
+  hardware: []
+  tool: null

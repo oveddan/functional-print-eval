@@ -2,6 +2,15 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-07: Five can_ask trials per model on every pilot task
+
+Dan asked for 5 trials per cell across 11 models (2026-11-07), so the pilots say a little more about how much one model varies. `scripts/top_up.py` gained `--trials`, `--all-models` and `--model`; it ran one process per model side by side overnight on Dan's Mac, from f7273e7, each with a $10 cap across all of them. Grok 4.7 was left out: at about $0.47 a trial it would cost more than the other 11 together.
+- **The run:** 145 new trials on m5-spacer, nut-knob M3 and M5, tripod-plate and bearing-wheel (`can_ask`), numbered after the saved ones in the same run folders. They cost $7.90. No infrastructure errors; 2 ended with no submission (Gemini 3.8 Flash's tripod t4 and Qwen 3.8 Flash's M5 t3, both after 8 turns). Saved trials are unchanged.
+- **Totals now:** 326 trials, 94 pass, 144 fail, 73 not graded, 12 declined, 3 other, $27.83, with the `estoa-light` trials from PR 23 (the README's results table, from `scripts/results_table.py`). Without them: 308 trials, 94 pass, 130 fail, 70 not graded, 12 declined, 2 other, $21.80.
+- **The tripod's new trials aren't like its old ones.** t4 and t5 ran after the person started giving the clamp's width as 38 mm (entry of 2026-11-06), so they can't be pooled with t1 to t3 on R2 or on declining. The README's `can_run_code` comparison keeps to t1 to t3. GPT-6.1 Sol was told the width and still declined both: "A nominal 38 mm width does not ensure dovetail retention".
+- **The spacer mostly stays a control:** 55 of 57 pass. Both failures are Qwen 3.8 Flash's: t3's code didn't run, and t5's spacer is in pieces (`connected_bodies`, then R2 to R4). The README's "Every trial passes" no longer holds.
+- **Updated:** the README's results table and assumptions, its "Pilots" limit and the counts in "What went wrong, task by task" and the not-graded table (recounted with `scripts/results_page.py`'s diagnoses over the same trials, from the meshes saved on this Mac); `docs/limitations.md`, `docs/lessons.md` (Sol's declines, 28 of 84 holed roofs) and `docs/coupon-loop.md`. Holed roofs now account for 53 of the 58 trials that fail `bridges`.
+
 ## 2026-11-07: Slicer estimates read test-print replays
 
 `scripts/slice_estimates.py` read only runs of trials (`grades.json`), so a replay such as `loop-estoa`, saved as

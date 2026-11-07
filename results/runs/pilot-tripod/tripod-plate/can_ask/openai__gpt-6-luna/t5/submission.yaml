@@ -1,0 +1,227 @@
+task: tripod-plate
+note: 'Temporary, light-duty camera plate only. The receiver''s 38 mm width and angled
+  jaws suggest an Arca-Swiss-style dovetail, but width alone does not confirm the
+  jaw angle or profile. Print and test the small coupon first; do not force it into
+  the clamp. PLA can creep or crack, so do not use this to support a valuable camera,
+  heavy lens, or anything over people. The metal salvaged 1/4-20 bolt is the camera
+  screw; do not print a plastic screw. Its placement gives about 4 mm of thread projection
+  above the plate, but the camera socket depth is unknown: stop if the camera does
+  not sit flat without force.'
+questions: []
+params:
+  receiver_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: User measured width the tripod clamp plate takes.
+  plate_length:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: Short temporary plate; receiver's front-to-back capacity was not established.
+  rail_height:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the angled dovetail sides.
+  rail_inset:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Inset per side from the measured overall width; gives a 28 mm top deck.
+  deck_thickness:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness above the rail shoulders; total plate thickness is 11 mm.
+  coupon_length:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Short dovetail fit-check coupon.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User reports salvaged bolt head is about 15 mm across.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User reports salvaged bolt head is about 5 mm high.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User measured underside of bolt head to tip.
+  bolt_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal major diameter for 1/4-20.
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 thread pitch from the supplied hardware data.
+  head_fit_radial:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance around the measured bolt head.
+  head_pocket_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Slightly deeper than the reported head height; pocket opens on underside.
+  bolt_clearance_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Printed clearance hole for the 1/4-20 bolt shank.
+parts:
+- id: dovetail_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    w = p.receiver_width\n    i = p.rail_inset\n    h = p.rail_height\n\
+    \    ztop = h + p.deck_thickness\n    profile = [(-w/2, 0), (w/2, 0), (w/2-i,\
+    \ h), (w/2-i, ztop), (-(w/2-i), ztop), (-(w/2-i), h)]\n    return cq.Workplane('XZ').polyline(profile).close().extrude(p.coupon_length)"
+  print_orientation: Print with the 38 mm-wide flat underside at z=0 on the bed; no
+    supports.
+  use_orientation: Drop the short coupon into the empty clamp from above, with its
+    angled sides against the jaws. Tighten only enough to check fit.
+- id: camera_plate
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    w = p.receiver_width\n    i = p.rail_inset\n    h = p.rail_height\n\
+    \    ztop = h + p.deck_thickness\n    profile = [(-w/2, 0), (w/2, 0), (w/2-i,\
+    \ h), (w/2-i, ztop), (-(w/2-i), ztop), (-(w/2-i), h)]\n    body = cq.Workplane('XZ').polyline(profile).close().extrude(p.plate_length)\n\
+    \    # Counterbore for the salvaged bolt head, open at the underside (z=0).\n\
+    \    pocket_d = p.bolt_head_d + 2*p.head_fit_radial\n    pocket = cq.Workplane('XY').circle(pocket_d/2).extrude(p.head_pocket_depth)\n\
+    \    # Shank clearance hole through the complete plate.\n    bore = cq.Workplane('XY').circle(p.bolt_clearance_d/2).extrude(ztop)\n\
+    \    return body.cut(pocket).cut(bore)"
+  print_orientation: Print with the 38 mm-wide flat underside at z=0 on the bed; no
+    supports. Use multiple walls and substantial infill; inspect for defects before
+    use.
+  use_orientation: The dovetail sides face down into the tripod clamp, with the flat
+    deck facing the camera. The bolt head sits in the underside counterbore and the
+    shank points upward into the camera socket.
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_fastening
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: camera_plate
+    feature: underside circular counterbore, 15.8 mm nominal diameter and 5.5 mm deep
+    role: head_seat
+  - part: camera_plate
+    feature: central 6.8 mm through-clearance hole
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 tripod socket
+criteria:
+- id: jaw_profile_fit
+  part: dovetail_coupon
+  feature: 38 mm-wide base and angled side faces
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: dovetail_coupon
+    description: Test the coupon in the clamp before printing the full plate. It should
+      drop in from above and be gripped by both angled lips without forcing or rocking.
+- id: bolt_shank_clearance
+  part: camera_plate
+  feature: central through-clearance hole
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: 0.45
+  params:
+  - bolt_clearance_d
+  - bolt_major_d
+  check:
+    method: none
+    ref: null
+    description: Nominal 6.8 mm clearance bore for the salvaged 1/4-20 bolt.
+- id: bolt_head_seating
+  part: camera_plate
+  feature: underside circular counterbore
+  relation: seats
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_fit_radial
+  - head_pocket_depth
+  check:
+    method: none
+    ref: null
+    description: Counterbore sized from the user's approximate head measurements;
+      verify the bolt head fits and can be turned before attaching the camera.
+manual:
+- n: '1'
+  text: Print the dovetail_coupon flat on its wide underside. Try it in the tripod
+    clamp from above. The jaws should contact both angled sides; if it rocks, binds,
+    or will not seat, stop—the clamp profile is not confirmed by the width measurement
+    alone.
+  parts:
+  - dovetail_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: If the coupon fits securely, print camera_plate in the same orientation. Inspect
+    the angled rails and the bolt hole for print defects; do not use a cracked or
+    poorly fused part.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Put the salvaged metal bolt head into the underside counterbore, with its
+    threaded shank pointing up through the clearance hole. Turn the bolt gently into
+    the camera's 1/4-20 socket. The design gives about 4 mm of screw projection above
+    the plate. If the camera will not sit flat, or the screw bottoms out before it
+    is secure, stop and do not force it.
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '4'
+  text: Drop the assembled plate into the clamp from above and tighten the clamp knob
+    gently. Check that both angled jaws grip the rails and that the camera cannot
+    shift before use. Treat this as a temporary, low-load solution only; do not use
+    it over people or with valuable/heavy camera equipment.
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: null

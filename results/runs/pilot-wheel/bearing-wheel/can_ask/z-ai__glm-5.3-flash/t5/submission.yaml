@@ -1,0 +1,276 @@
+task: bearing-wheel
+note: ''
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: design
+    source: asked
+    note: user stated old wheel was about 50 mm across
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: design
+    source: asked
+    note: user stated old wheel was about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ OD, 22.000 -0.008
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ bore, nominal 8.0 (measured 7.94)
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ width, nominal; not measured
+  press_fit:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: diametral interference on the bearing pocket; verify with the coupon
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: M8 nominal; person's own bolt shank measured ~8 mm across
+  bolt_length:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8x40. Not measured on the user's bolt; needs ~34 mm of shank beyond
+      the bracket (wheel 16 + washer 1.6 + locknut 8 + 2 threads). User's own bolt
+      may be substituted if long enough.
+  web_hole_d:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole in the printed web between the bearings so the bolt passes
+      through freely
+  edge_chamfer:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on outer rolling edges so it runs smoothly against the track
+  nut_af:
+    value: 13
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ISO 10511 M8 lock nut across flats
+  locknut_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ISO 10511 M8 lock nut height
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ISO 7089 M8 washer OD
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ISO 7089 M8 washer thickness
+  bracket_t:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: bracket plate thickness not measurable; only affects bolt-length headroom
+parts:
+- id: wheel
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    r_od = p.wheel_od / 2.0\n    r_pk = (p.bearing_od - 2.0\
+    \ * p.press_fit) / 2.0\n    r_web = p.web_hole_d / 2.0\n    c = p.edge_chamfer\n\
+    \    w = p.wheel_width\n    bw = p.bearing_width\n    z1 = bw            # top\
+    \ of bottom bearing pocket / bottom of web\n    z2 = w - bw        # top of web\
+    \ / bottom of top bearing pocket\n    pts = [\n        (r_pk, 0.0),      # bottom\
+    \ face, inner edge (pocket opening)\n        (r_od - c, 0.0),\n        (r_od,\
+    \ c),        # bottom outer chamfer\n        (r_od, w - c),\n        (r_od - c,\
+    \ w),    # top outer chamfer\n        (r_pk, w),        # top face, inner edge\
+    \ (pocket opening)\n        (r_pk, z2),       # top pocket wall\n        (r_web,\
+    \ z2),      # web top face\n        (r_web, z1),      # web clearance hole for\
+    \ bolt\n        (r_pk, z1),       # web bottom face\n    ]\n    return cq.Workplane(\"\
+    XZ\").polyline(pts).close().revolve(360, (0, 0), (0, 1))"
+  print_orientation: flat bottom face (z=0) on the bed, wheel axis vertical
+  use_orientation: axis horizontal, rolling in the closet-door track; both bearing
+    faces flush with the wheel faces
+- id: coupon-bearing-fit
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    r_pk = (p.bearing_od - 2.0 * p.press_fit) / 2.0\n    pts\
+    \ = [\n        (r_pk, 0.0),\n        (16.0, 0.0),\n        (16.0, 7.0),\n    \
+    \    (r_pk, 7.0),\n    ]\n    return cq.Workplane(\"XZ\").polyline(pts).close().revolve(360,\
+    \ (0, 0), (0, 1))"
+  print_orientation: flat bottom face on the bed, axis vertical
+  use_orientation: held in hand for the press-fit test
+hardware:
+- id: bolt-m8
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: washer-inner
+  ref: ISO 7089 M8
+  qty: 1
+- id: washer-outer
+  ref: ISO 7089 M8
+  qty: 1
+- id: locknut-m8
+  ref: ISO 10511 M8
+  qty: 1
+- id: bearing-a
+  ref: 608ZZ
+  qty: 1
+- id: bearing-b
+  ref: 608ZZ
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt-m8
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -6.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: both bearing bores + web clearance hole
+    role: clearance
+  - part: wheel
+    feature: outer face between washers
+    role: washer
+  nut: null
+  external: 'the door''s roller bracket: bolt head + washer-inner bear on the bracket''s
+    inner face, bolt passes through the bracket hole, locknut clamps against washer-outer
+    on the wheel''s outer face. Nut is tightened only until axial play is gone so
+    the wheel spins on the bolt.'
+criteria:
+- id: bearing-press-fit
+  part: wheel
+  feature: bearing pocket, dia bearing_od - 2*press_fit, depth bearing_width
+  relation: contains
+  hardware: bearing-a
+  clearance_mm: -0.15
+  params:
+  - bearing_od
+  - press_fit
+  - bearing_width
+  check:
+    method: coupon
+    ref: coupon-bearing-fit
+    description: 'Press a 608ZZ into the coupon ring: it should need firm thumb pressure
+      and sit flush. If it slides in freely, reprint with a bigger press_fit; if it
+      cracks the ring, reduce it.'
+- id: bolt-clearance
+  part: wheel
+  feature: web clearance hole, dia web_hole_d
+  relation: clears
+  hardware: bolt-m8
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - web_hole_d
+  check:
+    method: none
+    ref: null
+    description: 8.4 mm hole vs 8 mm shank; verify the bolt drops through the bare
+      wheel by hand before final assembly.
+- id: bearing-on-bolt
+  part: wheel
+  feature: bearing bores running on the bolt shank
+  relation: engages
+  hardware: bolt-m8
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bearing_bore
+  check:
+    method: none
+    ref: null
+    description: '608ZZ bore (7.94-8.0 mm) on an M8 shank is a transition fit. During
+      assembly, spin the wheel: it should turn with slight resistance. If it is too
+      tight to turn, dress the shank lightly with fine sandpaper.'
+manual:
+- n: '1'
+  text: 'Print the coupon-bearing-fit first. Press one 608ZZ bearing into its bore:
+    it should need firm thumb pressure and end up flush with the face. If it drops
+    in loose, or the ring cracks, stop and reprint with the press fit adjusted.'
+  parts:
+  - coupon-bearing-fit
+  hardware:
+  - bearing-a
+  tool: none
+- n: '2'
+  text: Print the wheel flat, bottom face down. Both bearing pockets are open faces
+    so there is no bridging.
+  parts:
+  - wheel
+  hardware: []
+  tool: Bambu X1C, 0.4 nozzle, PLA
+- n: '3'
+  text: Press the two 608ZZ bearings into the wheel, one into each open face, each
+    seated against the middle web. Both should end up flush with the wheel faces.
+  parts:
+  - wheel
+  hardware:
+  - bearing-a
+  - bearing-b
+  tool: bench or vice with soft jaws
+- n: '4'
+  text: 'Test the bolt: it must drop through the bracket hole and through both bearing
+    bores. You need about 34 mm of shank beyond the bracket (wheel 16 + washer 1.6
+    + locknut 8 + a couple of threads). If the shank is a tight slide in the bearing
+    bores, spin it in and out against fine sandpaper until the wheel turns freely
+    by hand.'
+  parts:
+  - wheel
+  hardware:
+  - bolt-m8
+  - bearing-a
+  - bearing-b
+  tool: fine sandpaper
+- n: '5'
+  text: 'Assemble on the door bracket: washer-inner onto the bolt, insert the bolt
+    through the bracket hole from the inside, slide the wheel onto the bolt, add washer-outer,
+    then the M8 nylon lock nut. Hold the bolt head (or the bracket) and tighten the
+    nut ONLY until the wheel has no side-to-side play but still spins freely. Overtightening
+    clamps the bearings and stops the spin.'
+  parts:
+  - wheel
+  hardware:
+  - bolt-m8
+  - washer-inner
+  - washer-outer
+  - locknut-m8
+  - bearing-a
+  - bearing-b
+  tool: two wrenches or wrench + hex key
+- n: '6'
+  text: Hang the door and check the wheel sits centered in the track groove. If the
+    wheel is offset from the old position, add or remove washers on the bolt. The
+    1.5 mm edge chamfers help it ride smoothly against the track walls.
+  parts:
+  - wheel
+  hardware: []
+  tool: none

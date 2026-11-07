@@ -1,0 +1,136 @@
+task: tripod-plate
+note: Stopgap for light cameras only. PLA is not a substitute for the metal part.
+  Plate length (60 mm) is a guess and the tripod's locking style is unknown; the design
+  may need changing once you check the real tripod head.
+questions:
+- text: Plate length of the tripod's mounting surface (front to back)?
+  answer: null
+- text: 'How does the tripod lock the camera plate: screw knob, lever, or sliding
+    rail (and rail width if it slides)?'
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: tripod clamp plate width, from the measurement reply
+  plate_l:
+    value: 60
+    unit: mm
+    kind: world
+    source: guessed
+    note: tripod plate length NOT measured; check against the real tripod head
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: thick enough to hold the bolt; PLA strength limit, light cameras only
+  hole_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for 1/4-20 bolt
+  nut_af:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: pocket across flats for ASME 1/4-20 nut (11.11 nominal, 10.92 measured),
+      with clearance
+  nut_h:
+    value: 5.56
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ASME B18.2.2 1/4-20 nut height
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 bolt nominal diameter
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    plate = cq.Workplane('XY').box(p.plate_l,\
+    \ p.plate_w, p.plate_t, centered=(True, True, False))\n    plate = plate.faces('>Z').workplane().hole(p.hole_d)\n\
+    \    d = p.nut_af / math.cos(math.radians(30))\n    pocket = cq.Workplane('XY').polygon(6,\
+    \ d).extrude(p.nut_h + 0.5)\n    plate = plate.cut(pocket)\n    return plate"
+  print_orientation: flat, bottom face on bed
+  use_orientation: flat, bolt vertical through the plate
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+- id: nut
+  ref: ASME B18.2.2 1/4-20
+  qty: 1
+joints: []
+criteria:
+- id: C1
+  part: plate
+  feature: hex nut pocket on underside
+  relation: seats
+  hardware: nut
+  clearance_mm: 0.5
+  params:
+  - nut_af
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Nut sits flush in the pocket without forcing; check across-flats
+      fit with a calliper
+- id: C2
+  part: plate
+  feature: 1/4-20 clearance through-hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - hole_d
+  - bolt_d
+  check:
+    method: coupon
+    ref: null
+    description: Test the 6.6 mm hole with the salvaged bolt before printing the full
+      plate
+manual:
+- n: '1'
+  text: Print the plate flat on the bed with the bottom face down, no supports needed,
+    at 0.2 mm layers. Use at least 4 perimeters and 40% infill.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Clean the hex pocket on the underside so the nut sits in it without forcing.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop the 1/4-20 nut into the hex pocket on the underside of the plate.
+  parts:
+  - plate
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Pass the salvaged 1/4-20 bolt up through the plate and the nut, and thread
+    it into the nut until snug. Do not overtighten; PLA can crack.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  - nut
+  tool: hand or small wrench
+- n: '5'
+  text: Screw the bolt's exposed end into the camera's 1/4-20 socket, or mount the
+    plate to the tripod as the tripod's lock requires.
+  parts: []
+  hardware: []
+  tool: null

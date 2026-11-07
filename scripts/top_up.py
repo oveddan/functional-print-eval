@@ -1,7 +1,12 @@
-"""Top up the can_ask pilot runs to 3 trials per lineup model and task (issue 34).
+"""Top up the can_ask pilot runs to a number of trials per model and task (issue 34).
 
-    uv run python scripts/top_up.py --cap 4.00
+    uv run python scripts/top_up.py --cap 4.00                         # the lineup to 3 trials
+    uv run python scripts/top_up.py --trials 5 --all-models --cap 10   # every model but Grok to 5
+    uv run python scripts/top_up.py --trials 5 --model openai/gpt-6.1-sol --cap 10   # one model
     uv run python scripts/top_up.py --dry-run   # what would run, nothing called
+
+Separate processes, one per --model, can run side by side: each model's trials go in their own
+folders, and each process's cap counts what every process has spent since it started.
 
 Each model and task gets its new trials in the run folder that already holds its saved ones,
 numbered after them; saved trials are skipped, never changed. Models go cheapest first, and
@@ -26,6 +31,15 @@ LINEUP = [
     "anthropic/claude-sonnet-5.5",
     "google/gemini-4-argon",
     "anthropic/claude-opus-5.5",
+]
+# the other models with saved can_ask trials on every task, cheapest first; Grok 4.7 is left out
+# (about $0.47 a trial, more than these together)
+OTHERS = [
+    "openai/gpt-6-luna",
+    "z-ai/glm-5.3-flash",
+    "deepseek/deepseek-v4.1-flash",
+    "qwen/qwen3.8-flash",
+    "google/gemini-3.8-flash",
 ]
 TASKS = ["m5-spacer", "nut-knob/M3", "nut-knob/M5", "tripod-plate", "bearing-wheel"]
 # the run folders that hold these tasks' can_ask pilot trials; where two hold the same task,
@@ -74,15 +88,15 @@ def folder_for(task, model) -> str:
     return run
 
 
-def plan() -> list[Slot]:
-    return [Slot(folder_for(task, model), task, model) for model in LINEUP for task in TASKS]
+def plan(models=LINEUP) -> list[Slot]:
+    return [Slot(folder_for(task, model), task, model) for model in models for task in TASKS]
 
 
-def missing_trials(slot) -> list[int]:
-    """The trial numbers to run so the slot holds TRIALS: any that ended in an infrastructure error
+def missing_trials(slot, trials=TRIALS) -> list[int]:
+    """The trial numbers to run so the slot holds `trials`: any that ended in an infrastructure error
     (run_one runs those again), then new numbers after every saved one."""
     on_disk = slot.on_disk()
-    needed = max(0, TRIALS - len(slot.saved_trials()))
+    needed = max(0, trials - len(slot.saved_trials()))
     retried = [trial for trial, record in on_disk.items() if record.outcome == "error"][:needed]
     first_new = max(on_disk, default=0) + 1
     return retried + list(range(first_new, first_new + needed - len(retried)))
@@ -97,9 +111,9 @@ def spent_in(runs) -> float:
     return sum(runner.spent(runner.ROOT / "results/runs" / run) for run in runs)
 
 
-def run_slot(slot, spent_before, cap) -> bool:
+def run_slot(slot, spent_before, cap, trials=TRIALS) -> bool:
     """Run the slot's missing trials. False once the cap is reached."""
-    for trial in missing_trials(slot):
+    for trial in missing_trials(slot, trials):
         if (so_far := spent_in(RUNS) - spent_before) >= cap:
             print(f"cap reached: ${so_far:.4f} of ${cap:.2f}; stopping")
             return False
@@ -114,18 +128,22 @@ def run_slot(slot, spent_before, cap) -> bool:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cap", type=float, default=4.0, help="USD this top-up may spend, across its run folders")
+    ap.add_argument("--trials", type=int, default=TRIALS, help="trials each model and task should hold")
+    ap.add_argument("--all-models", action="store_true", help="the lineup and OTHERS, not just the lineup")
+    ap.add_argument("--model", action="append", help="only these models (repeatable)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
-    slots = plan()
+    models = args.model or (LINEUP + OTHERS if args.all_models else LINEUP)
+    slots = plan(models)
     for slot in slots:
-        print(f"{slot.run:18} {slot.task:14} {slot.model:32} saved {slot.saved_trials()} new {missing_trials(slot)}")
-    print(f"{sum(len(missing_trials(slot)) for slot in slots)} new trials")
+        print(f"{slot.run:18} {slot.task:14} {slot.model:32} saved {slot.saved_trials()} new {missing_trials(slot, args.trials)}")
+    print(f"{sum(len(missing_trials(slot, args.trials)) for slot in slots)} new trials")
     if args.dry_run:
         return
     runner.exit_unless_able_to_run([CONDITION])
     spent_before = spent_in(RUNS)
     for slot in slots:
-        if not run_slot(slot, spent_before, args.cap):
+        if not run_slot(slot, spent_before, args.cap, args.trials):
             break
     for run in RUNS:
         runner.summarize(runner.ROOT / "results/runs" / run)

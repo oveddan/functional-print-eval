@@ -1,0 +1,266 @@
+task: m5-spacer
+note: 'A plain round spacer: 12 mm OD, 20 mm long, 5.5 mm through bore for an M5 bolt.
+  Printed standing on end, so the bore is a vertical circle (no bridging, no sag)
+  and no supports are needed. A 3 mm coupon is included so you can test the bore fit
+  in a few minutes before committing to the 20 mm part. The only assumption is the
+  6 mm per plate thickness used to pick the bolt length — the manual gives the rule
+  so you can swap to a longer bolt if your plates are thicker. Print the bore vertical
+  as modelled; laying the spacer down would leave the top of the bore unsupported.'
+questions: []
+params:
+  spacer_len:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: person asked for 20 mm long
+  spacer_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: asked
+    note: person asked for 12 mm across
+  m5_shank_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M5 nominal shank diameter
+  bore_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for M5 = shank + 0.5 (medium fit). FDM prints holes slightly
+      undersize, so this still gives a sliding fit
+  chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: 'break on both end faces, outside and bore: cancels elephant-foot at the
+      bed and eases the bolt in'
+  coupon_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: thickness of the fit-test coupon
+  plate_t:
+    value: 6
+    unit: mm
+    kind: world
+    source: guessed
+    note: assumed thickness of EACH of the two plates (person could not measure).
+      Only used to pick the bolt length, not the spacer
+  bolt_len:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M5x40, the shortest catalog length that covers 20 + 2x6 guessed
+      plates + 1 washer + 4.7 nut with ~2.3 mm to spare
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut height
+  washer_t:
+    value: 1
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M5 plain washer thickness
+  min_bolt_protrusion:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: 'washer 1.0 + nut 4.7: the bolt must stand at least this far past the outer
+      face of the second plate, plus a couple of threads'
+parts:
+- id: spacer
+  role: final
+  material: PLA (high-speed, black)
+  code: "import cadquery as cq\n\ndef build(p):\n    # 20 mm axis is +Z, z = 0 on\
+    \ the bed, bore vertical\n    body = (\n        cq.Workplane(\"XY\")\n       \
+    \ .circle(p.spacer_od / 2.0)\n        .extrude(p.spacer_len)\n    )\n    bore\
+    \ = (\n        cq.Workplane(\"XY\")\n        .circle(p.bore_d / 2.0)\n       \
+    \ .extrude(p.spacer_len)\n    )\n    part = body.cut(bore)\n    # break the four\
+    \ circular edges (OD and bore, both ends)\n    part = part.edges(\"%CIRCLE\").chamfer(p.chamfer)\n\
+    \    return part\n"
+  print_orientation: 'Standing on end: the lower end face is z = 0 flat on the bed,
+    the 20 mm axis and the 5.5 mm bore vertical.'
+  use_orientation: As printed - the spacer axis vertical. Symmetric, so either end
+    may face up; a washer goes against each end face.
+- id: coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "import cadquery as cq\n\ndef build(p):\n    # same bore and same OD as the\
+    \ spacer, just 3 mm tall: quick fit test\n    body = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(p.spacer_od / 2.0)\n        .extrude(p.coupon_t)\n    )\n\
+    \    bore = (\n        cq.Workplane(\"XY\")\n        .circle(p.bore_d / 2.0)\n\
+    \        .extrude(p.coupon_t)\n    )\n    return body.cut(bore)\n"
+  print_orientation: 'Flat: bottom face z = 0 on the bed, bore vertical (as modelled).'
+  use_orientation: Finger-held test piece; not part of the finished assembly.
+hardware:
+- id: m5_bolt
+  ref: ISO 4762 M5x40
+  qty: 1
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_washer
+  ref: ISO 7089 M5
+  qty: 1
+joints:
+- id: j_bolt_through_spacer
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -6.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: 5.5 mm through bore on the Z axis
+    role: clearance
+  nut: m5_nut
+  external: the two plates (assumed 6 mm each) - the bolt passes through plate 1,
+    the spacer, plate 2, then the ISO 7089 M5 washer and the ISO 4032 M5 nut
+criteria:
+- id: c1
+  part: coupon
+  feature: 3 mm coupon bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.5
+  params:
+  - bore_d
+  - coupon_t
+  check:
+    method: coupon
+    ref: coupon
+    description: 'Print the coupon first and slide the M5 bolt through it: it must
+      pass by hand with a little play and no force. If it binds, ream the bore with
+      a 5.5 mm bit, or raise bore_d by 0.2 mm and re-run the coupon before printing
+      the spacer.'
+- id: c2
+  part: spacer
+  feature: 5.5 mm through bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.5
+  params:
+  - bore_d
+  - spacer_len
+  - m5_shank_d
+  check:
+    method: measure
+    ref: null
+    description: 'Try the M5 bolt through the finished spacer: it should turn freely
+      and the spacer should slide along the shank. Bore should measure 5.4-5.6 mm
+      with calipers.'
+- id: c3
+  part: spacer
+  feature: outer surface between the two end faces
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_len
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: 'Measure the printed part: 20.0 mm long and 12.0 mm across, both
+      end faces flat and square (no elephant-foot lip).'
+- id: c4
+  part: spacer
+  feature: bolt stack-up through the assembly
+  relation: engages
+  hardware: m5_bolt
+  clearance_mm: null
+  params:
+  - bolt_len
+  - spacer_len
+  - plate_t
+  - nut_h
+  - washer_t
+  - min_bolt_protrusion
+  check:
+    method: measure
+    ref: null
+    description: Dry-assemble the stack. The bolt must stand at least 5.7 mm (washer
+      + nut) plus a couple of threads past the outer face of the second plate. Need
+      = 20 + plate1 + plate2 + 5.7; if that exceeds 40, use ISO 4762 M5x45 or M5x50
+      instead. Plate thickness was guessed at 6 mm each.
+manual:
+- n: '1'
+  text: Print the coupon first, print_orientation as modelled (flat on the bed, z
+    = 0 down, bore vertical). It takes a couple of minutes and tells you whether your
+    printer hits the 5.5 mm bore before you print the real part.
+  parts:
+  - coupon
+  hardware: []
+  tool: Bambu Lab X1C, 0.4 mm nozzle, 0.2 mm layers, PLA
+- n: '2'
+  text: 'Fit-test: push the M5 bolt through the coupon''s hole. It should drop through
+    under hand pressure with a little wiggle - no forcing, no rattling. If it will
+    not go, ream the hole with a 5.5 mm drill bit, or increase bore_d to 5.7 and reprint
+    the coupon.'
+  parts:
+  - coupon
+  hardware:
+  - m5_bolt
+  tool: null
+- n: '3'
+  text: 'Print the spacer standing on end, as modelled: the bottom end face on the
+    bed and the 20 mm axis (and the bore) vertical. Do not lay it down - that would
+    leave the top of the bore as an unsupported span. No supports or raft needed.'
+  parts:
+  - spacer
+  hardware: []
+  tool: Bambu Lab X1C, 0.4 mm nozzle, 0.2 mm layers, PLA
+- n: '4'
+  text: 'Check the printed spacer: 20 mm long, 12 mm across, square ends, and the
+    chamfer on both faces knocked back cleanly. Run a finger inside the bore - if
+    any fuzz remains, scrape it out with a 5.5 mm drill bit turned by hand.'
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '5'
+  text: 'Assemble: push the M5x40 bolt through plate 1, then the spacer, then plate
+    2, so the spacer is sandwiched between the two plates and the bolt runs down the
+    middle of it.'
+  parts:
+  - spacer
+  hardware:
+  - m5_bolt
+  tool: null
+- n: '6'
+  text: Slide the M5 washer over the protruding bolt end and wind on the M5 hex nut.
+    Hold the bolt with a 4 mm hex key and snug the nut with an 8 mm spanner. Tighten
+    only until the stack stops moving - the spacer carries the load in compression
+    and PLA creeps, so do not lean on it.
+  parts:
+  - spacer
+  hardware:
+  - m5_washer
+  - m5_nut
+  tool: 4 mm hex key, 8 mm spanner
+- n: '7'
+  text: 'Bolt length check: the bolt needs to stand at least as far past the outer
+    plate face as the washer (1 mm) + nut (4.7 mm) + a couple of threads, i.e. about
+    6 mm. Your plate thickness was unknown to me, so I sized the M5x40 for two 6 mm
+    plates. If your plates are thicker than about 6 mm each you will run out of thread
+    - switch to an ISO 4762 M5x45 or M5x50. The spacer itself does not change.'
+  parts: []
+  hardware:
+  - m5_bolt
+  tool: null

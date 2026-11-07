@@ -1,0 +1,511 @@
+task: nut-knob/M3
+note: 'One printed piece, no supports, no glue. The nut is captured by three flexure
+  fingers split out of the slim skirt by three through-slots: each finger ends in
+  a snap tooth whose ramp faces the rim (so the nut spreads the fingers ~0.35 mm over
+  an 11 mm cantilever, about 1% strain in PLA) and whose flat ledge faces inward,
+  holding the nut in against inversion. The 5.9 mm hex bore keeps the nut from rotating
+  so the knob actually drives the bolt, and the 3.4 mm hole in the 3.5 mm closed end
+  is what the nut can never be pushed through while the 3 mm bolt passes freely and
+  exits the rim. The 20 mm body carries 12 vertical scallops (1.3 mm deep) for grip,
+  with a plain 2.5 mm bearing land at the clamping face; that face is the first printed
+  layer so it is dead flat. A coupon is included because the snap fit is the only
+  risky part - it is the same bore, slots, finger length and tooth geometry on a 13
+  x 3 mm pad, so you can dial nib_aperture in 0.1 mm steps before spending a knob
+  print. Everything else (the downward-facing shoulder between body and skirt, the
+  teeth shelves, the 1.8 mm slot ceilings) is either printed as a supported top face
+  or a sub-millimetre ledge, so the whole knob prints without supports or long bridges.
+  I had to guess the nut dimensions from the ISO 4032 catalog entry and the stand-off
+  needed at your bolt, since you could not measure either; if your nuts are a non-standard
+  (over-sized) M3, the coupon test will show it.'
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: user asked for about 20 mm across; crest radius of the grip scallops
+  knob_h:
+    value: 26
+    unit: mm
+    kind: design
+    source: design
+    note: modelled rim height; z=0 is the clamping face
+  body_len:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: height of the full-diameter fluted body; above this the slim hex skirt starts
+  land_h:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: plain (unfluted) bearing land at the clamping face
+  flute_n:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_depth:
+    value: 1.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_r:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: cutter radius; with axes at 12.7 mm the scallops meet tangentially at r=10
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 height
+  bolt_thread_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 shank
+  bore_af:
+    value: 5.9
+    unit: mm
+    kind: design
+    source: design
+    note: 'nut_af + 0.4: nut slides in freely but cannot rotate'
+  roof_t:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: wall between the nut seat and the clamping face
+  bolt_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance; 2.1 mm smaller than the nut across flats, so the nut cannot
+      pass out through the far side
+  skirt_af:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: bore_af + 2 x 1.2 mm flexure wall
+  finger_len:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: free length of the three retainer fingers (slots start at body_len)
+  slot_w:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: width of each through-slot, on every other bore flat
+  slot_len:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_x:
+    value: 3.7
+    unit: mm
+    kind: design
+    source: design
+    note: radial centre of the slot box, so it cuts the 1.2 mm wall clean through
+  nib_aperture:
+    value: 4.8
+    unit: mm
+    kind: design
+    source: design
+    note: flat-to-flat opening across the three snap teeth; 0.35 mm interference with
+      the nut flats
+  nib_h:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: rim plane down to the retaining ledge, so the seated nut rests 3.6 mm inside
+      the rim
+  nib_ramp:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: axial length of the insertion ramp
+  nib_wall_r:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: tooth root radius, embedded in the skirt wall (bore surface is at 2.95)
+  nib_w:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: tangential width of each tooth
+  coupon_pad_d:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pad_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: '= coupon_h - finger_len: the solid base that anchors the fingers'
+  coupon_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: same finger length, slot, tooth and aperture geometry as the knob
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "import math\n\n\ndef _hexprism(af, z0, z1):\n    R = (af / 2.0) / math.cos(math.pi\
+    \ / 6.0)\n    wp = cq.Workplane(\"XY\").workplane(offset=z0)\n    for k in range(7):\n\
+    \        a = math.pi / 3.0 * k\n        x, y = R * math.cos(a), R * math.sin(a)\n\
+    \        wp = wp.moveTo(x, y) if k == 0 else wp.lineTo(x, y)\n    return wp.close().extrude(z1\
+    \ - z0)\n\n\ndef _tooth(tip_r, wall_r, z_lo, ramp, width, beta):\n    pts = [(tip_r,\
+    \ z_lo), (wall_r, z_lo), (wall_r, z_lo + ramp)]\n    wp = cq.Workplane(\"XZ\"\
+    )\n    for i, (x, y) in enumerate(pts):\n        wp = wp.moveTo(x, y) if i ==\
+    \ 0 else wp.lineTo(x, y)\n    return wp.close().extrude(width, both=True).rotate((0,\
+    \ 0, 1), (0, 0, 0), beta)\n\n\ndef build(p):\n    H = p.knob_h\n    zf = p.body_len\n\
+    \    Rb = p.knob_d / 2.0\n    Rc = p.flute_r\n    Ra = Rb + Rc - p.flute_depth\n\
+    \n    # fat fluted grip body, plain bearing land where it sits on the bed\n  \
+    \  w = cq.Workplane(\"XY\").circle(Rb).extrude(zf)\n    for k in range(int(p.flute_n)):\n\
+    \        a = 2.0 * math.pi * k / p.flute_n\n        w = w.cut(cq.Workplane(\"\
+    XY\").workplane(offset=p.land_h)\n                  .center(Ra * math.cos(a),\
+    \ Ra * math.sin(a))\n                  .circle(Rc)\n                  .extrude(zf\
+    \ - p.land_h + 2.0))\n\n    # slim hex skirt that carries the three retainer fingers\n\
+    \    w = w.union(_hexprism(p.skirt_af, zf, H))\n\n    # hex nut bore: from the\
+    \ seat shoulder up through the open rim\n    w = w.cut(_hexprism(p.bore_af, p.roof_t,\
+    \ H + 1.0))\n\n    # three through-slots, one per other bore flat, open at the\
+    \ rim\n    s0 = H - p.finger_len - 0.5\n    s1 = H + 1.0\n    for beta in (90.0,\
+    \ 210.0, 330.0):\n        w = w.cut(cq.Workplane(\"XY\")\n                  .box(p.slot_len,\
+    \ p.slot_w, s1 - s0, centered=(True, True, True))\n                  .translate((p.slot_x,\
+    \ 0.0, 0.5 * (s0 + s1)))\n                  .rotate((0, 0, 1), (0, 0, 0), beta))\n\
+    \n    # three snap teeth: ramp faces the rim, flat ledge retains the nut\n   \
+    \ tip_r = p.nib_aperture / 2.0\n    z_lo = H - p.nib_h\n    for beta in (30.0,\
+    \ 150.0, 270.0):\n        w = w.union(_tooth(tip_r, p.nib_wall_r, z_lo, p.nib_ramp,\
+    \ p.nib_w, beta))\n\n    # bolt clearance hole through the clamping face\n   \
+    \ w = w.cut(cq.Workplane(\"XY\").workplane(offset=-1.0)\n              .circle(p.bolt_hole_d\
+    \ / 2.0)\n              .extrude(p.roof_t + 2.0))\n    return w\n"
+  print_orientation: 'Flat clamping face (the end with the 3.4 mm hole) down on the
+    bed, model z=0 on the bed; the open rim with the three snap teeth points up (+Z).
+    Never print it rim-down: that puts a downward-facing shoulder in the air.'
+  use_orientation: 'As modelled: the z=0 face bears flat on the part being clamped,
+    the bolt head sits on that same face, and the M3 tip points out through the open
+    rim (+Z).'
+- id: retainer_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "import math\n\n\ndef _hexprism(af, z0, z1):\n    R = (af / 2.0) / math.cos(math.pi\
+    \ / 6.0)\n    wp = cq.Workplane(\"XY\").workplane(offset=z0)\n    for k in range(7):\n\
+    \        a = math.pi / 3.0 * k\n        x, y = R * math.cos(a), R * math.sin(a)\n\
+    \        wp = wp.moveTo(x, y) if k == 0 else wp.lineTo(x, y)\n    return wp.close().extrude(z1\
+    \ - z0)\n\n\ndef _tooth(tip_r, wall_r, z_lo, ramp, width, beta):\n    pts = [(tip_r,\
+    \ z_lo), (wall_r, z_lo), (wall_r, z_lo + ramp)]\n    wp = cq.Workplane(\"XZ\"\
+    )\n    for i, (x, y) in enumerate(pts):\n        wp = wp.moveTo(x, y) if i ==\
+    \ 0 else wp.lineTo(x, y)\n    return wp.close().extrude(width, both=True).rotate((0,\
+    \ 0, 1), (0, 0, 0), beta)\n\n\ndef build(p):\n    H = p.coupon_h\n    zroot =\
+    \ H - p.finger_len\n\n    # solid pad: the anchor the fingers flex against, standing\
+    \ in for the knob body\n    w = cq.Workplane(\"XY\").circle(p.coupon_pad_d / 2.0).extrude(zroot)\n\
+    \    w = w.union(_hexprism(p.skirt_af, zroot, H))\n\n    # bore, blind against\
+    \ the pad\n    w = w.cut(_hexprism(p.bore_af, p.coupon_pad_t, H + 1.0))\n\n  \
+    \  # three flexure slots, same place and size as the knob's\n    s0 = zroot -\
+    \ 0.5\n    s1 = H + 1.0\n    for beta in (90.0, 210.0, 330.0):\n        w = w.cut(cq.Workplane(\"\
+    XY\")\n                  .box(p.slot_len, p.slot_w, s1 - s0, centered=(True, True,\
+    \ True))\n                  .translate((p.slot_x, 0.0, 0.5 * (s0 + s1)))\n   \
+    \               .rotate((0, 0, 1), (0, 0, 0), beta))\n\n    # three snap teeth,\
+    \ identical to the knob's\n    tip_r = p.nib_aperture / 2.0\n    z_lo = H - p.nib_h\n\
+    \    for beta in (30.0, 150.0, 270.0):\n        w = w.union(_tooth(tip_r, p.nib_wall_r,\
+    \ z_lo, p.nib_ramp, p.nib_w, beta))\n    return w\n"
+  print_orientation: Solid pad down on the bed (model z=0 on the bed); the slotted
+    fingers and snap teeth point up (+Z), exactly like the knob.
+  use_orientation: Hold it pad-down and push the nut in from the tooth end; then turn
+    it tooth-end-down to check the nut stays in. This is the pre-flight check for
+    hand_knob's capture geometry.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 2
+- id: m3_bolt
+  ref: ISO 4762 M3x30
+  qty: 1
+joints:
+- id: knob_to_bolt
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: hand_knob
+    feature: clamping face
+    role: head_seat
+  - part: hand_knob
+    feature: bolt clearance hole
+    role: clearance
+  - part: hand_knob
+    feature: hex nut bore
+    role: thread
+  nut: m3_nut
+  external: null
+- id: nut_captured
+  fastener: m3_nut
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 22.4
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: hand_knob
+    feature: snap teeth
+    role: clearance
+  - part: hand_knob
+    feature: hex nut bore
+    role: thread
+  - part: hand_knob
+    feature: nut seat shoulder
+    role: head_seat
+  nut: null
+  external: null
+criteria:
+- id: bore_fits_nut
+  part: hand_knob
+  feature: hex nut bore
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: 0.2
+  params:
+  - nut_af
+  - bore_af
+  check:
+    method: measure
+    ref: null
+    description: 'The nut drops into the 5.9 mm hex bore with ~0.2 mm spare per side:
+      it slides freely along the axis but cannot rotate in it, so turning the knob
+      drives the bolt.'
+- id: nut_retained_inverted
+  part: hand_knob
+  feature: snap teeth
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: -0.35
+  params:
+  - nib_aperture
+  - nut_af
+  - skirt_af
+  - finger_len
+  - slot_w
+  - nib_h
+  - nib_ramp
+  check:
+    method: coupon
+    ref: retainer_coupon
+    description: 'The teeth leave a 4.8 mm opening against the nut''s 5.5 mm flats.
+      Push the nut past them in the coupon: the fingers flex ~0.35 mm over an 11 mm
+      length (~1% strain), the nut clicks through, and it stays caught when the part
+      is inverted and shaken.'
+- id: nut_cannot_pass_far_side
+  part: hand_knob
+  feature: bolt clearance hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_hole_d
+  - bolt_thread_d
+  - nut_af
+  - roof_t
+  check:
+    method: measure
+    ref: null
+    description: The 3.4 mm hole passes the 3 mm bolt but is 2.1 mm smaller than the
+      nut across flats, so the nut can never be pushed out through the closed far
+      side.
+- id: nut_seated_inside
+  part: hand_knob
+  feature: nut seat shoulder
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - roof_t
+  - bore_af
+  - nut_h
+  - nib_h
+  check:
+    method: measure
+    ref: null
+    description: Pushed home, the nut bears on the annular shoulder around the hole
+      (3.5 mm thick wall). At rest it sits on the teeth ledges, 3.6 mm below the rim,
+      entirely inside the knob.
+- id: bolt_exits_rim
+  part: hand_knob
+  feature: snap teeth
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.9
+  params:
+  - nib_aperture
+  - bolt_thread_d
+  check:
+    method: measure
+    ref: null
+    description: The bolt shank (3 mm) passes the 4.8 mm tooth opening and the 8.4
+      mm skirt, so it goes through the nut and out the other side without touching
+      the thread path.
+- id: print_self_supporting
+  part: hand_knob
+  feature: grip flutes
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_d
+  - body_len
+  - land_h
+  - flute_depth
+  - flute_n
+  check:
+    method: none
+    ref: null
+    description: 'Printed clamping-face down: the body is a stack of full-size layers,
+      the skirt only ever shrinks, the slots are open at the top and the teeth start
+      as 0.55 mm shelves on the bore wall. No supports, no spans over 5 mm.'
+- id: coupon_snap_feel
+  part: retainer_coupon
+  feature: snap teeth
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nib_aperture
+  - finger_len
+  - skirt_af
+  - slot_w
+  - bore_af
+  check:
+    method: measure
+    ref: null
+    description: 'Before printing the knob: press a nut through the coupon one-handed
+      (a few newtons, thumb pressure only) and hang it tooth-end-down. If it is too
+      stiff, print the coupon with nib_aperture 4.9; if the nut works loose, 4.7.'
+manual:
+- n: '1'
+  text: Print both pieces as modelled, flat end down on the bed, in PLA at 0.2 mm
+    layers with no supports and no raft. If your slicer tips the knob onto its side,
+    rotate it back so the 20 mm clamping face (the one with the small hole) is the
+    layer-1 face and the open, slotted rim is on top. The slim skirt must be the last
+    thing printed - printed the other way round it needs supports inside the bore.
+  parts:
+  - hand_knob
+  - retainer_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Print the coupon first if you can: it is the knob''s capture geometry (same
+    hex bore, same three slots, same three teeth) on a small pad, and it costs a few
+    minutes. Press an M3 hex nut into its bore flat-first, with the nut''s flats lined
+    up with the flat faces of the hex hole. It should need one firm push with your
+    thumb - the nut rides up the three ramps and clicks past the ledges.'
+  parts:
+  - retainer_coupon
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Turn the coupon tooth-end-down and shake it. The nut must hang on the three
+    ledges and not fall out. Then push the nut back out through the teeth with your
+    thumb or a bolt tip to check it is serviceable. If you could not get the nut in
+    without a vice, reprint the coupon with nib_aperture at 4.9 mm; if the nut falls
+    out when inverted, use 4.7 mm. Only reprint the knob once the coupon feels right.
+  parts:
+  - retainer_coupon
+  hardware:
+  - m3_nut
+  tool: null
+- n: '4'
+  text: 'Load the knob: hold it with the open, slotted rim facing up, drop the M3
+    hex nut in flat-first so its flats sit against the flats of the hex bore, and
+    push it with your thumb until it clicks past the three teeth. It then rests on
+    the ledges about 3.6 mm below the rim, fully inside the knob. Do not hammer it
+    - if the nut goes in at an angle it will jam against a tooth instead of spreading
+    the fingers.'
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '5'
+  text: 'Check the capture: turn the knob upside down and shake it over a table. The
+    nut stays in - it is held by the three teeth at the rim end and blocked at the
+    other end by the wall around the 3.4 mm hole. No glue anywhere.'
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '6'
+  text: 'Use it: put the knob''s flat 20 mm face on the part you are clamping, pass
+    the M3 bolt through that face from the bolt-head side so it goes through the 3.4
+    mm hole and starts in the captured nut, then turn the knob clockwise to tighten.
+    The hex bore stops the nut spinning with the knob, so the nut walks down the bolt
+    and pulls the bolt head against your part. The bolt tip comes out through the
+    open rim - make sure nothing is in the way beyond the knob. Turn the knob the
+    other way to back it off.'
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  - m3_bolt
+  tool: null
+- n: '7'
+  text: 'Hand tight only. This is a PLA knob: tighten it with your fingers, not with
+    a spanner on the knob, and do not use it on anything load-bearing or hot. If you
+    want to feel the nut bear properly on the closed shoulder, push the knob back
+    up against the nut before turning (you can hear the click past the teeth).'
+  parts:
+  - hand_knob
+  hardware:
+  - m3_bolt
+  tool: null
+- n: '8'
+  text: 'To change the nut: push it back out through the rim end with the tip of the
+    bolt or a 3 mm dowel, working the fingers outward evenly. The skirt is only 8.4
+    mm across - if the knob has to sit down inside a recess or a hole in the panel,
+    that slim skirt is what enters it, and the 20 mm body is the stop.'
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null

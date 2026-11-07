@@ -1,0 +1,241 @@
+task: nut-knob/M3
+note: Ergonomic 20 mm hand knob for an M3 bolt with a press-fit captive ISO 4032 M3
+  hex nut. Features 6 scalloped finger lobes, a captive blind nut pocket with an insertion
+  alignment step, and a central clearance through-hole.
+questions: []
+params:
+  nut_pocket_af:
+    value: 5.45
+    unit: mm
+    kind: design
+    source: design
+    note: Nut pocket width across flats designed for friction press-fit retention
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut nominal width across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut nominal thickness
+  coupon_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of test coupon plate
+  flute_radius:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of scallop cuts around the perimeter
+  nut_pocket_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of nut pocket from top face (ensures 2.4 mm nut sits 0.8 mm sub-flush)
+  flute_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial depth of scallop cuts into the outer diameter
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal major diameter of M3 bolt
+  bolt_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for M3 bolt shank (ISO 273 fine/medium)
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the hand knob
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of knob across lobe peaks
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of scalloped finger grip lobes
+  coupon_size:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Square size of test coupon plate
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    import math\n\n    # Base cylinder\n\
+    \    knob = cq.Workplane(\"XY\").circle(p.knob_od / 2.0).extrude(p.knob_h)\n\n\
+    \    # Scallop flutes around perimeter for ergonomic grip\n    flute_dist = (p.knob_od\
+    \ / 2.0) + p.flute_radius - p.flute_depth\n    for i in range(int(p.flute_count)):\n\
+    \        angle = i * (2.0 * math.pi / p.flute_count)\n        fx = flute_dist\
+    \ * math.cos(angle)\n        fy = flute_dist * math.sin(angle)\n        flute\
+    \ = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=-1.0)\n\
+    \            .center(fx, fy)\n            .circle(p.flute_radius)\n          \
+    \  .extrude(p.knob_h + 2.0)\n        )\n        knob = knob.cut(flute)\n\n   \
+    \ # Central bolt clearance through-hole\n    bolt_hole = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=-1.0)\n        .circle(p.bolt_hole_d / 2.0)\n\
+    \        .extrude(p.knob_h + 2.0)\n    )\n    knob = knob.cut(bolt_hole)\n\n \
+    \   # Hex nut pocket from top face downwards\n    pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=p.knob_h - p.nut_pocket_depth)\n        .polygon(6,\
+    \ p.nut_pocket_af)\n        .extrude(p.nut_pocket_depth + 1.0)\n    )\n    knob\
+    \ = knob.cut(pocket)\n\n    # Shallow alignment lead-in step at the top rim to\
+    \ aid hand insertion\n    lead_in = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=p.knob_h\
+    \ - 0.5)\n        .polygon(6, p.nut_pocket_af + 0.8)\n        .extrude(0.6)\n\
+    \    )\n    knob = knob.cut(lead_in)\n\n    return knob\n"
+  print_orientation: z = 0 flat on bed, clamping face down, nut pocket facing up (+Z)
+  use_orientation: clamping face against joint/washer (-Z), nut pocket facing user
+    (+Z)
+- id: nut_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    # Small coupon block for\
+    \ verifying nut fit prior to full knob print\n    block = (\n        cq.Workplane(\"\
+    XY\")\n        .box(p.coupon_size, p.coupon_size, p.coupon_h, centered=(True,\
+    \ True, False))\n    )\n\n    # Central bolt clearance through-hole\n    bolt_hole\
+    \ = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n       \
+    \ .circle(p.bolt_hole_d / 2.0)\n        .extrude(p.coupon_h + 2.0)\n    )\n  \
+    \  block = block.cut(bolt_hole)\n\n    # Nut pocket\n    pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=p.coupon_h - p.nut_pocket_depth)\n        .polygon(6,\
+    \ p.nut_pocket_af)\n        .extrude(p.nut_pocket_depth + 1.0)\n    )\n    block\
+    \ = block.cut(pocket)\n\n    # Lead-in alignment step\n    lead_in = (\n     \
+    \   cq.Workplane(\"XY\")\n        .workplane(offset=p.coupon_h - 0.5)\n      \
+    \  .polygon(6, p.nut_pocket_af + 0.8)\n        .extrude(0.6)\n    )\n    block\
+    \ = block.cut(lead_in)\n\n    return block\n"
+  print_orientation: z = 0 flat on bed, nut pocket facing up (+Z)
+  use_orientation: bench test on flat surface
+hardware:
+- id: nut_m3
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt_m3
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: knob_nut_joint
+  fastener: bolt_m3
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_through_hole
+    role: clearance
+  nut: nut_m3
+  external: null
+criteria:
+- id: nut_retention
+  part: knob
+  feature: nut_pocket
+  relation: contains
+  hardware: nut_m3
+  clearance_mm: -0.05
+  params:
+  - nut_af
+  - nut_pocket_af
+  - nut_h
+  - nut_pocket_depth
+  check:
+    method: coupon
+    ref: nut_coupon
+    description: Test-fit M3 hex nut into the coupon pocket; nut presses in with thumb
+      pressure and stays retained when turned upside down without glue.
+- id: nut_seat_stop
+  part: knob
+  feature: nut_pocket_floor
+  relation: seats
+  hardware: nut_m3
+  clearance_mm: 0.0
+  params:
+  - nut_h
+  - nut_pocket_depth
+  - knob_h
+  check:
+    method: none
+    ref: null
+    description: Nut seats against the solid internal floor shoulder 0.8 mm below
+      the rim, preventing it from being pushed out through the far side.
+- id: bolt_through_clearance
+  part: knob
+  feature: bolt_through_hole
+  relation: clears
+  hardware: bolt_m3
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_hole_d
+  check:
+    method: none
+    ref: null
+    description: M3 bolt passes through the 3.4 mm central hole and through the nut
+      without binding.
+manual:
+- n: '1'
+  text: 'Optional: Print the test coupon ''nut_coupon''. Take your ISO 4032 M3 hex
+    nut, align it with the hexagonal opening using the lead-in step, and press it
+    firmly into the pocket with your thumb until it seats against the bottom shelf.
+    Turn the coupon upside down to verify that the nut stays firmly retained by friction
+    without glue.'
+  parts:
+  - nut_coupon
+  hardware:
+  - nut_m3
+  tool: null
+- n: '2'
+  text: Print the 'knob' part with z = 0 flat on the build plate (clamping face down,
+    nut pocket facing up). No support material is needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Insert the ISO 4032 M3 hex nut into the hexagonal pocket on the top face of
+    the knob. Align the nut flats using the lead-in step and press firmly down with
+    your thumb (or against a flat table surface) until the nut seats fully against
+    the internal shoulder (approx. 0.8 mm below the top rim). Turn the knob upside
+    down to confirm it remains securely seated.
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  tool: null
+- n: '4'
+  text: Pass the M3 bolt through the through-hole and thread it into the captive nut,
+    or thread the knob onto a protruding M3 bolt. Use the 6 scalloped finger lobes
+    to tighten firmly by hand without any tools.
+  parts:
+  - knob
+  hardware:
+  - bolt_m3
+  - nut_m3
+  tool: null
