@@ -2,6 +2,14 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-07: Slicer estimates read test-print replays
+
+`scripts/slice_estimates.py` read only runs of trials (`grades.json`), so a replay such as `loop-estoa`, saved as
+`loop.json`, gave nothing. It now reads each replay arm with a design as a trial, its arm joined to the condition
+(`can_ask/feedback`), so the two prints' hours and filament can be compared: the first print from the replayed run
+(`pilot-estoa`), the second from each arm. The `-schema-bug` originals aren't sliced again. A test reads `loop-estoa`'s
+28 arms with designs. No estimate has been run yet: it needs Bambu Studio, on Dan's Mac.
+
 ## 2026-11-06: R2 checks a disk screw's whole shank against the ESP32, and needs a nut that fits it
 
 Two Codex findings on PR 23, left open on 2026-11-04 because they could move saved verdicts; Dan asked on

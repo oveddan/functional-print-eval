@@ -242,3 +242,16 @@ def test_parts_too_big_for_one_bed_are_counted_on_every_plate(tmp_path):
     two = se.slice_plate([tmp_path / "big.stl", tmp_path / "big.stl"], presets)
     assert (one.plates, two.plates) == (1, 2)
     assert two.plate.filament_g == pytest.approx(2 * one.plate.filament_g, abs=0.05)
+
+
+def test_a_replay_runs_arms_are_read_as_trials_kept_apart():
+    """loop-estoa saves loop.json, not grades.json: each arm with a design is sliced, under its own key."""
+    arms = list(se.loop_arms(se.RUNS / "loop-estoa"))
+    with_design = [(folder, arm) for folder, arm in arms if (folder / "submission.yaml").exists()]
+    assert len(with_design) == 28  # 14 trials, feedback and neutral; a baseline's design is pilot-estoa's
+    assert {arm.condition for _, arm in with_design} == {"can_ask/feedback", "can_ask/neutral"}
+    keys = [("loop-estoa", arm.task, arm.condition, arm.model, arm.trial) for _, arm in with_design]
+    assert len(set(keys)) == len(keys)
+    assert not any("schema-bug" in str(folder) for folder, _ in arms)  # the kept originals aren't sliced again
+    passed = [arm for _, arm in arms if arm.verdict == "pass"]
+    assert [(arm.model, arm.trial, arm.condition) for arm in passed] == [("google/gemini-4-argon", 2, "can_ask/feedback")]
