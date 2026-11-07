@@ -1,0 +1,104 @@
+task: servo-arm
+note: >-
+  Reference solution. The base is servo-mount's plate: the servo hangs under it with its shaft up through
+  the cutout, a channel under each tab for the rib, M3 screws and nuts through the tab slots. The arm is
+  one flat link: a hub that presses straight onto the spline at one end, and a seat for the 608 at the
+  other, for the next joint. It sits above the case top, so nothing on the plate is in its way.
+params:
+  body_l:     {value: 40.58, kind: hardware, source: measured, note: the case end to end}
+  body_w:     {value: 19.82, kind: hardware, source: measured, note: the case side to side}
+  clearance:  {value: 0.25, kind: design, source: measured, note: a side; this servo seated at 0.25 on this printer}
+  pitch:      {value: 49.19, kind: hardware, source: measured, note: centres of the end-to-end holes, inside edges 44.61 plus a hole 4.58}
+  pair:       {value: 10, kind: hardware, source: datasheet, note: the two holes on one tab, not measured}
+  channel_w:  {value: 2.1, kind: design, source: design, note: the rib's width 1.51 and over 0.25 a side}
+  channel_h:  {value: 2.2, kind: design, source: design, note: the rib's height 1.8 and two layers}
+  screw_hole: {value: 3.4, kind: design, source: design, note: M3 clearance}
+  plate_l:    {value: 72, kind: design, source: design}
+  plate_w:    {value: 36, kind: design, source: design}
+  plate_t:    {value: 4, kind: design, source: design}
+  shaft_bore: {value: 6.0, kind: design, source: measured, note: "over the 5.84 spline: 5.94 was a hard push and 6.04 snug on this printer"}
+  hub_d:      {value: 16, kind: design, source: design}
+  arm_t:      {value: 9, kind: design, source: design, note: the seat's 7.2 and a 1.2 floor, and a little more}
+  seat_d:     {value: 22.2, kind: design, source: measured, note: "a 608 went in and held upside down at 22.1 to 22.3 on this printer"}
+  seat_h:     {value: 7.2, kind: design, source: design, note: the bearing's 7 and 0.2}
+  tip_d:      {value: 30, kind: design, source: design}
+  centres:    {value: 85, kind: design, source: design, note: shaft to bearing; the tip is 100 from the shaft}
+parts:
+  - id: plate
+    role: final
+    material: PLA
+    print_orientation: Underside, with the rib channels, on the bed; no supports.
+    use_orientation: Channels down. The servo comes up from underneath, shaft first, until its tabs meet the plate.
+    code: |
+      def build(p):
+          plate = cq.Workplane("XY").rect(p.plate_l, p.plate_w).extrude(p.plate_t)
+          opening = cq.Workplane("XY").rect(p.body_l + 2 * p.clearance, p.body_w + 2 * p.clearance).extrude(p.plate_t)
+          plate = plate.cut(opening)
+          for side in (-1, 1):
+              # room for the rib, from the cutout out past the tab's holes
+              start = p.body_l / 2
+              end = p.pitch / 2 + 4.58 / 2 + 1
+              channel = (cq.Workplane("XY").center(side * (start + end) / 2, 0)
+                         .rect(end - start, p.channel_w).extrude(p.channel_h))
+              plate = plate.cut(channel)
+              for row in (-1, 1):
+                  hole = cq.Workplane("XY").center(side * p.pitch / 2, row * p.pair / 2).circle(p.screw_hole / 2).extrude(p.plate_t)
+                  plate = plate.cut(hole)
+          return plate
+  - id: arm
+    role: final
+    material: PLA
+    print_orientation: Flat, the hub's open bore on the bed and the bearing seat opening upward; no supports.
+    use_orientation: Flat above the servo, the hub pressed down onto the shaft.
+    code: |
+      def build(p):
+          link = (cq.Workplane("XY").circle(p.hub_d / 2).extrude(p.arm_t)
+                  .union(cq.Workplane("XY").center(p.centres, 0).circle(p.tip_d / 2).extrude(p.arm_t))
+                  .union(cq.Workplane("XY").center(p.centres / 2, 0).rect(p.centres, p.hub_d).extrude(p.arm_t)))
+          link = link.cut(cq.Workplane("XY").circle(p.shaft_bore / 2).extrude(p.arm_t))
+          floor = p.arm_t - p.seat_h
+          link = link.cut(cq.Workplane("XY").workplane(offset=floor).center(p.centres, 0).circle(p.seat_d / 2).extrude(p.seat_h))
+          link = link.cut(cq.Workplane("XY").center(p.centres, 0).circle(6).extrude(floor))  # to push the bearing out
+          return link
+hardware:
+  - {id: screw, ref: "ISO 4762 M3x10", qty: 4}
+  - {id: nut, ref: "ISO 4032 M3", qty: 4}
+  - {id: bearing, ref: "608ZZ", qty: 1}
+criteria:
+  - id: C1
+    part: plate
+    feature: cutout
+    relation: clears
+    clearance_mm: 0.25
+    params: [body_l, body_w, clearance]
+    check: {method: none, description: This servo seated at 0.25 a side on this printer (test print D).}
+  - id: C2
+    part: arm
+    feature: shaft bore
+    relation: engages
+    params: [shaft_bore]
+    check: {method: none, description: "6.0 is between test print E's 5.94 (a hard push) and 6.04 (snug)."}
+  - id: C3
+    part: arm
+    feature: bearing seat
+    relation: contains
+    hardware: bearing
+    params: [seat_d, seat_h]
+    check: {method: none, description: "22.2 is inside round 2's 22.1 to 22.3, where the 608 held upside down."}
+manual:
+  - n: "1"
+    text: Print the plate channel side down and the arm flat, both with no supports.
+    parts: [plate, arm]
+    hardware: []
+  - n: "2"
+    text: Push the servo up through the plate from underneath, shaft first, until its tabs sit flat with each rib in its channel. Screw it down with the four screws and nuts.
+    parts: [plate]
+    hardware: [screw, nut]
+  - n: "3"
+    text: Centre the servo, then press the arm's hub straight down onto the shaft, pointing the arm where you want the middle of its swing.
+    parts: [arm]
+    hardware: []
+  - n: "4"
+    text: Press the bearing into the seat at the arm's end, for the next joint.
+    parts: [arm]
+    hardware: [bearing]

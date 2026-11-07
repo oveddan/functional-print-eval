@@ -343,3 +343,29 @@ def test_with_the_datasheet_the_request_comes_with_its_pages():
     asked = agent.opening_messages(TASK, "can_ask", person, 8)
     given = agent.opening_messages(TASK, agent.DATASHEET, person, 8)
     assert given[0] == asked[0] and agent.tools(agent.DATASHEET) == agent.tools("can_ask")
+
+
+def test_an_opening_behind_the_cutout_doesnt_shrink_it():
+    """A wall with the servo's window, and behind it a wider gap that overlaps the window's lower edge: the
+    window keeps its size. Opus 5.5's servo-arm frame read 2.94 mm a side too small before, its window cut
+    down to the overlap."""
+    from shapely.geometry import box
+
+    from pbe.graders import servo
+    body = servo.Body(40.58, 19.82, 0.25)
+    window = box(-20.6, 29.8, 20.6, 50.2)
+    behind = box(-30, 10, 30, 36)
+    runs = servo._runs([[window]] * 25 + [[behind]] * 20, body)
+    first = next(cleared for layers, cleared in runs if layers.start == 0)
+    assert first.equals(window) and next(layers for layers, _ in runs if layers.start == 0) == range(0, 25)
+
+
+def test_a_bigger_opening_beside_the_cutout_isnt_taken_for_it(tmp_path):
+    """A frame joined to the plate with a 46 x 26 window, roomier than the servo's cutout: the servo goes in
+    the closer fit (Gemini 4 Argon's servo-arm frame read its 2.3 a side gap before)."""
+    frame = plate_code().replace("    return plate\n",
+        "    plate = plate.union(cq.Workplane('XY').center(72, 0).rect(76, 36).extrude(p.plate_t)"
+        ".cut(cq.Workplane('XY').center(75, 0).rect(46, 26).extrude(p.plate_t)))\n    return plate\n")
+    findings = grade(design(code=frame), tmp_path)
+    assert {"R1", "R2", "R3"}.isdisjoint(failed(findings) | not_graded(findings)), not_passing(findings)
+    assert detail(findings, "R1").startswith("0.2")
