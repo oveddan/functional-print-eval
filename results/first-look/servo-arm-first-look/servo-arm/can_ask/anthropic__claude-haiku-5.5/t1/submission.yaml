@@ -1,0 +1,238 @@
+task: servo-arm
+note: ''
+questions: []
+params:
+  arm_len:
+    value: 100
+    unit: mm
+    kind: design
+    source: design
+    note: centre of servo spline to centre of tip bearing
+  arm_w:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  arm_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: must exceed bearing width 7.0 plus pocket floor
+  hub_r:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tip_r:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: must clear bearing pocket
+  spline_bore:
+    value: 5.9
+    unit: mm
+    kind: design
+    source: measured
+    note: servo spline 5.84 across splines plus 0.06 clearance; printed hub is a rough
+      fit and may need trimming
+  brg_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD nominal; measurement refused, 21.22 pinch-point reading not trusted
+  brg_bore:
+    value: 7.94
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  brg_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  brg_pocket_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: radial clearance per side
+  brg_pocket_d:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: pocket depth, bearing width plus 0.2
+  pin_hole:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for M5 shank through bearing bore
+  servo_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_l:
+    value: 40.4
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_tab_span:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: between inside edges of tab holes
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_depth:
+    value: 42.9
+    unit: mm
+    kind: world
+    source: guessed
+    note: not measured; typical MG996R; body hangs below the plate
+  plate_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_x:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_y:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  m4_clear:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 3.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+parts:
+- id: servo_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(p.plate_x, p.plate_y, p.plate_t,\
+    \ centered=(True, True, False))\n    cut = cq.Workplane('XY').box(p.servo_w +\
+    \ 0.4, p.servo_l + 0.4, p.plate_t + 2, centered=(True, True, False)).translate((0,\
+    \ 0, -1))\n    plate = plate.cut(cut)\n    for sx in (-1, 1):\n        x = sx\
+    \ * p.servo_tab_span / 2\n        hole = cq.Workplane('XY').center(x, 0).circle(p.m4_clear\
+    \ / 2).extrude(p.plate_t)\n        plate = plate.cut(hole)\n        d = (p.nut_af\
+    \ + 0.2) / 0.8660254\n        nut = cq.Workplane('XY').center(x, 0).polygon(6,\
+    \ d).extrude(p.nut_h)\n        plate = plate.cut(nut)\n    return plate\n"
+  print_orientation: flat, plate top face up
+  use_orientation: horizontal, plate fixed to base, servo body hangs below
+- id: arm
+  role: final
+  material: PLA
+  code: "def build(p):\n    body = cq.Workplane('XY').box(p.arm_len, p.arm_w, p.arm_t,\
+    \ centered=(False, True, False))\n    hub = cq.Workplane('XY').circle(p.hub_r).extrude(p.arm_t)\n\
+    \    tip = cq.Workplane('XY').center(p.arm_len, 0).circle(p.tip_r).extrude(p.arm_t)\n\
+    \    arm = body.union(hub).union(tip)\n    bore = cq.Workplane('XY').circle(p.spline_bore\
+    \ / 2).extrude(p.arm_t)\n    arm = arm.cut(bore)\n    pocket = cq.Workplane('XY').workplane(offset=p.arm_t\
+    \ - p.brg_pocket_d).center(p.arm_len, 0).circle(p.brg_od / 2 + p.brg_pocket_clear).extrude(p.brg_pocket_d\
+    \ + 1)\n    arm = arm.cut(pocket)\n    pin = cq.Workplane('XY').center(p.arm_len,\
+    \ 0).circle(p.pin_hole / 2).extrude(p.arm_t)\n    arm = arm.cut(pin)\n    return\
+    \ arm\n"
+  print_orientation: flat, arm top face up
+  use_orientation: horizontal, arm rotates about servo axis
+hardware:
+- id: scr_m4
+  ref: ISO 4762 M4x12
+  qty: 1
+- id: nut_m4
+  ref: ISO 4032 M4
+  qty: 1
+- id: scr_m5
+  ref: ISO 4762 M5x30
+  qty: 1
+- id: washer_m5
+  ref: ISO 7089 M5
+  qty: 1
+- id: nut_m5
+  ref: ISO 10511 M5
+  qty: 1
+joints: []
+criteria: []
+manual:
+- n: '1'
+  text: Print servo_plate flat with the top face up. Check the servo cutout and nut
+    pockets fit before assembly.
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press two ISO 4032 M4 nuts into the hex pockets underneath the plate at the
+    tab hole positions.
+  parts:
+  - servo_plate
+  hardware:
+  - nut_m4
+  tool: null
+- n: '3'
+  text: Lower the MG996R into the plate cutout so its mounting tabs rest on the plate
+    top. Fasten each tab with an ISO 4762 M4x12 screw into the M4 nut.
+  parts:
+  - servo_plate
+  hardware:
+  - scr_m4
+  - nut_m4
+  tool: null
+- n: '4'
+  text: Fit the 25-tooth aluminium horn to the servo spline. Print the arm and slide
+    its hub onto the horn; trim the 5.9 mm bore if it is tight.
+  parts:
+  - arm
+  hardware: []
+  tool: null
+- n: '5'
+  text: Press the 608ZZ bearing into the arm tip pocket.
+  parts:
+  - arm
+  hardware: []
+  tool: null
+- n: '6'
+  text: 'Mount the bearing pivot: pass an ISO 4762 M5x30 screw through the bearing
+    bore, add an ISO 7089 M5 washer, and secure with an ISO 10511 M5 lock nut on the
+    fixed link side.'
+  parts:
+  - arm
+  hardware:
+  - scr_m5
+  - washer_m5
+  - nut_m5
+  tool: null

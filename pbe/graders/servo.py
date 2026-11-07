@@ -62,6 +62,8 @@ class Mount:
     cutout: Polygon  # clear through every one of those layers
     frame: Frame
     per_side: float  # the clearance a side around the body; negative if it doesn't fit, -inf if by over 3 mm
+    axis: int = 2  # the part's axis along the plate's thickness
+    low: float = 0.0  # where the first layer starts along it
 
 
 # --- finding the cutout ---------------------------------------------------------------------------
@@ -164,16 +166,28 @@ def _runs(openings_by_layer, body):
         carried = []
         for opening in candidates:
             run = next((run for run in open_runs if run[1].intersects(opening)), None)
-            if run is None:
-                carried.append([index, opening])
-            else:
-                open_runs.remove(run)
-                carried.append([run[0], run[1].intersection(opening)])
+            if run is not None:
+                cleared = run[1].intersection(opening)
+                if isinstance(cleared, Polygon) and _could_take(cleared, body):
+                    open_runs.remove(run)
+                    carried.append([run[0], cleared])
+                    continue
+                # too little overlap for the body: a different opening behind this one, so the run ends here
+            carried.append([index, opening])
         for start, cleared in open_runs:
             runs.append((range(start, index), cleared))
         open_runs = carried
     runs += [(range(start, len(openings_by_layer)), cleared) for start, cleared in open_runs]
     return [(layers, cleared) for layers, cleared in runs if isinstance(cleared, Polygon) and not cleared.is_empty]
+
+
+def _preference(per_side):
+    """Which of several openings the servo goes in: one the body fits through before one it doesn't, and
+    of those it fits, the closest fit, since a frame can have bigger openings too (Gemini 4 Argon's servo-arm
+    frame: a 0.29 a side window, and a 2.3 a side gap behind it with nothing for the tabs). Of those it
+    doesn't fit, the nearest to fitting."""
+    fits = per_side >= -TOL
+    return (fits, -per_side if fits else per_side)
 
 
 def _mount_along(part_id, mesh, axis, body):
@@ -190,13 +204,13 @@ def _mount_along(part_id, mesh, axis, body):
         per_side = _per_side(cutout, frame, body)
         if per_side is None:  # more than 3 mm a side too small
             per_side = -np.inf
-        if best is None or (per_side, len(plate)) > (best.per_side, len(best.plate)):
-            best = Mount(part_id, layer_h, layers, plate, cutout, frame, per_side)
+        if best is None or (_preference(per_side), len(plate)) > (_preference(best.per_side), len(best.plate)):
+            best = Mount(part_id, layer_h, layers, plate, cutout, frame, per_side, axis, float(mesh.bounds[0][axis]))
     return best
 
 
 def find_mount(sub, built, body):
-    """The final part and plate the servo mounts in, with the roomiest cutout: (Mount or None, why not)."""
+    """The final part and plate the servo mounts in, by _preference: (Mount or None, why not)."""
     finals = [part for part in sub.parts if part.role == "final"]
     if not finals:
         return None, "no final part"
@@ -207,7 +221,7 @@ def find_mount(sub, built, body):
         mesh = built[part.id].mesh
         for axis in np.argsort(mesh.extents):
             mount = _mount_along(part.id, mesh, int(axis), body)
-            if mount is not None and (best is None or mount.per_side > best.per_side):
+            if mount is not None and (best is None or _preference(mount.per_side) > _preference(best.per_side)):
                 best = mount
     if best is None:
         return None, f"no opening near the servo body's {body.length} x {body.width} mm in any final part"
