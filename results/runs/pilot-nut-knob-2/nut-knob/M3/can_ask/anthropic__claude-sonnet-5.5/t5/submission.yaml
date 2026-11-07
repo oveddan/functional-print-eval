@@ -1,0 +1,207 @@
+task: nut-knob/M3
+note: The bolt is yours, so I didn't list it as hardware. The pocket fit depends on
+  how your printer sizes small holes, so the coupon is there to check it. If the nut
+  is still loose, use the tighter pocket value. The 3.4 mm hole runs all the way through
+  the knob. The roof is 5.1 mm thick and the hole is smaller than the nut, so the
+  nut can't be pushed out the far side.
+questions: []
+params:
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt major diameter
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  knob_d:
+    value: 20
+    unit: mm
+    kind: world
+    source: asked
+    note: about 20 mm across
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af_clr:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: guessed
+    note: added to nut AF for a light press fit; confirm with the coupon (it has -0.05,
+      0.05 and 0.15 pockets)
+  pocket_depth_margin:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: pocket is deeper than the nut so it sits fully inside, slightly recessed
+  hole_clr:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: bolt clearance hole = bolt_d + this
+  n_scallops:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_clr_a:
+    value: -0.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_clr_b:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_clr_c:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    r = p.knob_d / 2.0\n    body = cq.Workplane('XY').circle(r).extrude(p.knob_h)\n\
+    \    for i in range(int(p.n_scallops)):\n        a = 2 * math.pi * i / p.n_scallops\n\
+    \        d = r + 0.4 * p.scallop_r\n        cut = (cq.Workplane('XY').center(d\
+    \ * math.cos(a), d * math.sin(a))\n               .circle(p.scallop_r).extrude(p.knob_h))\n\
+    \        body = body.cut(cut)\n    af = p.nut_af + p.pocket_af_clr\n    depth\
+    \ = p.nut_h + p.pocket_depth_margin\n    pocket = cq.Workplane('XY').polygon(6,\
+    \ af / math.cos(math.radians(30))).extrude(depth)\n    body = body.cut(pocket)\n\
+    \    hole = cq.Workplane('XY').circle((p.bolt_d + p.hole_clr) / 2.0).extrude(p.knob_h)\n\
+    \    return body.cut(hole)\n"
+  print_orientation: Nut-pocket face flat on the bed, knob top facing up
+  use_orientation: Pocket face toward the work, bolt end entering the pocket from
+    below, knob on top
+- id: nut-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    w = 10.0\n    clrs = [p.coupon_clr_a, p.coupon_clr_b,\
+    \ p.coupon_clr_c]\n    body = cq.Workplane('XY').center(w, 0).rect(w * 3, w).extrude(p.coupon_h)\n\
+    \    depth = p.nut_h + p.pocket_depth_margin\n    for i, c in enumerate(clrs):\n\
+    \        x = i * w + w / 2.0\n        af = p.nut_af + c\n        pk = (cq.Workplane('XY').center(x,\
+    \ 0)\n              .polygon(6, af / math.cos(math.radians(30))).extrude(depth))\n\
+    \        hl = cq.Workplane('XY').center(x, 0).circle((p.bolt_d + p.hole_clr) /\
+    \ 2.0).extrude(p.coupon_h)\n        body = body.cut(pk).cut(hl)\n    return body.translate((-w\
+    \ * 0.5 + 0, 0, 0))\n"
+  print_orientation: Pocket face flat on the bed
+  use_orientation: 'Test only: press an M3 nut into each pocket'
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af_clr
+  - pocket_depth_margin
+  check:
+    method: coupon
+    ref: nut-coupon
+    description: Print the coupon; the pocket where an M3 nut presses in by hand and
+      holds when inverted gives the pocket_af_clr to use (-0.05, 0.05 or 0.15).
+- id: c2
+  part: knob
+  feature: roof bolt hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - hole_clr
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes freely through the 3.4 mm hole
+- id: c3
+  part: knob
+  feature: pocket roof (3.4 mm hole, smaller than nut)
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - nut_af
+  - bolt_d
+  - hole_clr
+  check:
+    method: none
+    ref: null
+    description: Nut (5.5 mm flats) cannot pass the 3.4 mm hole, so it cannot be pushed
+      out through the far side
+manual:
+- n: '1'
+  text: 'Optional but recommended: print the nut-coupon (pocket face down). Press
+    an M3 nut into each of its three pockets and turn it upside down. Choose the tightest
+    pocket that you can still press in by hand and that keeps the nut when inverted.
+    If it is not the 0.05 one, change pocket_af_clr in the knob accordingly.'
+  parts:
+  - nut-coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the knob with the nut-pocket face on the bed (top up), PLA, 0.2 mm layers,
+    at least 3 walls.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Align a nut's flats with the hex pocket in the flat face and press it in with
+    your thumb until it is fully inside, recessed below the face. A flat surface helps
+    to push it in squarely.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread your M3 bolt into the nut from the pocket side. It threads through
+    the nut and can come out of the hole on top of the knob. Turn the knob to tighten.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

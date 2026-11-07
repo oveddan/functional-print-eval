@@ -1,0 +1,142 @@
+task: nut-knob/M5
+note: ''
+questions: []
+params:
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Knob outer diameter, as requested
+  knob_h:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Knob height; leaves solid material above the nut pocket
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  fit_offset:
+    value: -0.2
+    unit: mm
+    kind: design
+    source: guessed
+    note: Pocket across-flats change vs nut; negative = press fit. Nut AF not measured
+      by user; verify with a test print if it is too tight or loose
+  pocket_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Extra pocket depth beyond nut thickness so the nut sits fully inside, below
+      the knob face
+  bore_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance bore for M5 bolt
+  chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Edge chamfer on the bolt-exit face
+parts:
+- id: knob
+  role: final
+  material: PLA (black, high-speed)
+  code: "import math\n\ndef build(p):\n    H = p.knob_h\n    R = p.knob_od / 2.0\n\
+    \    # Print frame: z=0 is the bolt-exit face (use-frame top), z=H is the nut\
+    \ opening (use-frame bottom)\n    body = cq.Workplane('XY').circle(R).extrude(H)\n\
+    \    body = body.faces('<Z').edges().chamfer(p.chamfer)\n    # Hex pocket opened\
+    \ at z=H, depth = nut thickness + extra, so the solid above it stops the nut\n\
+    \    af = p.nut_af + p.fit_offset\n    d = p.nut_h + p.pocket_extra\n    circ_d\
+    \ = af / math.cos(math.pi / 6)\n    hex_cut = cq.Workplane('XY').workplane(offset=H\
+    \ - d).polygon(6, circ_d).extrude(d + 1.0)\n    body = body.cut(hex_cut)\n   \
+    \ # Clearance bore through the solid for the M5 bolt\n    bore = cq.Workplane('XY').circle(p.bore_d\
+    \ / 2.0).extrude(H + 1.0).translate((0, 0, -0.5))\n    body = body.cut(bore)\n\
+    \    return body\n"
+  print_orientation: Bolt-exit face (the flat face with the bore, opposite the nut
+    opening) on the bed; nut pocket opens upward
+  use_orientation: Nut opening faces down onto the mount; bolt exits through the flat
+    top face
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut-pocket
+  part: knob
+  feature: hex nut pocket (AF 8.0 nominal, press fit)
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - fit_offset
+  - pocket_extra
+  check:
+    method: coupon
+    ref: null
+    description: Press an ISO 4032 M5 nut into the pocket by hand. It should seat,
+      resist falling out upside down, and not push through to the bolt-exit side.
+      Fit is guessed, so verify before relying on it.
+- id: bolt-bore
+  part: knob
+  feature: M5 clearance bore through the solid top
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bore_d
+  check:
+    method: template
+    ref: null
+    description: The M5 bolt passes freely through the bore and into the nut.
+manual:
+- n: '1'
+  text: Print the knob with the flat bolt-exit face on the bed, so the nut pocket
+    opens upward. No supports should be needed. Use the default 0.2 mm layers.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Clean any stringing out of the hex pocket with a small tool. Test-fit the
+    M5 nut: it should press in by hand with firm resistance. If it is loose or will
+    not start, reprint with fit_offset adjusted (about -0.1 mm if loose, -0.3 mm if
+    too tight).'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Press the ISO 4032 M5 nut into the hex pocket from the open (underside-in-use)
+    end until it bottoms against the pocket ceiling. The nut should sit just below
+    the knob face. Do not force it past the ceiling.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Check the nut stays in when the knob is turned upside down. Then thread your
+    M5 bolt up through the mount and into the nut, and tighten by hand by turning
+    the knob.
+  parts: []
+  hardware: []
+  tool: null

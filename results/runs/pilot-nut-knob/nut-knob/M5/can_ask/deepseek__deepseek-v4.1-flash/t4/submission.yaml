@@ -1,0 +1,359 @@
+task: nut-knob/M5
+note: 'A one-piece lobed hand knob, printed upright so every feature is a vertical
+  wall (no bridges, no supports). The M5 nut presses into a hex socket at the top
+  with 0.15 mm interference across the flats, and bottoms 0.4 mm below the rim on
+  the top of a 12.9 mm solid slab, so it is fully inside and cannot be pushed out
+  the far (bolt) side - the slab''s 5.6 mm through-hole (vs the nut''s 8.0 across-flats
+  / 9.24 across-corners) is the stop. The socket flares 45 degrees at the mouth as
+  a lead-in. The bolt passes up through the 5.6 mm hole, threads into the nut and
+  exits the top face.
+
+
+  I could not measure the nut, so all screw/nut sizes come from the catalog and the
+  interference fit is the one uncertain thing. Print the fit coupon first: it has
+  three sockets at 7.75 / 7.85 / 7.95 across flats (nominal - 0.10, nominal, nominal
+  + 0.10), printed in the same orientation as the knob, and the middle one matches
+  the knob. If the middle socket is too loose or too tight, change press_interference
+  (0.15 mm) and reprint.'
+questions:
+- text: How long is the M5 bolt's shank measured from under the head? The knob is
+    18 mm tall, so the bolt needs 20 mm or more to thread through the nut and come
+    out the far side - tell me if yours is shorter and I'll flatten the knob to suit.
+  answer: null
+- text: 'After printing the fit coupon: which of the three sockets presses in by thumb
+    and still holds the nut when inverted? If it isn''t the middle (7.85 mm) one,
+    tell me which and I''ll retune the interference.'
+  answer: null
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats. Could not be measured - nominal used.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height. Could not be measured - nominal used.
+  bolt_shank_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal shank diameter; the actual bolt could not be measured.
+  bolt_len_under_head:
+    value: null
+    unit: mm
+    kind: hardware
+    source: unknown
+    note: Their own bolt, not measured. Must be 20 mm or more under the head so it
+      exits the far side of the 18 mm tall knob.
+  knob_od:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: Owner asked for about 30 mm across; this is the tip-to-tip lobe diameter.
+  knob_h:
+    value: 18.0
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height, pocket mouth at z = 18. Kept short so a common 20-25 mm
+      bolt still exits the far side.
+  lobe_count:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Six grip lobes for finger purchase.
+  lobe_amp:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: Lobe amplitude; grip runs 22 mm at the roots to 30 mm at the tips.
+  press_interference:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Hex socket is this much smaller than the nut across flats. Retention is
+      by this interference alone; checked on the coupon.
+  nut_recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket is nut height + this, so the seated nut sits fully inside, below
+      the rim.
+  bolt_clear_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: 'Through-hole: M5 nominal 5.0 shank + 0.6 clearance, and well under the
+      nut''s 8.0 across flats so it still stops the nut.'
+  pocket_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: 45 degree lead-in at the hex socket mouth to start the nut squarely.
+  coupon_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon test sockets are nominal -0.10, nominal and nominal +0.10 across
+      flats.
+  coupon_l:
+    value: 78.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_w:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: Same 5.1 pocket depth plus a 2.9 thick stop slab as the knob.
+  coupon_pitch:
+    value: 24.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "import cadquery as cq\nimport math\n\n\ndef _lobed_profile(rmid, amp, lobes,\
+    \ n=180):\n    pts = []\n    for i in range(n):\n        th = 2.0 * math.pi *\
+    \ i / n\n        r = rmid + amp * math.cos(lobes * th)\n        pts.append((r\
+    \ * math.cos(th), r * math.sin(th)))\n    return pts\n\n\ndef build(p):\n    H\
+    \ = p.knob_h\n    amp = p.lobe_amp\n    rmid = p.knob_od / 2.0 - amp\n    body\
+    \ = (cq.Workplane(\"XY\")\n            .polyline(_lobed_profile(rmid, amp, int(p.lobe_count)))\n\
+    \            .close()\n            .extrude(H))\n\n    af = p.nut_af - p.press_interference\
+    \      # hex socket across flats\n    hexd = 2.0 * af / math.sqrt(3.0)       \
+    \   # circumscribed dia of that hexagon\n    depth = p.nut_h + p.nut_recess\n\
+    \    floor = H - depth                         # pocket floor = top of the stop\
+    \ slab\n\n    pocket = (cq.Workplane(\"XY\").workplane(offset=floor)\n       \
+    \       .polygon(6, hexd).extrude(depth + 0.5))\n    body = body.cut(pocket)\n\
+    \n    ch = p.pocket_chamfer\n    lead = (cq.Workplane(\"XY\").workplane(offset=H\
+    \ - ch)\n            .polygon(6, hexd)\n            .workplane(offset=ch)\n  \
+    \          .polygon(6, 2.0 * (af + 2.0 * ch) / math.sqrt(3.0))\n            .loft())\n\
+    \    body = body.cut(lead)\n\n    body = body.cut(cq.Workplane(\"XY\").workplane(offset=-1.0)\n\
+    \                    .circle(p.bolt_clear_d / 2.0).extrude(floor + 1.5))\n   \
+    \ return body"
+  print_orientation: Flat bottom face on the bed (the face with the 5.6 mm hole).
+    The knob axis is vertical, the hex socket opens straight up, so every wall is
+    vertical and nothing bridges.
+  use_orientation: Hex socket facing away from the work; the bolt comes up through
+    the bottom 5.6 mm hole, threads into the embedded nut and exits the top face.
+    Gripped by the six lobes.
+- id: knob_fit_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "import cadquery as cq\nimport math\n\n\ndef build(p):\n    t = p.coupon_t\n\
+    \    depth = p.nut_h + p.nut_recess\n    floor = t - depth\n    af0 = p.nut_af\
+    \ - p.press_interference\n    afs = [af0 - p.coupon_step, af0, af0 + p.coupon_step]\n\
+    \n    plate = (cq.Workplane(\"XY\").box(p.coupon_l, p.coupon_w, t)\n         \
+    \    .translate((0, 0, t / 2.0)))\n\n    for i, af in enumerate(afs):\n      \
+    \  x = (i - 1) * p.coupon_pitch\n        hexd = 2.0 * af / math.sqrt(3.0)\n  \
+    \      plate = plate.cut(cq.Workplane(\"XY\").workplane(offset=floor).center(x,\
+    \ 0)\n                          .polygon(6, hexd).extrude(depth + 1.0))\n    \
+    \    plate = plate.cut(cq.Workplane(\"XY\").workplane(offset=-1.0).center(x, 0)\n\
+    \                          .circle(p.bolt_clear_d / 2.0).extrude(floor + 2.0))\n\
+    \    return plate"
+  print_orientation: Flat on the bed, sockets facing up - same layer-by-layer situation
+    as the knob's socket.
+  use_orientation: 'Handling test piece: press the nut into each of the three sockets,
+    then invert the plate to check the nut is held.'
+hardware:
+- id: nut_m5
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt_m5
+  ref: ISO 4762 M5x25
+  qty: 1
+joints:
+- id: j_bolt
+  fastener: bolt_m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: hand_knob
+    feature: through_hole_5p6
+    role: clearance
+  - part: hand_knob
+    feature: hex_socket
+    role: nut_pocket
+  nut: nut_m5
+  external: the workpiece the knob clamps against, under the bolt head
+criteria:
+- id: c_socket_engages
+  part: hand_knob
+  feature: hex_socket
+  relation: engages
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - nut_af
+  - press_interference
+  check:
+    method: coupon
+    ref: knob_fit_coupon
+    description: 'Socket is 7.85 mm across flats (nut 8.0 minus 0.15 interference);
+      the middle coupon socket is the same size. Thumb-press the nut in, invert the
+      plate: the nut must stay in, and it must be releasable with reasonable force.'
+- id: c_nut_seats
+  part: hand_knob
+  feature: pocket_floor
+  relation: seats
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  - knob_h
+  check:
+    method: coupon
+    ref: knob_fit_coupon
+    description: Pocket floor is 5.1 mm below the mouth (nut 4.7 + 0.4), so the nut
+      bottoms on a solid slab with the same geometry as the coupon's 2.9 mm floor.
+- id: c_nut_contained
+  part: hand_knob
+  feature: hex_socket_mouth
+  relation: contains
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: After pressing the nut in, its top face sits about 0.4 mm below the
+      knob's top face - it is fully inside the knob. Check with a fingernail across
+      the rim.
+- id: c_nut_cannot_exit
+  part: hand_knob
+  feature: through_hole_5p6
+  relation: supports
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - nut_af
+  - bolt_clear_d
+  check:
+    method: coupon
+    ref: knob_fit_coupon
+    description: The stop slab's hole is 5.6 mm, smaller than the nut's 8.0 across
+      flats / 9.24 across corners, so the nut cannot be pushed out the far side. Push
+      hard on the nut from the socket side - it must not move.
+- id: c_bolt_clears
+  part: hand_knob
+  feature: through_hole_5p6
+  relation: clears
+  hardware: bolt_m5
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: Slide the M5 bolt through the 5.6 mm hole from the bottom face; it
+      must pass freely (0.6 mm on nominal 5.0 shank).
+manual:
+- n: '1'
+  text: Print knob_fit_coupon first, PLA, laid flat on the bed with the three hex
+    sockets facing up. (Same orientation as the knob, so the fit transfers.)
+  parts:
+  - knob_fit_coupon
+  hardware: []
+  tool: Bambu Lab X1C, 0.4 mm nozzle, 0.2 mm layers
+- n: '2'
+  text: 'Press the M5 nut into each of the three sockets with your thumb until it
+    bottoms out. Then hold the plate sockets-down and tap it: the nut must stay in
+    every socket. Note how much thumb force each one needs. The three sockets run
+    left-to-right along the long axis as 7.75 mm, 7.85 mm and 7.95 mm across the flats;
+    the middle one (7.85 mm, firmly pressable, nut held) is exactly the size the knob
+    uses.'
+  parts:
+  - knob_fit_coupon
+  hardware:
+  - nut_m5
+  tool: null
+- n: '3'
+  text: 'Judgement call: if the middle socket is too loose (nut drops out when inverted)
+    or too tight to press in with a thumb, stop here and say so - the knob''s press_interference
+    number (0.15 mm) needs changing before the real part is printed. If the middle
+    socket is right, carry on.'
+  parts:
+  - knob_fit_coupon
+  hardware: []
+  tool: null
+- n: '4'
+  text: Print hand_knob, flat bottom face on the bed (the face with the small 5.6
+    mm hole). The six-lobed knob stands 18 mm tall with the hex socket opening straight
+    up.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: Same printer settings
+- n: '5'
+  text: Push the M5 nut into the hex socket at the top of the knob, thumb pressure,
+    lead-in chamfer first, until it bottoms on the pocket floor. No glue and no tools.
+    The nut's top face ends up about 0.4 mm below the knob's rim.
+  parts:
+  - hand_knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '6'
+  text: 'Turn the knob upside down and tap it on the bench: the nut must stay in the
+    socket. Try pushing the nut from the socket side with your thumb - it must not
+    move through to the far side, because the 5.6 mm hole is smaller than the nut.'
+  parts:
+  - hand_knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '7'
+  text: Push the M5 bolt up through the 5.6 mm hole in the knob's bottom face and
+    turn the knob to thread it into the nut. The bolt should pass freely through the
+    hole, engage the nut, and come out through the knob's top face. Use a bolt with
+    at least 20 mm of shank under the head (25 mm is ideal) - the knob is 18 mm tall,
+    so anything shorter will not reach out the other side.
+  parts:
+  - hand_knob
+  hardware:
+  - bolt_m5
+  - nut_m5
+  tool: null
+- n: '8'
+  text: 'To release the nut later: thread the bolt in from the bottom until its head
+    bottoms on the knob''s bottom face, then keep turning - the nut is jacked up out
+    of the socket.'
+  parts:
+  - hand_knob
+  hardware:
+  - bolt_m5
+  - nut_m5
+  tool: null

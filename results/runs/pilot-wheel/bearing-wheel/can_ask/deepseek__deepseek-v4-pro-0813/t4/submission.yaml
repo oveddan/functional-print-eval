@@ -1,0 +1,231 @@
+task: bearing-wheel
+note: ''
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: User said old wheel was ~50 mm across
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: User said old wheel was ~16 mm wide
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bearing outer diameter
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bearing bore
+  bearing_width:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bearing width
+  m8_washer_od:
+    value: 16.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 washer OD
+  m8_nut_af:
+    value: 13.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M8 lock nut across flats
+  press_fit_interference:
+    value: 0.0
+    unit: mm
+    kind: design
+    source: design
+    note: Light slip fit for bearing OD into rim; 0.05 clearance for reliable assembly
+  bearing_pocket_clearance:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: Small clearance so bearings insert without force
+  center_separation:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Gap between the two bearings in the middle (non-load shoulder)
+  rim_wall:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Plastic wall thickness around bearing OD
+  bore_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Bolt shank clearance in the central bore (bolt does not touch rotating rim)
+  washer_pocket_d:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: End relief so washer only touches inner race, not rim
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    od = p.wheel_od\n    w = p.wheel_width\n\
+    \    b_od = p.bearing_od\n    b_w = p.bearing_width\n    bore = p.bearing_bore\
+    \ + p.bore_clearance\n    sep = p.center_separation\n    wall = p.rim_wall\n\n\
+    \    # outer rim: outer cylinder minus bearing bore region and axle bore\n   \
+    \ rim = (\n        cq.Workplane('XY')\n        .circle(od / 2.0)\n        .circle(b_od\
+    \ / 2.0)          # subtract inner region (will be re-filled by bearing pockets\
+    \ below via explicit cut)\n        .extrude(w)\n    )\n\n    # Instead of boolean\
+    \ gymnastics, build solid then cut pockets precisely.\n    body = (\n        cq.Workplane('XY')\n\
+    \        .circle(od / 2.0)\n        .extrude(w)\n    )\n\n    # axle through-bore\n\
+    \    body = body.faces('>Z').workplane().hole(bore)\n\n    # bearing pocket 1\
+    \ (near end)\n    p1_d = b_od + p.bearing_pocket_clearance\n    body = (\n   \
+    \     body.faces('<Z').workplane(offset=0.0).circle(p1_d / 2.0)\n        .cutBlind(-b_w)\n\
+    \    )\n    # bearing pocket 2 (far end)\n    body = (\n        body.faces('>Z').workplane(offset=0.0).circle(p1_d\
+    \ / 2.0)\n        .cutBlind(-b_w)\n    )\n\n    # washer relief at both ends (slightly\
+    \ larger than washer, cuts only outer area)\n    wpad = p.washer_pocket_d\n  \
+    \  # relief annulus: cut from end face out to washer_d but only to depth so washer\
+    \ clears rim\n    body = (\n        body.faces('<Z').workplane(offset=0.0)\n \
+    \       .circle(b_od / 2.0 + 0.2)\n        .cutBlind(-1.0)\n    )\n    body =\
+    \ (\n        body.faces('>Z').workplane(offset=0.0)\n        .circle(b_od / 2.0\
+    \ + 0.2)\n        .cutBlind(-1.0)\n    )\n\n    return body\n"
+  print_orientation: Flat, with the wheel axis vertical (one flat end face on the
+    bed, the other end facing up). Grooves/pockets open along the axis so both bearing
+    pockets and the washer reliefs print without support.
+  use_orientation: Axis horizontal; two 608 bearings press into the pockets from each
+    side; M8 bolt through the center as the stationary axle.
+hardware:
+- id: axle_bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: inner_washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: lock_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: bearing608
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: roller_wheel
+    feature: axle through-bore
+    role: clearance
+  nut: lock_nut
+  external: null
+- id: bearing_pair
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: roller_wheel
+    feature: bearing pockets
+    role: clearance
+  nut: lock_nut
+  external: null
+criteria:
+- id: bearing_fit
+  part: roller_wheel
+  feature: bearing pockets
+  relation: seats
+  hardware: bearing608
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: Print a small ring coupon with the same pocket ID (bearing OD + clearance)
+      and test that a 608 bearing drops in by hand with light pressure and stays put.
+- id: axle_clearance
+  part: roller_wheel
+  feature: axle through-bore
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: 0.4
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: Bore = bearing bore + 0.4 clearance so the bolt never touches the
+      rim; confirm drill the printed 8.4 mm hole is clean.
+- id: washer_seat
+  part: roller_wheel
+  feature: washer relief ends
+  relation: clears
+  hardware: inner_washer
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: End relief is larger than washer OD so the washer bears only on the
+      bearing inner race, never the rotating rim.
+manual:
+- n: '1'
+  text: 'Dry-assemble: push one 608 bearing into each side of roller_wheel until each
+    seats against the bottom of its pocket. They should slip in with light finger
+    pressure.'
+  parts:
+  - roller_wheel
+  hardware:
+  - bearing608
+  tool: null
+- n: '2'
+  text: Slide the wheel onto the M8 bolt (axle_bolt) so the bolt passes through both
+    bearing bores and the central through-bore.
+  parts:
+  - roller_wheel
+  hardware:
+  - axle_bolt
+  - bearing608
+  tool: null
+- n: '3'
+  text: Place one inner_washer against each end, resting on the bearing inner race
+    (in the end relief).
+  parts:
+  - roller_wheel
+  hardware:
+  - inner_washer
+  tool: null
+- n: '4'
+  text: Mount the bolt to the door bracket so the bracket holds the bolt ends stationary,
+    then thread lock_nut onto the bolt until it just touches the washer — snug but
+    loose enough that the wheel spins freely by hand.
+  parts:
+  - roller_wheel
+  hardware:
+  - lock_nut
+  - axle_bolt
+  tool: wrench

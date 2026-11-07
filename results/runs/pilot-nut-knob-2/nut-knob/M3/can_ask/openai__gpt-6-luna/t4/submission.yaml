@@ -1,0 +1,146 @@
+task: nut-knob/M3
+note: Single-piece, six-lobed hand knob. The M3 nut presses into the blind hex pocket
+  from the open underside; a smaller through-bore leaves a retaining shoulder on the
+  far side. The pocket is designed 0.10 mm undersize across flats for a snug PLA press
+  fit. Fit can vary with printer calibration; press the nut straight in and stop if
+  it requires excessive force.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Maximum diameter across the rounded grip lobes.
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_r:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height.
+  press_interference:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket is this much smaller than nominal nut across-flats dimension.
+  nut_recess:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Recess beyond nut height, so the nut sits below the open face.
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-bore for the M3 bolt.
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    import math\n    height = p.knob_h\n    core_r = p.knob_d\
+    \ / 2.0 - p.lobe_r\n    part = cq.Workplane(\"XY\").circle(core_r).extrude(height)\n\
+    \    lobe_circle_r = core_r\n    for i in range(int(p.lobe_count)):\n        a\
+    \ = 2.0 * math.pi * i / int(p.lobe_count)\n        x = lobe_circle_r * math.cos(a)\n\
+    \        y = lobe_circle_r * math.sin(a)\n        lobe = cq.Workplane(\"XY\").center(x,\
+    \ y).circle(p.lobe_r).extrude(height)\n        part = part.union(lobe)\n\n   \
+    \ # Blind hex nut pocket opens at z=0; its roof/shoulder is at pocket_depth.\n\
+    \    pocket_af = p.nut_af - p.press_interference\n    pocket_depth = p.nut_h +\
+    \ p.nut_recess\n    corner_r = pocket_af / math.sqrt(3.0)\n    pts = []\n    for\
+    \ i in range(6):\n        a = math.radians(30.0 + 60.0 * i)\n        pts.append((corner_r\
+    \ * math.cos(a), corner_r * math.sin(a)))\n    nut_pocket = cq.Workplane(\"XY\"\
+    ).polyline(pts).close().extrude(pocket_depth)\n    part = part.cut(nut_pocket)\n\
+    \n    # Continuous bolt passage; the smaller bore leaves a shoulder that blocks\n\
+    \    # the nut from being pushed through the far side.\n    bore = cq.Workplane(\"\
+    XY\").circle(p.bolt_clearance_d / 2.0).extrude(height)\n    return part.cut(bore)"
+  print_orientation: Lay the open nut-pocket face (z=0) on the build plate; print
+    without supports. The short roof over the pocket is a small bridge.
+  use_orientation: Open nut-pocket face toward the bolt tip; the opposite, closed
+    face is the hand-grip side. Insert the bolt through the closed face toward the
+    captured nut.
+hardware:
+- id: m3_hex_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: hand_knob
+  feature: blind hex nut pocket
+  relation: engages
+  hardware: m3_hex_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - press_interference
+  - nut_h
+  check:
+    method: none
+    ref: null
+    description: Press the nut into the underside pocket by hand; it should remain
+      captured when the knob is turned upside down.
+- id: bolt_passage
+  part: hand_knob
+  feature: through-bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bolt_clearance_d
+  check:
+    method: none
+    ref: null
+    description: The M3 bolt should pass freely through the knob and engage the captured
+      nut.
+manual:
+- n: '1'
+  text: Print the hand_knob flat with its open nut-pocket face on the build plate.
+    No supports are needed.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M3 hex nut with the underside pocket and press it straight
+    in by hand until seated below the face. Do not force it if the fit is excessively
+    tight.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_hex_nut
+  tool: null
+- n: '3'
+  text: Pass the M3 bolt through the central bore from the closed face and thread
+    it into the captured nut. The bolt tip exits through the nut and the open side;
+    turn the printed lobes to tighten.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_hex_nut
+  tool: null

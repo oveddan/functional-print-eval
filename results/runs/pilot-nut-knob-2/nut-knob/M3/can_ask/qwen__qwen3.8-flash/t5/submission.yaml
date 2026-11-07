@@ -1,0 +1,287 @@
+task: nut-knob/M3
+note: Single final knob with an integrated press/snap retaining neck. Default retainer
+  neck is a 6.0 mm circular opening, trapped between a hex pocket and lower shoulder.
+  Three groups of small flex holes make hand press-in feasible while still retaining
+  an M3 nut when inverted.
+questions: []
+params:
+  knob_diameter:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: About 20 mm across as requested.
+  knob_height:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: Finger-grip height for an M3 knob.
+  m3_nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut across flats.
+  m3_nut_thickness:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height.
+  m3_nut_across_corners:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Derived from standard M3 hex across-corners geometry.
+  m3_thread_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 nominal thread diameter.
+  bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Printed clearance for M3 bolt passage.
+  pocket_flat_clearance:
+    value: 0.08
+    unit: mm
+    kind: design
+    source: design
+    note: Slight clearance on nut flats for hand press and torque transfer.
+  pocket_axial_clearance:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Axial room so the nut seats below the neck.
+  retainer_interference_diameter:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Retaining neck hole is 0.35 mm smaller than nut across corners.
+  retainer_thickness:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Thin neck height to help flex during press-in.
+  top_bore_diameter:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Access mouth above the retaining neck.
+  retainer_funnel_height:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Lead-in cone above neck.
+  shoulder_height:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: z height of the lower shoulder that nut seats on.
+  knurl_groove_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: Grip grooves.
+  knurl_groove_diameter:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of each scalloped grip cylinder used to cut grooves.
+  flex_hole_lines:
+    value: 3
+    unit: count
+    kind: design
+    source: design
+    note: Three groups of flex holes in the retaining neck.
+  flex_hole_diameter:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of flex holes through the neck.
+  flex_hole_start_offset:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Radial offset of first flex hole center from neck edge.
+  flex_hole_spacing:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Radial spacing of flex hole centers.
+  flex_hole_inner_gap:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Minimum gap between inner hole edge and neck opening.
+  flex_hole_outer_margin:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Margin before top bore wall.
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    rb=p.knob_diameter/2.0\n    hb=p.knob_height\n\
+    \    body=cq.Workplane('XY').circle(rb).extrude(hb)\n    ng=int(p.knurl_groove_count)\n\
+    \    gr=p.knurl_groove_diameter/2.0\n    for i in range(ng):\n        a=2.0*math.pi*i/float(ng)\n\
+    \        body=body.cut(cq.Workplane('XY').center(rb*math.cos(a), rb*math.sin(a)).circle(gr).extrude(hb))\n\
+    \    bolt_d=p.m3_thread_d+p.bolt_clearance\n    sh=p.shoulder_height\n    cav=cq.Workplane('XY').circle(bolt_d/2.0).extrude(sh)\n\
+    \    paf=p.m3_nut_af+p.pocket_flat_clearance\n    pcr=paf/math.sqrt(3.0)\n   \
+    \ ph=p.m3_nut_thickness+p.pocket_axial_clearance\n    wp=cq.Workplane('XY').workplane(offset=sh)\n\
+    \    for k in range(6):\n        a=2.0*math.pi*k/6.0\n        if k==0:\n     \
+    \       wp=wp.moveTo(pcr*math.cos(a), pcr*math.sin(a))\n        else:\n      \
+    \      wp=wp.lineTo(pcr*math.cos(a), pcr*math.sin(a))\n    pocket=wp.close().extrude(ph)\n\
+    \    cav=cav.union(pocket)\n    rid=p.m3_nut_across_corners-p.retainer_interference_diameter\n\
+    \    rr=rid/2.0\n    zr0=sh+ph\n    zt=p.retainer_thickness\n    tr=p.top_bore_diameter/2.0\n\
+    \    fh=p.retainer_funnel_height\n    neck=cq.Workplane('XY').workplane(offset=zr0).circle(rr).extrude(zt)\n\
+    \    cav=cav.union(neck)\n    zr1=zr0+zt\n    funnel=cq.Workplane('XY').workplane(offset=zr1).cone(rr,\
+    \ tr, fh)\n    cav=cav.union(funnel)\n    z2=zr1+fh\n    top=cq.Workplane('XY').workplane(offset=z2).circle(tr).extrude(hb-z2)\n\
+    \    cav=cav.union(top)\n    part=body.cut(cav)\n    hr=p.flex_hole_diameter/2.0\n\
+    \    nl=int(p.flex_hole_lines)\n    for i in range(nl):\n        a=math.pi/2.0+2.0*math.pi*i/float(nl)\n\
+    \        c=math.cos(a)\n        s=math.sin(a)\n        rad=rr+p.flex_hole_start_offset\n\
+    \        while True:\n            if rad-hr < rr+p.flex_hole_inner_gap:\n    \
+    \            break\n            if rad+hr > tr-p.flex_hole_outer_margin:\n   \
+    \             break\n            hole=cq.Workplane('XY').workplane(offset=zr0).center(rad*c,\
+    \ rad*s).circle(hr).extrude(zt+0.2)\n            part=part.cut(hole)\n       \
+    \     rad=rad+p.flex_hole_spacing\n    return part"
+  print_orientation: bottom face on bed
+  use_orientation: bottom face against workpiece, bolt enters from bottom and exits
+    top
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x25
+  qty: 1
+joints:
+- id: bolt_passage
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bottom_bore
+    role: clearance
+  - part: knob
+    feature: retainer_neck
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: nut_engagement
+  part: knob
+  feature: nut_pocket
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - m3_nut_af
+  - pocket_flat_clearance
+  - pocket_axial_clearance
+  check:
+    method: none
+    ref: null
+    description: Hex pocket holds nut orientation for turning.
+- id: bottom_retention
+  part: knob
+  feature: bottom_shoulder
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - m3_nut_af
+  - m3_thread_d
+  - bolt_clearance
+  check:
+    method: none
+    ref: null
+    description: Bottom bolt hole is smaller than the nut, so the nut cannot be pushed
+      out the far side.
+- id: top_retention
+  part: knob
+  feature: retainer_neck
+  relation: faces
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - m3_nut_across_corners
+  - retainer_interference_diameter
+  - flex_hole_diameter
+  check:
+    method: none
+    ref: null
+    description: Neck is smaller than nut across corners; flex holes let it be pressed
+      in by hand and retain it upside down.
+- id: bolt_clearance
+  part: knob
+  feature: through_bore
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - m3_thread_d
+  - bolt_clearance
+  check:
+    method: none
+    ref: null
+    description: Bolt can pass through lower bore, nut, and neck/mouth.
+manual:
+- n: '1'
+  text: Print the single knob with its flat bottom face on the bed. No supports should
+    be needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Place the M3 hex nut at the top mouth and press it straight in with your thumb
+    until it seats on the lower shoulder. The neck deflects slightly and then covers
+    the nut.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: 'Check capture: turn the knob upside down and shake it lightly. The nut should
+    remain trapped inside.'
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '4'
+  text: Insert the M3 bolt from the bottom face through the bore and nut. The bolt
+    exits through the top neck/mouth; turn the knob to tighten the bolt.
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  tool: null

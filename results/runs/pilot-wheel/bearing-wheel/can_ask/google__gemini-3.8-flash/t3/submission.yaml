@@ -1,0 +1,281 @@
+task: bearing-wheel
+note: Replacement 50 mm x 16 mm sliding closet door roller wheel utilizing two 608
+  skateboard bearings and an M8 axle bolt. Includes standoff bushings to isolate bearing
+  shields and space the wheel away from the bracket.
+questions: []
+params:
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of standoff spacer contacting bearing inner ring only
+  coupon_h:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: Height of test print coupon (single bearing height)
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Outer diameter of closet door roller wheel
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing width
+  shoulder_hole_d:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole through bottom retaining shoulder clearing 12 mm inner ring
+  bearing_pocket_depth:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket depth to seat two 7.0 mm bearings back-to-back (2 * 7 = 14 mm)
+  spacer_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Inner diameter of standoff spacer clearing M8 bolt
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing outer diameter
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing inner bore diameter
+  shoulder_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom retaining shoulder thickness (wheel_width - bearing_pocket_depth)
+  rim_fillet:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Fillet radius on outer rim edges for smooth track tracking
+  coupon_od:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of test print coupon
+  spacer_length:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Length of standoff spacer providing clearance between wheel and bracket/washer
+  bearing_pocket_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket diameter giving snug press fit for 22.0 mm bearing on Bambu X1C
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Total width of closet door roller wheel
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal shank diameter of M8 bolt
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    # Outer cylinder\n    res = cq.Workplane(\"XY\").circle(p.wheel_od\
+    \ / 2.0).extrude(p.wheel_width)\n    # Fillet outer rolling edges for smooth,\
+    \ quiet rolling on track\n    res = res.edges().fillet(p.rim_fillet)\n    # Cut\
+    \ bearing pocket from top face down to retaining shoulder\n    res = (\n     \
+    \   res.faces(\">Z\")\n        .workplane()\n        .circle(p.bearing_pocket_d\
+    \ / 2.0)\n        .cutBlind(-p.bearing_pocket_depth)\n    )\n    # Cut axle through-hole\
+    \ in bottom shoulder\n    res = (\n        res.faces(\"<Z\")\n        .workplane()\n\
+    \        .circle(p.shoulder_hole_d / 2.0)\n        .cutBlind(-p.shoulder_t)\n\
+    \    )\n    return res\n"
+  print_orientation: Flat face with shoulder on bed (z = 0 is the bed, bearing pocket
+    open towards +Z)
+  use_orientation: Cylindrical axis mounted horizontally along the M8 bolt axis
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    res = (\n        cq.Workplane(\"XY\")\n        .circle(p.spacer_od\
+    \ / 2.0)\n        .circle(p.spacer_id / 2.0)\n        .extrude(p.spacer_length)\n\
+    \    )\n    return res\n"
+  print_orientation: Flat face on bed (z = 0 is the bed)
+  use_orientation: Axial standoff bushing on M8 bolt contacting bearing inner ring
+- id: bearing_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    res = (\n        cq.Workplane(\"XY\")\n        .circle(p.coupon_od\
+    \ / 2.0)\n        .circle(p.bearing_pocket_d / 2.0)\n        .extrude(p.coupon_h)\n\
+    \    )\n    return res\n"
+  print_orientation: Flat face on bed (z = 0 is the bed)
+  use_orientation: Calibration test coupon for verifying bearing press fit
+hardware:
+- id: bearing_1
+  ref: 608ZZ
+  qty: 1
+- id: bearing_2
+  ref: 608ZZ
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 1
+joints:
+- id: axle_joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: bore
+    role: clearance
+  - part: wheel
+    feature: bearing_pocket
+    role: clearance
+  nut: nut
+  external: closet door bracket
+criteria:
+- id: bearing_pocket_fit
+  part: wheel
+  feature: bearing_pocket
+  relation: seats
+  hardware: bearing_1
+  clearance_mm: 0.1
+  params:
+  - bearing_pocket_d
+  - bearing_od
+  check:
+    method: coupon
+    ref: bearing_coupon
+    description: Test press fit of 608 bearing into bearing_coupon before printing
+      full wheel
+- id: bearing_shoulder_support
+  part: wheel
+  feature: shoulder
+  relation: supports
+  hardware: bearing_1
+  clearance_mm: 0.0
+  params:
+  - shoulder_t
+  - shoulder_hole_d
+  - bearing_pocket_depth
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: Verify bearing seats flush against shoulder and top face
+- id: spacer_bolt_clearance
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - spacer_id
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: 8.4 mm bore slides smoothly onto M8 bolt shank
+- id: spacer_bearing_inner_ring_seat
+  part: spacer
+  feature: face
+  relation: seats
+  hardware: bearing_1
+  clearance_mm: 0.0
+  params:
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Spacer 11.5 mm OD seats against inner ring without contacting bearing
+      shield
+manual:
+- n: '1'
+  text: Print the test coupon `bearing_coupon`. Push one of your 608 bearings into
+    the coupon to verify the press fit. It should press in firmly by hand or with
+    a light squeeze from a clamp, sitting snug with zero wobble. If needed, fine-tune
+    `bearing_pocket_d`.
+  parts:
+  - bearing_coupon
+  hardware:
+  - bearing_1
+  tool: null
+- n: '2'
+  text: Print the `wheel` flat on the build plate (Z=0 on the bed, open pocket facing
+    up). Also print 2 copies of the `spacer` bushing. Standard Bambu 0.20 mm layer
+    height with 4-5 perimeters and 30%+ infill is recommended for maximum strength
+    and smooth rolling surfaces.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press `bearing_1` straight into the open pocket of `wheel` until it seats
+    squarely against the bottom shoulder. Then press `bearing_2` in right behind it
+    until it sits against `bearing_1`. The outer face of `bearing_2` will sit flush
+    with the rim of the wheel.
+  parts:
+  - wheel
+  hardware:
+  - bearing_1
+  - bearing_2
+  tool: null
+- n: '4'
+  text: Slide the M8 bolt through the closet door bracket. Slide the first printed
+    `spacer` onto the bolt shank against the bracket. Slide the assembled `wheel`
+    onto the bolt shank with the open pocket facing the bracket spacer. Slide the
+    second `spacer` onto the bolt shank, followed by the ISO 7089 M8 washer, and thread
+    on the ISO 10511 M8 lock nut. Tighten the nut snugly with a 6 mm hex key and 13
+    mm wrench.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - bolt
+  - nut
+  - washer
+  tool: 6 mm hex key, 13 mm wrench
+- n: '5'
+  text: Spin the wheel by hand. The spacers clamp firmly against the bearing inner
+    rings, keeping the wheel spinning completely free with clearance from the bracket.
+    Re-hang the closet door onto the track and verify smooth sliding.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

@@ -1,0 +1,241 @@
+task: bearing-wheel
+note: Flat-rim 50 mm wheel with two press-fit 608 bearings. A printed spacer goes
+  between the inner races. You could use your own M8 bolt instead of the listed M8x35
+  if it's long enough to pass through both bracket cheeks and leave room for the nut.
+questions:
+- text: Does your track have a raised ridge or groove? If so, measure its width and
+    the rim can be given a matching groove.
+  answer: null
+- text: What is the gap between the bracket cheeks?
+  answer: null
+params:
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: re-measured squarely ~22; 608 nominal 22.000
+  bearing_w:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  bolt_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  wheel_od:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel ~50 across
+  old_wheel_w:
+    value: 16.0
+    unit: mm
+    kind: world
+    source: asked
+    note: bracket gap assumed to be at least this; not measured
+  wheel_w:
+    value: 14.0
+    unit: mm
+    kind: design
+    source: design
+    note: bearings stick out 0.5 mm each side so only the inner races touch the bracket;
+      total 15 mm, under the old 16
+  lip_t:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_bore:
+    value: 19.0
+    unit: mm
+    kind: design
+    source: design
+    note: lip touches only the outer rings
+  press_allow:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: pick using the fit coupon
+  rim_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: flat rim; track profile unknown
+  mouth_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11.0
+    unit: mm
+    kind: design
+    source: design
+    note: below the 608 inner ring OD (~12)
+  bolt_clear:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    pd = p.bearing_od + p.press_allow\n    w = cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w).edges().chamfer(p.rim_chamfer)\n\
+    \    depth = (p.wheel_w - p.lip_t)/2\n    w = w.cut(cq.Workplane('XY').circle(pd/2).extrude(depth))\n\
+    \    w = w.cut(cq.Workplane('XY').workplane(offset=depth+p.lip_t).circle(pd/2).extrude(depth))\n\
+    \    w = w.cut(cq.Workplane('XY').circle(p.lip_bore/2).extrude(p.wheel_w))\n \
+    \   c = p.mouth_chamfer\n    w = w.cut(cq.Workplane('XY').add(cq.Solid.makeCone(pd/2+c,\
+    \ pd/2, c)))\n    w = w.cut(cq.Workplane('XY').add(cq.Solid.makeCone(pd/2, pd/2+c,\
+    \ c, pnt=cq.Vector(0,0,p.wheel_w-c))))\n    return w\n"
+  print_orientation: flat on one face, axis vertical
+  use_orientation: axis horizontal on the M8 bolt
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.bolt_clear/2).extrude(p.lip_t)\n"
+  print_orientation: flat
+  use_orientation: on the bolt between the two bearing inner races
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    plate = cq.Workplane('XY').rect(84, 32).extrude(4)\n \
+    \   for i, off in enumerate([0.0, 0.1, 0.2]):\n        x = (i-1)*27\n        plate\
+    \ = plate.cut(cq.Workplane('XY').center(x, 0).circle((p.bearing_od+off)/2).extrude(4))\n\
+    \        for k in range(i+1):\n            plate = plate.cut(cq.Workplane('XY').center(x-3+3*k,\
+    \ 16).circle(1).extrude(4))\n    return plate\n"
+  print_orientation: flat
+  use_orientation: held in hand; press a bearing into each hole
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: bore
+    role: clearance
+  nut: nut
+  external: door roller bracket cheeks and the two 608 bearing bores
+criteria:
+- id: bearing_fit
+  part: wheel
+  feature: bearing pockets
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - press_allow
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Pick the hole (1, 2 or 3 notches = +0.0/+0.1/+0.2) where the bearing
+      presses in firmly by thumb and doesn't fall out; set press_allow to match
+- id: bracket_fit
+  part: wheel
+  feature: overall width with bearings (15 mm)
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  - old_wheel_w
+  check:
+    method: measure
+    ref: null
+    description: Wheel plus bearings must slide between the bracket cheeks. If the
+      gap is wider than ~17 mm, add an M8 washer on one side
+- id: race_spacer
+  part: spacer
+  feature: length
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - lip_t
+  check:
+    method: none
+    ref: null
+    description: Keeps the inner races apart when the nut is tightened, so the bearings
+      aren't squeezed
+manual:
+- n: '1'
+  text: Print fit_coupon. Press a bearing into each hole. Pick the one where it goes
+    in firmly by hand and stays put. 1 notch means press_allow 0.0, 2 notches 0.1,
+    3 notches 0.2. Set press_allow to that value.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the wheel lying flat with 4 or more walls and 40% infill, plus the spacer.
+    Clean any lip off the pocket edges.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one bearing into each side of the wheel until it stops against the middle
+    lip. Press on the outer ring only, for example using a socket on a flat surface.
+    Each bearing should stick out about 0.5 mm.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Push the bolt through one bracket cheek and then one bearing. Drop the spacer
+    into the middle of the wheel so it sits between the inner rings. Push the bolt
+    on through the spacer, the other bearing and the second cheek. If the wheel slides
+    more than about 1 mm sideways in the bracket, add washers between the bearing
+    and the cheek.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - bolt
+  - washer
+  tool: null
+- n: '5'
+  text: Fit a washer and the lock nut. Tighten until it's snug and the wheel still
+    spins freely. Rehang the door.
+  parts: []
+  hardware:
+  - washer
+  - nut
+  tool: 6 mm hex key + 13 mm spanner

@@ -1,0 +1,269 @@
+task: m5-spacer
+note: 'Round spacer, 12 mm dia x 20 mm long, 5.6 mm clearance bore for an M5 bolt,
+  0.6 mm lead-in chamfers on both bore ends, flat full-diameter end faces so it seats
+  squarely on the plates. Printed upright, no supports, bore perpendicular to the
+  bed so it prints clean. Since the bolt and plates couldn''t be measured, the bore
+  is a design value (M5 major dia 5.0 + 0.6, allowing for printed holes running 0.1-0.2
+  mm undersize) and a 6 mm coupon with the identical bore prints in the same batch
+  to prove the fit before you trust the spacer. Bolt length is a guess: 30 mm works
+  for plates totalling ~4 mm or less; the param note gives the rule if they''re thicker.
+  (Second submission: spacer_len and spacer_od are your stated sizes - source "asked"
+  - but they are design dimensions of the printed part, so kind is now "design".)'
+questions: []
+params:
+  bolt_len:
+    value: 30
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: 'Plate thickness unknown (couldn''t be measured). 30 mm covers the 20 mm
+      spacer plus two plates up to ~4 mm each and nut engagement. If the plates are
+      thicker, go up the length list: you need bolt_len >= 20 + t1 + t2 + 8 mm of
+      thread engagement.'
+  bolt_thread_dia:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: M5 major diameter (ISO 4762 M5). Not measured - you couldn't get a reading.
+      If the bolt is actually the salvaged webcam bolt (1/4"-20, 6.35 mm), raise bore_d
+      to 7.0.
+  bore_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: 45 degree lead-in on both bore ends only; end faces stay flat and full diameter
+      so the spacer seats properly on the plates.
+  bore_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_thread_dia + 0.6 mm, which still leaves ~0.4-0.5 mm of air over the
+      threads once the printed hole comes out 0.1-0.2 mm undersize at a 0.4 mm nozzle.
+      Prove it on the coupon before trusting the spacer.
+  coupon_len:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Short ring, same bore and same print orientation as the spacer, printed
+      in the same batch.
+  spacer_len:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: 20 mm, as you specified; this is what sets the gap between the two plates.
+  spacer_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: asked
+    note: 12 mm across, as you specified. Gives a 3.2 mm wall around the bore.
+parts:
+- id: spacer_m5_20
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    L = p.spacer_len\n    r_o = p.spacer_od / 2.0\n    r_i\
+    \ = p.bore_d / 2.0\n    c = p.bore_chamfer\n    # Half-section of the ring: flat\
+    \ full-diameter end faces for seating the plates,\n    # 0.6 mm lead-in chamfers\
+    \ on the bore only, so the bolt starts square.\n    pts = [(r_i + c, 0.0), (r_o,\
+    \ 0.0), (r_o, L), (r_i + c, L), (r_i, L - c), (r_i, c)]\n    return (cq.Workplane(\"\
+    XZ\")\n            .polyline(pts)\n            .close()\n            .revolve(360,\
+    \ axisStart=(0, 0, 0), axisEnd=(0, 0, 1)))"
+  print_orientation: 'Upright: the 20 mm axis is vertical (z = 0 is the lower 12 mm
+    end face on the bed), bore perpendicular to the bed.'
+  use_orientation: 'Part frame as printed: z = 0 on the lower end face, z+ along the
+    spacer axis toward the upper end face, bore on the z axis.'
+- id: bore_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    L = p.coupon_len\n    r_o = p.spacer_od / 2.0\n    r_i\
+    \ = p.bore_d / 2.0\n    c = p.bore_chamfer\n    # Same ring, same bore, short:\
+    \ print it beside the spacer to prove the fit.\n    pts = [(r_i + c, 0.0), (r_o,\
+    \ 0.0), (r_o, L), (r_i + c, L), (r_i, L - c), (r_i, c)]\n    return (cq.Workplane(\"\
+    XZ\")\n            .polyline(pts)\n            .close()\n            .revolve(360,\
+    \ axisStart=(0, 0, 0), axisEnd=(0, 0, 1)))"
+  print_orientation: 'Upright, same as the spacer: a 12 mm end face on the bed, bore
+    vertical.'
+  use_orientation: 'Same frame as the spacer: z = 0 on the bed, z+ along the bore
+    axis.'
+hardware:
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+- id: m5_locknut
+  ref: ISO 10511 M5
+  qty: 1
+- id: m5_washer
+  ref: ISO 7089 M5
+  qty: 2
+joints:
+- id: spacer_on_m5_bolt
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer_m5_20
+    feature: bore
+    role: clearance
+  nut: m5_locknut
+  external: null
+criteria:
+- id: bore_clears_bolt
+  part: spacer_m5_20
+  feature: bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.4
+  params:
+  - bore_d
+  - bolt_thread_dia
+  check:
+    method: coupon
+    ref: bore_coupon
+    description: The M5 bolt must pass through the coupon bore by hand with no forcing.
+      The coupon prints the same way as the spacer, so the fit carries over. If it
+      binds, reprint with bore_d 0.2 mm larger, or open the bore with a 5.5-6 mm hand
+      reamer/drill bit. If the bolt rattles, drop bore_d by 0.1 mm.
+- id: spacer_length_sets_gap
+  part: spacer_m5_20
+  feature: end_faces
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_len
+  check:
+    method: measure
+    ref: null
+    description: 'Caliper across the two end faces: 20 mm within about 0.1 mm. The
+      spacer, not the nut, sets the plate spacing, so length is the dimension that
+      matters.'
+- id: end_faces_seat_plates
+  part: spacer_m5_20
+  feature: end_faces
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  - bore_chamfer
+  check:
+    method: none
+    ref: null
+    description: Both end faces are full 12 mm annuli with no chamfer, so the plates
+      bear on flat PLA rather than on a chamfered edge. The 8.5 mm bolt head and the
+      nut land on the plates, not on the spacer rim.
+- id: od_does_not_fall_through_plate
+  part: spacer_m5_20
+  feature: outer_wall
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - spacer_od
+  check:
+    method: none
+    ref: null
+    description: The plates' holes should be no larger than about 11.5 mm, otherwise
+      the 12 mm spacer sinks into the hole instead of spanning between the plates.
+      Check before tightening.
+- id: coupon_bore_reference
+  part: bore_coupon
+  feature: bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.4
+  params:
+  - bore_d
+  - bolt_thread_dia
+  - coupon_len
+  check:
+    method: coupon
+    ref: bore_coupon
+    description: 'The test itself: a 6 mm ring with the identical bore and orientation,
+      printed in the same batch as the spacer.'
+manual:
+- n: '1'
+  text: 'Print spacer_m5_20 and bore_coupon together, both standing upright as modelled
+    - a 12 mm end face on the bed, bore vertical. No supports: the bore is a straight
+    vertical hole. 0.2 mm layers, 4 perimeters, 20% infill; the spacer is squeezed
+    along its axis, so wall count matters more than infill.'
+  parts:
+  - spacer_m5_20
+  - bore_coupon
+  hardware: []
+  tool: Bambu Lab X1C, 0.4 mm nozzle
+- n: '2'
+  text: Push the m5_bolt (ISO 4762 M5x30) through the coupon's bore by hand. It should
+    slide through without forcing. This is the step that de-risks the spacer - the
+    hole size is the one dimension I had to guess, since the bolt couldn't be measured.
+  parts:
+  - bore_coupon
+  hardware:
+  - m5_bolt
+  tool: hands
+- n: '3'
+  text: 'Coupon bore too tight: reprint with bore_d at 5.8 mm, or run a 5.5-6 mm drill
+    bit / hand reamer through the coupon and spacer bores a turn or two. Bolt rattles
+    loosely: reprint with bore_d at 5.5 mm. Keep the coupon as the record of what
+    fit.'
+  parts:
+  - bore_coupon
+  - spacer_m5_20
+  hardware:
+  - m5_bolt
+  tool: 5.5-6 mm drill bit or hand reamer
+- n: '4'
+  text: Check each plate's hole is 11.5 mm or smaller so the 12 mm spacer stands on
+    the plate rather than dropping into it. Clear any stringing from the spacer bore
+    by running the bolt through it.
+  parts:
+  - spacer_m5_20
+  hardware:
+  - m5_bolt
+  tool: null
+- n: '5'
+  text: 'Assemble: m5_washer under the head of the m5_bolt below plate 1, bolt up
+    through plate 1, slide spacer_m5_20 onto the bolt until it seats against the plate,
+    plate 2 on top, then m5_washer and the ISO 10511 M5 nylon-insert lock nut. Leave
+    6-8 full threads into the nut: with 30 mm of bolt and a 20 mm spacer that means
+    plates totalling about 4 mm or less - go to M5x35/40/45/50 if they''re thicker.'
+  parts:
+  - spacer_m5_20
+  hardware:
+  - m5_bolt
+  - m5_washer
+  - m5_locknut
+  tool: 4 mm hex key (ISO 4762 M5 socket)
+- n: '6'
+  text: Tighten to hand tight plus a small quarter turn - stop as soon as the plates
+    stop moving. PLA creeps under sustained clamp load, so an over-torqued joint will
+    bulge the 3.2 mm wall and go slack over time. The washers stop the plates digging
+    into the spacer's end faces.
+  parts:
+  - spacer_m5_20
+  hardware:
+  - m5_bolt
+  - m5_washer
+  - m5_locknut
+  tool: 4 mm hex key
+- n: '7'
+  text: 'Two watch-outs: PLA softens around 60 C, so keep this away from a hot car
+    or a heat source. And if the bolt turns out not to be M5 - the salvaged webcam
+    bolt is 1/4"-20, about 6.35 mm - the bore is too small: set bore_d to 7.0 mm and
+    reprint the coupon first.'
+  parts:
+  - spacer_m5_20
+  - bore_coupon
+  hardware: []
+  tool: null

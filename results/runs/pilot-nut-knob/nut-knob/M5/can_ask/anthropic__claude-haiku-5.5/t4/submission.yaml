@@ -1,0 +1,162 @@
+task: nut-knob/M5
+note: ''
+questions:
+- text: Will the nut stay in when the knob is inverted? Retention relies on the 0.3
+    mm per side lip plus the 0.1 mm per flat press fit. Please test this on the first
+    print.
+  answer: null
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 bolt diameter
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: about 30 mm across, per request
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: knob height; leaves about 7 mm of solid above the nut for the bolt hole
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: M5 clearance hole through the top wall
+  pocket_af:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: nut pocket across flats, 0.2 mm under the 8.0 nut so it press-fits by hand
+  mouth_af:
+    value: 7.4
+    unit: mm
+    kind: design
+    source: design
+    note: retaining lip at the open face, 0.3 mm per side under the nut so the nut
+      snaps past and cannot fall out
+  mouth_t:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: thickness of the retaining lip
+  flute_r:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: radius of the 12 grip flutes
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    r = p.knob_od / 2.0\n    body = cq.Workplane('XY').circle(r).extrude(p.knob_h)\n\
+    \    body = body.faces('<Z or >Z').edges().chamfer(0.8)\n    # 12 shallow grip\
+    \ flutes around the rim\n    for i in range(12):\n        a = 2 * math.pi * i\
+    \ / 12.0\n        x = r * math.cos(a)\n        y = r * math.sin(a)\n        body\
+    \ = body.cut(cq.Workplane('XY').center(x, y).circle(p.flute_r).extrude(p.knob_h))\n\
+    \    c30 = math.cos(math.pi / 6.0)\n    # retaining lip at the open (bottom) face:\
+    \ smaller hex the nut must snap past\n    mouth = cq.Workplane('XY').polygon(6,\
+    \ p.mouth_af / c30).extrude(p.mouth_t + 0.2).translate((0, 0, -0.1))\n    # main\
+    \ nut pocket above the lip\n    pocket = cq.Workplane('XY').polygon(6, p.pocket_af\
+    \ / c30).extrude(p.nut_h - p.mouth_t).translate((0, 0, p.mouth_t))\n    # clearance\
+    \ bore through the top wall\n    bore = cq.Workplane('XY').circle(p.bolt_clear_d\
+    \ / 2.0).extrude(p.knob_h + 2).translate((0, 0, -1))\n    body = body.cut(mouth).cut(pocket).cut(bore)\n\
+    \    return body"
+  print_orientation: bottom face (nut opening, z=0) on the bed, axis vertical
+  use_orientation: axis vertical, nut opening facing down, bolt entering from below
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket AF 7.8 with 0.6 mm retaining lip AF 7.4 at the open face
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af
+  - mouth_af
+  - mouth_t
+  check:
+    method: measure
+    ref: null
+    description: Nut presses in by hand, snaps past the lip, and stays in when the
+      knob is inverted.
+- id: bolt_bore
+  part: knob
+  feature: 5.5 mm bore through the top wall
+  relation: clears
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: M5 bolt passes freely through the bore.
+manual:
+- n: '1'
+  text: Print the knob with its flat bottom (the nut opening) on the bed. No supports
+    are needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Clean any stringing out of the hex pocket and the 5.5 mm bore. Check that
+    the nut's hex corners are not blocked.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Start the M5 hex nut into the hex opening on the bottom face, flats aligned
+    with the pocket, and press it up by hand. It snaps past the retaining lip and
+    seats against the roof of the pocket, flush with the bottom face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Turn the knob over to confirm the nut stays in without glue. If it drops out,
+    the lip is too tight; do not force it. Reprint with mouth_af raised toward 7.6.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the M5 bolt up through the knob's bottom opening, through the nut,
+    and out through the top bore. The nut turns with the knob because of the hex pocket.
+  parts: []
+  hardware: []
+  tool: null

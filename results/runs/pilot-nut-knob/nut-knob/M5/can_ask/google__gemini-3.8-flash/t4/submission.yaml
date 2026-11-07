@@ -1,0 +1,254 @@
+task: nut-knob/M5
+note: Single-piece 30 mm hand knob for an M5 bolt with an integrated friction-fit
+  pocket for an ISO 4032 M5 hex nut. Incorporates 6 crush ribs on the hex flats and
+  a mouth lead-in chamfer for easy hand-press assembly and secure retention upside
+  down without glue. Internal shoulder prevents push-through while allowing full through-bolt
+  passage.
+questions: []
+params:
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal height of ISO 4032 M5 hex nut
+  knob_h:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of knob
+  pocket_af:
+    value: 8.2
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats width of hex pocket before crush ribs
+  flute_depth:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial indent depth of flutes from outer diameter
+  num_lobes:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of ergonomic grip lobes
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal thread diameter of M5 bolt
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal width across flats for ISO 4032 M5 hex nut
+  chamfer_top_d:
+    value: 9.6
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of conical lead-in at pocket mouth
+  bolt_clearance_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for M5 bolt passage
+  rib_r:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of cylindrical crush rib profile
+  pocket_depth:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of nut pocket (nut_h 4.7 mm + 1.3 mm recess)
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of knob across grip lobes
+  flute_d:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of perimeter grip flute cutouts
+  rib_protrusion:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Inward protrusion of each crush rib from hex flat (effective AF between
+      ribs = 7.9 mm)
+  lead_in_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Height of entry chamfer above crush ribs
+parts:
+- id: hand_knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    knob_d = p.knob_d\n\
+    \    knob_h = p.knob_h\n    num_lobes = int(p.num_lobes)\n    flute_d = p.flute_d\n\
+    \    flute_depth = p.flute_depth\n    bolt_clearance_d = p.bolt_clearance_d\n\
+    \    pocket_af = p.pocket_af\n    pocket_depth = p.pocket_depth\n    rib_protrusion\
+    \ = p.rib_protrusion\n    rib_r = p.rib_r\n    lead_in_h = p.lead_in_h\n    chamfer_top_d\
+    \ = p.chamfer_top_d\n\n    # 1. Base cylindrical body\n    r_knob = knob_d / 2.0\n\
+    \    knob = cq.Workplane(\"XY\").circle(r_knob).extrude(knob_h)\n\n    # 2. Cut\
+    \ perimeter grip flutes to form 6 ergonomic lobes\n    r_flute = flute_d / 2.0\n\
+    \    flute_dist = r_knob + r_flute - flute_depth\n    for i in range(num_lobes):\n\
+    \        angle = i * (2.0 * math.pi / num_lobes)\n        fx = flute_dist * math.cos(angle)\n\
+    \        fy = flute_dist * math.sin(angle)\n        flute = (cq.Workplane(\"XY\"\
+    )\n                 .transformed(offset=cq.Vector(fx, fy, 0))\n              \
+    \   .circle(r_flute)\n                 .extrude(knob_h))\n        knob = knob.cut(flute)\n\
+    \n    # 3. Central through-hole for M5 bolt passage\n    knob = knob.faces(\"\
+    <Z\").circle(bolt_clearance_d / 2.0).cutThruAll()\n\n    # 4. Hexagonal pocket\
+    \ for M5 nut\n    hex_c2c = pocket_af / math.cos(math.radians(30))\n    knob =\
+    \ (knob.faces(\">Z\")\n            .workplane()\n            .polygon(6, hex_c2c)\n\
+    \            .cutBlind(-pocket_depth))\n\n    # 5. Crush ribs on hex flats for\
+    \ hand-press fit and retention\n    rib_h = pocket_depth - lead_in_h\n    z_rib_start\
+    \ = knob_h - pocket_depth\n    r_flat = pocket_af / 2.0\n    r_rib_center = r_flat\
+    \ + rib_r - rib_protrusion\n\n    for i in range(6):\n        angle_rad = math.radians(30.0\
+    \ + i * 60.0)\n        rx = r_rib_center * math.cos(angle_rad)\n        ry = r_rib_center\
+    \ * math.sin(angle_rad)\n        rib = (cq.Workplane(\"XY\")\n               .transformed(offset=cq.Vector(rx,\
+    \ ry, z_rib_start))\n               .circle(rib_r)\n               .extrude(rib_h))\n\
+    \        knob = knob.union(rib)\n\n    # 6. Conical lead-in at pocket mouth to\
+    \ align nut and ramp rib tops\n    r_chamfer_top = chamfer_top_d / 2.0\n    r_chamfer_bot\
+    \ = pocket_af / 2.0\n    chamfer_cut = (cq.Workplane(\"XZ\")\n               \
+    \    .moveTo(r_chamfer_bot, knob_h - lead_in_h)\n                   .lineTo(r_chamfer_top,\
+    \ knob_h)\n                   .lineTo(r_chamfer_bot, knob_h)\n               \
+    \    .close()\n                   .revolve(360, (0, 0, 0), (0, 0, 1)))\n    knob\
+    \ = knob.cut(chamfer_cut)\n\n    # 7. Bolt entry lead-in chamfer at bottom face\
+    \ (z = 0)\n    lead_in_bolt = 0.8\n    r_bolt_chamfer_top = bolt_clearance_d /\
+    \ 2.0\n    r_bolt_chamfer_bot = r_bolt_chamfer_top + lead_in_bolt\n    bolt_chamfer_cut\
+    \ = (cq.Workplane(\"XZ\")\n                        .moveTo(r_bolt_chamfer_top,\
+    \ lead_in_bolt)\n                        .lineTo(r_bolt_chamfer_bot, 0)\n    \
+    \                    .lineTo(r_bolt_chamfer_top, 0)\n                        .close()\n\
+    \                        .revolve(360, (0, 0, 0), (0, 0, 1)))\n    knob = knob.cut(bolt_chamfer_cut)\n\
+    \n    return knob\n"
+  print_orientation: Flat bottom face (z = 0) on the build plate. Hex pocket opening
+    faces upward. Prints completely without support.
+  use_orientation: Flat bottom face (z = 0) presses against the workpiece or washer,
+    with the bolt passing through from the bottom and threading into the captured
+    M5 nut.
+hardware:
+- id: nut_m5
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt_m5
+  ref: ISO 4762 M5x20
+  qty: 1
+joints:
+- id: bolt_nut_joint
+  fastener: bolt_m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: hand_knob
+    feature: bolt_hole
+    role: clearance
+  - part: hand_knob
+    feature: hex_pocket
+    role: nut_pocket
+  nut: nut_m5
+  external: null
+criteria:
+- id: nut_retention
+  part: hand_knob
+  feature: hex_pocket
+  relation: contains
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - pocket_af
+  - rib_protrusion
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Verify that an ISO 4032 M5 hex nut presses into the pocket under
+      firm thumb pressure, seats against the bottom shoulder, and remains retained
+      when the knob is inverted without falling out.
+- id: bolt_passage
+  part: hand_knob
+  feature: bolt_hole
+  relation: clears
+  hardware: bolt_m5
+  clearance_mm: 0.4
+  params:
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Verify that an M5 bolt clears through the central 5.4 mm through-hole
+      without binding and threads cleanly into the retained nut.
+- id: nut_shoulder_stop
+  part: hand_knob
+  feature: hex_pocket_shoulder
+  relation: seats
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - knob_h
+  check:
+    method: measure
+    ref: null
+    description: Verify that the internal shoulder stops the nut at a depth of 6 mm,
+      preventing it from passing through to the far side under tightening loads.
+manual:
+- n: '1'
+  text: Place the printed hand knob on a flat surface with the hexagonal pocket opening
+    facing upward.
+  parts:
+  - hand_knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '2'
+  text: Align an ISO 4032 M5 hex nut with the hexagonal pocket opening. The conical
+    lead-in at the mouth will help orient the flats of the nut.
+  parts:
+  - hand_knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '3'
+  text: Press the nut firmly into the pocket using thumb pressure. As you press, the
+    nut engages the six rounded crush ribs and seats fully against the internal bottom
+    shoulder (approx. 1.3 mm below the top rim). The nut is now retained by friction
+    and will not fall out when inverted.
+  parts:
+  - hand_knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '4'
+  text: Insert the M5 bolt through the bottom of the knob (or through your workpiece
+    and into the knob). Thread the bolt into the nut and tighten by hand using the
+    ergonomic grip flutes.
+  parts:
+  - hand_knob
+  hardware:
+  - bolt_m5
+  - nut_m5
+  tool: null

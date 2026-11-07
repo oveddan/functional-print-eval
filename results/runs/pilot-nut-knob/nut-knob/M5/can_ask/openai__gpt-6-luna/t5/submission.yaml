@@ -1,0 +1,165 @@
+task: nut-knob/M5
+note: One-piece, upright-printed hand knob for an M5 bolt. Press the M5 hex nut into
+  the recessed underside pocket until it meets the internal shoulder. The nut pocket
+  is intentionally slightly undersized across flats for friction retention; printed
+  fit varies, so press it in carefully and check the fit before applying high torque.
+  The central 5.5 mm passage lets an M5 bolt continue through the knob and out the
+  top.
+questions: []
+params:
+  outer_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Maximum outside diameter, approximately the requested 30 mm.
+  thickness:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut nominal across-flats dimension.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut nominal height.
+  nut_pocket_af:
+    value: 7.85
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats dimension; 0.15 mm less than nominal nut AF for a modest press
+      fit.
+  pocket_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Blind pocket depth; nut seats against its roof and is recessed about 0.3
+      mm from the underside.
+  entry_af:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats size at the mouth of the short lead-in.
+  entry_depth:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance passage for an M5 bolt above the nut.
+  grip_flute_r:
+    value: 1.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_flute_center_r:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    body = cq.Workplane('XY').circle(p.outer_d\
+    \ / 2).extrude(p.thickness)\n    # Six vertical finger scallops provide grip while\
+    \ keeping the knob about 30 mm across.\n    for i in range(6):\n        a = math.radians(60\
+    \ * i)\n        x = p.grip_flute_center_r * math.cos(a)\n        y = p.grip_flute_center_r\
+    \ * math.sin(a)\n        flute = cq.Workplane('XY').center(x, y).circle(p.grip_flute_r).extrude(p.thickness)\n\
+    \        body = body.cut(flute)\n    def hex_points(af):\n        radius = af\
+    \ / math.sqrt(3.0)\n        return [(radius * math.cos(math.radians(30 + 60 *\
+    \ i)),\n                 radius * math.sin(math.radians(30 + 60 * i))) for i in\
+    \ range(6)]\n    pocket = cq.Workplane('XY').polyline(hex_points(p.nut_pocket_af)).close().extrude(p.pocket_depth)\n\
+    \    lead = (cq.Workplane('XY')\n            .polyline(hex_points(p.entry_af)).close()\n\
+    \            .workplane(offset=p.entry_depth)\n            .polyline(hex_points(p.nut_pocket_af)).close()\n\
+    \            .loft(combine=True))\n    body = body.cut(pocket).cut(lead)\n   \
+    \ # The nut's threaded hole opens into this continuous bolt passage.\n    passage\
+    \ = cq.Workplane('XY').circle(p.bolt_clear_d / 2).extrude(p.thickness)\n    return\
+    \ body.cut(passage)"
+  print_orientation: Print upright, with the flat underside (the nut-entry face) on
+    the bed and the knob's top face upward; z=0 is the bed. The nut pocket is an open-bottom
+    blind cavity with a short lead-in, and the bolt passage is through.
+  use_orientation: Insert the nut from the underside, then fit the knob onto the M5
+    bolt with the knob top facing away from the bolt head.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: knob
+  feature: underside hex nut pocket
+  relation: engages
+  hardware: m5_nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - nut_pocket_af
+  - pocket_depth
+  - entry_af
+  - entry_depth
+  check:
+    method: measure
+    ref: null
+    description: Press the nut into the underside pocket by hand. It should require
+      firm pressure and remain seated when the knob is turned upside down; it should
+      stop at the pocket roof.
+- id: bolt_passage
+  part: knob
+  feature: central through-passage above the nut seat
+  relation: clears
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - bolt_clear_d
+  - thickness
+  check:
+    method: measure
+    ref: null
+    description: Verify an M5 bolt passes freely through the passage and exits the
+      top.
+manual:
+- n: '1'
+  text: Print the knob upright as specified. Let it cool, then remove any brim or
+    strings from the underside nut-entry opening and central passage.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M5 nut with the six-sided pocket on the underside. Press
+    it in evenly by hand until it reaches the internal stop. The nut should be fully
+    recessed and should remain seated when the knob is turned upside down. Do not
+    force it if the print is visibly splitting.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: Hands
+- n: '3'
+  text: Thread the M5 bolt into the captured nut. The bolt passes through the central
+    passage and can protrude from the top of the knob. Turn the knob by its fluted
+    outside to tighten.
+  parts:
+  - knob
+  hardware: []
+  tool: Hands

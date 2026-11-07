@@ -1,0 +1,370 @@
+task: bearing-wheel
+note: 'Printed roller wheel for a sliding closet door: Ø50 x 16 mm (matches the old
+  wheel), with one 608 bearing pocketed in each face, spinning on an M8 axle. Mechanics:
+  the inner races sit snug on the 8 mm shank and stay static; rotation happens inside
+  the bearings, and the stack is clamped skateboard-style between the bolt head and
+  an M8 nylon lock nut, which also anchors the bracket. The catalog ISO 4762 M8x50
+  is the listed axle (22 mm plain shank spans the whole wheel); your own M8 bolt is
+  preferred whenever it passes the manual''s length/shank checks. Assumptions flagged
+  as questions: bracket = plain hole >=9 mm clamped by the lock nut (threaded-stem
+  branch in the manual), flat tread (track not measurable), and room along the axle
+  for the added washer/nut stack. A coupon verifies the bearing press fit before the
+  wheel is printed.'
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: matches the old wheel, 'about 50 mm across'
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: matches the old wheel, 'about 16 mm wide'
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: person measured ~22 mm straight across the 608
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: person measured ~7 mm thickness
+  bolt_shank_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: person measured ~8 mm across the shank - near-ideal fit in the 8 mm bearing
+      bores, so the static inner races center without rattle
+  pocket_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: bearing_od + 0.1 slip/press fit; coupon verifies before the wheel is printed
+  pocket_depth:
+    value: 7.15
+    unit: mm
+    kind: design
+    source: design
+    note: bearing_width + 0.15, so race faces sit ~0.15 recessed and the wheel faces
+      never rub the bracket
+  web_hole_d:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_shank_d + 0.4 clearance through the central web
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on both tread edges, printable flat with no supports
+  pocket_lead:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in chamfer at each pocket mouth for easy bearing insertion
+  axle_bolt_len:
+    value: 50
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8x50 under-head length
+  axle_bolt_thread_len:
+    value: 28
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: b = 28 for M8 socket screws
+  axle_bolt_plain_len:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 50 - 28 plain shank; covers washer + wheel + washer (17.6 mm) entirely
+  axle_head_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: socket head height, for protrusion planning
+  min_plain_shank:
+    value: 17.6
+    unit: mm
+    kind: design
+    source: design
+    note: washer 1.6 + wheel 16 + washer 1.6 must sit on smooth shank
+  min_bolt_underhead:
+    value: 35
+    unit: mm
+    kind: design
+    source: design
+    note: 'substituting the user''s own bolt: stack 1.6+16+1.6+3+1.6 + 8 lock nut
+      + ~2.5 protrusion'
+  bracket_thickness:
+    value: 3
+    unit: mm
+    kind: world
+    source: guessed
+    note: unmeasurable; used only for the bolt-length requirement
+  bracket_hole_d_min:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: bolt passes freely; drill the bracket hole to this if smaller
+parts:
+- id: wheel
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    r_od = p.wheel_od / 2.0\n    r_pk = p.pocket_d / 2.0\n\
+    \    r_web = p.web_hole_d / 2.0\n    w = p.wheel_width\n    z1 = p.pocket_depth\
+    \        # bottom pocket floor\n    z2 = w - p.pocket_depth    # top pocket floor\n\
+    \    ch = p.edge_chamfer\n    lead = p.pocket_lead\n\n    # cross-section (radius,\
+    \ height), revolved around the vertical axis\n    pts = [\n        (r_web, z1),\n\
+    \        (r_pk, z1),           # bottom pocket floor\n        (r_pk, lead),  \
+    \       # bottom pocket wall\n        (r_pk + lead, 0.0),   # bottom mouth lead-in\n\
+    \        (r_od - ch, 0.0),     # bottom face\n        (r_od, ch),           #\
+    \ bottom tread-edge chamfer\n        (r_od, w - ch),       # tread\n        (r_od\
+    \ - ch, w),       # top tread-edge chamfer\n        (r_pk + lead, w),     # top\
+    \ face\n        (r_pk, w - lead),     # top mouth lead-in\n        (r_pk, z2),\
+    \           # top pocket wall\n        (r_web, z2),          # top pocket floor\n\
+    \    ]\n    return (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n \
+    \       .close()\n        .revolve(360, (0, 0), (0, 1))\n    )"
+  print_orientation: flat face down - the z=0 circular face on the bed, wheel axis
+    vertical; no supports, no bridging
+  use_orientation: symmetric top-to-bottom; mount with either face toward the door
+    (if the tread ever wears, flip it)
+- id: press_fit_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    return (\n        cq.Workplane(\"XY\")\n        .box(30,\
+    \ 30, 8, centered=(True, True, False))\n        .faces(\">Z\")\n        .workplane()\n\
+    \        .hole(p.pocket_d, p.pocket_depth)\n    )"
+  print_orientation: flat on the bed, pocket opening upward
+  use_orientation: test piece only - not part of the finished roller
+hardware:
+- id: axle_bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: lock_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washers_m8
+  ref: ISO 7089 M8
+  qty: 3
+- id: bearings_608
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -1.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: central bore line through both bearing pockets and the web hole
+    role: clearance
+  nut: null
+  external: 'door hanger bracket: plain hole >=9 mm, clamped between washer and ISO
+    10511 M8 lock nut on the bolt''s threaded end'
+criteria:
+- id: pocket_fit
+  part: wheel
+  feature: bearing pocket diameter
+  relation: contains
+  hardware: bearings_608
+  clearance_mm: 0.1
+  params:
+  - pocket_d
+  - bearing_od
+  check:
+    method: coupon
+    ref: null
+    description: 'press a 608 into the coupon''s 22.1 mm pocket: firm thumb push,
+      no rattle; catches any fit problem before the wheel is printed'
+- id: pocket_depth_seats
+  part: wheel
+  feature: pocket depth vs race width
+  relation: seats
+  hardware: bearings_608
+  clearance_mm: 0.15
+  params:
+  - pocket_depth
+  - bearing_width
+  check:
+    method: coupon
+    ref: null
+    description: in the 8 mm coupon the race face lands 0.85 mm below the surface;
+      in the 16 mm wheel it must land ~0.15 mm below each wheel face
+- id: bore_clears_bolt
+  part: wheel
+  feature: central bore line
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: 0.4
+  params:
+  - web_hole_d
+  - bolt_shank_d
+  check:
+    method: none
+    ref: null
+    description: bolt slides through the assembled bearings; snug is correct (races
+      are static), binding is not
+- id: axle_on_plain_shank
+  part: wheel
+  feature: bearing bores' axial span
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: null
+  params:
+  - axle_bolt_plain_len
+  - min_plain_shank
+  check:
+    method: none
+    ref: null
+    description: washer + wheel + washer (17.6 mm) must sit on smooth shank; the M8x50's
+      22 mm plain section covers it; a substitute bolt needs >=18 mm plain under the
+      head
+- id: tread_matches_track
+  part: wheel
+  feature: cylindrical tread
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  check:
+    method: none
+    ref: null
+    description: same 50 mm as the old wheel; flat tread assumed - confirm the old
+      wheel has no V/U groove before final assembly
+- id: width_fits_door
+  part: wheel
+  feature: overall width
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_width
+  check:
+    method: measure
+    ref: null
+    description: new wheel is 16 mm like the old one; also confirm room for the added
+      washer/lock-nut stack beside the bracket
+- id: bolt_reaches_nut
+  part: wheel
+  feature: axial stack head to lock nut
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: null
+  params:
+  - min_bolt_underhead
+  - bracket_thickness
+  check:
+    method: measure
+    ref: null
+    description: a substitute bolt needs >=35 mm under-head length; the listed M8x50
+      always satisfies this
+manual:
+- n: '1'
+  text: 'Print the press-fit coupon and test it: lay it flat and press a 608 bearing
+    into the pocket. It should go in with firm thumb pressure (or a light tap through
+    a wood block) and not rattle. The race face should end up about 0.85 mm below
+    the coupon surface. If it is far too loose or will not seat, stop and tell me
+    before printing the wheel.'
+  parts:
+  - press_fit_coupon
+  hardware:
+  - bearings_608
+  tool: null
+- n: '2'
+  text: 'Print the wheel flat on its face, no supports: 0.2 mm layers, 4+ perimeters,
+    25% infill is plenty (the rim is nearly solid anyway).'
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one bearing into each face pocket, shield side out, pressing on the
+    outer race only (never push on the inner race or the seal will drag). Seat each
+    until the race face sits just below the wheel face (~0.15 mm). Keep the wheel
+    lying flat until assembled - the bearings are finally retained by the bolt clamp,
+    not by the press fit.
+  parts:
+  - wheel
+  hardware:
+  - bearings_608
+  tool: null
+- n: '4'
+  text: 'Choose the axle: your own M8 bolt is preferred if it measures at least 35
+    mm end-to-end (under-head to tip) AND has at least 18 mm of smooth shank right
+    under the head, so washer + wheel + washer sit on plain steel. If either check
+    fails, use the listed ISO 4762 M8x50 instead: its 22 mm plain shank spans the
+    whole wheel, the extra thread above the lock nut is harmless, and the 8 mm-tall
+    socket head is driven with a 6 mm hex key.'
+  parts: []
+  hardware:
+  - axle_bolt
+  tool: null
+- n: '5'
+  text: 'Check the bracket: the axle must pass through a plain hole at least 9 mm
+    across. If the hole is smaller, drill it to 9 mm and deburr. If the old stem is
+    still screwed in there, remove it first.'
+  parts: []
+  hardware: []
+  tool: 9 mm drill bit (only if the hole is under 9 mm)
+- n: '6'
+  text: 'Assemble in this order from the bolt head: washer -> wheel (bearings in)
+    -> washer -> bracket -> washer -> lock nut. Hold the bolt head with a wrench and
+    tighten the lock nut until snug - the nylon insert adds drag, so snug means the
+    washers can no longer be turned by finger. Don''t overtighten into a plastic bracket.'
+  parts:
+  - wheel
+  hardware:
+  - axle_bolt
+  - washers_m8
+  - lock_nut
+  tool: null
+- n: '7'
+  text: 'Spin test: the wheel must turn freely and smoothly. The outer races turn
+    with the wheel; the inner races stay put on the bolt. Nothing should rub the bracket
+    - the pocket depth keeps the wheel faces ~0.15 mm clear of it.'
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '8'
+  text: 'Hang the door and roll it: the flat tread should contact the rail across
+    its full width. If your track is V- or round-profiled and the flat tread does
+    not seat properly, stop and note it before using the door daily.'
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '9'
+  text: 'Alternative mount: if your bracket has an intact M8 threaded stem instead
+    of a through-hole, skip the bolt and bracket steps - assemble washer -> wheel
+    -> washer -> lock nut directly onto the stem and tighten.'
+  parts:
+  - wheel
+  hardware:
+  - washers_m8
+  - lock_nut
+  tool: null

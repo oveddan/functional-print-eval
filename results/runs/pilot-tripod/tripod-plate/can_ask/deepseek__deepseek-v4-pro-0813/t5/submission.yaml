@@ -1,0 +1,250 @@
+task: tripod-plate
+note: 'Temporary PLA tripod quick-release plate. I used the salvaged 1/4-20 webcam-mount-bolt
+  as the screw (printed 1/4-20 threads in PLA are unreliable). The plate is Arca-Swiss
+  style: 38 mm wide with a 45-degree dovetail; the included coupon tests the clamp
+  fit before printing the full plate. The plate is 8 mm thick so about 5 mm of the
+  10 mm bolt thread protrudes above the plate into the camera''s 1/4-20 socket.'
+questions: []
+params:
+  clamp_plate_w:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: measured
+    note: Width of plate the tripod clamp takes, per the user's measurement.
+  plate_width_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Sliding clearance so the plate fits inside the 38 mm clamp opening.
+  dovetail_h:
+    value: 3.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Vertical height of the 45-degree dovetail undercut; assumes Arca-Swiss-style
+      clamp. Verified with the coupon.
+  dovetail_angle:
+    value: 45.0
+    unit: deg
+    kind: world
+    source: guessed
+    note: Arca-Swiss dovetail side angle; verified with the coupon.
+  plate_t:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: Plate thickness. 8 mm leaves about 5 mm of the 10 mm bolt thread sticking
+      out above the plate.
+  plate_len:
+    value: 40.0
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length; can be cut or sanded shorter if it sticks out of the clamp.
+  thread_slot_len:
+    value: 28.0
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the slot the 1/4-20 bolt slides along.
+  head_pocket_len:
+    value: 28.0
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the recessed channel for the bolt head on the dovetail face.
+  tripod_screw_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4 inch = 6.35 mm, the major diameter of the camera tripod screw thread.
+  screw_slot_clearance:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance added to the screw major diameter for the through-slot.
+  bolt_head_d:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Widest part of the salvaged webcam-mount-bolt the user grips when tightening.
+  bolt_head_pocket_clearance:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance around the 15 mm bolt head in its pocket.
+  bolt_head_pocket_depth:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: How far the bolt head is recessed into the dovetail face; if the head is
+      taller it simply protrudes a little more.
+  bolt_thread_len:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Threaded length under the bolt head. Used in the manual (roughly 5 mm protrudes
+      above the plate).
+  coupon_len:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: Printed length of the fit-test coupon.
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    top_w = p.clamp_plate_w\
+    \ - p.plate_width_clearance\n    bot_w = top_w - 2.0 * p.dovetail_h / math.tan(math.radians(p.dovetail_angle))\n\
+    \    t = p.plate_t\n    yc = p.dovetail_h\n\n    pts = [\n        (-top_w / 2.0,\
+    \ t),\n        (top_w / 2.0, t),\n        (top_w / 2.0, yc),\n        (bot_w /\
+    \ 2.0, 0.0),\n        (-bot_w / 2.0, 0.0),\n        (-top_w / 2.0, yc),\n    ]\n\
+    \n    plate = (cq.Workplane(\"XY\")\n             .polyline(pts).close()\n   \
+    \          .extrude(p.plate_len))\n\n    slot_w = p.tripod_screw_major_d + p.screw_slot_clearance\n\
+    \    pocket_w = p.bolt_head_d + p.bolt_head_pocket_clearance\n\n    thread_slot\
+    \ = (cq.Workplane(\"XY\")\n                   .transformed(offset=(0.0, t / 2.0,\
+    \ p.plate_len / 2.0))\n                   .box(slot_w, t + 1.0, p.thread_slot_len,\
+    \ centered=(True, True, True)))\n\n    head_pocket = (cq.Workplane(\"XY\")\n \
+    \                  .transformed(offset=(0.0, p.bolt_head_pocket_depth / 2.0, p.plate_len\
+    \ / 2.0))\n                   .box(pocket_w, p.bolt_head_pocket_depth, p.head_pocket_len,\
+    \ centered=(True, True, True)))\n\n    solid = plate.cut(thread_slot).cut(head_pocket).val()\n\
+    \    solid = solid.rotate((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), 90.0)\n    return\
+    \ solid\n"
+  print_orientation: Dovetail (narrow) face flat on the bed; in the model this is
+    the z=0 face. The 45-degree sides print upward, no supports needed.
+  use_orientation: Narrow dovetail face down into the tripod head clamp; large flat
+    top (z = plate_t) against the camera base; slot runs front-to-back for bolt adjustment.
+- id: dovetail_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    top_w = p.clamp_plate_w\
+    \ - p.plate_width_clearance\n    bot_w = top_w - 2.0 * p.dovetail_h / math.tan(math.radians(p.dovetail_angle))\n\
+    \    t = p.plate_t\n    yc = p.dovetail_h\n\n    pts = [\n        (-top_w / 2.0,\
+    \ t),\n        (top_w / 2.0, t),\n        (top_w / 2.0, yc),\n        (bot_w /\
+    \ 2.0, 0.0),\n        (-bot_w / 2.0, 0.0),\n        (-top_w / 2.0, yc),\n    ]\n\
+    \n    solid = (cq.Workplane(\"XY\")\n             .polyline(pts).close()\n   \
+    \          .extrude(p.coupon_len)\n             .val())\n    solid = solid.rotate((0.0,\
+    \ 0.0, 0.0), (1.0, 0.0, 0.0), 90.0)\n    return solid\n"
+  print_orientation: Dovetail (narrow) face flat on the bed; in the model this is
+    the z=0 face. The 45-degree sides print upward, no supports needed.
+  use_orientation: Slide it into the tripod clamp narrow-face-down to test the dovetail
+    fit before printing the full plate.
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - -20.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: screw_slot
+    role: clearance
+  - part: plate
+    feature: head_pocket
+    role: head_seat
+  nut: null
+  external: camera tripod socket (1/4-20)
+criteria:
+- id: dovetail_engages
+  part: plate
+  feature: dovetail_sides
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: dovetail_coupon
+    description: The coupon should slide into the tripod clamp and lock when the clamp
+      is tightened. Lightly sand the 45-degree sides if the fit is too tight.
+- id: screw_clears_slot
+  part: plate
+  feature: screw_slot
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.35
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: The threaded part of the salvaged bolt must pass through the slot
+      easily with a little side play.
+- id: head_seats
+  part: plate
+  feature: head_pocket
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: null
+    description: The bolt head should sit in the bottom pocket and not clash with
+      the tripod clamp channel.
+manual:
+- n: '1'
+  text: 'Print dovetail_coupon in PLA, 0.2 mm layers, dovetail face down, no supports.
+    Try it in the tripod clamp: it should slide in and the clamp should grab it. Lightly
+    sand the 45-degree sides if it binds; if it is still loose and won''t lock, stop
+    and re-check the clamp opening width.'
+  parts:
+  - dovetail_coupon
+  hardware: []
+  tool: sandpaper
+- n: '2'
+  text: If the coupon fits, print plate in PLA, 0.2 mm layers, dovetail (narrow) face
+    down on the bed, no supports.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Remove any brim or elephant's foot with sandpaper, especially on the dovetail
+    face and the bottom of the slot.
+  parts:
+  - plate
+  hardware: []
+  tool: sandpaper
+- n: '4'
+  text: Slide the plate into the tripod head, dovetail face down, and lock the clamp.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Set the camera onto the plate and line its 1/4-20 tripod socket up over the
+    slot, roughly centered. Push the salvaged webcam-mount-bolt up through the head
+    pocket and slot from below and thread it into the camera by hand.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '6'
+  text: Tighten gently by the bolt head only until the camera is firm. If it bottoms
+    out before the camera is snug, put a small washer or thin card spacer under the
+    bolt head to shorten the reach. Don't overtighten; the plate is PLA.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null

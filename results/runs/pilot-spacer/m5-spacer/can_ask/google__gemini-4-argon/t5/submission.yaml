@@ -1,0 +1,95 @@
+task: m5-spacer
+note: A cylindrical M5 spacer, 12 mm OD and 20 mm long, with a 5.4 mm clearance bore
+  (5.0 mm bolt diameter + 0.4 mm print clearance).
+questions: []
+params:
+  spacer_length:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Requested spacer length between plates
+  spacer_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: asked
+    note: Requested outer diameter of the spacer
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of an ISO 4762 M5 screw
+  bore_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for M5 bolt in FDM print
+parts:
+- id: m5_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    bore_d = p.bolt_d + p.bore_clearance\n    return (\n \
+    \       cq.Workplane(\"XY\")\n        .circle(p.spacer_od / 2.0)\n        .circle(bore_d\
+    \ / 2.0)\n        .extrude(p.spacer_length)\n    )\n"
+  print_orientation: Bottom flat circular face on the build plate (z = 0), cylinder
+    axis along Z.
+  use_orientation: Coaxial with the M5 bolt between the two plates.
+hardware:
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: bolt_joint
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 20.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: m5_spacer
+    feature: center_bore
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: m5_bolt_clearance
+  part: m5_spacer
+  feature: center_bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bore_clearance
+  check:
+    method: measure
+    ref: null
+    description: Verify an M5 bolt slides freely through the center bore.
+- id: spacer_length_check
+  part: m5_spacer
+  feature: spacer_body
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_length
+  check:
+    method: measure
+    ref: null
+    description: Verify spacer length is 20 mm between the two plates.
+manual:
+- n: '1'
+  text: Print the M5 spacer standing upright on one of its flat circular ends (z =
+    0 on the print bed). Slide the spacer onto the M5 bolt between the two plates.
+  parts:
+  - m5_spacer
+  hardware:
+  - m5_bolt
+  tool: null

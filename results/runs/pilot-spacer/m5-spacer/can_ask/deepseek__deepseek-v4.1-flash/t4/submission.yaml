@@ -1,0 +1,110 @@
+task: m5-spacer
+note: 'A plain round spacer: 12 mm OD, 20 mm long, with a 5.6 mm through bore so an
+  M5 bolt clears it. The bore is ISO 273 medium clearance (5.5 mm) plus a 0.1 mm allowance
+  for FDM hole shrink; it is printed upright as a tube, so no supports or bridging
+  are needed. Chamfered top edges act as a lead-in for the bolt and remove the sharp
+  rim.'
+questions: []
+params:
+  spacer_length:
+    value: 20.0
+    unit: mm
+    kind: world
+    source: asked
+    note: Overall end-to-end length the user asked for
+  spacer_od:
+    value: 12.0
+    unit: mm
+    kind: world
+    source: asked
+    note: Outside diameter the user asked for
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 shank diameter from ISO 4762 M5
+  clearance_hole_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ISO 273 medium clearance for M5 (5.5 mm) plus 0.1 mm FDM hole-shrink allowance;
+      leaves ~0.6 mm diametral clearance on the bolt
+  chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg lead-in on the top outer rim and top bore rim
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    body = (\n        cq.Workplane(\"XY\")\n        .circle(p.spacer_od\
+    \ / 2.0)\n        .extrude(p.spacer_length)\n    )\n    # through bore on the\
+    \ cylinder axis\n    body = body.faces(\">Z\").workplane().hole(p.clearance_hole_d)\n\
+    \    # lead-in chamfer on the top outer rim and top bore rim\n    body = body.faces(\"\
+    >Z\").edges().chamfer(p.chamfer)\n    return body\n"
+  print_orientation: 'Upright: the flat bottom face (z = 0) on the bed, bore vertical.
+    Prints as a 12 mm diameter, 20 mm tall tube with no supports and no bridging.'
+  use_orientation: Between the two plates, bore aligned with the M5 bolt axis; one
+    flat end against each plate face.
+hardware: []
+joints: []
+criteria:
+- id: bore_clears_bolt
+  part: spacer
+  feature: through bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.6
+  params:
+  - clearance_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: 'Caliper the printed bore at both ends: expect about 5.5-5.6 mm and
+      the M5 bolt should slide through with no binding. If it binds, ream with a 5.5
+      mm drill.'
+- id: end_faces_seat
+  part: spacer
+  feature: end faces
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_length
+  - chamfer
+  check:
+    method: measure
+    ref: null
+    description: Measure the length end to end (20 mm +/-0.3) and confirm each end
+      has a flat annulus that sits flush on the plate; the 0.4 mm chamfer only breaks
+      the rim.
+manual:
+- n: '1'
+  text: 'Print the spacer exactly as modelled: flat bottom face on the bed, bore vertical.
+    No supports, brim or raft are needed.'
+  parts:
+  - spacer
+  hardware: []
+  tool: Bambu Lab X1C, 0.4 mm nozzle, 0.2 mm layers, PLA
+- n: '2'
+  text: Let the print cool and remove it. Caliper the bore at both ends (about 5.5-5.6
+    mm) and slide your M5 bolt through it; the bolt should pass freely. If it drags,
+    ream the bore with a 5.5 mm drill bit, keeping the drill square to the end face.
+  parts:
+  - spacer
+  hardware: []
+  tool: calipers, 5.5 mm drill bit
+- n: '3'
+  text: 'Assemble: pass the M5 bolt through the first plate, slide the spacer onto
+    the bolt with a flat end against that plate, then pass the bolt through the second
+    plate and fit your washer and nut. Tighten until snug — the spacer carries the
+    load, so stop before the plates pinch it.'
+  parts:
+  - spacer
+  hardware: []
+  tool: 5 mm hex key / spanner

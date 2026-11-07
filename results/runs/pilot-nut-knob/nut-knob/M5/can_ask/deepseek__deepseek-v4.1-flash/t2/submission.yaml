@@ -1,0 +1,446 @@
+task: nut-knob/M5
+note: 'A Ø30 mm, 16 mm tall fluted hand knob, one printed piece, that traps a standard
+  ISO 4032 M5 hex nut with nothing but a hand press.
+
+
+  How the nut is held (three separate things, so it cannot come loose):
+
+  1. Press fit — the hex socket is 7.85 mm across the flats against the nut''s nominal
+  8.0 mm, i.e. 0.15 mm of interference that grips the nut''s flats. This is what keeps
+  the nut in when you turn the knob upside down.
+
+  2. A closed floor — under the nut the knob is 3 mm thick with only a Ø5.5 mm hole
+  in it for the bolt. The nut (8.0 across flats) cannot be pushed through that, whichever
+  way you push.
+
+  3. The nut sits fully inside: its top face ends up ~8 mm below the knob''s top face,
+  with a Ø11 mm bore above it.
+
+
+  Why the socket opens at the top and the floor is at the bottom: with the bolt coming
+  up from the workpiece, tightening turns the nut down the bolt, and the nut''s underside
+  bears on the socket floor — that is what pulls the knob''s bottom face onto the
+  panel and clamps. (Put the shoulder above the nut instead and the knob cannot clamp
+  at all: the nut would simply walk out of the bottom.)
+
+
+  The coupon prints first and tests the one thing I can''t compute — how your printer
+  finishes a 7.85 mm hex hole. Print it, press the nut into each of the four sockets,
+  keep the one that needs a firm hand press and won''t drop out when inverted. Tell
+  me which one and I will re-issue the knob with that socket size.
+
+
+  I could not get measurements of your nut or bolt, so every nut/bolt dimension here
+  is catalog nominal — the coupon exists precisely because the real nut and the printed
+  hole will differ from nominal. No supports needed anywhere: the socket, bore and
+  bore-floor hole are all vertical. No bridges.'
+questions:
+- text: 'After printing the coupon: which socket gave a firm hand press AND held the
+    nut when you turned the coupon over and shook it — 7.75, 7.85, 7.95 or 8.05 mm
+    across the flats?'
+  answer: null
+- text: How thick is the panel or bracket the bolt passes through, and how far does
+    your bolt's thread come out of it? (The bolt needs to span that thickness plus
+    the knob's 3 mm floor to reach the nut's 4.7 mm of thread.)
+  answer: null
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut, width across flats. Person could not measure their
+      own nut.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height.
+  nut_corner_d:
+    value: 9.238
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: nut_af / cos(30 deg) = 8.0/0.86603. Diameter over the nut's corners; the
+      Ø11 bore above the socket must clear this.
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 bolt shank nominal. Person could not measure their own bolt.
+  knob_od:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: User asked for about 30 mm across; this is the diameter over the flute lands.
+  body_h:
+    value: 16.0
+    unit: mm
+    kind: design
+    source: design
+    note: Overall knob height, enough for a full grip over a Ø30 body.
+  lip_t:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the closed floor under the nut. 4 perimeters of PLA take the
+      hand-tightening load.
+  pocket_af:
+    value: 7.85
+    unit: mm
+    kind: design
+    source: design
+    note: Hex socket width across flats = nut_af - 0.15 mm interference. Coupon tests
+      7.75/7.85/7.95/8.05.
+  pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.5 mm, so the 4.7 mm nut finishes below the sockets's top edge.
+  bore_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: M5 medium clearance hole through the floor. Smaller than nut_af, so it doubles
+      as the push-through stop.
+  top_bore_d:
+    value: 11.0
+    unit: mm
+    kind: design
+    source: design
+    note: Bore above the socket. Larger than nut_corner_d so the nut can be pressed
+      in from the top, and large enough for the bolt tip to pass out.
+  flute_n:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Six finger flutes.
+  flute_r:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each flute cutter; with flute_cr = 15 the flutes are tangent to
+      the 30 mm outside circle.
+  flute_cr:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: Flute cutter centres on the knob_od/2 circle; groove floor lands at 10 mm
+      radius (20 mm waist).
+  lead_in_h:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg conical lead-in from the socket's corners out to the Ø11 bore, to
+      start the nut squarely.
+  panel_t:
+    value: 3.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Assumed thickness of the panel/bracket the bolt passes through; only used
+      to place the bolt head in the joint, not by any part geometry.
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import cadquery as cq\nfrom math import cos, sin, radians\n\n\ndef build(p):\n\
+    \    R = p.knob_od / 2.0\n    H = p.body_h\n    n = int(p.flute_n)\n\n    # ---\
+    \ grip body: plain bar with six flutes milled out of it\n    body = cq.Workplane(\"\
+    XY\").circle(R).extrude(H)\n    for i in range(n):\n        a = radians(360.0\
+    \ * i / n)\n        cutter = (cq.Workplane(\"XY\")\n                  .center(p.flute_cr\
+    \ * cos(a), p.flute_cr * sin(a))\n                  .circle(p.flute_r)\n     \
+    \             .extrude(H + 2.0))\n        body = body.cut(cutter.translate((0,\
+    \ 0, -1.0)))\n\n    # --- bolt clearance hole through the closed floor (also the\
+    \ push-through stop)\n    body = body.cut(cq.Workplane(\"XY\")\n             \
+    \       .circle(p.bore_d / 2.0)\n                    .extrude(p.lip_t + 1.0)\n\
+    \                    .translate((0, 0, -1.0)))\n\n    # --- hex nut socket, opening\
+    \ upwards\n    circ = (p.pocket_af / 2.0) / cos(radians(30.0))\n    pts = [(circ\
+    \ * cos(radians(60.0 * k)), circ * sin(radians(60.0 * k)))\n           for k in\
+    \ range(6)]\n    body = body.cut(cq.Workplane(\"XY\")\n                    .workplane(offset=p.lip_t)\n\
+    \                    .polyline(pts).close()\n                    .extrude(p.pocket_depth))\n\
+    \n    # --- 45 deg lead-in where the socket corners meet the bore above\n    z0\
+    \ = p.lip_t + p.pocket_depth - p.lead_in_h\n    cone = cq.Solid.makeCone(circ,\
+    \ p.top_bore_d / 2.0, p.lead_in_h)\n    cone = cone.translate((0, 0, z0 + p.lead_in_h\
+    \ / 2.0))\n    body = body.cut(cq.Workplane(\"XY\").add(cone))\n\n    # --- bore\
+    \ above the nut: nut goes in here, bolt tip comes out here\n    body = body.cut(cq.Workplane(\"\
+    XY\")\n                    .workplane(offset=p.lip_t + p.pocket_depth)\n     \
+    \               .circle(p.top_bore_d / 2.0)\n                    .extrude(H))\n\
+    \n    return body"
+  print_orientation: Flat fluted bottom face on the bed (z = 0), knob axis vertical,
+    hex socket opening upwards. No supports; every wall, socket and bore is vertical.
+  use_orientation: Bottom face (the closed floor ring) facing the panel/workpiece;
+    hex socket pointing away from it. Bolt enters the Ø5.5 mm floor hole from below,
+    threads into the trapped nut, and its end runs up the Ø11 mm bore and out of the
+    top face.
+- id: press_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import cadquery as cq\nfrom math import cos, sin, radians\n\n\ndef build(p):\n\
+    \    H = p.lip_t + p.pocket_depth\n    body = cq.Workplane(\"XY\").box(60.0, 20.0,\
+    \ H, centered=(True, True, False))\n    pitch = 14.0\n    offsets = [-0.10, 0.0,\
+    \ 0.10, 0.20]\n    n = len(offsets)\n\n    for i, o in enumerate(offsets):\n \
+    \       af = p.pocket_af + o\n        circ = (af / 2.0) / cos(radians(30.0))\n\
+    \        pts = [(circ * cos(radians(60.0 * k)), circ * sin(radians(60.0 * k)))\n\
+    \               for k in range(6)]\n        x = (i - (n - 1) / 2.0) * pitch\n\n\
+    \        pocket = (cq.Workplane(\"XY\")\n                  .workplane(offset=p.lip_t)\n\
+    \                  .polyline(pts).close()\n                  .extrude(p.pocket_depth)\n\
+    \                  .translate((x, 0, 0)))\n        body = body.cut(pocket)\n\n\
+    \        bore = (cq.Workplane(\"XY\")\n                .circle(p.bore_d / 2.0)\n\
+    \                .extrude(p.lip_t + 1.0)\n                .translate((x, 0, -1.0)))\n\
+    \        body = body.cut(bore)\n\n    return body"
+  print_orientation: Flat on its largest face (z = 0), hex sockets opening upwards,
+    bar length along X. No supports.
+  use_orientation: Coupon only. Press the M5 nut into each socket in turn, then turn
+    the coupon over and shake it to see which socket holds the nut.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: bolt_through_knob
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -3.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: floor_hole_d5p5
+    role: clearance
+  - part: knob
+    feature: hex_nut_socket
+    role: nut_pocket
+  - part: knob
+    feature: top_bore_d11
+    role: clearance
+  nut: nut
+  external: the panel or bracket the bolt passes through (assumed 3 mm thick)
+criteria:
+- id: c_bore_clears_bolt
+  part: knob
+  feature: floor_hole_d5p5
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.5
+  params:
+  - bore_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Slide the M5 bolt shank through the printed Ø5.5 mm floor hole; it
+      should pass freely with no binding.
+- id: c_pocket_grips_nut
+  part: knob
+  feature: hex_nut_socket (7.85 across flats)
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: press_coupon
+    description: 0.15 mm interference on the nut's flats. The coupon's four sockets
+      (7.75/7.85/7.95/8.05) show which size gives a firm hand press on this printer.
+- id: c_nut_held_inverted
+  part: knob
+  feature: hex_nut_socket (press fit)
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  - pocket_depth
+  - nut_h
+  check:
+    method: coupon
+    ref: press_coupon
+    description: 'Press the nut into a coupon socket, turn the coupon over and shake:
+      the nut must stay in. Same fit holds it in the printed knob.'
+- id: c_floor_stops_nut
+  part: knob
+  feature: socket floor with Ø5.5 mm hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - lip_t
+  - bore_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Floor hole Ø5.5 is well under the nut's 8.0 across flats, so the
+      nut seats on the 3 mm floor and cannot be pushed out through the far side.
+- id: c_bore_clears_nut_corners
+  part: knob
+  feature: top_bore_d11
+  relation: clears
+  hardware: nut
+  clearance_mm: 1.76
+  params:
+  - top_bore_d
+  - nut_corner_d
+  check:
+    method: measure
+    ref: null
+    description: 'Ø11 bore vs 9.24 over the nut''s corners: the nut drops through
+      the bore without touching, and the 45 deg lead-in starts it squarely into the
+      socket.'
+- id: c_nut_fully_inside
+  part: knob
+  feature: body
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - body_h
+  - lip_t
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: 'Seated nut occupies z = 3.0 to 7.7 mm inside a 16 mm tall knob:
+      fully inside, top face roughly 8 mm below the top opening.'
+- id: c_bolt_exits_top
+  part: knob
+  feature: top_bore_d11
+  relation: clears
+  hardware: bolt
+  clearance_mm: 6.0
+  params:
+  - top_bore_d
+  - bolt_d
+  - pocket_depth
+  check:
+    method: none
+    ref: null
+    description: 'Bolt passes right through the nut and out of the top: the Ø11 bore
+      above the socket leaves 6 mm of radial room all round the bolt shank.'
+- id: c_coupon_corners_clear
+  part: press_coupon
+  feature: socket walls
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_corner_d
+  - lip_t
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Coupon is 60 x 20 x 8.2 mm with sockets on a 14 mm pitch, so sockets
+      stay 4.7 mm apart and 5.4 mm from the bar edges; wall material is not thinned
+      by its neighbours.
+manual:
+- n: '1'
+  text: Print the fit-test coupon (press_coupon) first, in PLA at 0.2 mm layers, flat
+    on its largest face with the hex sockets opening upwards. No supports, no brim
+    needed. It is a 60 x 20 x 8.2 mm bar with four hex sockets.
+  parts:
+  - press_coupon
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Press the M5 hex nut (nut) flats-first into each of the coupon's four sockets
+    in turn and feel the effort. Left to right the sockets measure 7.75, 7.85, 7.95
+    and 8.05 mm across the flats. The knob is drawn for 7.85 mm.
+  parts:
+  - press_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the coupon over and shake it. The socket that needs a firm hand press
+    and still grips the nut when inverted is the one to keep. Tell me which it was
+    and I will re-issue the knob with that socket size; if 7.85 is the one, print
+    the knob as drawn.
+  parts:
+  - press_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Print the knob (knob) in PLA at 0.2 mm layers, flat bottom face on the bed,
+    hex socket opening upwards. No supports anywhere — the socket, the bore and the
+    floor hole are all vertical. Use 4 perimeters so the socket walls and the 3 mm
+    floor are solid material.
+  parts:
+  - knob
+  hardware: []
+  tool: 3D printer
+- n: '5'
+  text: Hold the knob socket-up. Line the nut (nut) up with the hex socket — you will
+    see the socket's flats from above through the Ø11 mm opening — and press it straight
+    in with your thumb until it seats on the socket floor, 3 mm above the bottom face.
+    If it stops short, tap it home with a mallet through a flat block, or squeeze
+    it gently in a vice. Do not hammer the nut's threads.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: mallet and flat block (only if the nut stops short)
+- n: '6'
+  text: 'Check the nut is fully inside: its top face should finish about 8 mm below
+    the knob''s top face, and its flats should be gripped by the socket walls. No
+    glue, no tools.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '7'
+  text: Turn the knob upside down and shake it. The nut must stay in — the 0.15 mm
+    press grip holds it, and behind the nut is the closed 3 mm floor with only a Ø5.5
+    mm hole, so it cannot be pushed out of the far side either. If the nut drops out,
+    reprint the knob with the socket size you chose in step 3.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '8'
+  text: 'Fit it: push the M5 bolt (bolt) through your panel or bracket from the far
+    side, then slide the knob''s bottom Ø5.5 mm hole over the bolt end and turn the
+    knob clockwise by hand. The bolt threads into the trapped nut, whose underside
+    bears on the socket floor and pulls the knob''s bottom face down onto the panel.
+    The bolt runs right through the nut and its end comes up the Ø11 mm bore and out
+    of the top of the knob. Hand-tight is all the knob needs.'
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null
+- n: '9'
+  text: To release, turn the knob anticlockwise. The nut stays captive in the knob,
+    so the knob comes off as a single piece with nothing loose left behind.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

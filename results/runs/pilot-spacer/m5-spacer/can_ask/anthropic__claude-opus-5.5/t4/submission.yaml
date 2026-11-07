@@ -1,0 +1,143 @@
+task: m5-spacer
+note: 'Plain round spacer: 20 mm long, 12 mm outside diameter, 5.5 mm clearance hole
+  for M5. It prints upright, so the bore needs no bridging or supports. I left out
+  the bolt length because I don''t know how thick the plates are. You''ll need at
+  least 20 mm plus both plate thicknesses plus a nut height (about 5 mm).'
+questions:
+- text: How thick are the two plates? Bolt length should be at least 20 mm + both
+    plate thicknesses + about 5 mm for the nut (plus 1 mm for each washer you use).
+  answer: null
+params:
+  spacer_length:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Length requested by the user
+  spacer_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: asked
+    note: Outside diameter requested by the user
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal diameter (ISO 4762)
+  hole_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Added to the bolt diameter. Gives a 5.5 mm hole, which is ISO 273 medium
+      fit and allows for holes printing slightly small in FDM
+  edge_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Small chamfer on the outer edges. It takes off elephant's foot at the bottom
+      and eases handling
+  coupon_length:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the hole-fit test ring
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    hole_d = p.bolt_d + p.hole_clearance\n    body = (cq.Workplane('XY')\n\
+    \            .circle(p.spacer_od / 2)\n            .circle(hole_d / 2)\n     \
+    \       .extrude(p.spacer_length))\n    body = body.faces('>Z or <Z').edges('not\
+    \ %LINE').edges(cq.selectors.RadiusNthSelector(1)).chamfer(p.edge_chamfer)\n \
+    \   return body\n"
+  print_orientation: Standing on one flat end face, hole vertical (axis along Z).
+    No supports or bridges needed.
+  use_orientation: Slid onto the M5 bolt between the two plates. Either end can face
+    either plate.
+- id: hole_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    hole_d = p.bolt_d + p.hole_clearance\n    return (cq.Workplane('XY')\n\
+    \            .circle(p.spacer_od / 2)\n            .circle(hole_d / 2)\n     \
+    \       .extrude(p.coupon_length))\n"
+  print_orientation: Flat end face on the bed, hole vertical
+  use_orientation: Held in the hand to check the M5 bolt fit
+hardware: []
+joints: []
+criteria:
+- id: bolt_clears_hole
+  part: spacer
+  feature: centre bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - hole_clearance
+  check:
+    method: coupon
+    ref: hole_coupon
+    description: The M5 bolt should slide through the coupon by hand without forcing,
+      and with little wobble. If it binds, raise hole_clearance to 0.7. If it's very
+      loose, lower it to 0.3.
+- id: length_correct
+  part: spacer
+  feature: overall length
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_length
+  check:
+    method: measure
+    ref: null
+    description: Measure with calipers end to end. It should read 20 mm, within ±0.2
+      mm.
+- id: od_correct
+  part: spacer
+  feature: outside diameter
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Measure the diameter at mid-height with calipers. It should read
+      12 mm, within ±0.2 mm.
+manual:
+- n: '1'
+  text: Print hole_coupon standing flat on its end (PLA, 0.2 mm layers, no supports).
+    Push your M5 bolt through it. It should slide through by hand without forcing.
+    If it binds, ask for hole_clearance to be raised to 0.7 mm and reprint the coupon.
+  parts:
+  - hole_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the spacer standing upright on one flat end, with the hole vertical
+    and no supports. Remove any stringing from inside the bore.
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: 'Check the spacer with calipers: about 20 mm long and 12 mm across.'
+  parts:
+  - spacer
+  hardware: []
+  tool: calipers
+- n: '4'
+  text: Put the M5 bolt through the first plate, slide the spacer onto the bolt, then
+    put on the second plate and fasten it with a nut. Tighten until it's snug. Don't
+    overtighten, because PLA can creep under heavy clamping load.
+  parts:
+  - spacer
+  hardware: []
+  tool: 4 mm hex key

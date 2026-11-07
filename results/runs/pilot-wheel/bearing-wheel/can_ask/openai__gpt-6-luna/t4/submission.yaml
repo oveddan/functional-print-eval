@@ -1,0 +1,182 @@
+task: bearing-wheel
+note: 'This is a generic flat-tread replacement, not a guaranteed match to the closet
+  track: the original wheel profile and the bracket spacing could not be checked.
+  Use it only if the old wheel has a flat tread and the 16 mm wheel fits the bracket.
+  The wheel is 50 mm OD x 16 mm wide, with two 608 bearings side-by-side and an 8.6
+  mm through-hole for your M8 bolt. Print and test the fit coupon first; adjust bearing_seat_d
+  in the wheel to the coupon size that gives a firm press fit. Do not force a bearing
+  into a seat that is too tight. The bolt, bracket and any nut are not included in
+  the print.'
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: design
+    source: asked
+    note: Approximate outside diameter of the old wheel, as stated by the user.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: design
+    source: asked
+    note: Approximate old wheel width, as stated by the user.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal 608 bearing outside diameter.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal 608 bearing width.
+  bearing_seat_d:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: Starting nominal seat diameter; calibrate using the coupon and tune for
+      the actual printer/bearings.
+  bearing_seat_depth:
+    value: 7.1
+    unit: mm
+    kind: design
+    source: design
+    note: Two opposing pockets leave a 1.8 mm center web in the 16 mm wheel.
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User reports having an M8 bolt.
+  axle_hole_d:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole for the reported M8 bolt; check fit with the actual bolt.
+  coupon_outer_d:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_thickness:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d1:
+    value: 21.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d2:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d3:
+    value: 22.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    wheel = cq.Workplane(\"XY\").circle(p.wheel_od / 2).extrude(p.wheel_width)\n\
+    \    lower = cq.Workplane(\"XY\").circle(p.bearing_seat_d / 2).extrude(p.bearing_seat_depth)\n\
+    \    upper = (cq.Workplane(\"XY\").workplane(offset=p.wheel_width - p.bearing_seat_depth)\n\
+    \             .circle(p.bearing_seat_d / 2).extrude(p.bearing_seat_depth))\n \
+    \   axle = cq.Workplane(\"XY\").circle(p.axle_hole_d / 2).extrude(p.wheel_width)\n\
+    \    return wheel.cut(lower).cut(upper).cut(axle)"
+  print_orientation: Lay one flat circular side on the build plate; wheel axis vertical
+    (Z). No supports intended.
+  use_orientation: Install with the wheel axis horizontal on the M8 bolt. The two
+    608 bearings sit in the opposite-side pockets.
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    rings = []\n    for x, d in [(-30, p.coupon_d1), (0, p.coupon_d2),\
+    \ (30, p.coupon_d3)]:\n        ring = (cq.Workplane(\"XY\").center(x, 0)\n   \
+    \             .circle(p.coupon_outer_d / 2).circle(d / 2)\n                .extrude(p.coupon_thickness))\n\
+    \        rings.append(ring)\n    result = rings[0].union(rings[1]).union(rings[2])\n\
+    \    return result"
+  print_orientation: Lay the coupon flat on the build plate, with all three bores
+    vertical (Z). No supports intended.
+  use_orientation: Test each bore with a bearing, identifying the bore that gives
+    a firm hand press-fit without cracking or excessive force.
+hardware: []
+joints: []
+criteria:
+- id: bearing-seat-fit
+  part: roller_wheel
+  feature: Opposing 22 mm nominal pockets, sized by bearing_seat_d, retain one 608
+    bearing each
+  relation: seats
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - bearing_seat_d
+  - bearing_seat_depth
+  - bearing_od
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: Print coupon first and press a bearing into each test bore. Set bearing_seat_d
+      to the CAD bore size that gives a secure fit on this printer.
+- id: bolt-clearance
+  part: roller_wheel
+  feature: Axial through-hole for M8 bolt
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - axle_hole_d
+  check:
+    method: measure
+    ref: null
+    description: Confirm the actual bolt shank passes freely through the printed hole
+      and both bearing inner races.
+manual:
+- n: '1'
+  text: Print bearing_fit_coupon flat, without supports. Try a bearing in each of
+    its three bores. Choose the tightest bore that allows a firm press-fit by hand;
+    do not hammer the bearing in. If none fits well, adjust the wheel's bearing_seat_d
+    and print another coupon.
+  parts:
+  - bearing_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print roller_wheel flat on one circular side, without supports. Before installing
+    bearings, check that the wheel fits the bracket and its tread matches the old
+    wheel/track profile.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608 bearing into each side pocket until it seats against the center
+    web. Keep the bearing faces square to the wheel; stop if the PLA begins to split.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Pass the M8 bolt through the bracket and bearing inner races. Tighten the
+    existing retention hardware only enough to secure the inner races; verify the
+    wheel turns freely and neither bracket side rubs the printed wheel.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: wrench

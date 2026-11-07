@@ -1,0 +1,197 @@
+task: m5-spacer
+note: 'A plain round spacer: 20 mm long, 12 mm OD, 5.5 mm through bore (ISO 273 medium
+  clearance for M5, 0.25 mm radial clearance on the 5 mm shank). Wall is 3.25 mm —
+  stiff in compression, and strong in the print direction since the layers run along
+  the load path. Printed standing on end: no overhangs, no bridges (nothing near the
+  50 mm limit). Both end faces get a 0.5 mm chamfer, which also swallows the elephant''s
+  foot the X1C leaves on the bottom edge.'
+questions:
+- text: 'What are the thicknesses of the two plates (or the gap you are bridging)
+    and the M5 bolt you have? That fixes the bolt length you need: plate A + 20 +
+    plate B + washer + nut stack. The spacer itself is independent of it, so it can
+    be printed now.'
+  answer: null
+params:
+  spacer_od:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: asked
+    note: 'user''s request: 12 mm across'
+  spacer_len:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: 'user''s request: 20 mm long'
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M5 socket head cap screw shank diameter
+  clearance_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: 'clearance bore: ISO 273 medium series for M5, = 0.25 mm radial clearance
+      over the 5.0 mm shank; comfortably printable at 0.4 mm nozzle'
+  end_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on both end faces' edges; eases the bolt in and compensates the
+      elephant's-foot flare on the bed face
+  bolt_len_example:
+    value: 50.0
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: example ISO 4762 M5 length only; the one you need is plate1 + 20 + plate2
+      + washer/nut stack
+parts:
+- id: spacer
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    ring = (\n        cq.Workplane(\"XY\")\n        .circle(p.spacer_od\
+    \ / 2.0)\n        .circle(p.clearance_d / 2.0)\n        .extrude(p.spacer_len)\n\
+    \    )\n    ring = ring.faces(\">Z\").chamfer(p.end_chamfer)\n    ring = ring.faces(\"\
+    <Z\").chamfer(p.end_chamfer)\n    return ring"
+  print_orientation: 'Standing on end: the flat annular bottom face is on the bed,
+    bore axis vertical along z, z = 0 at the bottom face, z = 20 at the top face.
+    No supports needed.'
+  use_orientation: 'Standing on end, same as printed: bore vertical, the two flat
+    annular end faces bearing against the two plates.'
+hardware:
+- id: bolt
+  ref: ISO 4762 M5x50
+  qty: 1
+- id: washer
+  ref: ISO 7089 M5
+  qty: 1
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: bolt_through_spacer
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: 5.5 mm through bore
+    role: clearance
+  - part: spacer
+    feature: bottom annular face (z = 0)
+    role: washer
+  nut: null
+  external: plate A and plate B, each with an M5 clearance hole; the bolt passes through
+    plate A, the spacer bore, then plate B, and is closed with an M5 washer and ISO
+    4032 M5 nut (or the nylon-insert nut if you prefer it vibration-proof)
+criteria:
+- id: c1
+  part: spacer
+  feature: 5.5 mm through bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.5
+  params:
+  - clearance_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: 'After printing, slide your actual M5 bolt through the bore by hand:
+      it should pass with a light push and no wobble you can feel. If it binds, the
+      bore has printed undersize — ream it with a 5.5 mm drill or reprint at clearance_d
+      = 5.6.'
+- id: c2
+  part: spacer
+  feature: outer surface / overall height
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  - spacer_len
+  check:
+    method: measure
+    ref: null
+    description: 'Caliper check: 12.0 mm across, 20.0 mm end to end (+/- 0.2 mm).
+      Both end faces must be square to the bore so the spacer sits flat on both plates.'
+- id: c3
+  part: spacer
+  feature: bottom annular face (z = 0)
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_len
+  - end_chamfer
+  check:
+    method: none
+    ref: null
+    description: Seats flat, no supports or bridges required at this orientation (largest
+      unsupported span is the 5.5 mm bore opening, well inside the 50 mm limit).
+manual:
+- n: '1'
+  text: Print spacer.stl, 1 off, in PLA at 0.2 mm layers, standing on end as supplied.
+    No supports, no brim needed. 2-3 walls and ~20% infill is ample.
+  parts:
+  - spacer
+  hardware: []
+  tool: Bambu Lab X1C
+- n: '2'
+  text: 'Check the print: the two flat end faces should be clean and square to the
+    bore, and an M5 bolt should slide through the 5.5 mm bore with a light push. If
+    it binds (bores often print ~0.15 mm small), ream it with a 5.5 mm drill bit by
+    hand or reprint with clearance_d = 5.6.'
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  tool: calipers
+- n: '3'
+  text: Push the M5 bolt through the clearance hole in plate A until it comes out
+    the far side.
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Slide the spacer over the protruding bolt end, bore first, until its bottom
+    face is flat against plate A. The chamfered end goes toward the bolt head.
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Offer plate B over the bolt end and let it rest on the spacer's top face —
+    the spacer now sets the 20 mm gap between the plates.
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: 'Fit the M5 washer, then thread on the ISO 4032 M5 nut (use the ISO 10511
+    M5 lock nut instead if the joint is exposed to vibration) and tighten until the
+    plates just nip the spacer. Snug by hand only: the spacer carries the load, so
+    do not crush or distort it. The bolt must be long enough to show at least 2 full
+    threads past the nut; if not, get a longer M5 bolt.'
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  - washer
+  - nut
+  tool: 5 mm hex key, 8 mm spanner

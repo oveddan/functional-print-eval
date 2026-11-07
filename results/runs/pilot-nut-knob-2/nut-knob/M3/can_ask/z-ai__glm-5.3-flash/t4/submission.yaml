@@ -1,0 +1,285 @@
+task: nut-knob/M3
+note: One-piece hand knob with a fully captive press-fit M3 hex nut. Retention comes
+  from a 0.2 mm total interference hex pocket over the nut's full depth (verified
+  with a coupon before printing the knob), plus a 3.3 mm hole through the pocket floor
+  that is far smaller than the nut, so it cannot exit the far side. No glue, no secondary
+  parts. Nut dimensions taken from the ISO 4032 catalog since I couldn't get measurements
+  of the actual nut.
+questions:
+- text: What does the bolt thread into (fixture depth), so the M3x25 assumption can
+    be swapped for a better length if needed?
+  answer: Assumed M3 socket head (ISO 4762), 25 mm assumed; substitute your own length
+    - the knob is unaffected.
+- text: Any preference on knob height (14 mm assumed) and grip style (12 ribs)?
+  answer: null
+params:
+  hole_d:
+    value: 3.3
+    unit: mm
+    kind: design
+    source: design
+    note: M3 bolt clearance (3 mm bolt + 0.3)
+  knob_diameter:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: requested ~20 mm grip
+  knob_length:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: proportionate height; ~14 mm
+  lead_in_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: tapered lead-in so the nut corners start cleanly and the screw head has
+      a seat
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: person could not measure; catalog value used
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: person could not measure; catalog value used
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: nut across-flats 5.5 + 0.2 total press-fit interference, 0.1 mm per side;
+      a coupon verifies the fit before printing the knob
+  pocket_depth:
+    value: 2.6
+    unit: mm
+    kind: design
+    source: design
+    note: 0.2 mm deeper than the nut so it sits fully inside, recessed below the face
+  rib_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  rib_r:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: grip ribs on the outside
+parts:
+- id: knob
+  role: final
+  material: PLA (black)
+  code: "import math\n\ndef build(p):\n    L = p.knob_length\n    dc = p.pocket_af\
+    \ / math.cos(math.pi / 6)  # circumscribed dia of hex pocket\n\n    # grip ribs\
+    \ (vertical, printable)\n    body = cq.Workplane(\"XY\").circle(p.knob_diameter\
+    \ / 2).extrude(L)\n    for i in range(int(p.rib_count)):\n        a = 2 * math.pi\
+    \ * i / p.rib_count\n        x = (p.knob_diameter / 2) * math.cos(a)\n       \
+    \ y = (p.knob_diameter / 2) * math.sin(a)\n        rib = cq.Workplane(\"XY\").center(x,\
+    \ y).circle(p.rib_r).extrude(L)\n        body = body.union(rib)\n\n    # tapered\
+    \ lead-in at the top: eases the nut in, also seats the screw head\n    lead =\
+    \ (\n        cq.Workplane(\"XY\").workplane(offset=L)\n        .polygon(6, dc\
+    \ + 2 * p.lead_in_h * 0.85)\n        .workplane(offset=-p.lead_in_h)\n       \
+    \ .polygon(6, dc)\n        .loft(ruled=True)\n    )\n    body = body.cut(lead)\n\
+    \n    # hex press-fit pocket for the nut, open at the top\n    pocket = (\n  \
+    \      cq.Workplane(\"XY\").workplane(offset=L - p.pocket_depth)\n        .polygon(6,\
+    \ dc)\n        .extrude(p.pocket_depth + 1)\n    )\n    body = body.cut(pocket)\n\
+    \n    # bolt clearance hole through the whole knob (far side retained: 3.3 <<\
+    \ 5.5)\n    hole = (\n        cq.Workplane(\"XY\").workplane(offset=-0.5)\n  \
+    \      .circle(p.hole_d / 2)\n        .extrude(L + 1)\n    )\n    body = body.cut(hole)\n\
+    \    return body\n"
+  print_orientation: flat bottom face (bolt-exit face) on the bed, hex pocket opening
+    upward; vertical ribs and through-hole need no supports
+  use_orientation: hex pocket facing up, bolt threaded in from the top and exiting
+    the flat bottom into the fixture
+- id: hex-fit-coupon
+  role: coupon
+  material: PLA (black)
+  code: "import math\n\ndef build(p):\n    dc = p.pocket_af / math.cos(math.pi / 6)\n\
+    \    w = 14.0\n    b = cq.Workplane(\"XY\").rect(w, w).extrude(6.0)\n\n    lead\
+    \ = (\n        cq.Workplane(\"XY\").workplane(offset=6.0)\n        .polygon(6,\
+    \ dc + 2 * p.lead_in_h * 0.85)\n        .workplane(offset=-p.lead_in_h)\n    \
+    \    .polygon(6, dc)\n        .loft(ruled=True)\n    )\n    b = b.cut(lead)\n\n\
+    \    pocket = (\n        cq.Workplane(\"XY\").workplane(offset=6.0 - p.pocket_depth)\n\
+    \        .polygon(6, dc)\n        .extrude(p.pocket_depth + 1)\n    )\n    b =\
+    \ b.cut(pocket)\n    return b\n"
+  print_orientation: flat face on the bed, hex pocket opening upward
+  use_orientation: hand-press the M3 nut into the pocket and do the upside-down shake
+    test before printing the knob
+hardware:
+- id: nut-m3
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt-m3x25
+  ref: ISO 4762 M3x25
+  qty: 1
+joints:
+- id: j-bolt-through
+  fastener: bolt-m3x25
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 13.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: lead-in countersink above the hex pocket
+    role: head_seat
+  - part: knob
+    feature: hex nut pocket
+    role: nut_pocket
+  - part: knob
+    feature: 3.3 mm through hole
+    role: clearance
+  nut: nut-m3
+  external: fixture thread (the part the bolt screws into, e.g. a camera/bracket stud)
+criteria:
+- id: c1-nut-retention
+  part: knob
+  feature: hex nut pocket (across flats 5.7 vs nut 5.5, 0.1 mm interference per side)
+  relation: contains
+  hardware: nut-m3
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  - pocket_depth
+  - nut_h
+  check:
+    method: coupon
+    ref: print coupon before the knob; verify nut retention
+    description: 'Press the M3 nut into the coupon''s hex pocket by hand, then turn
+      the coupon upside down and shake gently: the nut must not fall out.'
+- id: c2-nut-fully-inside
+  part: knob
+  feature: pocket depth (2.6) vs nut thickness (2.4)
+  relation: contains
+  hardware: nut-m3
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: none
+    ref: null
+    description: 'Nut is fully recessed: 0.2 mm below the knob''s top face.'
+- id: c3-far-side-blocked
+  part: knob
+  feature: bolt clearance hole through pocket floor (3.3)
+  relation: supports
+  hardware: nut-m3
+  clearance_mm: null
+  params:
+  - hole_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The hole is smaller than the nut's across-flats (5.5), so the nut
+      cannot be pushed out the far side.
+- id: c4-bolt-clearance
+  part: knob
+  feature: through hole diameter 3.3
+  relation: clears
+  hardware: bolt-m3x25
+  clearance_mm: null
+  params:
+  - hole_d
+  check:
+    method: none
+    ref: null
+    description: 0.3 mm clearance on a 3 mm bolt.
+- id: c5-head-seat
+  part: knob
+  feature: lead-in countersink
+  relation: seats
+  hardware: bolt-m3x25
+  clearance_mm: null
+  params:
+  - lead_in_h
+  - pocket_depth
+  check:
+    method: none
+    ref: null
+    description: Head (5.5 dia) sinks slightly into the lead-in countersink and seats
+      on the nut's top face.
+- id: c6-press-in-by-hand
+  part: knob
+  feature: hex pocket fit in printed piece
+  relation: engages
+  hardware: nut-m3
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  - lead_in_h
+  check:
+    method: none
+    ref: null
+    description: Nut hexagon self-aligns while pressing in; corner overhang of the
+      lead-in is about 44 deg, printable without support.
+manual:
+- n: '1'
+  text: Print the coupon hex-fit-coupon first (pocket opening up, no supports), in
+    the same material as the knob. It is a small block with the same hex pocket as
+    the knob.
+  parts:
+  - hex-fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Press the M3 hex nut into the coupon''s pocket with your thumb. It should
+    need firm, steady pressure and slide fully in, sitting flush to slightly recessed.
+    Then turn the coupon upside down and shake it gently: the nut must stay in.'
+  parts: []
+  hardware:
+  - nut-m3
+  tool: null
+- n: '3'
+  text: If the nut is too tight to press in by hand, open the pocket slightly by filing
+    the pocket flats a little at a time and retesting. If it slides in too easily
+    or falls out upside down, stop and reprint the knob with the pocket made 0.05-0.1
+    mm tighter.
+  parts: []
+  hardware: []
+  tool: null
+- n: '4'
+  text: Print the knob (flat bottom face on the bed, hex pocket opening up, no supports
+    needed).
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: Press the M3 nut into the knob's hex pocket, letting the hexagon self-align
+    as it goes into the tapered lead-in. Push until it is fully seated (it should
+    sit about 0.2 mm below the top face). Repeat the upside-down shake test.
+  parts:
+  - knob
+  hardware:
+  - nut-m3
+  tool: null
+- n: '6'
+  text: Thread your M3 bolt in from the top of the knob, through the captive nut,
+    and out the bottom into whatever you are clamping. The screw head seats in the
+    countersink on top of the nut and turns the knob. (The design assumes a M3x25
+    socket screw; substitute whatever length suits your fixture - the knob itself
+    does not change.)
+  parts:
+  - knob
+  hardware:
+  - bolt-m3x25
+  - nut-m3
+  tool: null

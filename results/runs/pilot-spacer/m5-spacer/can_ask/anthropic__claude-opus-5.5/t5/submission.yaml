@@ -1,0 +1,145 @@
+task: m5-spacer
+note: 'Plain tube: 12 mm across, 20 mm long, 5.7 mm hole. It prints standing on end,
+  so the hole comes out round with no supports. Both ends have a small chamfer. The
+  bolt length depends on how thick your plates are, which I don''t know yet. See step
+  3.'
+questions:
+- text: How thick are the two plates? This decides which M5 bolt length you need.
+  answer: null
+params:
+  spacer_length:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Length you asked for
+  spacer_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: asked
+    note: Outside diameter you asked for
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal diameter (ISO 4762)
+  hole_d:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: 5.5 mm ISO medium clearance for M5, plus 0.2 mm because FDM holes print
+      small
+  end_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on the hole and outer edges. It offsets elephant's foot on the bed
+      face and gives a clean lead-in for the bolt
+  coupon_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the fit-test ring
+parts:
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    c = p.end_chamfer\n    body = cq.Workplane('XY').circle(p.spacer_od/2).extrude(p.spacer_length)\n\
+    \    body = body.edges().chamfer(c)\n    hole = cq.Workplane('XY').circle(p.hole_d/2).extrude(p.spacer_length)\n\
+    \    body = body.cut(hole)\n    cone_bot = cq.Solid.makeCone(p.hole_d/2 + c, p.hole_d/2,\
+    \ c)\n    cone_top = cq.Solid.makeCone(p.hole_d/2, p.hole_d/2 + c, c, pnt=cq.Vector(0,0,p.spacer_length\
+    \ - c))\n    body = body.cut(cq.Workplane('XY').add(cone_bot)).cut(cq.Workplane('XY').add(cone_top))\n\
+    \    return body\n"
+  print_orientation: Standing on one end face, bolt axis vertical (along Z). The hole
+    prints round and needs no supports.
+  use_orientation: On the M5 bolt between the two plates, both end faces flat against
+    them
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    c = p.end_chamfer\n    ring = cq.Workplane('XY').circle(p.spacer_od/2).circle(p.hole_d/2).extrude(p.coupon_h)\n\
+    \    cone = cq.Solid.makeCone(p.hole_d/2 + c, p.hole_d/2, c)\n    return ring.cut(cq.Workplane('XY').add(cone))\n"
+  print_orientation: Flat on one end face, axis along Z
+  use_orientation: Held in the hand to test-fit on the bolt
+hardware:
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+- id: nut
+  ref: ISO 10511 M5
+  qty: 1
+- id: washer
+  ref: ISO 7089 M5
+  qty: 2
+joints: []
+criteria:
+- id: bolt_clears
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.7
+  params:
+  - hole_d
+  - bolt_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Push the M5 bolt through the coupon by hand. It should slide through
+      without force and wobble only slightly.
+- id: length
+  part: spacer
+  feature: overall length
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_length
+  check:
+    method: measure
+    ref: null
+    description: Measure the length with calipers. It should read 20 ± 0.2 mm.
+manual:
+- n: '1'
+  text: Print fit_coupon (a few minutes, about 0.2 mm layers, no supports). Push the
+    M5 bolt through it. If it binds, raise hole_d to 5.9. If it is very loose, lower
+    it to 5.5. Then print the real part.
+  parts:
+  - fit_coupon
+  hardware:
+  - bolt
+  tool: null
+- n: '2'
+  text: Print the spacer standing on its end, with no supports. Use 3 or more walls
+    (or 100% infill) so it doesn't crush when you tighten the bolt.
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Put a washer under the bolt head. Pass the bolt through the first plate, then
+    the spacer, then the second plate. Add the second washer and the lock nut. Pick
+    a bolt length of about 20 + both plate thicknesses + 2 washers (2 mm) + nut (5
+    mm) + 2 mm. M5x30 only works if the plates add up to less than about 1 mm. Otherwise
+    choose the next listed length up (for example M5x35 or M5x40).
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  - washer
+  - nut
+  tool: null
+- n: '4'
+  text: Tighten until it's snug and stop there. PLA will creep or crack if you crank
+    it hard.
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  - nut
+  tool: 4 mm hex key and 8 mm spanner

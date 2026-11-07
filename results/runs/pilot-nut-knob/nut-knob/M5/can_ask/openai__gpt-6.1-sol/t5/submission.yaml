@@ -1,0 +1,288 @@
+task: nut-knob/M5
+note: One-piece, approximately 30 mm hand knob with a top-loading M5 nut socket, three
+  integral snap tabs, and a bolt through-hole. Uses catalog nut dimensions because
+  measurement was unavailable. The optional coupon checks the unverified printer/nut
+  fit; it is not part of the finished assembly. Intended for light hand tightening,
+  not wrench torque or hot environments.
+questions:
+- text: Can you measure the nut across flats and thickness?
+  answer: Cannot measure; use best judgment.
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  socket_af_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Total across-flats clearance, not per side.
+  bore_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral bolt clearance.
+  floor_h:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  root_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Uncut material below the spring isolation slots.
+  tab_t:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tab_w:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_gap:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_inset:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  catch_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Axial space above the seated nominal nut.
+  catch_projection:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: Lip projects inward from socket wall; nominal engagement with nut flat is
+      0.25 mm.
+  catch_land_h:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  ramp_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_offset:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    a=(p.nut_af+p.socket_af_clearance)/2\n\
+    \    zcatch=p.floor_h+p.nut_h+p.catch_clearance\n    H=zcatch+p.catch_land_h+p.ramp_h\n\
+    \    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(H)\n    for i in range(int(p.grip_count)):\n\
+    \        theta=2*math.pi*i/p.grip_count\n        cutter=cq.Workplane('XY').center(p.grip_cut_offset*math.cos(theta),p.grip_cut_offset*math.sin(theta)).circle(p.grip_cut_r).extrude(H)\n\
+    \        body=body.cut(cutter)\n    R=2*a/math.sqrt(3)\n    pts=[(R*math.cos(math.radians(30+60*i)),R*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    socket=cq.Workplane('XY').workplane(offset=p.floor_h).polyline(pts).close().extrude(H-p.floor_h)\n\
+    \    body=body.cut(socket)\n    for angle in (0,120,240):\n        x0=a-p.slot_inset\n\
+    \        x1=a+p.tab_t+p.slot_gap\n        slot=cq.Workplane('XY').box(x1-x0,p.tab_w+2*p.slot_gap,H-p.root_h,centered=(False,True,False)).translate((x0,0,p.root_h)).rotate((0,0,0),(0,0,1),angle)\n\
+    \        body=body.cut(slot)\n        finger=cq.Workplane('XY').box(p.tab_t,p.tab_w,H-p.root_h,centered=(False,True,False)).translate((a,0,p.root_h))\n\
+    \        profile=[(a,zcatch),(a-p.catch_projection,zcatch),(a-p.catch_projection,zcatch+p.catch_land_h),(a,H)]\n\
+    \        lip=cq.Workplane('XZ').polyline(profile).close().extrude(p.tab_w/2,both=True)\n\
+    \        finger=finger.union(lip).rotate((0,0,0),(0,0,1),angle)\n        body=body.union(finger)\n\
+    \    bore=cq.Workplane('XY').circle((p.bolt_d+p.bore_clearance)/2).extrude(H)\n\
+    \    return body.cut(bore).clean()\n"
+  print_orientation: Flat closed underside on bed at z=0; nut opening and spring tips
+    face up. No supports in socket or spring slots.
+  use_orientation: Press nut into top opening. Bolt may enter from the closed underside
+    and pass through the nut and out the top, or enter the nut from the top.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    a=(p.nut_af+p.socket_af_clearance)/2\n\
+    \    zcatch=p.floor_h+p.nut_h+p.catch_clearance\n    H=zcatch+p.catch_land_h+p.ramp_h\n\
+    \    body=cq.Workplane('XY').circle(p.coupon_d/2).extrude(H)\n    R=2*a/math.sqrt(3)\n\
+    \    pts=[(R*math.cos(math.radians(30+60*i)),R*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    body=body.cut(cq.Workplane('XY').workplane(offset=p.floor_h).polyline(pts).close().extrude(H-p.floor_h))\n\
+    \    for angle in (0,120,240):\n        x0=a-p.slot_inset\n        x1=a+p.tab_t+p.slot_gap\n\
+    \        slot=cq.Workplane('XY').box(x1-x0,p.tab_w+2*p.slot_gap,H-p.root_h,centered=(False,True,False)).translate((x0,0,p.root_h)).rotate((0,0,0),(0,0,1),angle)\n\
+    \        body=body.cut(slot)\n        finger=cq.Workplane('XY').box(p.tab_t,p.tab_w,H-p.root_h,centered=(False,True,False)).translate((a,0,p.root_h))\n\
+    \        lip=cq.Workplane('XZ').polyline([(a,zcatch),(a-p.catch_projection,zcatch),(a-p.catch_projection,zcatch+p.catch_land_h),(a,H)]).close().extrude(p.tab_w/2,both=True)\n\
+    \        body=body.union(finger.union(lip).rotate((0,0,0),(0,0,1),angle))\n  \
+    \  return body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bore_clearance)/2).extrude(H)).clean()\n"
+  print_orientation: Flat underside on bed, open socket upward; no supports.
+  use_orientation: Same nut orientation and insertion method as knob; test only.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_fit
+  part: knob
+  feature: Hex socket and three spring catches
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - socket_af_clearance
+  - catch_projection
+  - tab_t
+  - tab_w
+  - root_h
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Nut must insert with firm thumb pressure, with no hammer or vise,
+      and all three tabs must spring back. Invert and shake lightly: nut must remain
+      captured. Reject cracked, whitened, or permanently bent tabs.'
+- id: seat
+  part: knob
+  feature: Solid floor around bolt bore, below fully recessed nut
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_h
+  - nut_h
+  - catch_clearance
+  - bore_clearance
+  - bolt_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Verify the nut reaches the floor and lies entirely below the top
+      rim; no nut can pass through the smaller underside bore. Test with an M5 bolt
+      through the underside: it must thread freely through the nut and emerge above.'
+- id: torque_transfer
+  part: knob
+  feature: Hex socket flats
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - socket_af_clearance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Turn the coupon gently with an M5 bolt threaded into the nut: flats
+      must prevent continuous nut rotation. A little initial angular play is normal.'
+manual:
+- n: '1'
+  text: 'Recommended: print fit_coupon first, using 0.2 mm layers, at least four walls
+    and 100% infill. Disable supports and ensure the slicer preserves the 0.8 mm spring
+    walls and open isolation slots. Use the same settings for the final knob.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: Slicer
+- n: '2'
+  text: Let the print cool. Remove strings from the socket and slots without levering
+    on the fingers. Align the nut flats with the hex socket and press it straight
+    down with a thumb until it sits on the floor and all three catches spring inward
+    above it. Do not hammer, heat, or force it with pliers.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Invert the coupon and shake lightly; the nut must stay captured. Verify the
+    bolt passes through the underside bore, threads smoothly through the nut, and
+    emerges at the top. If the nut jams or fingers whiten/crack, stop. Adjust socket_af_clearance
+    upward by 0.1 mm and retest. If the seated nut falls out despite intact fingers,
+    increase catch_projection by 0.1 mm and retest; increasing it also increases insertion
+    force. Do not assume an untested adjustment works.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: To reuse the test nut, thread an M5 bolt into it from below a few turns. Gently
+    ease the three tabs outward while lifting the bolt and nut upward, working one
+    catch at a time. Do not pull hard against the catches. The coupon may instead
+    be sacrificed to recover the nut; protect fingers from sharp broken PLA.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Print knob using the successful coupon parameters and settings. Let it cool,
+    clear any strings, and press the recovered nut into it using the same procedure.
+    Confirm that it is fully seated and retained upside down. No glue or additional
+    printed retaining piece is needed.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '6'
+  text: 'Use for light hand tightening only. For strongest axial loading, pass the
+    bolt through the closed underside into the nut: the solid floor then supports
+    the nut. The snap catches retain the loose nut, not a structural axial load pulling
+    it out of the open face. Do not use a wrench on the knob; keep PLA away from heat.
+    Your M5 bolt is application-specific and is not included in this nut-knob assembly.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

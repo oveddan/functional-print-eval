@@ -1,0 +1,471 @@
+task: nut-knob/M5
+note: 'One printed knob, Ø30 x 24 mm, 12 vertical finger flutes. The M5 hex nut is
+  captive in an 8 mm-deep hex bore cut into the base face: the bore is 7.9 mm across
+  flats against the nut''s 8.0 mm, so it is pressed in by hand and then held by friction
+  on three flats over 4.7 mm - vastly more than the 2 g nut''s weight, so it survives
+  being inverted. A 0.6 mm funnel at the mouth lets the nut start freely so the gripping
+  happens behind it, and the nut''s outer face ends 3.3 mm below the base face, i.e.
+  fully inside. The bore''s far end is closed by a flat ceiling carrying a Ø5.8 hole:
+  2.2 mm narrower than the nut, so the nut can never be pushed out that side, and
+  it is the surface the nut bears on when the bolt is turned - which is the load direction
+  that would otherwise try to pull the nut out of its pocket. The bolt goes in at
+  the base, through the nut, and out through the crown hole. Retention therefore does
+  not rely on a flexing snap (stiff PLA alone would either need crushing force or
+  split), and the coupon with its 7.9 and 7.8 mm pockets is there to tell you which
+  value your printer actually delivers before you press a nut into the real knob.'
+questions: []
+params:
+  knob_dia:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: ~30 mm across as requested, over the un-cut OD
+  knob_h:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: z=0 is the base face that bears on the workpiece; crown at z=24
+  top_chamfer:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg crown chamfer, leaves a flat 26 mm ring the knob stands on while
+      the nut is pressed in
+  skirt_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: unfluted band at the base so the bearing face is a full flat annulus
+  flute_n:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_r:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: 'groove cutters are vertical cylinders: no overhangs, no bridging on the
+      outside'
+  flute_depth:
+    value: 1.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_top:
+    value: 20.5
+    unit: mm
+    kind: design
+    source: design
+    note: grooves stop 3.5 mm short of the crown so the chamfered rim stays a full
+      circle
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats. The person could not measure their nut, so catalog
+      value used - the coupon checks the fit on the real nut
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal thread of the person's bolt
+  pocket_af:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: 'nut_af minus 0.10 = 0.05 mm interference per engaged flat: firm hand press,
+      and a grip far stronger than the nut''s 2 g weight. The single knob to change
+      if the coupon says otherwise'
+  pocket_depth:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ceiling / nut seat. The nut fills z 3.3-8.0, so its outer face is 3.3 mm
+      below the base face (fully inside) and its top bears on the ceiling
+  mouth_lead:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: funnel enlarges the mouth past the nut's 9.24 mm across corners so the nut
+      starts freely and the parallel wall behind it does the gripping
+  mouth_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_bore_d:
+    value: 5.8
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_d + 0.8 clearance, and 2.2 mm narrower than the nut across flats -
+      the nut can never be pushed out this side
+  coupon_l:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_w:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_x:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: half the spacing of the two test pockets
+  coupon_wall:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: plastic above the test ceiling
+  coupon_tighten:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: test pocket B is this much tighter than the knob's pocket A
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    K = 0.8660254  # cos(30deg): across flats = 2*pr*K\n \
+    \   R = p.knob_dia / 2.0\n    H = p.knob_h\n    ch = p.top_chamfer\n\n    def\
+    \ hex_void(pr, z0, z1):\n        h = pr * K\n        pts = [(pr, 0.0), (pr / 2.0,\
+    \ h), (-pr / 2.0, h),\n               (-pr, 0.0), (-pr / 2.0, -h), (pr / 2.0,\
+    \ -h)]\n        path = pts + [pts[0]]\n        return (cq.Workplane(\"XY\", center=(0.0,\
+    \ 0.0, z0))\n                .moveTo(path[0][0], path[0][1])\n               \
+    \ .polyline(path[1:]).close()\n                .extrude(z1 - z0))\n\n    # outer\
+    \ body: cylinder plus 45 deg crown chamfer\n    body = cq.Workplane(\"XY\").circle(R).extrude(H\
+    \ - ch)\n    body = body.union(\n        cq.Workplane(\"XY\", center=(0.0, 0.0,\
+    \ H - ch)).circle(R)\n        .workplane(offset=ch).circle(R - ch).loft(combine=False,\
+    \ ruled=True))\n\n    # finger flutes: vertical grooves from the skirt up to just\
+    \ below the chamfer\n    fr = p.flute_r\n    a = R + fr - p.flute_depth\n    body\
+    \ = body.cut(\n        cq.Workplane(\"XY\", center=(0.0, 0.0, p.skirt_h))\n  \
+    \      .polarArray(a, 0, 360, p.flute_n)\n        .circle(fr).extrude(p.flute_top\
+    \ - p.skirt_h))\n\n    # captive-nut pocket: press-fit hex bore, mouth in the\
+    \ base face, closed by a ceiling\n    pr = p.pocket_af / 2.0 / K\n    body = body.cut(hex_void(pr,\
+    \ -0.05, p.pocket_depth))\n    # funnel lead-in at the mouth\n    body = body.cut(\n\
+    \        cq.Workplane(\"XY\", center=(0.0, 0.0, -0.05)).circle(pr + p.mouth_lead)\n\
+    \        .workplane(offset=p.mouth_chamfer + 0.05).circle(pr)\n        .loft(combine=False,\
+    \ ruled=True))\n    # bolt bore out the crown: narrower than the nut, so the nut\
+    \ cannot pass\n    body = body.cut(\n        cq.Workplane(\"XY\", center=(0.0,\
+    \ 0.0, p.pocket_depth))\n        .circle(p.bolt_bore_d / 2.0).extrude(H - p.pocket_depth\
+    \ + 0.05))\n    return body"
+  print_orientation: Stands on its base face, z=0 = the face carrying the hex mouth;
+    bolt axis vertical, chamfered crown uppermost. All walls (OD flutes, hex pocket,
+    round bore) are vertical, the only bridged feature is the single 0.2 mm layer
+    of the nut-seat ceiling, so no supports.
+  use_orientation: 'As printed: base face sits square on the part being clamped, the
+    M5 bolt enters through the base face, passes through the captive nut and leaves
+    through the Ø5.8 bore in the crown. The nut is pressed in from the base face.'
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    K = 0.8660254\n    Hc = p.pocket_depth + p.coupon_wall\n\
+    \n    def hex_void(pr, x0, z0, z1):\n        h = pr * K\n        pts = [(pr, 0.0),\
+    \ (pr / 2.0, h), (-pr / 2.0, h),\n               (-pr, 0.0), (-pr / 2.0, -h),\
+    \ (pr / 2.0, -h)]\n        path = pts + [pts[0]]\n        return (cq.Workplane(\"\
+    XY\", center=(x0, 0.0, z0))\n                .moveTo(path[0][0], path[0][1])\n\
+    \                .polyline(path[1:]).close()\n                .extrude(z1 - z0))\n\
+    \n    body = cq.Workplane(\"XY\").box(p.coupon_l, p.coupon_w, Hc,\n          \
+    \                        centered=(True, True, False))\n    # pocket A = exactly\
+    \ the knob's pocket; pocket B = 0.10 mm tighter for comparison\n    for x0, af\
+    \ in ((-p.coupon_x, p.pocket_af),\n                   (p.coupon_x, p.pocket_af\
+    \ - p.coupon_tighten)):\n        pr = af / 2.0 / K\n        body = body.cut(hex_void(pr,\
+    \ x0, -0.05, p.pocket_depth))\n        body = body.cut(\n            cq.Workplane(\"\
+    XY\", center=(x0, 0.0, -0.05)).circle(pr + p.mouth_lead)\n            .workplane(offset=p.mouth_chamfer\
+    \ + 0.05).circle(pr)\n            .loft(combine=False, ruled=True))\n        body\
+    \ = body.cut(\n            cq.Workplane(\"XY\", center=(x0, 0.0, p.pocket_depth))\n\
+    \            .circle(p.bolt_bore_d / 2.0).extrude(p.coupon_wall + 0.05))\n   \
+    \ # dimple in the top face over pocket A so the two ends are not confused\n  \
+    \  body = body.cut(\n        cq.Workplane(\"XY\", center=(-p.coupon_x, p.coupon_w\
+    \ / 2.0 - 2.5, Hc - 1.0))\n        .circle(1.4).extrude(1.05))\n    return body"
+  print_orientation: Stands on the face carrying the two hex mouths, z=0; both bores
+    vertical. Same pocket geometry, same wall thickness, same bridged ceiling as the
+    knob, so it prints with the same dimensional behaviour. No supports.
+  use_orientation: 'Test only, never part of the knob: sat on the bench mouth-up for
+    the press and drop-out test, then thrown away. Pocket A is the dimple-marked end.'
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 2
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: nut_capture
+  fastener: m5_nut
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: nut_pocket (7.9 mm hex bore, z 0-8 mm)
+    role: nut_pocket
+  - part: knob
+    feature: nut_seat (pocket ceiling at z = 8 mm, annulus between the hex bore and
+      the Ø5.8 bolt bore)
+    role: head_seat
+  nut: null
+  external: null
+- id: bolt_through_knob
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bolt_bore (Ø5.8 through the crown)
+    role: clearance
+  - part: knob
+    feature: base_face (Ø30 flat annulus, bears on the workpiece)
+    role: head_seat
+  nut: m5_nut
+  external: 'the person''s own M5 bolt: its threads engage the captured nut; the knob
+    turns on it'
+- id: coupon_nut_capture_a
+  fastener: m5_nut
+  axis_origin:
+  - -8.5
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: fit_coupon
+    feature: test_pocket_a (same 7.9 mm hex as the knob)
+    role: nut_pocket
+  - part: fit_coupon
+    feature: test_ceiling_a (same seat and Ø5.8 bore as the knob)
+    role: head_seat
+  nut: null
+  external: null
+criteria:
+- id: nut_press_fit
+  part: knob
+  feature: nut_pocket (7.9 mm hex bore)
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  - mouth_lead
+  - mouth_chamfer
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Pocket A of the coupon is the same hex, depth and funnel as the knob's.
+      Standing the coupon mouth-up, an M5 nut must go in with firm thumb pressure
+      on the bolt tip (order of 50-100 N, no hammering), and must stay put when the
+      coupon is turned upside down, shaken and tapped on the bench.
+- id: nut_cannot_pass_far_side
+  part: knob
+  feature: bolt_bore (Ø5.8)
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: -2.2
+  params:
+  - bolt_bore_d
+  - nut_af
+  - pocket_depth
+  - nut_h
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The bore the bolt leaves by is 2.2 mm narrower than the nut's 8.0
+      mm across flats, so the nut is mechanically stopped at the far side no matter
+      how hard the bolt is turned; the coupon's identical ceiling + Ø5.8 bore demonstrates
+      the block.
+- id: nut_fully_inside
+  part: knob
+  feature: nut_pocket
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: 3.3
+  params:
+  - pocket_depth
+  - nut_h
+  - knob_dia
+  check:
+    method: measure
+    ref: straightedge or calipers laid across the base face
+    description: 'With the nut pressed home, it occupies z 3.3-8.0 inside the knob:
+      nothing is proud of the base face and nothing shows in the crown bore. Check
+      that a straightedge across the base does not touch the nut.'
+- id: seat_bears_bolt_load
+  part: knob
+  feature: nut_seat (pocket ceiling)
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  - nut_af
+  - bolt_bore_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: When the bolt is turned it drags the nut toward the crown, i.e. hard
+      up against this seat, so the retention does not depend on friction while loaded.
+      The seat is 16 mm of solid PLA thick above the nut; the coupon has the same
+      seat with 2 mm above it and shows the nut bedding into it.
+- id: bolt_clears_bore
+  part: knob
+  feature: bolt_bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.8
+  params:
+  - bolt_bore_d
+  - bolt_d
+  check:
+    method: measure
+    ref: calipers across the bore / trial with the M5 bolt
+    description: An M5 bolt must slide through the Ø5.8 bore and pick up the captured
+      nut's thread by hand without spinning the nut. Measure the bore after printing
+      (it is modelled at 5.8, internal circles usually print 0.05-0.15 small); if
+      the bolt binds, widen it with a 6 mm drill bit twisted by hand.
+- id: bearing_face_square
+  part: knob
+  feature: base_face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_dia
+  - skirt_h
+  - flute_depth
+  check:
+    method: none
+    ref: null
+    description: The bottom 4 mm are unfluted, so the knob presents a full flat Ø30
+      annulus (about 10 mm wide) to the part being clamped - no scalloped edges to
+      dig in.
+manual:
+- n: '1'
+  text: 'Print knob and fit_coupon together. Both go exactly as modelled, standing
+    on z=0: the knob on its base face (the face with the hex mouth), the coupon on
+    the face with its two hex mouths. 0.2 mm layers, PLA, no supports, no raft needed;
+    the only bridged feature is the single layer of the nut seat in each part. Neither
+    part has any overhanging outer surface, so the flutes and the crown come out clean.'
+  parts:
+  - knob
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Fit test on the coupon first, before you commit a nut to the knob. Stand
+    fit_coupon on its mouths (pockets pointing up). Drop an M5 nut into pocket A -
+    the end with the small dimple in the top face - and push it in square with the
+    tip of the M5 bolt until it stops against the internal ceiling. It should need
+    firm, steady thumb pressure and seat about 3 mm below the mouth. Then turn the
+    coupon upside down, shake it and tap it on the bench: the nut must not move. Pocket
+    B is 0.10 mm tighter, as your reference for what the next step is.'
+  parts:
+  - fit_coupon
+  hardware:
+  - m5_nut
+  - m5_bolt
+  tool: M5 bolt as a pusher
+- n: '3'
+  text: 'Read the coupon. (a) Nut holds in A and it went in by hand: proceed, the
+    knob is right as printed. (b) Nut falls out of A: your print came out large -
+    re-slice knob with pocket_af changed from 7.9 to 7.8 mm (that is pocket B) before
+    pressing the real nut in. (c) A needs a press or threatens to split the coupon:
+    re-slice knob with pocket_af at 8.0 mm. Do not glue the nut in either case; the
+    seat, not the glue, is what carries the bolt.'
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '4'
+  text: Seat the nut in the knob. Stand the knob on its chamfered crown (base face
+    up), drop the M5 nut into the hex mouth so it lies flat, then push it home square
+    with the tip of the M5 bolt through the funnel. The bolt tip keeps the nut from
+    cocking; stop when it will not go further - the nut is then against the ceiling,
+    3.3 mm below the base face and 2 mm clear of the Ø5.8 bore.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  - m5_bolt
+  tool: M5 bolt as a pusher
+- n: '5'
+  text: 'Check the knob before use: lay a straightedge across the base face - the
+    nut must not touch it or show; turn the knob upside down and shake - the nut must
+    stay; then pass the M5 bolt in through the base face and let its tip come out
+    of the crown hole and screw into the nut - the nut must not rotate in its pocket
+    as the bolt turns. If the nut spins, the pocket is too loose: use pocket_af 7.8
+    mm.'
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  - m5_bolt
+  tool: calipers, straightedge
+- n: '6'
+  text: 'To use it: run your M5 bolt through the knob''s base hole so the tip comes
+    out of the crown, thread it into (or through) the part you are clamping with the
+    knob''s flat base face sitting on the surface, then grip the fluted band and turn
+    clockwise. The bolt pulls the nut up against the internal seat as you tighten,
+    so the nut is held harder the harder you turn. Stay at firm hand torque - PLA
+    creeps under sustained load, so do not lean on it and do not use it as a spanner
+    on a bolt that was torqued tight.'
+  parts:
+  - knob
+  hardware:
+  - m5_bolt
+  tool: null
+- n: '7'
+  text: 'To change the nut later: screw the M5 bolt a few turns into the nut from
+    the base side and pull - the nut comes straight out of the mouth, it never has
+    to pass the Ø5.8 bore. Hook it with a small screwdriver if the bolt does not bite
+    deep enough. An M5 nylon-insert lock nut (ISO 10511, 5.0 mm thick) also fits this
+    pocket if you want the bolt to resist vibration.'
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  - m5_bolt
+  tool: small screwdriver

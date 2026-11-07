@@ -1,0 +1,392 @@
+task: bearing-wheel
+note: 'A replacement roller wheel for a sliding closet door: a 50 x 16 mm printed
+  disc with a 22 mm bearing pocket in each face and a 2 mm web between them carrying
+  an 8.6 mm bore for the axle. Two 608 bearings pressed in, one per face, put 14 mm
+  of bearing inside a 16 mm wheel; the wheel turns on the outer races while the inner
+  races stay put on the axle. Two printed parts: the wheel, and a fit coupon to dial
+  in the pocket bore before you commit to the wheel. Both print flat on the bed with
+  no supports. Assumptions I could not confirm: the tread is a plain flat band (the
+  old wheel''s profile was never measured) and the rolling diameter is 50 mm (the
+  old wheel was described only as ''about 50 mm across''). Your own M8 bolt is what
+  was described to me; it is listed as a catalog ISO 4762 M8x40 because the hardware
+  list only accepts catalog parts, and the two 608ZZ bearings cannot be listed at
+  all, so they appear as params and in the manual only.'
+questions:
+- text: The old wheel's exact outside diameter - I used 50.0 mm from your 'about 50
+    mm', and it sets the door's height. Can you measure across the tread now? If it
+    comes out, say, 48.5, set wheel_od to that and reprint.
+  answer: null
+- text: Is the running surface of the old wheel flat like a bicycle tyre, or is there
+    a groove or ridge running round it that a track rail sits in? I made it a plain
+    flat band; if there is a groove, tell me its width and depth and I will shape
+    the tread to match.
+  answer: null
+- text: How much clear space is there between the bracket plates the axle passes through?
+    I kept the wheel at 16 mm to match the old one. If the gap is much wider than
+    16 mm the nut will not clamp the bearing inner races, and you may want a washer
+    stack instead.
+  answer: null
+- text: How long is your M8 bolt from under the head to the tip? It works as the axle,
+    but if it is only 25-30 mm it may not reach through the bracket, the 16 mm wheel
+    and the nut - an ISO 4762 M8x40 would.
+  answer: null
+params:
+  axle_bolt_len:
+    value: 40.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 'Reach check: 3 mm bracket plate + 16 mm wheel + 3 mm bracket plate + 2
+      x 1.6 mm washer + 8 mm lock nut = 33.2 mm, so 40 mm is comfortable. Use your
+      own M8 bolt instead if it is long enough; measure the bracket gap to be sure.'
+  axle_hole_d:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance bore through the 2 mm web. 0.6 mm over nominal, so a threaded
+      bolt drops straight through.
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ bore, 8.000 -0.008 - a nominal fit on the axle thread.
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ outside diameter, 22.000 -0.008. The twin of the pocket bore param.
+  bearing_pocket_d:
+    value: 22.0
+    unit: mm
+    kind: design
+    source: design
+    note: Bore the bearings are pressed into. Aimed at a light press on the outer
+      race - 22.0 line to line, which in PLA usually prints as an interference fit.
+      Confirm with the fit coupon and change this one number before printing the wheel;
+      the coupon prints pockets at -0.2 / +0 / +0.2 of it.
+  bearing_pocket_depth:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: Equal to the bearing width, so a bearing pressed fully home finishes flush
+      with the wheel face and the wheel's outer envelope stays 16 mm.
+  bearing_width:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ width, nominal 7.0; two of them fill 14 of the wheel's 16 mm.
+  bolt_shank_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: asked
+    note: The person's own M8 bolt; they reported the shank at about 8 mm. On a standard
+      M8 screw that length is thread, which is why the axle bore is generously clearanced.
+  coupon_pocket_depth:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the coupon's test pockets; deep enough to feel a real press fit.
+  coupon_step:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Spacing between the coupon's three test pocket sizes.
+  mouth_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: 45 degree lead-in on each pocket mouth. Guides the bearing in square and
+      buries the elephant-foot bulge at the pocket mouth.
+  tread_edge_break:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on both tread edges; stops a bulged bottom edge from catching on
+      the track.
+  web_t:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: Material left between the two bearing pockets = wheel_width - 2 x bearing_pocket_depth
+      = 2 mm. It is only a tie between the two halves; the door load goes tread ->
+      pocket wall -> outer race. Its underside is a 6.7 mm annular bridge, well inside
+      this printer's limit.
+  wheel_od:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: asked
+    note: The old wheel was 'about 50 mm across'; the person could not measure it,
+      so 50.0 is used. This is the rolling diameter and it sets the door's height,
+      so it is a param you can change in 0.5 mm steps without touching the bearing
+      pockets.
+  wheel_width:
+    value: 16.0
+    unit: mm
+    kind: world
+    source: asked
+    note: The old wheel was 'about 16 mm wide'. Matching it keeps the same envelope
+      inside the door bracket.
+parts:
+- id: wheel
+  role: final
+  material: PLA (the high-speed black PLA on the X1C)
+  code: "import cadquery as cq\n\n\ndef build(p):\n    r_out = p.wheel_od / 2.0\n\
+    \    h = p.wheel_width\n    pr = p.bearing_pocket_d / 2.0\n    pd = p.bearing_pocket_depth\n\
+    \    ch = p.mouth_chamfer\n    eb = p.tread_edge_break\n\n    # solid disc, axis\
+    \ vertical (this is the print orientation)\n    w = cq.Workplane(\"XY\").circle(r_out).extrude(h)\n\
+    \n    # one bearing pocket in each face\n    w = w.cut(cq.Workplane(\"XY\").circle(pr).extrude(pd))\n\
+    \    w = w.cut(\n        cq.Workplane(\"XY\").circle(pr).extrude(pd).translate((0,\
+    \ 0, h - pd))\n    )\n\n    # 45 degree lead-in chamfer on each pocket mouth\n\
+    \    cone_lo = cq.Solid.makeCone(\n        pr + ch, pr, ch, cq.Vector(0, 0, 0),\
+    \ cq.Vector(0, 0, 1)\n    )\n    ring_lo = cone_lo.cut(cq.Solid.makeCylinder(pr,\
+    \ ch))\n    w = w.cut(ring_lo)\n\n    cone_hi = cq.Solid.makeCone(\n        pr,\
+    \ pr + ch, ch, cq.Vector(0, 0, h - ch), cq.Vector(0, 0, 1)\n    )\n    ring_hi\
+    \ = cone_hi.cut(\n        cq.Solid.makeCylinder(pr, ch, cq.Vector(0, 0, h - ch))\n\
+    \    )\n    w = w.cut(ring_hi)\n\n    # clearance bore for the axle through the\
+    \ middle web\n    w = w.cut(cq.Workplane(\"XY\").circle(p.axle_hole_d / 2.0).extrude(h))\n\
+    \n    # break the two tread edges\n    big_lo = cq.Solid.makeCylinder(r_out +\
+    \ 2.0, eb)\n    w = w.cut(big_lo.cut(cq.Solid.makeCone(r_out - eb, r_out, eb)))\n\
+    \n    big_hi = cq.Solid.makeCylinder(\n        r_out + 2.0, eb, cq.Vector(0, 0,\
+    \ h - eb)\n    )\n    w = w.cut(\n        big_hi.cut(\n            cq.Solid.makeCone(\n\
+    \                r_out, r_out - eb, eb, cq.Vector(0, 0, h - eb)\n            )\n\
+    \        )\n    )\n\n    return w\n"
+  print_orientation: 'As modelled: the lower face (z = 0, the lower bearing-pocket
+    mouth) flat on the bed, wheel axis vertical. No supports. The only overhang is
+    the 2 mm web, whose underside spans a 6.7 mm ring over the lower pocket - a short
+    bridge, no problem on this printer. 0.2 mm layers, 4 walls, 6 top/bottom layers
+    so the pocket shoulders and the web come out solid.'
+  use_orientation: Axis horizontal, on the door's axle. The part is symmetric end
+    to end, so either pocket can face inwards. The bolt passes through the 8.6 mm
+    bore; the wheel turns on the bearings' outer races, which are pressed into the
+    two pockets.
+- id: coupon
+  role: coupon
+  material: same spool as the wheel
+  code: "import cadquery as cq\n\n\ndef build(p):\n    d0 = p.bearing_pocket_d\n \
+    \   sizes = [d0 - p.coupon_step, d0, d0 + p.coupon_step]\n    pd = p.coupon_pocket_depth\n\
+    \    ch = p.mouth_chamfer\n    t = 10.0\n    pitch = d0 + 8.0\n    margin = 4.0\n\
+    \n    n = len(sizes)\n    length = pitch * (n - 1) + d0 + 2.0 * margin\n    width\
+    \ = d0 + 2.0 * margin\n\n    plate = cq.Workplane(\"XY\").box(\n        length,\
+    \ width, t, centered=(True, True, False)\n    )\n\n    for i, d in enumerate(sizes):\n\
+    \        x = (i - (n - 1) / 2.0) * pitch\n        # pocket, opening upward\n \
+    \       plate = plate.cut(\n            cq.Workplane(\"XY\")\n            .circle(d\
+    \ / 2.0)\n            .extrude(pd)\n            .translate((x, 0, t - pd))\n \
+    \       )\n        # same lead-in chamfer as the wheel's pockets\n        cone\
+    \ = cq.Solid.makeCone(\n            d / 2.0,\n            d / 2.0 + ch,\n    \
+    \        ch,\n            cq.Vector(x, 0, t - ch),\n            cq.Vector(0, 0,\
+    \ 1),\n        )\n        ring = cone.cut(\n            cq.Solid.makeCylinder(\n\
+    \                d / 2.0, ch, cq.Vector(x, 0, t - ch)\n            )\n       \
+    \ )\n        plate = plate.cut(ring)\n\n    return plate\n"
+  print_orientation: 'As modelled: plate flat on the bed (z = 0), the three pockets
+    opening upward. 0.2 mm layers, 3-4 walls, 6 top/bottom layers, no supports.'
+  use_orientation: Test only. Press one 608 bearing into each of the three pockets
+    and keep the one that needs a firm push. The three pockets are bearing_pocket_d
+    - 0.2 / bearing_pocket_d / bearing_pocket_d + 0.2 (normally 21.8 / 22.0 / 22.2
+    mm).
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -2.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: axle_clearance_bore
+    role: clearance
+  nut: nut
+  external: the door-top roller bracket, which the bolt clamps (not part of this design;
+    the bolt head and the nut bear on it through the two washers)
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing_pocket_lower
+  relation: contains
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - bearing_od
+  - bearing_pocket_d
+  check:
+    method: coupon
+    ref: coupon
+    description: 'Light press fit on the outer race: pocket 22.0 against a bearing
+      OD of 22.000 -0.008. The coupon prints the same pocket geometry at 21.8 / 22.0
+      / 22.2 mm so you can pick the real number for your printer before committing
+      to the wheel.'
+- id: c2
+  part: wheel
+  feature: bearing_pocket_upper
+  relation: contains
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - bearing_od
+  - bearing_pocket_d
+  check:
+    method: coupon
+    ref: coupon
+    description: Same fit as the lower pocket - the wheel is symmetric end to end.
+- id: c3
+  part: wheel
+  feature: axle_clearance_bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.6
+  params:
+  - axle_hole_d
+  - bolt_shank_d
+  check:
+    method: measure
+    ref: null
+    description: The person reported the bolt shank at about 8 mm; the bore is 8.6
+      mm, so the bolt drops through the web even where it is threaded.
+- id: c4
+  part: wheel
+  feature: bearing_pocket_shoulder
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_pocket_depth
+  - bearing_width
+  check:
+    method: template
+    ref: null
+    description: Pocket depth equals the 7 mm bearing width, so a bearing pressed
+      fully home bottoms on the web shoulder and its outer face finishes flush with
+      the wheel face, holding the wheel's envelope at 16 mm.
+- id: c5
+  part: wheel
+  feature: tread
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_width
+  check:
+    method: none
+    ref: null
+    description: Flat tread band, 50 mm across by 16 mm, as the old wheel was described.
+      If the door rides too high or too low on the track, change the wheel_od param
+      and reprint rather than scaling the slicer model, which would shrink the bearing
+      pockets with it.
+manual:
+- n: '0'
+  text: Check the axle first. Either your own M8 bolt or an ISO 4762 M8x40 must reach
+    through the bracket plate, the 16 mm wheel, a washer and the nut (the ISO 10511
+    M8 lock nut is 8 mm tall). Add up what your bracket needs and go one length longer
+    if in doubt. The wheel is 16 mm wide, the same as the old one, so it fits the
+    same gap.
+  parts:
+  - wheel
+  hardware: []
+  tool: ruler
+- n: '1'
+  text: 'Print the fit coupon: flat on the bed, pockets up, 0.2 mm layers, 3-4 walls,
+    6 top/bottom layers, no supports. It is a small bar with three holes, 21.8 / 22.0
+    / 22.2 mm across.'
+  parts:
+  - coupon
+  hardware: []
+  tool: printer
+- n: '2'
+  text: 'Press one of your 608 bearings into each of the three pockets: straight in,
+    pushing on the OUTER race only (a vise, or a soft mallet over a socket that touches
+    only the outer race). Never press on the seals or the inner race.'
+  parts:
+  - coupon
+  hardware: []
+  tool: vise or soft mallet + socket
+- n: '3'
+  text: Judge the fit. You want the pocket that needs firm pressure to go in and cannot
+    be pulled out by hand. The three pockets are the param bearing_pocket_d minus
+    0.2 mm, exactly, and plus 0.2 mm. If the middle one is right, the default 22.0
+    mm is correct.
+  parts:
+  - coupon
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'Set the param bearing_pocket_d to the size that won, then print the wheel:
+    flat on the bed (lower pocket mouth down, wheel axis vertical), 0.2 mm layers,
+    4 walls, at least 6 top/bottom layers, no supports. Print two if both rollers
+    on the door are alike.'
+  parts:
+  - wheel
+  hardware: []
+  tool: printer
+- n: '5'
+  text: Pick any blobs out of the two bearing pockets and out of the 8.6 mm centre
+    bore, and run a fingernail round the pocket mouths so the bearings start square.
+  parts:
+  - wheel
+  hardware: []
+  tool: knife or needle file
+- n: '6'
+  text: 'Press one of your 608 bearings into the pocket in each face of the wheel:
+    outer race only, straight, fully home against the internal shoulder, so each bearing''s
+    outer face ends up flush with the wheel''s face. Do not press on the inner race
+    or the seals.'
+  parts:
+  - wheel
+  hardware: []
+  tool: vise or soft mallet + socket
+- n: '7'
+  text: 'Fit the axle: bolt through one bracket plate, then the wheel, then the other
+    bracket plate. Put a washer under the bolt head and one under the nut, then wind
+    on the M8 lock nut.'
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  - nut
+  tool: null
+- n: '8'
+  text: 'Tighten until the wheel has no side-to-side slop but still spins freely with
+    a flick. Nothing should drag: if the wheel''s cheeks rub the bracket, file 0.2-0.3
+    mm off each cheek. If there is end float, add another washer. Check both that
+    the wheel spins and that it does not rock on the bolt.'
+  parts:
+  - wheel
+  hardware:
+  - nut
+  - washer
+  tool: spanner
+- n: '9'
+  text: Hang the door back on the track and roll it through its whole travel. The
+    wheel must roll, not skid, and the door must sit level. If the door sits too high
+    or too low, change the wheel_od param in 0.5 mm steps and reprint - do not scale
+    the model in the slicer, that would shrink the bearing pockets with it.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
