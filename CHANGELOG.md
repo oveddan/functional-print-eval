@@ -2,6 +2,14 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-07: Slicer estimates for the Estoa light and its test-print sample
+
+`uv run python scripts/slice_estimates.py pilot-estoa loop-estoa` on Dan's Mac, from 1dc450e, with Bambu Studio 02.08.02.61 and the fixed setup (X1 Carbon 0.4 nozzle, 0.20mm Standard @BBL X1C, Generic PLA High Speed @BBL X1C, no start or end sequence). Offline: nothing went to a printer, no model was called and no grade changed. The Estoa session asked for it once PR 57 merged, and Dan approved the PR.
+- **Sliced:** `pilot-estoa` 29 of 29 parts (17 trials). `loop-estoa` 47 of 49 parts (28 arms). The 2 not sliced are DeepSeek V4 Pro t1's box in both arms, whose code doesn't build, matching its saved verdict.
+- **First print against second**, the sample's rule of at most two prints (`docs/coupon-loop.md`, "Estoa sample"). The 14 replayed designs' first print comes to 42.9 h and 1.98 kg, a median of 3.4 h a box. Over the 13 trials whose second design builds, the first print is 40.1 h and 1.85 kg. The second print is 43.2 h and 1.95 kg after the printed reply (3.1 h and 100 g more), and 40.3 h and 1.86 kg after the neutral turn. The replies that changed the most grew the box: GPT-6.1 Sol t3 went from 4.0 to 5.5 h and Sol t2 from 3.8 to 4.7 h.
+- **The one pass**, Gemini 4 Argon t2 after the printed reply, takes 3.9 h and 179 g on the first print and 3.8 h and 176 g on the second: about 7.7 h and 355 g of filament to a box that passes on the records.
+- These are slicer estimates, not prints. 6 of 17 first designs and 12 of 28 second designs include test prints (1.4 h and 2.9 h of them in all). Written beside each run's `summary.csv`: `slice_estimates.csv` per trial (per arm in `loop-estoa`, condition `can_ask/feedback` or `can_ask/neutral`) and `slice_estimates_parts.csv` per part.
+
 ## 2026-11-07: The test suite trimmed to one test per behaviour; 54 old bugs put back to show nothing was lost
 
 Dan: the suite "sounds like AI slop". It grew a case for every fix, repeated cases across nut sizes and sandboxes, and was never pruned. Tests and test helpers only: no grader, runner, task or saved result changes, so no verdict can move. Audited on main after #23, #56 and #57.
