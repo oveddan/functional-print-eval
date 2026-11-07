@@ -60,6 +60,17 @@ class Task:
     format: TaskFormat = field(default_factory=TaskFormat)
 
 
+OWN_REQUEST = "own-request"  # the id of a task made from someone's own words, with no folder under tasks/
+
+
+def from_request(request: str) -> Task:
+    """A throwaway task from a request someone writes themselves: nothing hidden for the model to
+    measure and no requirements of its own, so only the general checks (graders/checks.ALL) grade it."""
+    if not request.strip():
+        raise ValueError("the request is empty: say what you want printed")
+    return Task(OWN_REQUEST, request.strip(), hidden_facts={}, requirements=[], reference=None)
+
+
 def _variants(family):
     """Each variant of a task family, by name, with the $values it fills the templates with."""
     return yaml.safe_load((ROOT / "tasks" / family / "variants.yaml").read_text())
