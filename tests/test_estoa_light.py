@@ -281,17 +281,17 @@ def with_a_sliver_beside_the_disk_holes(sub):
     return checked(sub)
 
 
-@pytest.mark.parametrize("template, want_r1", [(False, None), (True, True)], ids=["no-template", "checked-on-a-template"])
-def test_blind_inserts_beside_a_sliver(tmp_path, template, want_r1):
-    findings = {f.check: f for f in grade(with_a_sliver_beside_the_disk_holes(blind_inserts_behind_the_disk(template)), tmp_path)}
-    assert findings["R1"].ok is want_r1, findings["R1"].detail
+# checked on a template, so R1 passes; with no template it's not graded, which
+# test_inserts_behind_the_disk_need_a_template already covers
+def test_blind_inserts_beside_a_sliver(tmp_path):
+    findings = {f.check: f for f in grade(with_a_sliver_beside_the_disk_holes(blind_inserts_behind_the_disk(True)), tmp_path)}
+    assert findings["R1"].ok is True, findings["R1"].detail
 
 
-@pytest.mark.parametrize("template, want_r1", [(False, None), (True, True)], ids=["no-template", "checked-on-a-template"])
-def test_blind_inserts_are_read_to_their_bottom(tmp_path, template, want_r1):
+def test_blind_inserts_are_read_to_their_bottom(tmp_path):
     # R1 once read the pocket's solid bottom as "no room for the screw" and failed it as a miss by inf mm
-    findings = {f.check: f for f in grade(blind_inserts_behind_the_disk(template), tmp_path)}
-    assert findings["R1"].ok is want_r1, findings["R1"].detail
+    findings = {f.check: f for f in grade(blind_inserts_behind_the_disk(True), tmp_path)}
+    assert findings["R1"].ok is True, findings["R1"].detail
     assert findings["R2"].ok is False and "bottoms out" in findings["R2"].detail, findings["R2"].detail
 
 

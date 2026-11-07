@@ -1,8 +1,8 @@
 """run_python: the model's code sees only its own folder and the installed libraries, and
 whatever it does comes back as text, without ending the trial.
 
-Each isolation test runs in every sandbox that works on this machine and is skipped,
-with the reason, in one that doesn't."""
+Each sandbox test runs in the sandbox a trial would use here (`conftest.sandbox`), and in
+every sandbox with --all-sandboxes."""
 import hashlib
 import json
 import os
@@ -24,14 +24,6 @@ ROOT = Path(__file__).resolve().parents[1]
 HIDDEN = ROOT / "tasks/m5-spacer/hidden_facts.yaml"
 
 
-@pytest.fixture(params=list(code_sandbox.SANDBOXES))
-def sandbox(request):
-    box = code_sandbox.SANDBOXES[request.param]()
-    if problem := box.problem():
-        pytest.skip(f"{request.param}: {problem}")
-    return box
-
-
 @pytest.fixture
 def tool(sandbox, tmp_path):
     workdir = tmp_path / "work"
@@ -46,14 +38,13 @@ def test_it_cannot_read_a_hidden_file(tool):
     assert "FileNotFoundError" in reply and secret not in reply
 
 
-@pytest.mark.parametrize("path", [
-    "tasks/m5-spacer/reference.yaml", "tasks/m5-spacer/requirements.yaml", "pbe/runner/agent.py", "CLAUDE.md",
-    "results/runs/pilot-spacer/summary.csv", "catalog/hardware.yaml",
-])
-def test_it_cannot_read_this_repository(tool, path):
-    assert (ROOT / path).exists()
-    reply = tool.run(f"import os\nprint(os.path.exists({str(ROOT / path)!r}), os.path.exists('../' * 12 + {path!r}))")
-    assert "False False" in reply, reply
+def test_it_cannot_read_this_repository(tool):
+    # the repository isn't mounted, so no file in it is there: a task's answer, the eval's code, a saved run
+    paths = ["tasks/m5-spacer/reference.yaml", "pbe/runner/agent.py", "results/runs/pilot-spacer/summary.csv"]
+    assert all((ROOT / path).exists() for path in paths)
+    reply = tool.run("import os\n" + "\n".join(
+        f"print(os.path.exists({str(ROOT / path)!r}), os.path.exists('../' * 12 + {path!r}))" for path in paths))
+    assert reply.count("False False") == len(paths), reply
 
 
 def files_in_home(limit=40):
@@ -375,7 +366,6 @@ def test_a_task_hands_its_provided_files_and_nothing_else(sandbox, tmp_path, mon
     (task_dir / "files/datasheet.png").write_bytes(b"png")
     (task_dir / "hidden_facts.yaml").write_text("secret: 1")
     monkeypatch.setattr(python_tool, "ROOT", tmp_path)
-    monkeypatch.setattr(code_sandbox, "find", lambda: sandbox)
     tool = PythonTool.for_trial("fake", tmp_path / "work")
     assert "Files you're given: datasheet.png" in tool.prompt_line()
     reply = tool.run("import os\nprint(sorted(os.listdir('.')), os.path.exists('../hidden_facts.yaml'))")
@@ -399,8 +389,7 @@ def scripted(*turns):
     return chat, offered
 
 
-def test_a_trial_runs_code_and_carries_on_after_a_crash(sandbox, tmp_path, monkeypatch):
-    monkeypatch.setattr(code_sandbox, "find", lambda: sandbox)
+def test_a_trial_runs_code_and_carries_on_after_a_crash(sandbox, tmp_path):
     task = tasks.load("m5-spacer")
     reference = yaml.safe_load(task.reference)
     del reference["task"]  # the runner fills it in

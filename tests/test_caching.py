@@ -14,6 +14,7 @@ from pbe.runner.trial_record import CodeSettings, ModelCall
 
 CLAUDE = "anthropic/claude-haiku-5.5"
 OTHERS = ["openai/gpt-6.1-sol", "google/gemini-4-argon", "deepseek/deepseek-v4-pro-0813"]
+ANY_OTHER = OTHERS[0]  # what's posted doesn't depend on which other model it is
 
 
 class NoCodeTool:
@@ -37,8 +38,8 @@ def requests_sent(model, condition, monkeypatch):
     return sent, record
 
 
-@pytest.mark.parametrize("condition", agent.CONDITIONS)
-@pytest.mark.parametrize("other", OTHERS)
+# each condition once and each other model once: what a model reads doesn't depend on the pair
+@pytest.mark.parametrize("condition, other", list(zip(agent.CONDITIONS, OTHERS, strict=True)))
 def test_claude_reads_exactly_what_every_other_model_reads(condition, other, monkeypatch):
     claude_sent, claude_record = requests_sent(CLAUDE, condition, monkeypatch)
     other_sent, other_record = requests_sent(other, condition, monkeypatch)
@@ -65,13 +66,12 @@ def body_posted(model, monkeypatch):
     return json.loads(posted[0])
 
 
-@pytest.mark.parametrize("other", OTHERS)
-def test_the_body_differs_only_by_the_model_and_the_top_level_cache_field(other, monkeypatch):
+def test_the_body_differs_only_by_the_model_and_the_top_level_cache_field(monkeypatch):
     claude_body = body_posted(CLAUDE, monkeypatch)
-    other_body = body_posted(other, monkeypatch)
+    other_body = body_posted(ANY_OTHER, monkeypatch)
     assert claude_body.pop("cache_control") == {"type": "ephemeral"}
     assert "cache_control" not in other_body
-    assert claude_body.pop("model") == CLAUDE and other_body.pop("model") == other
+    assert claude_body.pop("model") == CLAUDE and other_body.pop("model") == ANY_OTHER
     assert json.dumps(claude_body) == json.dumps(other_body)
 
 

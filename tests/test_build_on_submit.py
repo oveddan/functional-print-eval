@@ -2,8 +2,8 @@
 sends build errors back for the model to fix. The error text reaches the model, so the
 build runs in run_python's sandbox and must not be able to carry a hidden file out.
 
-Each sandbox test runs in every sandbox that works on this machine, and is skipped, with
-the reason, in one that doesn't."""
+Each sandbox test runs in the sandbox a trial would use here (`conftest.sandbox`), and in
+every sandbox with --all-sandboxes."""
 import copy
 import hashlib
 import json
@@ -24,15 +24,6 @@ DOES_NOT_BUILD = "def build(p):\n    return cq.Workplane().box(math.pi, 2, 3)\n"
 # sha256 of the can_ask and all_given tools and of their system prompt, taken before this change
 TOOLS_BEFORE = "6b7e33adfe134cbc79e1f48f87b77e00e26a454960e39aa030f0f7ccee0a613d"
 PROMPT_BEFORE = "043a6f16e3b32577b6c7c56da8c377919a4068a815e4019f740111487288ec73"
-
-
-@pytest.fixture(params=list(code_sandbox.SANDBOXES))
-def sandbox(request, monkeypatch):
-    box = code_sandbox.SANDBOXES[request.param]()
-    if problem := box.problem():
-        pytest.skip(f"{request.param}: {problem}")
-    monkeypatch.setattr(code_sandbox, "find", lambda: box)
-    return box
 
 
 @pytest.fixture

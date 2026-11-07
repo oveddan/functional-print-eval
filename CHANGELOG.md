@@ -2,6 +2,47 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-07: The test suite trimmed to one test per behaviour; 54 old bugs put back to show nothing was lost
+
+Dan: the suite "sounds like AI slop". It grew a case for every fix, repeated cases across nut sizes and sandboxes, and was never pruned. Tests and test helpers only: no grader, runner, task or saved result changes, so no verdict can move. Audited on main after #23, #56 and #57.
+
+**Counts.** 623 tests to 512, with 3 skipped instead of 58. Run time barely moves: on the main before #23, at `-n 4` in this Linux cloud session, timed alternately twice each, main took 351 s and 376 s and the trimmed suite 339 s and 347 s, about 6% less. Most of what went was cheap (Docker copies that skip here, lookup rows), and the time is in grading parts for the tests that stay (below).
+
+| file | before | after | what went |
+|---|---|---|---|
+| `test_nut_knob.py` | 117 | 91 | the reference graded at M3 and M8 (`pbe.eval --reference` grades every size, and a new test checks each size loads with its catalog nut); the 3 R4 "says why" cases merged into the matching wrong-design cases they rebuilt; M8 copies of the stepped roof, the plain-hole bed pocket and the between-steps coupon; the M3 copy of a coupon rescuing a failing size; the design-level "loose" case (`_holds` covers it); the print table's lookup tests cut to one row per rule (23 to 14, and 16 to 6) |
+| `test_run_python.py` | 75 | 37 | the 33 Docker copies, which skip without Docker; 6 repository paths read in one test, as 3 paths in one call |
+| `test_build_on_submit.py` | 50 | 28 | the 22 Docker copies |
+| `test_runner.py` | 45 | 37 | non-object tool arguments: 3 kinds × 3 tools to each tool once with a different kind; unsafe part ids 4 to 2 |
+| `test_caching.py` | 14 | 6 | 3 conditions × 3 models to each once; the request body checked for one other model |
+| `test_tripod_plate.py` | 36 | 34 | the channel plate and the no-recess plate, each a strict subset of a test kept (the channel and the no-recess plate with a pin hole) |
+| `test_slice_estimates.py` | 32 | 29 | durations 5 to 3, unreadable ones 3 to 2 |
+| `test_spacer.py`, `test_build_submission.py` | 20, 32 | 19, 31 | a second "too wide" hole (6.5 beside 5.81); a third video extension |
+| `test_bearing_wheel.py` | 22 | 22 | none; two tests graded each design twice, now once |
+| `test_estoa_light.py` | 65 | 63 | the blind-insert and sliver tests' no-template cases: `test_inserts_behind_the_disk_need_a_template` covers no template |
+| `test_loop.py`, `test_results_table.py` and the rest | 22, 38, ... | unchanged | each test checks something different |
+
+**Sandbox tests.** `tests/conftest.py` runs each sandbox test once, in the sandbox `code_sandbox.find()` picks, which is the one a trial would use: the container where Docker runs (Dan's Mac), else bubblewrap (Linux, CI). `uv run pytest --all-sandboxes` runs them in every sandbox, as before. CI's step that asserts `find()` is bubblewrap still stops a run whose sandbox tests would skip.
+
+**Nothing lost: 54 old bugs put back.** Each grader fault in this changelog that a model's design or a review found, and a core check per task, was put back as a minimal patch to `pbe/` (`git checkout` restored it after each). For 50, the trimmed suite fails, naming the test that catches it. That includes everything the cut tests were for: area-only hex shapes, the nut at one angle, READ_AS, loose read as a failure, between-steps verdicts, every way a coupon can't rescue, the round collar, chamfer depth, the lightening cell, the raised nub (issue 15), drill-out layers on the knob and the tripod, the sleeve and the hub bore in `holes()`, sealed voids and coupon pieces, bridge strands, narrow ledges, holed roofs, Luna's channel, one bevel, pads in the thickness, R4's whole layers, the head on the camera side, the spacer's quarter-length rule and chamfers, a proud bearing, a through bore, counts as floats, the repository mounted into run_python's jail, and from #23 the blind insert pocket's bottom, a disk screw's whole shank, a nut that fits the screw, and the loop's second turn offering `assembly`.
+
+Four aren't caught, and main's untrimmed suite doesn't catch them either, so they were gaps before this change:
+- the knob's "a hole runs sideways" guard: the "walls split" guard after it also says not graded for a knob on its side. With both off, the tests fail;
+- the tripod's pick of the bolt's bore by its recess, then its narrowness: the tests have no design with two holes the bolt fits;
+- the tripod's head seat chosen as the widest end rather than the deepest: no test has a seat at each end;
+- the wheel's seat depth read in whole layers: no test sits on a layer boundary.
+
+They're written down here rather than fixed: closing them means new grader tests, not pruning.
+
+**Cache of built parts: tried, not kept.** A per-session cache of built parts, keyed on code and params, cut the knob, wheel and spacer files from 124 s to 112 s. Builds are a small share: grading the tripod reference takes 17.5 s, 12 s of it in shapely's `maximum_inscribed_circle` (`sections.clear_width`), with `bolted._bores` run three times on the same mesh (R3, R4, R5). Caching those is a grader change, outside this audit.
+
+**Scoring walk.**
+- Real limitation: unchanged. No task changed.
+- Clear task, defensible answer: unchanged.
+- Reliable grader, no false passes or fails: the regression suite keeps one test per known fault and per check, shown by putting each fault back. Weak: the 4 uncaught mutations above. The list of mutations and the test catching each is in #58.
+- Meaningful failures: unchanged.
+- Original and reproducible: the suite is faster to rerun, and `--all-sandboxes` keeps the Docker copies.
+
 ## 2026-11-07: Five can_ask trials per model on every pilot task
 
 Dan asked for 5 trials per cell across 11 models (2026-11-07), so the pilots say a little more about how much one model varies. `scripts/top_up.py` gained `--trials`, `--all-models` and `--model`; it ran one process per model side by side overnight on Dan's Mac, from f7273e7, each with a $10 cap across all of them. Grok 4.7 was left out: at about $0.47 a trial it would cost more than the other 11 together.
