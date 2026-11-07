@@ -223,8 +223,10 @@ uv run python -m pbe.eval --run my-run --task tripod-plate --model anthropic/cla
 ### Print-time and filament estimates (optional, needs Bambu Studio)
 
 ```bash
-uv run python scripts/slice_estimates.py pilot-tripod loop-estoa
+uv run python scripts/slice_estimates.py pilot-estoa loop-estoa
 ```
+
+A test-print replay such as `loop-estoa` is read arm by arm (`can_ask/feedback`, `can_ask/neutral`). Its first print is the replayed trial's design, so slice that run too, here `pilot-estoa`.
 
 It slices each saved design with Bambu's stock X1C presets, offline, and writes `slice_estimates.csv` (per trial) and `slice_estimates_parts.csv` (per part) beside each run's `summary.csv`. It changes no grade. These are slicer estimates, not timed prints.
 

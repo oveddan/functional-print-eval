@@ -320,7 +320,7 @@ def built_parts(folder: Path, sub) -> dict[str, str]:
     return {part_id: built.error for part_id, built in build_parts(sub, parts).items()}
 
 
-def jobs_for_trial(run: str, folder: Path, record: TrialRecord) -> list[PartJob]:
+def jobs_for_trial(run: str, folder: Path, record) -> list[PartJob]:
     """One job per part of the trial's saved design; none when there's no design."""
     sub_path = folder / "submission.yaml"
     if not sub_path.exists():
@@ -337,9 +337,35 @@ def jobs_for_trial(run: str, folder: Path, record: TrialRecord) -> list[PartJob]
     return jobs
 
 
+@dataclass
+class LoopArm:
+    """One arm of a test-print replay (loop.json), read as a trial so its design slices like any other. Its arm
+    joins the condition (`can_ask/feedback`), so a trial's arms stay apart. The baseline has no design of its own:
+    it's the replayed trial's, so slice that run too for the first print."""
+    task: str
+    condition: str
+    model: str
+    trial: int
+    verdict: str
+    outcome: str
+
+
+def loop_arms(run_dir: Path):
+    """(folder, LoopArm) for each arm saved in a replay run (scripts/coupon_loop.py)."""
+    from pbe.runner import coupon_loop
+    for path in sorted(run_dir.rglob(coupon_loop.FILE_NAME)):
+        record = coupon_loop.LoopRecord.load(path.parent)
+        *_, condition, _, trial = Path(record.replayed).parts
+        oks = [finding.ok for finding in record.findings if not finding.test_print]
+        verdict = "pass" if oks and all(ok is True for ok in oks) else "fail" if False in oks else "not graded"
+        yield path.parent, LoopArm(record.task, f"{condition}/{record.arm}", record.model, int(trial.lstrip("t")),
+                                   verdict, "submitted" if record.outcome in ("submitted", "saved") else record.outcome)
+
+
 def jobs_for_run(run: str) -> list[PartJob]:
+    """A run of trials (grades.json), or a test-print replay (loop.json)."""
     jobs = []
-    for folder, record in TrialRecord.all_in(RUNS / run):
+    for folder, record in list(TrialRecord.all_in(RUNS / run)) or list(loop_arms(RUNS / run)):
         jobs.extend(jobs_for_trial(run, folder, record))
     return jobs
 
