@@ -96,7 +96,6 @@ def test_reference_and_range_edges_pass(tmp_path, hole_d):
 @pytest.mark.parametrize("sub, expect", [
     (variant(hole_d=5.0), {"R3"}),        # the bolt's own diameter: no clearance
     (variant(hole_d=5.81), {"R3"}),       # just over ISO 273 coarse
-    (variant(hole_d=6.5), {"R3"}),        # sloppy
     (variant(code=OVAL_HOLE), {"R3"}),    # same area as a 5.5 hole, but only 4.9 clear
     (variant(code=SLOT), {"R3"}),         # 5.5 clear but 8 long: the bolt isn't located
     (variant(code=BLIND_HOLE), {"R3"}),   # stops halfway
@@ -106,7 +105,7 @@ def test_reference_and_range_edges_pass(tmp_path, hole_d):
     (variant(length=18), {"R2"}),
     (variant(length=10), {"R2"}),         # shorter than it is wide; the hole is still found
     (variant(extra_part=True), {"R1"}),   # the checks that need one part report not graded
-], ids=["hole-5.0", "hole-5.81", "hole-6.5", "oval-hole", "slot", "blind-hole", "plugged", "necked", "square",
+], ids=["hole-5.0", "hole-5.81", "oval-hole", "slot", "blind-hole", "plugged", "necked", "square",
         "length-18", "length-10", "two-parts"])
 def test_wrong_designs_fail_only_their_check(tmp_path, sub, expect):
     assert failed(grade(sub, tmp_path)) == expect

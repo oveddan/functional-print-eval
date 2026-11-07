@@ -173,7 +173,7 @@ It runs the six steps below in order and stops at the first one that fails. Expe
 | Step | Command | Expected | Time on the clean run |
 |---|---|---|---|
 | 1. Install | `uv sync` | Python 3.12 and the locked dependencies installed | 7 s, with a fast network |
-| 2. Tests | `uv run pytest` | all pass; the Docker versions of the sandbox tests skip where Docker isn't running | 3 min 33 s: 407 passed, 55 skipped |
+| 2. Tests | `uv run pytest` | all pass; the three Bambu Studio tests skip where it isn't installed. Sandbox tests run in the sandbox a trial would use here; `--all-sandboxes` runs them in Docker too | 509 passed, 3 skipped (Linux cloud session, `-n 4`) |
 | 3. Every reference | `uv run python -m pbe.eval --reference --task tripod-plate` (and `m5-spacer`, `bearing-wheel`, `nut-knob/M3`, `nut-knob/M5`, `nut-knob/M8`) | each task's reference design passes every check; exit code 0 | 29 s for all six |
 | 4. Regrade every saved trial, on a copy | see below | every run's `summary.csv` unchanged | 16 min 35 s for all 13 runs (151 trials) |
 | 5. Results page | `uv run python scripts/results_page.py` | `results/local/results-page/index.html`: the `can_ask` and `all_given` trials on the knob, wheel and tripod (120 on the clean run), each with its parts in 3D and every check. It leaves out the spacer and the `can_run_code` runs | 8 min 10 s, most of it rebuilding parts |

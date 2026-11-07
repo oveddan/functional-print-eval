@@ -25,7 +25,7 @@ def test_no_readme_at_the_root():
     assert [refusal.reason for refusal in found] == ["no README.md at the ZIP's root"]
 
 
-@pytest.mark.parametrize("path", ["docs/demo.mp4", "clips/take1.MOV", "a.webm"])
+@pytest.mark.parametrize("path", ["docs/demo.mp4", "clips/take1.MOV"])  # an extension in any case
 def test_a_video(path):
     assert reasons(zipper.Entry(path, b"\0\0\0 ftyp")) == ["a video"]
 

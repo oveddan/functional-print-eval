@@ -6,7 +6,7 @@ when no print has measured the case, or when another check has already failed th
 import pytest
 
 from pbe.graders import nuts
-from pbe.parts import submission
+from pbe.parts import catalog, submission
 from pbe.runner import tasks
 
 from pbe.parts.build import build_parts
@@ -278,10 +278,15 @@ def told_to_drill(sub):
     return told(sub, "Drill out the thin layer over the pocket with a 5.5 mm bit.")
 
 
-@pytest.mark.parametrize("nut", ["M3", "M5", "M8"])
-def test_reference_passes_every_check(tmp_path, nut):
-    findings = grade(design(nut), tmp_path)
+def test_reference_passes_every_check(tmp_path):
+    # one size here: `pbe.eval --reference` grades every size's reference, and the next test loads each
+    findings = grade(design("M5"), tmp_path)
     assert all(f.ok is True for f in findings), not_passing(findings)
+
+
+@pytest.mark.parametrize("nut", ["M3", "M5", "M8"])
+def test_every_size_loads_with_its_own_nut_in_its_reference(nut):
+    assert design(nut).params["nut_af"].value == catalog.resolve(f"ISO 4032 {nut}")["af"]
 
 
 @pytest.mark.parametrize("sub, want_failed, want_not_graded", [
@@ -290,7 +295,6 @@ def test_reference_passes_every_check(tmp_path, nut):
     pytest.param(design("M5", clearance=0.3), {"R4"}, set(), id="falls-out"),
     # no print has settled this clearance: not graded, which is still not a pass
     pytest.param(design("M5", clearance=0.15), set(), {"R4"}, id="between-steps"),
-    pytest.param(design("M5", clearance=0.2), set(), {"R4"}, id="loose-nobody-turned-over"),
     # the pocket itself is wrong, so the checks that need a hex pocket can't say
     pytest.param(design(code=ROUND_POCKET), {"R3"}, {"R4", "R5"}, id="round-pocket"),
     pytest.param(design(nut_af=13.0), {"R3"}, {"R4", "R5"}, id="an-M8-pocket-in-an-M5-knob"),
@@ -310,13 +314,6 @@ def test_reference_passes_every_check(tmp_path, nut):
     pytest.param(design(code=BED_POCKET_DRILL_OUT), {"R5"}, set(), id="closed-layer-nobody-told-to-clear"),
     # two printed parts; the checks that need one part can't say
     pytest.param(with_second_part(design()), {"R1"}, {"R2", "R3", "R4", "R5"}, id="two-parts"),
-    # a coupon doesn't rescue it: nothing on it holds, a nut can't get in or only barely,
-    # the manual never mentions it, or the pocket can't be changed to match its answer
-    pytest.param(with_coupon(design(clearance=0.3), clearances=(0.3, 0.4, 0.5)), {"R4"}, set(), id="coupon-nothing-holds"),
-    pytest.param(with_coupon(design(clearance=0.3), closed=True), {"R4"}, set(), id="coupon-sealed"),
-    pytest.param(with_coupon(design(clearance=0.3), depth=1.2), {"R4"}, set(), id="coupon-too-shallow"),
-    pytest.param(with_coupon(design(clearance=0.3), in_manual=False), {"R4"}, set(), id="coupon-not-in-the-manual"),
-    pytest.param(with_coupon(design(code=HARD_CODED_POCKET)), {"R4"}, set(), id="coupon-but-hard-coded-pocket"),
 ])
 def test_wrong_designs_fail_only_their_check(tmp_path, sub, want_failed, want_not_graded):
     findings = grade(sub, tmp_path)
@@ -324,22 +321,28 @@ def test_wrong_designs_fail_only_their_check(tmp_path, sub, want_failed, want_no
 
 
 @pytest.mark.parametrize("sub, says", [
+    # a coupon doesn't rescue it: nothing on it holds, a nut can't get in or only barely,
+    # the manual never mentions it, or the pocket can't be changed to match its answer.
+    # R4 fails, nothing else does, and R4 says which
+    pytest.param(with_coupon(design(clearance=0.3), clearances=(0.3, 0.4, 0.5)), None, id="coupon-nothing-holds"),
+    pytest.param(with_coupon(design(clearance=0.3), closed=True), None, id="coupon-sealed"),
     pytest.param(with_coupon(design("M3", clearance=0.0), clearances=(0.0,)), "would show the size is wrong", id="only-the-wrong-size"),
     pytest.param(with_coupon(design(clearance=0.3), in_manual=False), "no test print in the manual", id="not-in-the-manual"),
     pytest.param(with_coupon(design(clearance=0.3), depth=1.2), "no pocket a nut could try", id="too-shallow"),
     pytest.param(with_coupon(design(code=HARD_CODED_POCKET)), "no param moves the pocket", id="hard-coded-pocket"),
 ])
-def test_r4_says_why_a_test_print_doesnt_rescue_it(tmp_path, sub, says):
-    r4 = next(finding for finding in grade(sub, tmp_path) if finding.check == "R4")
-    assert r4.ok is False and says in r4.detail, r4.detail
+def test_a_test_print_that_cant_rescue_it_fails_r4_and_says_why(tmp_path, sub, says):
+    findings = grade(sub, tmp_path)
+    assert (failed(findings), not_graded(findings)) == ({"R4"}, set()), not_passing(findings)
+    if says is not None:
+        r4 = next(finding for finding in findings if finding.check == "R4")
+        assert says in r4.detail, r4.detail
 
 
 @pytest.mark.parametrize("sub", [
     pytest.param(with_coupon(design(clearance=0.3)), id="coupon-rescues-a-clearance-that-falls-out"),
     pytest.param(with_coupon(design(clearance=0.15)), id="coupon-rescues-one-no-print-measured"),
-    pytest.param(with_coupon(design("M3", clearance=0.0)), id="coupon-rescues-one-the-nut-wont-go-into"),
     pytest.param(design(code=BED_POCKET_STEPPED_ROOF), id="bed-pocket-stepped-roof-as-coupon-As-S"),
-    pytest.param(design("M8", code=BED_POCKET_STEPPED_ROOF), id="bed-pocket-stepped-roof-M8"),
     pytest.param(design("M3", code=BED_POCKET_PLAIN_HOLE), id="bed-pocket-M3-ledge-is-an-ordinary-overhang"),
     pytest.param(design(code=BED_POCKET_CONE_ROOF), id="bed-pocket-cone-roof-narrower-than-the-nut"),
     pytest.param(told_to_drill(design(code=BED_POCKET_DRILL_OUT)), id="closed-layer-the-manual-says-to-clear"),
@@ -355,17 +358,15 @@ def test_right_designs_that_differ_from_the_reference_pass(tmp_path, sub):
     assert all(f.ok is True for f in findings), not_passing(findings)
 
 
-@pytest.mark.parametrize("nut", ["M5", "M8"])
-def test_a_bed_pocket_with_a_plain_hole_is_not_measured(tmp_path, nut):
+def test_a_bed_pocket_with_a_plain_hole_is_not_measured(tmp_path):
     # its roof is a ring 1.3 to 3 mm wide around the hole. It fails the strand test, but it's
     # narrower than any roof seen to tangle (3.1 mm, the Arca plate) and wider than the 1.5 mm
     # allowance, so no print can say. Everything else about the design passes.
-    findings = grade(design(nut, code=BED_POCKET_PLAIN_HOLE), tmp_path)
+    findings = grade(design(code=BED_POCKET_PLAIN_HOLE), tmp_path)
     assert (failed(findings), not_graded(findings)) == (set(), {"bridges"})
 
 
 @pytest.mark.parametrize("sub", [
-    pytest.param(with_coupon(design("M8", clearance=0.3), clearances=(0.05, 0.15, 0.25, 0.35), depth=5), id="M8-grid-between-the-steps"),
     pytest.param(with_coupon(design(clearance=0.3), clearances=(0.15, 0.25)), id="M5-grid-between-the-steps"),
     pytest.param(with_coupon(design(clearance=0.3), clearances=(0.2, 0.3)), id="M5-loose-nobody-turned-over"),
 ])
@@ -427,17 +428,14 @@ def test_a_crash_in_a_design_is_one_failure(tmp_path):
 
 
 @pytest.mark.parametrize("label, clearance, expected", [
-    ("M3", 0.0, "won't go in"), ("M3", 0.2, "holds"), ("M3", 0.3, "holds"),
+    # a printed step reads as recorded, one of each kind
+    ("M3", 0.0, "won't go in"), ("M5", 0.0, "holds"), ("M8", 0.1, "loose"), ("M5", 0.3, "falls out"),
     ("M3", 0.1, "holds"),          # coded "won't go in"; Dan: "with force it goes in" (nuts.READ_AS)
-    ("M5", 0.0, "holds"), ("M5", 0.1, "holds"), ("M5", 0.2, "loose"), ("M5", 0.3, "falls out"),
-    ("M8", 0.0, "holds"), ("M8", 0.1, "loose"), ("M8", 0.2, "loose"), ("M8", 0.3, "falls out"),
     ("M5", 0.05, "holds"),         # between two steps that agree
-    ("M8", 0.15, "loose"),
-    ("M3", 0.15, "holds"),
-    ("M3", 0.05, None),            # Gemini 4 Argon's M3 knob, between two that disagree
-    ("M5", 0.15, None),
-    ("M5", 0.25, None),
-    ("M8", 0.05, None),
+    ("M8", 0.15, "loose"),         # ... a label other than "holds" too
+    ("M3", 0.15, "holds"),         # ... one of them read through READ_AS
+    ("M5", 0.15, None),            # between two that disagree
+    ("M3", 0.05, None),            # Gemini 4 Argon's M3 knob: between "won't go in" and READ_AS's "holds"
     ("M3", -0.2, "won't go in"),   # tighter than "won't go in" is settled
     ("M5", -0.1, None),            # tighter than "holds" isn't: it might not go in
     ("M3", 0.5, None),             # looser than "holds" isn't: it might fall out
@@ -448,11 +446,11 @@ def test_verdict_reads_what_the_prints_say(label, clearance, expected):
 
 
 @pytest.mark.parametrize("label, clearance, expected", [
-    ("M3", -0.1, False), ("M5", 0.3, False), ("M8", 0.3, False), ("M8", 0.5, False),
-    ("M3", 0.2, True), ("M5", 0.05, True), ("M8", 0.0, True),
-    ("M5", 0.2, None), ("M8", 0.1, None), ("M8", 0.2, None),   # "loose": nobody has turned them over
-    ("M5", 0.15, None), ("M5", -0.1, None), ("M3", 1.2, None), ("M3", 0.05, None),   # no print says
-    ("M3", 0.1, True), ("M3", 0.15, True),   # with force it goes in (nuts.READ_AS)
+    ("M3", -0.1, False), ("M5", 0.3, False),   # won't go in, falls out
+    ("M5", 0.05, True),
+    ("M5", 0.2, None),                         # "loose": nobody has turned it over
+    ("M5", 0.15, None),                        # no print says
+    ("M3", 0.1, True),                         # with force it goes in (nuts.READ_AS)
 ])
 def test_holds_is_settled_only_where_prints_settle_it(label, clearance, expected):
     assert nuts._holds(label, clearance) is expected

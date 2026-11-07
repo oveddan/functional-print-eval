@@ -102,12 +102,13 @@ def test_nominal_seat_fails_fit_only(tmp_path):
 
 def test_a_seat_at_the_edges_of_what_held_passes(tmp_path):
     for d in (22.1, 22.3):
-        assert not failed(grade(design(seat=d), tmp_path)) and not not_graded(grade(design(seat=d), tmp_path))
+        findings = grade(design(seat=d), tmp_path / str(d))
+        assert not failed(findings) and not not_graded(findings), not_passing(findings)
 
 
 def test_a_seat_nobody_printed_isnt_graded(tmp_path):
     for d in (22.05, 22.5):
-        findings = grade(design(seat=d), tmp_path)
+        findings = grade(design(seat=d), tmp_path / str(d))
         assert not failed(findings) and not_graded(findings) == {"R3"}
 
 

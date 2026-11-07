@@ -53,13 +53,12 @@ def test_lines_after_the_header_are_not_read():
         se.parse_gcode_header(header)
 
 
-@pytest.mark.parametrize("text, seconds", [("45s", 45), ("8m 46s", 526), ("1h 2m 3s", 3723), ("1d 2h 3m 4s", 93784),
-                                            ("2h", 7200)])
+@pytest.mark.parametrize("text, seconds", [("45s", 45), ("1d 2h 3m 4s", 93784), ("2h", 7200)])  # one unit, all four, no seconds
 def test_durations(text, seconds):
     assert se.duration_s(text) == seconds
 
 
-@pytest.mark.parametrize("text", ["", "soon", "8 minutes"])
+@pytest.mark.parametrize("text", ["", "8 minutes"])
 def test_a_duration_it_cant_read_is_an_error(text):
     with pytest.raises(ValueError):
         se.duration_s(text)

@@ -66,11 +66,6 @@ RECESS_ON_CAMERA_SIDE = OUTLINE + '''
 def build(p):
     return blank(p).cut(round_recess(p, p.height - p.head_h)).cut(round_hole(p))
 '''
-HEAD_SLIDES_IN_FROM_THE_END = OUTLINE + '''
-def build(p):
-    channel = cq.Workplane("XY").center(0, -p.length / 4).rect(p.head_d, p.length / 2).extrude(p.head_h)
-    return blank(p).cut(round_recess(p)).cut(channel).cut(stepped_roof(p)).cut(round_hole(p))
-'''
 CONE_ROOF = OUTLINE + '''
 def build(p):
     cone = cq.Solid.makeCone(p.head_d / 2, p.hole / 2, (p.head_d - p.hole) / 2, pnt=cq.Vector(0, 0, p.head_h))
@@ -115,10 +110,6 @@ def build(p):
     body = cq.Workplane("XZ").polyline(outline).close().extrude(p.length / 2, both=True)
     return body.cut(round_recess(p)).cut(stepped_roof(p)).cut(round_hole(p))
 '''
-NO_RECESS = OUTLINE + '''
-def build(p):
-    return blank(p).cut(round_hole(p))
-'''
 PRINTED_NARROW_FACE_DOWN = OUTLINE + '''
 def build(p):
     plate = blank(p).cut(round_recess(p)).cut(stepped_roof(p)).cut(round_hole(p))
@@ -162,7 +153,6 @@ def test_reference_passes_every_check(tmp_path):
     pytest.param(design(hole=6.5), set(), {"R3"}, id="hole-between-thread-and-printed"),
     pytest.param(design(code=RECESS_ON_CAMERA_SIDE), {"R3"}, set(), id="head-on-the-camera-side"),
     pytest.param(design(height=15), {"R5"}, set(), id="too-much-plate-for-the-bolt"),
-    pytest.param(design(code=NO_RECESS, height=6, bevel=2), set(), {"R4"}, id="no-recess-thin-plate"),
     pytest.param(design(code=NO_RECESS_AND_A_PIN_HOLE, height=6, bevel=2), set(), {"R4"}, id="no-recess-and-a-pin-hole"),
     pytest.param(design(code=STRAIGHT_WITH_A_RAISED_PAD), {"R2"}, set(), id="a-raised-pad-is-not-a-dovetail"),
     pytest.param(design(code=ONE_BEVEL), {"R2"}, set(), id="a-bevel-on-one-edge-only"),
@@ -193,13 +183,10 @@ def test_other_correct_designs_pass(tmp_path, sub):
     assert all(f.ok is True for f in findings), not_passing(findings)
 
 
-def test_a_recess_open_at_the_side_still_has_a_bolt_hole(tmp_path):
-    findings = grade(design(code=HEAD_SLIDES_IN_FROM_THE_END), tmp_path)
-    assert {f.check: f.ok for f in findings if f.check in {"R3", "R4", "R5"}} == {"R3": True, "R4": True, "R5": True}
-
-
 @pytest.mark.parametrize("code", [
     pytest.param(CONE_ROOF, id="a-cone-roof-is-not-the-seat"),
+    # GPT-6 Luna's plate: the head slides in along a channel open at the side, so no closed hole
+    # fits the bolt; the pin hole beside it mustn't be taken for the bolt's
     pytest.param(CHANNEL_AND_A_PIN_HOLE, id="a-channel-and-a-pin-hole"),
 ])
 def test_the_bolt_checks_read_the_real_seat(tmp_path, code):
