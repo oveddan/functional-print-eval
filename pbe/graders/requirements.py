@@ -8,7 +8,7 @@ so one mistake counts once in the failures by class.
 import numpy as np
 from shapely.geometry import Polygon
 
-from pbe.graders import bolted, enclosure, nuts, servo, wheel
+from pbe.graders import bolted, combined, enclosure, nuts, servo, wheel
 from pbe.graders.checks import Finding
 from pbe.graders.sections import clear_width, diameter, hole_axis, holes_by_layer, section, single_final
 
@@ -124,6 +124,13 @@ GRADERS = {
     "servo.cutout": servo.cutout,
     "servo.screws": servo.screws,
     "servo.flush": servo.flush,
+    "combined.bolt_through_nut": combined.bolt_through_nut,
+    "combined.handle_pocket": combined.handle_pocket,
+    "combined.handle_nut_fit": combined.handle_nut_fit,
+    "combined.handle_bolt": combined.handle_bolt,
+    "combined.bearing_room": combined.bearing_room,
+    "combined.bearing_fit": combined.bearing_fit,
+    "combined.bearing_bolt": combined.bearing_bolt,
     "dims.part_count": part_count,
     "dims.extents": extents,
     "dims.round_outline": round_outline,

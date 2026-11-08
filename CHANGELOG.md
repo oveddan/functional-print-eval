@@ -496,6 +496,92 @@ Scoring walk (`docs/scoring.md` and section 5 of the eval design guide):
 - Human expertise and review: Claude found and fixed it; Dan approved making it a follow-on PR.
 - Insight: a check that reads shapes needs a test for the smallest version of each feature it means to catch.
 
+## 2026-11-05: Game spinner request reworded to leave the hardware to the model; three first-look faults fixed in the spinner's own files (issue 41)
+
+Dan's review of the request: it specified too much, so the model should choose the bolts. He also chose to name only parts that have test prints. The new request states the problem (spin smoothly, a handle that comes off, can't reach behind once it's on the board, nothing falls out upside down, no glue) and what the person has: "some skateboard bearings, and M3, M5 and M8 bolts and nuts in a few lengths". Those are the 608 (round 2) and the three metric nuts coupon B printed. The model picks whether to use a bearing, which nut and bolt, and the lengths. The system prompt is unchanged (`tests/test_existing_prompts.py`).
+
+Checks (`pbe/graders/combined.py`, still only existing readers):
+- R6 to R8 read which ISO 4032 nut the design lists. If it lists more than one recorded size, they grade the one the wheel has a pocket for (the reference also lists M8 nuts for the axle). Then they grade the pocket against that nut's row of coupon B, and the bolt hole against that bolt's ISO 273 fine hole (3.2, 5.3, 8.4 mm, as in the knob). Any other nut, a lock nut or an insert comes back not graded.
+- R3 to R5 are not graded if the design uses no 608.
+- R3: a seat shallower than its bearing is not graded instead of failed (first look: Opus 5.5 stood its bearing 1 mm proud on purpose). A part with no seat at all still fails.
+- R5: with no seat found, R5 is not graded, so `wheel.bolt_passes` no longer reads the handle's hole as the bearing's bore. That was half of Gemini 4 Argon's false fails. The other half, its seat hidden by a tall boss, and Sonnet 5.5's small crush ribs are in the shared wheel reader and are not fixed here.
+- `hidden_facts.yaml` records only the bearing, as the knob records nothing. In the first look, "board and M8 axle mounting: board thickness" got the M8 bolt's size, through the bolt's `m8` alias; now it gets "I can't measure that".
+
+Evidence: `tests/test_game_spinner.py`, 50 passed. New cases: each of M3, M5 and M8 graded against its own coupon B row (M3 +0.0 fails, +0.1 not graded, +0.2 passes; M8 +0.0 passes, +0.1 not graded, +0.3 fails), an M4 nut and a lock nut not graded, two nuts listed, no nut and no bearing, a 1 mm proud bearing, no seat at all, and GPT-6.1 Sol's two board questions. The reference passes all 12 checks. No saved trial changes: the first look's trials stay as graded, under the first wording.
+
+Run on the new wording (after Dan raised the key's limit): one `can_ask` trial each for Opus 5.5, GPT-6.1 Sol, Gemini 4 Argon and Sonnet 5.5, $1.05, in `results/first-look/game-spinner-2/`. Every model chose the 608, an M5 nut for the handle and an M8 bolt and nuts for the axle, and each held the nut a different way. The checks first failed all four. Reading each design found three more gaps, fixed in `combined.py` with a test each, and the trials were regraded (`--regrade --runs-dir results/first-look`):
+- **Opus 5.5** sealed the nut in a closed pocket by pausing the print, with the handle's hole stopping above a solid floor. `nut.pocket` failed the closed pocket, `nut.fit` judged +0.3 against press fits, and `nut.bolt_passes` wanted a hole right through. Now, when the manual says to pause the print, R6 and R7 are not graded (no test print covers printing over a nut), and R8 asks only that the bolt reach the nut from one face, which it does. Verdict: fail, now not graded.
+- **GPT-6.1 Sol** held both the bearing and the nut with slotted snap fingers. The slots open the seat into the gap round it, so `wheel._seats` found no seat and R3 failed "room for 0". Now a seat-sized hole the reader can't follow through the part is not graded, which also covers the first look's tall boss. Verdict: fail, now not graded.
+- **Gemini 4 Argon** slid the nut in from the rim through a slot, and held the bearing under snap tabs. The slot's roof has the handle's hole through it and reaches 4.1 mm from its walls, so `bridges` fails it, on the holed-roof rule (Dan, 2026-11-03). The fit checks are not graded. Verdict: fail.
+- **Sonnet 5.5** crashed (`NameError: name 'p' is not defined`) and printed the handle as a second part, where the request asks for one piece. Verdict: fail.
+- The reasons R6 to R8 give when no pocket can be read now say so, instead of "no single pocket shows which the handle uses".
+- Codex's review of PR 44 found three more gaps, each fixed with a test that fails before the fix: a seat slotted open to the rim through its whole depth now reads as a seat (the notches in each layer's outline count), so it's not graded rather than failed as missing; an M8 axle nut listed beside an unrecorded handle nut (an M4, a lock nut) is no longer graded as the handle's when the wheel has no pocket for it; and a sealed nut gets `nut.bolt_passes`'s allowance for a drill-out layer the manual says to clear. A regrade of the second run changes nothing.
+- R3 to R5 now grade a seat-sized hole even when the 608 isn't on the hardware list. Opus 5.5 and Sonnet 5.5 left it off on the first look, where the request said the person had it, and the checks had skipped their seats. A regrade of the second run changes nothing: all four listed it.
+
+What the models did: all four asked the person to measure the bearing; all four were told "I can't measure that" about the board; none drew the catalog's 22.0 seat; three of four held the nut with something no test print covers (a print pause, snap fingers, a side slot), and the fourth, Sonnet, set its pocket at +0.3, where nuts fell out on the tripod build, though its wheel never built. So on this wording most of what models do falls outside the records: the eval can say little about the fits, and that is its limit, not the models'.
+
+Evidence: `tests/test_game_spinner.py`, 53 passed, including a sealed nut with and without the pause in the manual and the tall boss. The reference passes all 12 checks.
+
+Rubric walk (section 5 of the eval design guide), what changed:
+- Real-world relevance: the request now reads as a person describing a problem, not a parts list. Weak: still synthetic, and its final words aren't approved.
+- Task design: a model's hardware choice is part of the task now, and the brief's table lists the limits for each nut. Weak: bolt length isn't graded.
+- Grader reliability: the shallow-seat stretch, the lookup alias and the handle-hole misread are fixed. Weak: two known reader faults remain in the shared wheel reader.
+- Evidence of model limitations: none on this wording yet.
+- Reproducibility: unchanged; the run command is on issue 41.
+- Human expertise and review: Dan reviewed the request and chose to restrict it to parts with test prints.
+- Insight: none new until it runs.
+
+## 2026-11-05: First look at the game spinner: 4 trials, and 3 grader faults found by reading them (issue 41)
+
+At the user's request, one `can_ask` trial each for Opus 5.5, GPT-6.1 Sol, Gemini 4 Argon and Sonnet 5.5, $0.71 in all, saved in `results/first-look/game-spinner/` (outside `results/runs/`, so the README's totals and its check don't count it). The request is still Claude's unapproved draft. The checks say all four fail. Reading each design (`pbe/graders/wheel.py`'s own readers, run on the saved parts) shows only one fail rests on a record:
+
+- **Opus 5.5, R3 fail: a grader stretch.** It drew a 22.1 mm seat 6 mm deep, so the bearing stands 1 mm proud as a spacer off the board, on purpose. `wheel.room` reads under 6.4 mm as room for no bearing, but no test print tried a shallower seat, so this should be not graded. Its test print has 22.0, 22.1 and 22.2 seats.
+- **Sonnet 5.5, R4 fail at 21.80 mm: a reader fault.** Its 22.2 mm seat has six 0.2 mm crush ribs. `wheel._is_round` calls a hole plain if its area is within 6% of its clear circle's, and these ribs leave 3.4%, so the rib circle was graded as a plain 21.8 mm seat. Should be not graded (ribs). The nut pocket's ribs were caught.
+- **Gemini 4 Argon, R3 and R5 fail: a reader fault.** A 20 mm boss round the handle makes the part 20 mm tall while the wheel is 8.2 mm, so no hole runs the part's full height at the bearing and `wheel._bore_stacks` finds no seat. The bolt check then reads the M5 hole (5.3 mm) as the bore. The seat is there: 22.12 mm with 0.12 mm ribs, 7 mm deep, over an 18.5 mm lip. Should be not graded (ribs).
+- **GPT-6.1 Sol, R4 fail at 21.94 mm: rests on round 2.** Its seat is 21.95 mm, under the 22.0 that wouldn't take the bearing. Its test print has 21.85, 21.95 and 22.05, and `wheel.fit` fails it because none is in 22.1 to 22.3. But 22.05 is unsettled, and `nut.fit` would call the same case not graded.
+- **The person's lookup:** asked for the board's thickness, it answered with the M8 bolt's size twice (GPT), because `bolt`'s alias `m8` matches "M8 axle", and `nut` matches "bolt and nut". No model was told the board's thickness either way.
+
+What the models did: none drew the catalog's 22.0 mm seat; three of four asked for the bearing's size; all four included a test print with both fits on it; three used crush ribs, which no record covers.
+
+None of these faults is fixed yet, and no verdict is changed. They show the synthesis is less safe than intended: two existing readers misread shapes the bearing wheel's models never drew.
+
+## 2026-11-04: A synthesized task, the game spinner, from the 608 seat and M5 pocket records (issue 41)
+
+`tasks/game-spinner/`: one printed part combining a recorded 608 seat (round 2) and a recorded M5 nut pocket (coupon B), testing whether failures carry over to a part nobody has built. No new print or measurement, and no model was called. The request is Claude's draft and Dan hasn't approved it; results from it are a first look, outside the headline numbers.
+
+- **The part.** Issue 41 suggested a spool holder hub. On a hub that turns on its bearing, a single M5 nut has no job, so the part became a 70 mm game spinner: a 608 at its middle turns on an M8 bolt, and an M5 handle bolt near its edge screws into a nut held at the back. Both fits can open on the face that prints on top, as they were cut on their coupons, and they sit far apart. `brief.md` explains the choice. The folder is named for the part, not `spool-holder` as the issue first wrote.
+- **Checks.** Eight requirements, all existing graders on the limits the bearing wheel and M5 knob already use, but one: `combined.bolt_through_nut` (`pbe/graders/combined.py`) runs `nut.bolt_passes` at 5.3 and at 5.0 mm. A handle hole between the two is not graded, as `wheel.bolt_passes` treats 8.0 to 8.4 mm for the M8, instead of failed as the knob's single 5.3 mm threshold would. It adds no geometry. Registering it in `requirements.GRADERS` is the only change to shared code.
+- **Assumptions stated, not checked:** the two fits don't affect each other; walls thinner than the coupons' don't change a fit (coupon B's M5 pockets that held had at least 12.6 mm; the reference leaves 7.2 and 7.3 mm); a bolt hole under the nut doesn't change its fit.
+- CI runs `tests/test_game_spinner.py` as its own job, and the reference loop includes `game-spinner`. `scripts/top_up.py` and the headline lineup are unchanged.
+
+Evidence (Linux cloud session):
+- `--reference --task game-spinner`: all 12 checks pass. Every existing reference still passes (m5-spacer, tripod-plate, bearing-wheel, nut-knob M3, M5, M8).
+- `tests/test_game_spinner.py`, 38 passed. The catalog's 22.0 mm seat fails R4 only, a +0.3 pocket R7 only, and each other mistake only its own check. Four reward hacks fail: an oversized pocket, sizes labelled measured but drawn wrong, a test print the manual never mentions, and a hard-coded pocket. Nine correct designs unlike the reference pass, among them a seat at the bed under a cone roof, a drill-out layer the manual says to clear, and one test print that rescues both fits. Ten cases between records come back not graded, and nothing else: seats at 22.05 and 22.5 mm, a ribbed seat, pockets at +0.2 and -0.05, an 8.2 mm M8 bore, a 5.15 mm handle hole, a bearing 0.4 mm proud, no shoulder, and a plain pocket opening at the bed. Two tests read the limits from `round2-coupons.yaml` and the knob's requirements, so they can't drift from the records.
+- `tests/test_existing_prompts.py`: every existing task's opening messages and tools, in all three conditions, hash to the digests taken on `claude/caching-pilot` at `11489b7` before the task existed, and still do at `9e15468`. phone-stand is left out because its hidden facts don't load on the base branch.
+- A regrade of all 153 saved trials that keep a `grades.json` (base at `f745eba`, after the issue-34 top-up; `9e15468` changes no saved trial), on two copies of `results/runs/` (one with the base code, one with this branch), gives identical `grades.json` findings, observations and verdicts in all 153. No `ok`, `all_pass` or `declined` differs from the saved files. Both rewrite `bridges` detail text in the same 9 trials, from Linux's CAD kernel vs the Mac's, as noted in earlier entries. Nothing under `results/` changed.
+
+Scoring walk (`docs/scoring.md`):
+- Targets a real limitation: C2 fits that can't be looked up, and C6 print orientation, both from real builds. The part itself is synthetic, and nobody has built it.
+- Clear task, defensible standard: every limit is a record's or the request's, and a case between records is not graded.
+- Reliable grader: the reference passes, each mistake fails only its own check, and the reward hacks fail. The blind spots are listed in the brief.
+- Failures you can explain: each verdict names its record, e.g. "21.99 mm: a 22.0 mm seat wouldn't take the bearing".
+- Original and reproducible: every check is code, and one command runs it. No results yet.
+- Problem and user value: a person at home with a bearing, a nut and a reason they can't reach the back. Dan hasn't judged the wording.
+- Solution and engineering: existing readers do the work. The one new grader composes two calls to an existing one.
+- End-to-end quality: the request through to graded checks. No print, by the rule against new prints.
+- Measured improvement: nothing to compare with until Dan runs it.
+- Reproducibility: no key is needed for the tests or the reference, and the run command is on issue 41.
+- Insight: whether failures seen on the wheel and the knob carry over to a part combining both. Unknown until it runs.
+
+Rubric walk (section 5 of the eval design guide, "Find what AI can't do yet"):
+- Real-world relevance: fits that can't be looked up and print orientation are real failures from Dan's builds. Weak: the part is synthetic and the request is Claude's, not yet approved.
+- Task design: every check, its record and its fail, pass and not-graded limits are in the brief's table, so two readers should reach the same verdict. Weak: the request doesn't say which face is the front, so the nut pulling out isn't graded.
+- Grader reliability: tested on the reference, 11 wrong designs, 4 reward hacks, 9 other correct designs and 10 cases between records; no LLM judge. Weak: verdicts assume the two fits don't interact and that walls thinner than the coupons' don't change a fit.
+- Evidence of model limitations: none yet. No model has run it.
+- Reproducibility: the tests and the reference need no key, and the run command and its estimated cost are on issue 41. Weak: `scripts/reproduce.sh` and the README, owned by another session, don't list it yet.
+- Human expertise and review: the limits are Dan's recorded test prints. Weak: Claude wrote the part, request, checks and tests, and Dan hasn't reviewed them.
+- Insight: none yet; it needs runs.
+
 ## 2026-11-04: The lineup at 3 runs on the `can_ask` pilot tasks, and the first `can_run_code` trials (issue 34)
 
 Pilot data: one to three trials per model, task and condition. The code these runs used merged as #39. No check, task wording, prompt or saved trial changes.

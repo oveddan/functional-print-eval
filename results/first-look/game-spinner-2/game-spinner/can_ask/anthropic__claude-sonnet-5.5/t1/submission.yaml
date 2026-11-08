@@ -1,0 +1,469 @@
+task: game-spinner
+note: The wheel is one printed piece. The removable handle is a small second printed
+  knob, held on by an M5 screw that threads into an M5 nut trapped under the wheel.
+  If you wanted the handle to be only the screw, say so. Board thickness couldn't
+  be measured, so the M8 bolt length is picked by the rule in the manual. I assumed
+  you can reach behind the board before the wheel goes on, to fit the bolt and its
+  first nut. I haven't added a pointer or sections to the wheel, so stick paper on
+  it or ask me. The 608 press fit should be checked with the coupon before printing
+  the wheel.
+questions:
+- text: What is the thickness of the board where the spinner mounts, and is there
+    already a hole?
+  answer: Could not be measured. Board thickness assumed 6 mm for the model; the manual
+    gives a rule for choosing the M8 bolt length.
+params:
+  wheel_d:
+    value: 70
+    unit: mm
+    kind: design
+    source: asked
+    note: wheel about 70 mm across
+  disc_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hub_d:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 skateboard bearing; user re-measured about 22; matches 608 nominal 22.000
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about 8 mm
+  bearing_w:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about 7 mm
+  fit_offset:
+    value: 0.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'added to pocket diameter. 0 = nominal 22.0, which should print slightly
+      tight (press fit). Tune with the fit coupon: +0.1 if too tight, -0.1 if loose'
+  lower_relief:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter in the entry zone below the press zone so the bearing slides
+      in freely first
+  lip_t:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_hole_d:
+    value: 17.0
+    unit: mm
+    kind: design
+    source: design
+    note: larger than the M8 nut corners (about 14.4) and than the inner race, so
+      only the outer race touches the lip
+  m8_nut_h:
+    value: 6.8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M8 lower nut, lifts bearing off the board
+  m8_lock_h:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M8 top nut
+  m8_nut_af:
+    value: 13.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  board_gap:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: gap from wheel underside to board
+  board_t:
+    value: 6.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: user could not measure board thickness. Only affects M8 bolt length; manual
+      tells the user how to choose
+  handle_r:
+    value: 27.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  m5_hole_d:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 clearance hole
+  m5_nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m5_nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m5_nut_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: added to nut across-flats for the hex pocket
+  nut_pocket_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: pocket depth beyond nut height
+  m5_len:
+    value: 20
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5x20 handle screw
+  m5_head_d:
+    value: 8.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m5_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  cb_clear:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: counterbore diameter clearance over screw head
+  cb_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: counterbore depth beyond head height
+  knob_d:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "import math\nbz0 = p.m8_nut_h - p.board_gap\nhub_h = bz0 + p.bearing_w +\
+    \ p.lip_t\nbody = cq.Workplane('XY').circle(p.wheel_d/2).extrude(p.disc_t)\nbody\
+    \ = body.union(cq.Workplane('XY').circle(p.hub_d/2).extrude(hub_h))\nrelief =\
+    \ cq.Workplane('XY').circle((p.bearing_od+p.lower_relief)/2).extrude(bz0)\npress\
+    \ = cq.Workplane('XY').workplane(offset=bz0).circle((p.bearing_od+p.fit_offset)/2).extrude(p.bearing_w)\n\
+    lip = cq.Workplane('XY').workplane(offset=bz0+p.bearing_w).circle(p.lip_hole_d/2).extrude(p.lip_t+1)\n\
+    body = body.cut(relief).cut(press).cut(lip)\npocket_depth = p.m5_nut_h + p.nut_pocket_extra\n\
+    hexd = (p.m5_nut_af + p.m5_nut_clear)/math.cos(math.pi/6)\nbody = body.cut(cq.Workplane('XY').center(p.handle_r,0).polygon(6,hexd).extrude(pocket_depth))\n\
+    body = body.cut(cq.Workplane('XY').center(p.handle_r,0).circle(p.m5_hole_d/2).extrude(p.disc_t+1))\n\
+    result = body\ndef build_result():\n    return result\nreturn_value = result\n\
+    \ndef build(p):\n    return result\n"
+  print_orientation: underside (the face that faces the board) on the bed, z=0; bearing
+    pocket and nut pocket open downward
+  use_orientation: flat on the board, hub up, spinning about the vertical M8 stud
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    cb_d = p.m5_head_d + p.cb_clear\n    cb = p.m5_head_h\
+    \ + p.cb_extra\n    knob_h = p.m5_len - p.disc_t + cb\n    k = cq.Workplane('XY').circle(p.knob_d/2).extrude(knob_h)\n\
+    \    k = k.faces('>Z').edges().fillet(1.0)\n    k = k.cut(cq.Workplane('XY').circle(p.m5_hole_d/2).extrude(knob_h))\n\
+    \    k = k.cut(cq.Workplane('XY').workplane(offset=knob_h-cb).circle(cb_d/2).extrude(cb))\n\
+    \    return k\n"
+  print_orientation: flat bottom face on the bed, screw-head counterbore facing up
+  use_orientation: standing on top of the wheel at the handle position; removable
+- id: fit-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    bz0 = p.m8_nut_h - p.board_gap\n    hub_h\
+    \ = bz0 + p.bearing_w + p.lip_t\n    body = cq.Workplane('XY').circle(p.hub_d/2).extrude(hub_h)\n\
+    \    blk = cq.Workplane('XY').center(23,0).rect(16,14).extrude(p.disc_t)\n   \
+    \ body = body.union(blk)\n    relief = cq.Workplane('XY').circle((p.bearing_od+p.lower_relief)/2).extrude(bz0)\n\
+    \    press = cq.Workplane('XY').workplane(offset=bz0).circle((p.bearing_od+p.fit_offset)/2).extrude(p.bearing_w)\n\
+    \    lip = cq.Workplane('XY').workplane(offset=bz0+p.bearing_w).circle(p.lip_hole_d/2).extrude(p.lip_t+1)\n\
+    \    body = body.cut(relief).cut(press).cut(lip)\n    pocket_depth = p.m5_nut_h\
+    \ + p.nut_pocket_extra\n    hexd = (p.m5_nut_af + p.m5_nut_clear)/math.cos(math.pi/6)\n\
+    \    body = body.cut(cq.Workplane('XY').center(23,0).polygon(6,hexd).extrude(pocket_depth))\n\
+    \    body = body.cut(cq.Workplane('XY').center(23,0).circle(p.m5_hole_d/2).extrude(p.disc_t+1))\n\
+    \    return body\n"
+  print_orientation: underside on the bed, pockets open downward, same as the wheel
+  use_orientation: 'test piece only: try the 608 bearing and an M5 nut and M5 screw
+    in it'
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 1
+- id: m8bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: m8nut
+  ref: ISO 4032 M8
+  qty: 1
+- id: m8lock
+  ref: ISO 10511 M8
+  qty: 1
+- id: m5screw
+  ref: ISO 4762 M5x20
+  qty: 1
+- id: m5nut
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: axle
+  fastener: m8bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -7.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: lip_hole
+    role: clearance
+  nut: m8lock
+  external: game board, drilled 8.4 mm hole at the spinner centre; M8 bolt head sits
+    behind the board, plain M8 nut clamps it to the board front
+- id: handle_screw
+  fastener: m5screw
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: head_counterbore
+    role: head_seat
+  - part: knob
+    feature: screw_hole
+    role: clearance
+  - part: wheel
+    feature: handle_hole
+    role: clearance
+  - part: wheel
+    feature: handle_nut_pocket
+    role: nut_pocket
+  nut: m5nut
+  external: null
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing_pocket
+  relation: contains
+  hardware: bearing
+  clearance_mm: 0.0
+  params:
+  - bearing_od
+  - fit_offset
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Bearing must press in by hand/thumb pressure and hold firmly (should
+      not fall out when the coupon is turned over and tapped). If loose, set fit_offset
+      to -0.1; if it needs a hammer, +0.1.
+- id: c2
+  part: wheel
+  feature: bearing_lip
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_w
+  - lip_t
+  - m8_nut_h
+  - board_gap
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Bearing pushed in from below stops against the lip with its top face
+      touching the lip.
+- id: c3
+  part: wheel
+  feature: lip_hole
+  relation: clears
+  hardware: m8lock
+  clearance_mm: 1.3
+  params:
+  - lip_hole_d
+  - m8_nut_af
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: M8 lock nut sits in the lip hole without touching (hole 17 vs nut
+      corners about 14.4).
+- id: c4
+  part: wheel
+  feature: handle_nut_pocket
+  relation: contains
+  hardware: m5nut
+  clearance_mm: 0.15
+  params:
+  - m5_nut_af
+  - m5_nut_clear
+  - m5_nut_h
+  - nut_pocket_extra
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: M5 nut drops into the hex pocket, can't turn when the screw is tightened,
+      and screw threads into it.
+- id: c5
+  part: wheel
+  feature: handle_hole
+  relation: clears
+  hardware: m5screw
+  clearance_mm: null
+  params:
+  - m5_hole_d
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: M5 screw passes freely through the hole.
+- id: c6
+  part: knob
+  feature: head_counterbore
+  relation: seats
+  hardware: m5screw
+  clearance_mm: null
+  params:
+  - m5_head_d
+  - m5_head_h
+  - cb_clear
+  - cb_extra
+  check:
+    method: measure
+    ref: null
+    description: Screw head fits fully inside the counterbore, head top below the
+      knob top.
+- id: c7
+  part: wheel
+  feature: underside
+  relation: clears
+  hardware: m8nut
+  clearance_mm: null
+  params:
+  - board_gap
+  - m8_nut_h
+  check:
+    method: measure
+    ref: null
+    description: After assembly, the wheel underside is about 1.5 mm above the board
+      and spins without scraping. The M5 screw tip stays above the board.
+manual:
+- n: '1'
+  text: Print the fit coupon first (about 15 minutes), underside down, no supports.
+    Press a 608 bearing into the big round pocket from the underside. It should need
+    firm thumb pressure and then hold. If it falls out or is loose, set fit_offset
+    to -0.1 and reprint; if you need a hammer, use +0.1. Also check an M5 nut drops
+    into the hex pocket and an M5 screw passes through the hole. Then print the wheel
+    and knob with the flat sides down, no supports.
+  parts:
+  - fit-coupon
+  - wheel
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Drill an 8.4 mm hole through the board where the spinner centre goes. Choose
+    the M8 bolt length: board thickness + 22 mm, rounded up to the next length you
+    have (30 mm suits boards up to 8 mm thick). The bolt tip should end roughly level
+    with the top nut.'
+  parts: []
+  hardware:
+  - m8bolt
+  tool: null
+- n: '3'
+  text: 'While you can still reach the back of the board: push the M8 bolt up through
+    the hole from behind, head on the back. On the front, screw the plain M8 nut down
+    onto the board and tighten it firmly with a spanner while holding the head. This
+    is the fixed shoulder the bearing will sit on, so it must not move.'
+  parts: []
+  hardware:
+  - m8bolt
+  - m8nut
+  tool: 13 mm spanner
+- n: '4'
+  text: Press the 608 bearing into the wheel from the underside (the side with the
+    big round opening) until it stops against the lip. Use your thumbs, pushing evenly.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '5'
+  text: Drop the M5 nut into the hex pocket on the wheel underside, near the edge.
+    It sits flat and cannot fall out once the wheel is on the board, because the board
+    is only 1.5 mm below it.
+  parts:
+  - wheel
+  hardware:
+  - m5nut
+  tool: null
+- n: '6'
+  text: Hold the wheel with its underside down and the nut still in its pocket (pinch
+    the nut in with a fingertip if you need to). Lower it over the bolt so the bearing's
+    inner ring rests on the plain M8 nut.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '7'
+  text: From the front, screw the M8 lock nut onto the bolt until it sits on the bearing's
+    inner ring. Tighten just until the inner ring is snug against the lower nut, then
+    no more; the wheel should spin freely and wobble-free, and be about 1.5 mm above
+    the board. You never need to reach behind the board for this step.
+  parts: []
+  hardware:
+  - m8lock
+  tool: 13 mm spanner
+- n: '8'
+  text: Put the knob on the wheel over the handle hole, drop the M5x20 screw into
+    its counterbore, and screw it into the nut underneath with a 4 mm hex key until
+    snug. To pack the game flat, unscrew the M5 screw and lift the knob off. The nut
+    stays in its pocket and the bolt and wheel stay on the board.
+  parts:
+  - knob
+  hardware:
+  - m5screw
+  tool: 4 mm hex key
