@@ -1,0 +1,225 @@
+task: tripod-plate
+note: 'The plate is easy to print. The screw is the part to buy or borrow rather than
+  print: PLA 1/4-20 threads are weak and strip easily. So I used the salvaged webcam
+  bolt and printed only the plate. The only clamp dimension the owner could give was
+  the 38 mm plate width. That matches an Arca-Swiss style clamp, but that is my assumption.
+  The thickness (8 mm), the 3 mm 45 degree edge chamfers and the 60 mm length are
+  all guesses. The two test pieces I asked for were printed, but no result came back,
+  so the guesses are untested. Before relying on this plate, check how it fits in
+  the clamp. If the clamp gap or jaw angle differs, adjust plate_t and edge_chamfer.
+  The bolt dimensions are approximate (about 15 mm head, 5 mm tall, 10 mm under the
+  head). About 7 mm of thread will stick out of the plate, so check that this is enough
+  for your camera''s socket.'
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes (the only clamp dimension the owner
+      could give)
+  fit_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: total side clearance so the plate slides into the clamp
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: guessed
+    note: length along the clamp; unmeasured
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: guessed
+    note: total thickness; clamp gap unknown. Sized so a 5 mm bolt head can be recessed
+  edge_chamfer:
+    value: 3
+    unit: mm
+    kind: design
+    source: guessed
+    note: 45 deg chamfer on the tripod-side long edges, assuming an Arca-Swiss style
+      38 mm dovetail clamp; unconfirmed
+  slot_travel:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: camera position adjustment along the plate
+  bolt_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  bolt_hole_d:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for 1/4-20 shank
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged webcam bolt head, approx.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged bolt head height, approx.
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: world
+    source: measured
+    note: under head, approx.
+  head_clear:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: total diametral clearance for the head pocket
+  head_depth:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: pocket depth, head height + 0.4
+parts:
+- id: camera_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    t = p.plate_t\n    w = p.plate_w - p.fit_clear\n    r\
+    \ = cq.Workplane('XY').box(w, p.plate_l, t, centered=(True, True, False))\n  \
+    \  r = r.edges('|Y and >Z').chamfer(p.edge_chamfer)\n    thru = cq.Workplane('XY').slot2D(p.slot_travel\
+    \ + p.bolt_hole_d, p.bolt_hole_d, 90).extrude(t)\n    r = r.cut(thru)\n    hd\
+    \ = p.bolt_head_d + p.head_clear\n    pocket = (cq.Workplane('XY').workplane(offset=t\
+    \ - p.head_depth)\n              .slot2D(p.slot_travel + hd, hd, 90).extrude(p.head_depth\
+    \ + 1))\n    r = r.cut(pocket)\n    return r\n"
+  print_orientation: camera-side (flat top) face on the bed; chamfered tripod side
+    and bolt pocket face up, so no supports or bridges
+  use_orientation: camera-side face up against the camera base; chamfered edges down
+    into the tripod clamp
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 2.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: camera_plate
+    feature: head_pocket_floor
+    role: head_seat
+  - part: camera_plate
+    feature: bolt_slot
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: c_width
+  part: camera_plate
+  feature: plate width across the dovetail edges
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - fit_clear
+  check:
+    method: measure
+    ref: null
+    description: Measure the printed width with calipers (about 37.8 mm), then slide
+      it into the clamp. It should be gripped by the clamp jaws.
+- id: c_thickness
+  part: camera_plate
+  feature: plate thickness and edge chamfer
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  - edge_chamfer
+  check:
+    method: measure
+    ref: null
+    description: Thickness and chamfer are guesses. Check the plate sits fully in
+      the clamp before tightening. If it doesn't, change them.
+- id: c_head
+  part: camera_plate
+  feature: bolt head pocket
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_clear
+  - head_depth
+  check:
+    method: measure
+    ref: null
+    description: Drop the bolt in. The head should go fully below the tripod-side
+      face so the plate sits flat in the clamp.
+- id: c_shank
+  part: camera_plate
+  feature: bolt slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.275
+  params:
+  - bolt_hole_d
+  - bolt_thread_d
+  check:
+    method: measure
+    ref: null
+    description: The bolt shank should slide along the slot without binding.
+manual:
+- n: '1'
+  text: Print the camera_plate with the flat camera-side face on the bed. Use no supports,
+    4 walls and 20% or more infill so the thin floor under the bolt head is solid.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the salvaged 1/4-20 bolt through the pocket on the chamfered side. Push
+    the threaded end out through the slot to the flat camera side. The head should
+    sit fully in the pocket.
+  parts:
+  - camera_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Hold the plate on the camera base and thread the bolt into the camera's 1/4-20
+    socket by turning the bolt head with a coin or a spanner. Tighten it by hand.
+    Don't overtighten, because the head presses on a thin printed floor.
+  parts:
+  - camera_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Slide the plate into the tripod clamp and tighten the clamp. Check that the
+    camera is held before you let go of it. The plate's thickness and edge angle are
+    guesses, so support the camera until you're sure it holds.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null

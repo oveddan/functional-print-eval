@@ -1,0 +1,176 @@
+task: nut-knob/M5
+note: ''
+questions: []
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across-flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  pocket_af:
+    value: 7.75
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across-flats, undersized 0.25mm for press fit; verify via coupon
+  pocket_depth:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: Deeper than nut_h so nut sits fully inside
+  bolt_through_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole for M5 bolt through the body
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knurl_d:
+    value: 33
+    unit: mm
+    kind: design
+    source: design
+    note: Outer knurl diameter for grip
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.knob_d\
+    \ / 2).extrude(p.knob_h)\n\n    # hex pocket, opening on bottom face (z = knob_h\
+    \ side) so it prints top-down without support\n    pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .polygon(6, p.pocket_af / (3 ** 0.5), circumscribed=False)\n  \
+    \      .extrude(p.pocket_depth)\n    )\n    # note: polygon side count radius\
+    \ is circumradius; across-flats = 2 * inradius = sqrt(3) * r?\n    # Across-flats\
+    \ = 2 * r * cos(30) = r * sqrt(3). For circumscribed=False r is inradius of polygon.\n\
+    \    body = body.cut(pocket.translate((0, 0, 0)))\n\n    # through hole for bolt,\
+    \ from pocket floor out the top\n    hole = cq.Workplane(\"XY\").circle(p.bolt_through_d\
+    \ / 2).extrude(p.knob_h)\n    body = body.cut(hole)\n\n    return body\n"
+  print_orientation: 'Bottom face (the face with the hex pocket opening) toward the
+    bed? No: print with the hex-pocket opening facing UP (away from bed, z=0 at the
+    pocket-opening face downside). The pocket opening is at the face placed on the
+    bed if we want no support, so orient so the closed top faces down.'
+  use_orientation: Hex pocket opening faces down onto the nut; bolt enters the pocket
+    side, threads through the nut, and exits the closed top.
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    # small bar with the hex pocket\
+    \ for testing press-fit\n    bar = cq.Workplane(\"XY\").box(20, 20, 8)\n    pocket\
+    \ = cq.Workplane(\"XY\").polygon(6, p.pocket_af / (3 ** 0.5), circumscribed=False).extrude(p.pocket_depth)\n\
+    \    bar = bar.cut(pocket.translate((0, 0, 0)))\n    return bar\n"
+  print_orientation: Pocket opening facing up, flat bar on bed.
+  use_orientation: Press the nut in by hand and check it stays when flipped.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: nut_press
+  fastener: nut
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: hex_pocket
+    role: nut_pocket
+  nut: null
+  external: null
+criteria:
+- id: nut_press_fit
+  part: knob
+  feature: hex_pocket
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Press nut into coupon pocket; flip upside down and shake gently.
+      Nut must stay in with no glue. If too loose, reduce pocket_af; too tight, increase.
+- id: nut_captured
+  part: knob
+  feature: hex_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: none
+    ref: null
+    description: Pocket depth 6.5 > nut height 4.7, with closed bottom so nut sits
+      fully inside and cannot be pushed out the far side.
+- id: bolt_clears
+  part: knob
+  feature: through_hole
+  relation: clears
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_through_d
+  check:
+    method: measure
+    ref: null
+    description: An M5 bolt threads into the nut through the pocket and exits the
+      top cleanly.
+manual:
+- n: '1'
+  text: Print the nut_fit_coupon piece.
+  parts:
+  - nut_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the ISO 4032 M5 nut into the coupon's hex pocket by hand. Flip it upside
+    down and shake gently.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: 'If the nut stays in: print the knob and press the nut into its hex pocket
+    the same way. If it''s too loose or too tight, the pocket size is set only by
+    the pocket_af value, so adjust and reprint.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread the M5 bolt in from the pocket side, through the nut, until it exits
+    the top.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

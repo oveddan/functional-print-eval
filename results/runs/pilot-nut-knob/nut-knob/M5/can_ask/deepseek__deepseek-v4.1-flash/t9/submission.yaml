@@ -1,0 +1,295 @@
+task: nut-knob/M5
+note: 'One printed knob, 30 mm across the lobes, 11.3 mm tall, with a captive M5 hex
+  nut.
+
+
+  How it works: the nut presses into a hexagonal pocket from the flared (top) side
+  and seats flat on the pocket floor. The floor is a 5.0 mm thick shoulder with a
+  5.5 mm hole through it, so the nut cannot be pushed out the far side, and the bolt
+  passes through the nut and out through that hole. The nut finishes 1.6 mm below
+  the rim, so it is fully inside. The pocket is 0.1 mm smaller across the flats than
+  the nut (7.9 vs 8.0), which is the press: it holds the nut against gravity when
+  the knob is turned upside down, with no glue. When you tighten the knob, the load
+  pushes the nut into the shoulder, not out of the pocket, so the press fit only has
+  to beat gravity.
+
+
+  The one uncertain number is the printed pocket size, which varies with printer calibration.
+  The coupon (4 pockets, 0.3/0.2/0.1/0.0 mm smaller than the nut) lets you pick the
+  value that presses in by hand and still holds when inverted; if it is not the third
+  pocket, change pocket_af in the knob''s code to the matching value before printing
+  the knob.
+
+
+  The knob prints with the flared hex opening facing up: no supports, no bridges,
+  all walls vertical. The nut and bolt dimensions are catalog values because you could
+  not measure your nut; if your nut is noticeably tighter or looser than 8.0 mm across
+  the flats, tell me and I will re-cut the pocket.'
+questions: []
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut, width across flats. Could not be measured; catalog
+      value used.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut thickness. Could not be measured; catalog value used.
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal major diameter.
+  bolt_len:
+    value: 30
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: Bolt length not specified. Any M5 at least ~25 mm long works; the knob needs
+      about 10 mm of shank.
+  clearance_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: 'Bolt clearance hole through the shoulder: bolt_d + 0.5.'
+  pocket_af:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across flats = nut_af - 0.1, a light hand press. Confirm with
+      the coupon and change if needed.
+  top_wall:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the shoulder above the nut; takes the tightening load.
+  recess:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Straight pocket wall below the nut, so the nut finishes inside the knob.
+  entry_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: 45 degree flare at the pocket mouth to lead the nut in.
+  grip_max_r:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'Lobe peak radius: 30 mm across the peaks.'
+  grip_min_r:
+    value: 12.5
+    unit: mm
+    kind: design
+    source: design
+    note: 'Lobe valley radius: 25 mm across the valleys.'
+  grip_lobes:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Six finger lobes.
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    lobes = int(round(p.grip_lobes))\n    r_mean\
+    \ = 0.5 * (p.grip_max_r + p.grip_min_r)\n    amp = 0.5 * (p.grip_max_r - p.grip_min_r)\n\
+    \    H = p.top_wall + p.nut_h + p.recess + p.entry_chamfer\n\n    # lobed grip\
+    \ profile, extruded straight up (all walls vertical)\n    n = lobes * 24\n   \
+    \ pts = []\n    for i in range(n):\n        t = 2.0 * math.pi * i / n\n      \
+    \  r = r_mean + amp * math.cos(lobes * t)\n        pts.append((r * math.cos(t),\
+    \ r * math.sin(t)))\n    body = cq.Workplane(\"XY\").polyline(pts).close().extrude(H)\n\
+    \n    # hex pocket: straight press section + flared entry\n    hex_d = p.pocket_af\
+    \ / math.cos(math.pi / 6.0)\n    cham_d = (p.pocket_af + 2.0 * p.entry_chamfer)\
+    \ / math.cos(math.pi / 6.0)\n    z0 = p.top_wall\n    z1 = p.top_wall + p.nut_h\
+    \ + p.recess\n\n    prism = (cq.Workplane(\"XY\").workplane(offset=z0)\n     \
+    \        .polygon(6, hex_d).extrude(z1 - z0))\n    cham = (cq.Workplane(\"XY\"\
+    ).workplane(offset=z1)\n            .polygon(6, hex_d)\n            .workplane(offset=p.entry_chamfer)\n\
+    \            .polygon(6, cham_d).loft())\n    body = body.cut(prism).cut(cham)\n\
+    \n    # bolt clearance hole through the shoulder (far face)\n    hole = (cq.Workplane(\"\
+    XY\").workplane(offset=-1.0)\n            .circle(p.clearance_d / 2.0).extrude(H\
+    \ + 2.0))\n    return body.cut(hole)\n"
+  print_orientation: z = 0 is the far face (the one with the 5.5 mm bolt hole) on
+    the bed; the flared hex opening faces up. No supports, no bridges.
+  use_orientation: Grip axis vertical. The 5.5 mm hole face (z = 0) faces the bolt
+    head / workpiece; the flared hex opening (z = H) faces away from it, with the
+    bolt tip emerging into the pocket.
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    afs = [p.nut_af - 0.3, p.nut_af - 0.2,\
+    \ p.nut_af - 0.1, p.nut_af]\n    pitch = 12.0\n    n = len(afs)\n    width = pitch\
+    \ * (n - 1) + 12.0\n    depth = 14.0\n    H = p.top_wall + p.nut_h + p.recess\
+    \ + p.entry_chamfer\n    z0 = p.top_wall\n    z1 = p.top_wall + p.nut_h + p.recess\n\
+    \n    plate = cq.Workplane(\"XY\").box(width, depth, H, centered=(True, True,\
+    \ False))\n    for i, af in enumerate(afs):\n        x = -pitch * (n - 1) / 2.0\
+    \ + i * pitch\n        hex_d = af / math.cos(math.pi / 6.0)\n        cham_d =\
+    \ (af + 2.0 * p.entry_chamfer) / math.cos(math.pi / 6.0)\n        prism = (cq.Workplane(\"\
+    XY\", origin=(x, 0, 0)).workplane(offset=z0)\n                 .polygon(6, hex_d).extrude(z1\
+    \ - z0))\n        cham = (cq.Workplane(\"XY\", origin=(x, 0, 0)).workplane(offset=z1)\n\
+    \                .polygon(6, hex_d)\n                .workplane(offset=p.entry_chamfer)\n\
+    \                .polygon(6, cham_d).loft())\n        hole = (cq.Workplane(\"\
+    XY\", origin=(x, 0, 0)).workplane(offset=-1.0)\n                .circle(p.clearance_d\
+    \ / 2.0).extrude(H + 2.0))\n        plate = plate.cut(prism).cut(cham).cut(hole)\n\
+    \    return plate\n"
+  print_orientation: Flat on its base, z = 0 on the bed; the four hex pockets open
+    upward.
+  use_orientation: Lies flat on the bench while you press the nut into each pocket
+    in turn.
+hardware:
+- id: h_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: h_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: j_bolt
+  fastener: h_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: 5.5 mm clearance hole in the far face
+    role: clearance
+  nut: h_nut
+  external: null
+criteria:
+- id: c_press
+  part: knob
+  feature: hex pocket across flats
+  relation: contains
+  hardware: h_nut
+  clearance_mm: -0.1
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: coupon
+    description: Nut presses in by hand and stays in when the knob is turned upside
+      down.
+- id: c_clear
+  part: knob
+  feature: 5.5 mm hole through the shoulder
+  relation: clears
+  hardware: h_bolt
+  clearance_mm: 0.5
+  params:
+  - clearance_d
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: Bolt passes through the nut and out the far face.
+- id: c_stop
+  part: knob
+  feature: pocket floor (shoulder) on the far side of the nut
+  relation: supports
+  hardware: h_nut
+  clearance_mm: null
+  params:
+  - top_wall
+  - nut_h
+  check:
+    method: none
+    ref: null
+    description: Nut cannot be pushed out through the far side; the shoulder also
+      takes the tightening load.
+- id: c_inside
+  part: knob
+  feature: pocket depth below the entry face
+  relation: contains
+  hardware: h_nut
+  clearance_mm: null
+  params:
+  - recess
+  - entry_chamfer
+  - nut_h
+  check:
+    method: none
+    ref: null
+    description: Seated nut finishes 1.6 mm below the rim, fully inside the knob.
+manual:
+- n: '1'
+  text: Print the fit coupon in PLA, 0.2 mm layers, no supports. It is a small plate
+    with four hex pockets in a row, all opening upward. From left to right the pockets
+    are 0.3, 0.2, 0.1 and 0.0 mm smaller across the flats than your nut (7.7, 7.8,
+    7.9, 8.0 mm).
+  parts:
+  - coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M5 hex nut into each pocket in turn, flat face down, with your thumb.
+    Note which pockets take the nut with firm hand pressure and which need a tool
+    or won't go.
+  parts:
+  - coupon
+  hardware:
+  - h_nut
+  tool: null
+- n: '3'
+  text: Turn the coupon upside down and shake it. Choose the tightest pocket that
+    you could press in by hand and that still holds the nut. If that is not the third
+    pocket (7.9 mm), set pocket_af in the knob's code to the matching value (7.7,
+    7.8 or 8.0) before slicing the knob.
+  parts:
+  - coupon
+  hardware:
+  - h_nut
+  tool: null
+- n: '4'
+  text: Print the knob in PLA, 0.2 mm layers, no supports, with the wide flared hex
+    opening facing up and the small 5.5 mm hole on the bed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: Press the M5 hex nut into the knob's hex pocket from the flared side until
+    it seats flat on the pocket floor. It should finish below the rim, fully inside
+    the knob.
+  parts:
+  - knob
+  hardware:
+  - h_nut
+  tool: null
+- n: '6'
+  text: Turn the knob upside down and shake it. The nut must stay in place with no
+    glue.
+  parts:
+  - knob
+  hardware:
+  - h_nut
+  tool: null
+- n: '7'
+  text: Thread the M5 bolt through the 5.5 mm hole in the far face and into the nut
+    until the tip comes out past the nut into the pocket. Turn the knob by hand to
+    tighten; the nut is driven into the shoulder, not out of the pocket.
+  parts:
+  - knob
+  hardware:
+  - h_nut
+  - h_bolt
+  tool: null

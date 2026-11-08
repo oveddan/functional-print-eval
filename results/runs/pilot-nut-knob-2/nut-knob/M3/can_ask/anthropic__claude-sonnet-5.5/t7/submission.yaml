@@ -1,0 +1,203 @@
+task: nut-knob/M3
+note: Nut pocket opens on the underside; the top has only a 3.4 mm hole, so the nut
+  can't be pushed out the far side. Press fit is 0.1 mm over the across-flats; the
+  coupon brackets it at 0.0/0.1/0.2 mm to tune for your printer.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 shank
+  hole_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: bolt hole = bolt_d + this (3.4 mm)
+  fit:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: pocket across-flats oversize over the nut; a snug press fit in PLA. The
+      coupon tests fit-0.1, fit, fit+0.1 so the user can pick (and edit this param)
+      if the full part is too tight or loose
+  depth_margin:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: pocket depth = nut_h + this, so the nut sits fully recessed
+  knob_d:
+    value: 20
+    unit: mm
+    kind: world
+    source: asked
+    note: about 20 mm across
+  knob_h:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: overall knob height; leaves 6.4 mm of solid above the nut
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: grip scallops
+  scallop_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: bed-side chamfer to hide elephant foot
+  top_fillet:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_ceiling:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: solid above the pockets in the coupon
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    r = p.knob_d/2\n    body = cq.Workplane('XY').circle(r).extrude(p.knob_h)\n\
+    \    body = body.faces('>Z').edges().fillet(p.top_fillet)\n    body = body.faces('<Z').edges().chamfer(p.edge_chamfer)\n\
+    \    sc = (cq.Workplane('XY').polarArray(r + p.scallop_r*0.7, 0, 360, int(p.scallop_n))\n\
+    \          .circle(p.scallop_r).extrude(p.knob_h))\n    body = body.cut(sc)\n\
+    \    af = p.nut_af + p.fit\n    circ = af/math.cos(math.radians(30))\n    depth\
+    \ = p.nut_h + p.depth_margin\n    pocket = cq.Workplane('XY').polygon(6, circ).extrude(depth)\n\
+    \    hole = cq.Workplane('XY').circle((p.bolt_d + p.hole_clear)/2).extrude(p.knob_h)\n\
+    \    return body.cut(pocket).cut(hole)\n"
+  print_orientation: Pocket (nut-entry) face down on the bed, z=0; the hex pocket
+    opens onto the bed side, so no supports are needed (ceiling of the pocket is a
+    ~6 mm bridge).
+  use_orientation: Pocket face toward the work/bolt thread end; bolt enters through
+    the nut pocket and exits through the top hole. Nut is pushed in from the pocket
+    face.
+- id: nut-fit-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    depth = p.nut_h + p.depth_margin\n    h =\
+    \ depth + p.coupon_ceiling\n    blk = cq.Workplane('XY').box(36, 12, h, centered=(True,\
+    \ True, False))\n    for i, f in enumerate([p.fit - 0.1, p.fit, p.fit + 0.1]):\n\
+    \        x = (i - 1) * 11\n        circ = (p.nut_af + f)/math.cos(math.radians(30))\n\
+    \        pk = cq.Workplane('XY').center(x, 0).polygon(6, circ).extrude(depth)\n\
+    \        hl = cq.Workplane('XY').center(x, 0).circle((p.bolt_d + p.hole_clear)/2).extrude(h)\n\
+    \        blk = blk.cut(pk).cut(hl)\n    return blk\n"
+  print_orientation: Flat, pocket openings on the bed, z=0.
+  use_orientation: 'Test piece only: press an M3 nut into each pocket and pick the
+    one that is snug by hand but holds when turned upside down and shaken.'
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.1
+  params:
+  - nut_af
+  - nut_h
+  - fit
+  - depth_margin
+  check:
+    method: coupon
+    ref: nut-fit-coupon
+    description: Nut presses in by hand and stays when the piece is inverted and shaken;
+      nut sits fully below the pocket face.
+- id: c2
+  part: knob
+  feature: bolt through-hole
+  relation: clears
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - hole_clear
+  check:
+    method: coupon
+    ref: nut-fit-coupon
+    description: M3 bolt passes freely through the 3.4 mm hole and the nut.
+- id: c3
+  part: knob
+  feature: top floor above pocket
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - nut_h
+  - depth_margin
+  check:
+    method: measure
+    ref: null
+    description: Nut cannot be pushed through the top; only the 3.4 mm hole is open
+      there.
+manual:
+- n: '1'
+  text: Print the nut-fit coupon first (pocket side on the bed). Press an M3 nut into
+    each of the three pockets. Choose the one that is snug by hand and doesn't fall
+    out when inverted and shaken. If it isn't the middle one, change the 'fit' param
+    by -0.1 or +0.1 accordingly.
+  parts:
+  - nut-fit-coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the knob with the hex pocket face down on the bed (0.2 mm layers, PLA,
+    no supports).
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Align the M3 nut with the hex pocket on the flat underside of the knob and
+    press it in with your thumb (or press it against a flat table) until it is fully
+    recessed against the solid ceiling.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Turn the knob upside down to check the nut stays. Then thread the knob onto
+    your M3 bolt from the pocket side; the bolt goes through the nut and out of the
+    hole in the top. Tighten by hand.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

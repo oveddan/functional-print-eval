@@ -1,0 +1,220 @@
+task: nut-knob/M3
+note: ''
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across-flats (person could not measure; catalog value
+      used)
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut thickness (catalog value)
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: user's own M3 bolt, nominal thread dia
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: user asked for about 20 mm across
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: gives 7.5 mm of grip above the nut pocket
+  pocket_af:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: 0.1 mm press-fit interference on the flats so the nut stays in upside down;
+      coupon lets this be verified
+  pocket_depth:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.1, so the nut sits fully inside, recessed 0.1 mm
+  bolt_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: 0.4 mm clearance for the M3 bolt
+  flutes:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: finger-grip grooves around the rim
+  flute_r:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: groove cutter radius
+  flute_pos:
+    value: 10.3
+    unit: mm
+    kind: design
+    source: design
+    note: groove cutter centre distance from axis; groove depth 0.7 mm at the rim
+  mouth_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg lead-in at the pocket mouth for easy hand insertion
+  hole_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in chamfer on the bolt exit hole
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "import math\n\ndef build(p):\n    D = p.knob_d\n    H = p.knob_h\n    R =\
+    \ D / 2.0\n    body = cq.Workplane(\"XY\").circle(R).extrude(H)\n    # finger\
+    \ flutes around the rim\n    for i in range(int(p.flutes)):\n        a = 2.0 *\
+    \ math.pi * i / p.flutes\n        cx = p.flute_pos * math.cos(a)\n        cy =\
+    \ p.flute_pos * math.sin(a)\n        body = body.cut(\n            cq.Workplane(\"\
+    XY\").workplane(offset=-2).center(cx, cy)\n            .circle(p.flute_r).extrude(H\
+    \ + 4))\n    # hex nut pocket, open at the top of the print (knob underside in\
+    \ use)\n    hex_d = p.pocket_af / math.cos(math.pi / 6.0)\n    body = body.cut(\n\
+    \        cq.Workplane(\"XY\").workplane(offset=H - p.pocket_depth)\n        .polygon(6,\
+    \ hex_d).extrude(p.pocket_depth + 1.0))\n    # 45 deg lead-in at the pocket mouth\
+    \ so the nut presses in by hand\n    mouth = cq.Solid.makeCone(hex_d / 2.0, hex_d\
+    \ / 2.0 + p.mouth_chamfer,\n                              p.mouth_chamfer,\n \
+    \                             cq.Vector(0, 0, H - p.mouth_chamfer))\n    body\
+    \ = body.cut(mouth)\n    # central through hole for the M3 bolt (through the nut,\
+    \ out the far side)\n    body = body.cut(\n        cq.Workplane(\"XY\").workplane(offset=-1).circle(p.bolt_hole_d\
+    \ / 2.0)\n        .extrude(H + 2))\n    # lead-in chamfer on the bolt exit face\
+    \ (bottom of print)\n    funnel = cq.Solid.makeCone(p.bolt_hole_d / 2.0 + p.hole_chamfer,\n\
+    \                               p.bolt_hole_d / 2.0, p.hole_chamfer,\n       \
+    \                        cq.Vector(0, 0, 0))\n    body = body.cut(funnel)\n  \
+    \  return body"
+  print_orientation: flat on the bed, knob bottom face down (z=0); nut pocket faces
+    up, printed as an open recess, no bridging
+  use_orientation: in use the pocket faces down toward the bolt head/surface; bolt
+    exits through the knob's top face
+- id: fit-coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "import math\n\ndef build(p):\n    depth = p.pocket_depth\n    plate = cq.Workplane(\"\
+    XY\").rect(46, 16).extrude(3.6)\n    variants = [(-15.0, 5.3), (0.0, 5.4), (15.0,\
+    \ 5.5)]\n    for x, af in variants:\n        hex_d = af / math.cos(math.pi / 6.0)\n\
+    \        plate = plate.cut(\n            cq.Workplane(\"XY\").workplane(offset=3.6\
+    \ - depth)\n            .center(x, 0).polygon(6, hex_d).extrude(depth + 1.0))\n\
+    \        # small 45 deg mouth chamfer like the knob\n        mouth = cq.Solid.makeCone(hex_d\
+    \ / 2.0, hex_d / 2.0 + 0.8, 0.8,\n                                  cq.Vector(x,\
+    \ 0, 3.6 - 0.8))\n        plate = plate.cut(mouth)\n    labels = [(-15.0, \"5.3\"\
+    ), (0.0, \"5.4\"), (15.0, \"5.5\")]\n    for x, t in labels:\n        plate =\
+    \ plate.union(\n            cq.Workplane(\"XY\", origin=(x, 5.5, 3.5)).text(t,\
+    \ 2.5, 0.4))\n    return plate"
+  print_orientation: flat on the bed, top face (labelled side) up
+  use_orientation: n/a - test piece, discarded after checking the fit
+hardware:
+- id: nut-m3
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: pocket-holds-nut
+  part: knob
+  feature: hex nut pocket (press fit on flats)
+  relation: engages
+  hardware: nut-m3
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: Print the fit-coupon first; the nut should press into the 5.4 pocket
+      by hand and not fall out when the coupon is turned upside down. If 5.4 is too
+      tight or too loose, adjust pocket_af and reprint the knob.
+- id: nut-fully-inside
+  part: knob
+  feature: pocket depth 2.5 mm vs nut 2.4 mm
+  relation: contains
+  hardware: nut-m3
+  clearance_mm: 0.1
+  params: []
+  check:
+    method: none
+    ref: null
+    description: Pocket is 0.1 mm deeper than the nut, so the nut sits fully inside
+      the knob, flush to 0.1 mm recessed, never proud.
+- id: bolt-clears-hole
+  part: knob
+  feature: central through hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params: []
+  check:
+    method: none
+    ref: null
+    description: Ø3.4 mm through hole gives 0.4 mm clearance around an M3 bolt thread.
+manual:
+- n: '1'
+  text: 'Print the fit-coupon first (same material and settings as the knob). It has
+    three hex pockets: 5.3 (left), 5.4 (middle), 5.5 (right).'
+  parts:
+  - fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Test the M3 nut in each pocket. You want the middle 5.4 pocket: the nut should
+    press in firmly with your thumb against a table, and stay in when you turn the
+    coupon upside down and tap it. If the nut will not go in at all, use the 5.5 result
+    to judge: reprint the knob with pocket_af raised by 0.1 mm. If the nut drops out
+    of all of them, lower pocket_af by 0.1 mm.'
+  parts:
+  - fit-coupon
+  hardware:
+  - nut-m3
+  tool: null
+- n: '3'
+  text: Print the knob, pocket side up, no supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Clean any light blobs from the pocket and hole with a fine blade or deburring
+    tool.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: 'Press the M3 nut into the knob''s hex pocket: place the pocket side down
+    on a table and push the nut in evenly with your thumb. It should seat flush to
+    0.1 mm below the face. It is now captured by the press fit - the knob can be turned
+    upside down without the nut falling out.'
+  parts:
+  - knob
+  hardware:
+  - nut-m3
+  tool: null
+- n: '6'
+  text: 'Use the knob: pass your M3 bolt through the hole from the smooth top face,
+    thread it into the captured nut, and tighten by gripping the fluted rim. The nut
+    rotates with the knob while the bolt threads through it.'
+  parts:
+  - knob
+  hardware: []
+  tool: null

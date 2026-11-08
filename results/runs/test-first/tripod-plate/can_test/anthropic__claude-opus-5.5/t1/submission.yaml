@@ -1,0 +1,180 @@
+task: tripod-plate
+note: Assumes an Arca-style clamp with 45° jaws. Only the 38 mm width was measured;
+  the bevel sizes are guesses. PLA is fine for a light camera as a stopgap. Don't
+  leave it in a hot car.
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the clamp takes
+  lip_h:
+    value: 2
+    unit: mm
+    kind: world
+    source: guessed
+    note: straight edge before the bevel, typical Arca-style
+  bevel_h:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: 45 deg dovetail bevel, typical Arca-style
+  plate_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_l:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear_d:
+    value: 6.8
+    unit: mm
+    kind: hardware
+    source: design
+    note: 1/4-20 major dia 6.35 + clearance
+  head_pocket_w:
+    value: 16.5
+    unit: mm
+    kind: hardware
+    source: design
+    note: head ~15 measured + clearance
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about 5
+  bolt_l:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under head; projects plate_t-head_h = 5 mm into camera
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    hw = p.plate_w/2\n    nw = hw - p.bevel_h\n    pts = [(-hw,0),(hw,0),(hw,p.lip_h),(nw,p.lip_h+p.bevel_h),(nw,p.plate_t),(-nw,p.plate_t),(-nw,p.lip_h+p.bevel_h),(-hw,p.lip_h)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_l/2, both=True)\n\
+    \    hole = cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(p.plate_t)\n \
+    \   channel = cq.Workplane('XY').workplane(offset=p.plate_t-p.head_h).rect(p.head_pocket_w,\
+    \ p.plate_l).extrude(p.head_h)\n    return body.cut(hole).cut(channel)\n"
+  print_orientation: camera face (wide 38 mm face) on bed; bevels are 45 deg overhangs,
+    head channel opens upward, no supports
+  use_orientation: 'flipped: wide face up against camera, bevels gripped by clamp
+    jaws'
+- id: dovetail_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    hw = p.plate_w/2\n    nw = hw - p.bevel_h\n    pts = [(-hw,0),(hw,0),(hw,p.lip_h),(nw,p.lip_h+p.bevel_h),(nw,p.plate_t),(-nw,p.plate_t),(-nw,p.lip_h+p.bevel_h),(-hw,p.lip_h)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(p.coupon_l/2, both=True)\n\
+    \    hole = cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(p.plate_t)\n \
+    \   pocket = cq.Workplane('XY').workplane(offset=p.plate_t-p.head_h).rect(p.head_pocket_w,\
+    \ p.coupon_l).extrude(p.head_h)\n    return body.cut(hole).cut(pocket)\n"
+  print_orientation: camera face on bed
+  use_orientation: slid into tripod clamp to check fit
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: qr_plate
+    feature: head channel + clearance hole
+    role: head_seat
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: fit
+  part: dovetail_coupon
+  feature: dovetail bevels
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - lip_h
+  - bevel_h
+  check:
+    method: coupon
+    ref: dovetail_coupon
+    description: Drops into the clamp and locks firmly when the knob is tightened,
+      without wobble
+- id: bolt_proj
+  part: qr_plate
+  feature: head channel
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - head_h
+  - head_pocket_w
+  - bolt_l
+  check:
+    method: measure
+    ref: null
+    description: Head sits flush or below the bottom; about 5 mm of thread sticks
+      out of the top
+manual:
+- n: '1'
+  text: 'Print dovetail_coupon (about 10 minutes). Drop it into the tripod clamp and
+    tighten the knob. If it locks without wobbling, carry on. If it won''t go in,
+    or it stays loose when the knob is tight, stop here: the bevel sizes need adjusting.'
+  parts:
+  - dovetail_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print qr_plate with the wide flat face on the bed. No supports needed.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the webcam bolt up through the hole from the grooved underside so its
+    head sits in the groove. About 5 mm of thread should stick out of the flat top.
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: 'Set the camera on the flat top. Turn the bolt head with your thumb through
+    the open ends of the groove, or turn the camera itself, until it''s snug. Don''t
+    force it: the threads are only 5 mm long, so they can''t bottom out in the camera.'
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Drop the plate into the tripod clamp and tighten the knob. Give it a wiggle
+    before you let go of the camera.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null

@@ -1,0 +1,213 @@
+task: nut-knob/M5
+note: The person couldn't measure the actual nut, so the nut pocket uses ISO 4032
+  M5 catalog values (across-flats 8.0 mm, height 4.7 mm) with a 0.1 mm press undersize.
+  A coupon is included to verify the press fit before printing the full knob.
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: outer diameter of the knob
+  body_h:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: total grip thickness
+  grip_n:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: number of rim flutes
+  grip_d:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: flute scallop diameter
+  grip_inset:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: how far flutes bite into the rim
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance through-hole for the M5 bolt
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across-flats
+  nut_t:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  press_undersize:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: pocket undersize vs the nut for a hand press fit
+  pocket_extra_depth:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: extra recess so the nut seats fully below the mouth
+  lead_extra:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: added across-flats at the pocket mouth as a lead-in
+  lead_depth:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in depth at the pocket mouth
+  coupon_d:
+    value: 25
+    unit: mm
+    kind: design
+    source: design
+    note: coupon outer diameter
+  coupon_h:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon thickness
+parts:
+- id: hand_knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    r = p.knob_d / 2.0\n\
+    \    cos30 = math.cos(math.radians(30.0))\n    body = cq.Workplane(\"XY\").circle(r).extrude(p.body_h)\n\
+    \    body = body.cut(cq.Workplane(\"XY\").circle(p.bolt_clear_d / 2.0).extrude(p.body_h))\n\
+    \    for i in range(p.grip_n):\n        a = 2.0 * math.pi * i / p.grip_n\n   \
+    \     cx = (r - p.grip_inset) * math.cos(a)\n        cy = (r - p.grip_inset) *\
+    \ math.sin(a)\n        flute = (cq.Workplane(\"XY\")\n                 .circle(p.grip_d\
+    \ / 2.0)\n                 .extrude(p.body_h)\n                 .translate((cx,\
+    \ cy, 0.0)))\n        body = body.cut(flute)\n    pocket_af = p.nut_af - p.press_undersize\n\
+    \    lead_af = pocket_af + p.lead_extra\n    pocket_depth = p.nut_t + p.pocket_extra_depth\n\
+    \    top = cq.Workplane(\"XY\").workplane(offset=p.body_h)\n    body = body.cut(top.polygon(6,\
+    \ lead_af / cos30).extrude(-p.lead_depth))\n    body = body.cut(top.polygon(6,\
+    \ pocket_af / cos30).extrude(-pocket_depth))\n    return body"
+  print_orientation: cap face (z=0, bolt entry side) flat on the bed; hex pocket opening
+    facing up
+  use_orientation: cap face is the bolt entry side; hex pocket/nut side is the bolt
+    exit side
+- id: press_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    cos30 = math.cos(math.radians(30.0))\n\
+    \    block = cq.Workplane(\"XY\").circle(p.coupon_d / 2.0).extrude(p.coupon_h)\n\
+    \    pocket_af = p.nut_af - p.press_undersize\n    lead_af = pocket_af + p.lead_extra\n\
+    \    pocket_depth = p.nut_t + p.pocket_extra_depth\n    top = cq.Workplane(\"\
+    XY\").workplane(offset=p.coupon_h)\n    block = block.cut(top.polygon(6, lead_af\
+    \ / cos30).extrude(-p.lead_depth))\n    block = block.cut(top.polygon(6, pocket_af\
+    \ / cos30).extrude(-pocket_depth))\n    return block"
+  print_orientation: flat disc face on the bed; hex pocket opening facing up
+  use_orientation: flat on a bench, pocket opening up for the press-fit test
+hardware:
+- id: hw_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: hand_knob
+  feature: hex_pocket
+  relation: engages
+  hardware: hw_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - press_undersize
+  check:
+    method: coupon
+    ref: press_fit_coupon
+    description: 'Press the M5 nut into the press_fit_coupon hex pocket by hand, then
+      invert it: the nut must stay in and not fall out. If it falls out the pocket
+      is too loose on this printer.'
+- id: nut_contained
+  part: hand_knob
+  feature: hex_pocket
+  relation: contains
+  hardware: hw_nut
+  clearance_mm: null
+  params:
+  - nut_t
+  - pocket_extra_depth
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: The nut seats fully below the pocket mouth and cannot be pushed through
+      the far side because the 5.5 mm through-hole is smaller than the 8.0 mm nut.
+- id: bolt_through
+  part: hand_knob
+  feature: through_hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: 'Thread an M5 bolt in from the cap face: it should engage the nut''s
+      threads and, if long enough, exit the other side.'
+manual:
+- n: '1'
+  text: Print the press-fit coupon with its flat face on the bed (hex pocket facing
+    up).
+  parts:
+  - press_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M5 nut into the coupon's hex pocket by hand with firm, even pressure.
+    It should seat fully and stay put when turned upside down. If it falls out, the
+    fit is too loose on your printer (reprint with tighter fit); if you cannot press
+    it in by hand, lightly sand the pocket flats.
+  parts:
+  - press_fit_coupon
+  hardware:
+  - hw_nut
+  tool: null
+- n: '3'
+  text: Once the coupon fit is good, print the hand knob with the cap face on the
+    bed (hex pocket facing up).
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press the M5 nut into the knob's hex pocket from the pocket side until it
+    is fully seated below the surface.
+  parts:
+  - hand_knob
+  hardware:
+  - hw_nut
+  tool: null
+- n: '5'
+  text: Thread your M5 bolt into the knob from the flat cap side. It threads into
+    the nut; if the bolt is long enough, the tip exits the other side. Turn the knob
+    by hand to tighten.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null

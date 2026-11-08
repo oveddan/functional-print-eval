@@ -1,8 +1,8 @@
 """The README's results, computed from the saved runs rather than typed. No model calls.
 
     uv run python scripts/results_table.py           # print the results and assumptions sections
-    uv run python scripts/results_table.py --write   # put both sections in README.md, between their markers
-    uv run python scripts/results_table.py --check   # exit 1 if README.md's section isn't what the runs say
+    uv run python scripts/results_table.py --write   # put both sections in docs/reference.md, between their markers
+    uv run python scripts/results_table.py --check   # exit 1 if docs/reference.md's section isn't what the runs say
 
 Reads every trial's grades.json under results/runs/ (the crash replay and the coupon loop samples keep
 none, so they aren't counted here; their own summaries are in docs/). Counts are raw: one to three trials
@@ -21,7 +21,7 @@ from pbe.runner.trial_record import TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "results/runs"
-README = ROOT / "README.md"
+README = ROOT / "docs/reference.md"  # the full results and assumptions live in the reference
 
 VERDICTS = ("pass", "fail", "not graded", "declined")
 SMOKE_RUNS = ("cloud-smoke", "cloud-smoke-2")  # one Haiku spacer each, to test a new cloud machine; not results
@@ -36,6 +36,20 @@ NOT_HOLED_ROOFS = {
         "a closed roof over the whole box, 208 mm across: every strand lands, but none spans that far",
     ("estoa-light", "can_ask", "google/gemini-4-argon", 1):
         "its round rim bridges 39 mm over the USB opening; the strands end at the rim's curved outer edge",
+    ("estoa-light", "can_ask", "google/gemini-4-argon", 5):
+        "a 35 by 7 mm ledge 31 mm up the wall box, with no hole in it; half its strands land at both ends",
+    ("nut-knob/M5", "can_ask", "z-ai/glm-5.3-flash", 10):
+        "ten 3 to 6 mm undercuts ringing the knob 12 mm up, none with a hole: the grip's flutes",
+    ("tripod-plate", "can_ask", "anthropic/claude-sonnet-5.5", 7):
+        "a 16 by 47 mm roof along the plate's underside with no hole in it; 18% of strands land at both ends",
+    ("tripod-plate", "can_ask", "deepseek/deepseek-v4-pro-0813", 10):
+        "two 40 by 5.5 mm strips under the dovetail's edges, with no hole: ledges, not a holed roof",
+    ("tripod-plate", "can_test", "anthropic/claude-sonnet-5.5", 3):
+        "a 16 by 56 mm roof along the plate's underside with no hole in it; 19% of strands land at both ends",
+    ("estoa-light", "can_test", "anthropic/claude-sonnet-5.5", 2):
+        "a 38 by 4.5 mm ledge 30 mm up the box wall, with no hole in it",
+    ("estoa-light", "can_test", "deepseek/deepseek-v4.1-flash", 3):
+        "a 36 by 5 mm ledge 32 mm up the box wall, with no hole in it",
 }
 
 # Whose words each task's request is, as of issue 35. The tripod's and the Estoa light's were approved by Dan
@@ -238,22 +252,22 @@ def markers(name: str) -> tuple[str, str]:
 def replace_section(text: str, name: str, new: str) -> str:
     start, end = markers(name)
     if start not in text or end not in text:
-        raise SystemExit(f"README.md has no {name} markers: add {start!r} and {end!r}")
+        raise SystemExit(f"docs/reference.md has no {name} markers: add {start!r} and {end!r}")
     before, rest = text.split(start, 1)
     _, after = rest.split(end, 1)
     return f"{before}{start}\n{new}\n{end}{after}"
 
 
 def readme_with(text: str, records: list[TrialRecord]) -> str:
-    """README.md's text with both computed sections brought up to date."""
+    """docs/reference.md's text with both computed sections brought up to date."""
     text = replace_section(text, "results", section(records))
     return replace_section(text, "assumptions", assumptions(records))
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--write", action="store_true", help="update README.md's computed sections")
-    parser.add_argument("--check", action="store_true", help="exit 1 if README.md's computed sections are out of date")
+    parser.add_argument("--write", action="store_true", help="update docs/reference.md's computed sections")
+    parser.add_argument("--check", action="store_true", help="exit 1 if docs/reference.md's computed sections are out of date")
     args = parser.parse_args()
     records = counted_records()
     if not (args.write or args.check):
@@ -263,11 +277,11 @@ def main():
     updated = readme_with(text, records)
     if args.check:
         if updated != text:
-            sys.exit("README.md's results don't match results/runs/: run uv run python scripts/results_table.py --write")
-        print("README.md's results and assumptions match results/runs/")
+            sys.exit("docs/reference.md's results don't match results/runs/: run uv run python scripts/results_table.py --write")
+        print("docs/reference.md's results and assumptions match results/runs/")
         return
     README.write_text(updated)
-    print("README.md's results and assumptions updated")
+    print("docs/reference.md's results and assumptions updated")
 
 
 if __name__ == "__main__":

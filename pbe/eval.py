@@ -90,7 +90,7 @@ def save_conversation(folder, messages, sub):
 
 
 def grade_and_save(task, sub, folder, record):
-    findings, record.observations = agent.evaluate(task, sub, folder)
+    findings, record.observations = agent.evaluate(task, agent.graded_design(record.condition, sub), folder)
     record.set_verdict(findings, declined.reason(sub, findings))
     stamp_version(record)
     record.save(folder)
@@ -152,7 +152,7 @@ def what_decides(record):
 
 
 def regrade_one(record, sub, folder):
-    findings, observations = agent.evaluate(tasks.load(record.task), sub, folder)
+    findings, observations = agent.evaluate(tasks.load(record.task), agent.graded_design(record.condition, sub), folder)
     regraded = record.model_copy(deep=True)
     regraded.set_verdict(findings, declined.reason(sub, findings))
     verdict_changed = what_decides(regraded) != what_decides(record)

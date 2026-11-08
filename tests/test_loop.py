@@ -2,6 +2,8 @@
 import json
 from pathlib import Path
 
+import yaml
+
 from pbe.parts import submission
 from pbe.parts.build import build_parts
 from pbe.runner import agent, coupon_loop, tasks
@@ -38,10 +40,10 @@ def test_a_pocket_tighter_than_one_that_wont_go_in_wont_either(tmp_path):
     assert [line.basis for line in lines] == ["tighter than a record", "tighter than a record", "coupon B record", "coupon B record"]
 
 
-def test_a_seat_between_printed_sizes_gets_no_answer_and_a_tighter_one_wont_go_in(tmp_path):
+def test_a_seat_between_printed_sizes_gets_the_nearest_one_and_a_tighter_one_wont_go_in(tmp_path):
     lines = report_for(DEEPSEEK_WHEEL, tmp_path)["coupon"]
     assert texts(lines) == ["21.59 mm seat: won't go in.", "21.74 mm seat: won't go in.", "21.89 mm seat: won't go in.",
-                            "22.04 mm seat: I can't tell you how that one came out.", "22.19 mm seat: goes in; holds upside down."]
+                            "22.04 mm seat (I printed 22.00 mm, the nearest size): won't go in.", "22.19 mm seat: goes in; holds upside down."]
 
 
 def test_a_holed_roof_gets_the_bridge_checks_prediction(tmp_path):
@@ -265,3 +267,37 @@ def test_the_estoa_report_says_which_way_the_charger_is_stopped(tmp_path):
         "the ESP32: it won't sit where the box puts it; the plastic runs into its USB port."]
     assert said("8.0 mm or more out from the socket, the way in is no roomier than the 11.5 x 8.5 mm opening") == [
         "the charger: the plug's head doesn't fit through the opening, so it can't get far enough in to connect to the ESP32."]
+
+
+# --- can_test: the model may print test pieces before it hands in the final design --------------------------------
+
+OPUS_M3 = ROOT / "results/runs/pilot-nut-knob-2/nut-knob/M3/can_ask/anthropic__claude-opus-5.5/t1/submission.yaml"
+
+
+def test_a_test_print_is_reported_before_the_final_design_and_only_where_the_model_asks(tmp_path):
+    """Opus's M3 knob: it prints its four-pocket test piece first, hears how each pocket did, then hands in the
+    knob. The person's words come from the recorded prints only. Without can_test the prompt and tools don't change."""
+    saved = yaml.safe_load(OPUS_M3.read_text())
+    test_piece = [part for part in saved["parts"] if part["role"] == "coupon"]
+    calls = iter([("print_test", {"params": saved["params"], "parts": test_piece}),
+                  ("submit_design", {key: value for key, value in saved.items() if key != "task"})])
+
+    def chat(model, messages, tools=None, max_tokens=None):
+        name, arguments = next(calls)
+        call = {"id": name, "type": "function", "function": {"name": name, "arguments": json.dumps(arguments)}}
+        return {"choices": [{"message": {"role": "assistant", "tool_calls": [call]}}]}
+    task = tasks.load("nut-knob/M3")
+    record, messages, sub = agent.run_trial(task, "fake", condition="can_test", chat=chat)
+
+    reply = next(message["content"] for message in messages if message.get("tool_call_id") == "print_test")
+    assert reply.startswith(agent.TEST_PRINTED) and "fit_coupon" in reply
+    assert len(record.test_prints) == 1 and record.test_prints[0]["parts"] == ["fit_coupon"]
+    assert {line["basis"] for line in record.test_prints[0]["reply"]["fit_coupon"]} <= {
+        "coupon B record", "tighter than a record", "no record", "bridge check prediction"}
+    assert sub is not None and record.outcome == "submitted"
+    assert [part.role for part in agent.graded_design("can_test", sub).parts] == ["final"]
+    assert agent.PRINT_TEST_LINE in messages[0]["content"]
+    assert "print_test" in [tool["function"]["name"] for tool in agent.tools("can_test")]
+    assert agent.NO_SUPPORTS in messages[0]["content"] and agent.NO_SUPPORTS not in agent.system_prompt(8)
+    assert agent.PRINT_TEST_LINE not in agent.system_prompt(8)
+    assert "print_test" not in [tool["function"]["name"] for tool in agent.tools("can_ask")]

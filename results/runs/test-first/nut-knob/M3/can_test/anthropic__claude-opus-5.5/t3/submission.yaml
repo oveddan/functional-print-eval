@@ -1,0 +1,185 @@
+task: nut-knob/M3
+note: 'Only one coupon result came back: a plain 5.45 mm hex was too tight. The pocket
+  is now a looser 5.7 mm hex with crush ribs. If the nut is loose, raise rib_h to
+  0.2. If it''s too stiff, lower it to 0.1.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  n_scallops:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: 'clearance hex; grip comes from the crush ribs. Coupon: 5.45 plain hex would
+      not take the nut'
+  rib_h:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: rib to opposite flat = 5.55
+  rib_w:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.4 lead-in, so the nut sits fully below the surface
+  lead_depth:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_af:
+    value: 6.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    H = p.knob_h\n    R = p.knob_d / 2\n    body\
+    \ = cq.Workplane('XY').circle(R).extrude(H)\n    body = body.edges('<Z').chamfer(0.5)\n\
+    \    body = body.edges('>Z').fillet(1.0)\n    for i in range(int(p.n_scallops)):\n\
+    \        a = 2 * math.pi * i / p.n_scallops\n        cyl = cq.Workplane('XY').center(R\
+    \ * math.cos(a), R * math.sin(a)).circle(p.scallop_r).extrude(H)\n        body\
+    \ = body.cut(cyl)\n    zb = H - p.pocket_depth\n    k = 2 / 3 ** 0.5\n    pocket\
+    \ = cq.Workplane('XY').workplane(offset=zb).polygon(6, p.pocket_af * k).extrude(p.pocket_depth\
+    \ + 0.1)\n    lead = cq.Workplane('XY').workplane(offset=H - p.lead_depth).polygon(6,\
+    \ p.lead_af * k).extrude(p.lead_depth + 0.1)\n    hole = cq.Workplane('XY').circle(p.bolt_clear_d\
+    \ / 2).extrude(H)\n    body = body.cut(pocket).cut(lead).cut(hole)\n    rib_len\
+    \ = p.rib_h + 0.2\n    rc = p.pocket_af / 2 - p.rib_h + rib_len / 2\n    hz =\
+    \ p.pocket_depth - p.lead_depth\n    for ang in (30, 150, 270):\n        rib =\
+    \ (cq.Workplane('XY').box(rib_len, p.rib_w, hz, centered=(True, True, False))\n\
+    \               .translate((rc, 0, zb)).rotate((0, 0, 0), (0, 0, 1), ang))\n \
+    \       body = body.union(rib)\n    return body\n"
+  print_orientation: bolt-side face (solid floor with the round hole) on the bed,
+    nut pocket opening facing up. No supports, no bridges.
+  use_orientation: floor side faces the workpiece; the bolt comes up through the floor
+    into the nut
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_retained
+  part: knob
+  feature: hex pocket with 3 crush ribs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - rib_h
+  - rib_w
+  - nut_af
+  check:
+    method: coupon
+    ref: coupon_A/B/C
+    description: 5.45 plain hex was too tight; the ribs give 5.55 effective, and they
+      squash instead of the whole wall. The nut must stay in when the knob is turned
+      over and tapped
+- id: nut_recessed
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: nut top sits about 0.4 mm below the knob face
+- id: floor_stop
+  part: knob
+  feature: 5.2 mm floor with 3.4 hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - pocket_depth
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: the hole is smaller than the nut, so the nut can't go through
+manual:
+- n: '1'
+  text: Print the knob in PLA with the flat solid face on the bed and the hex pocket
+    facing up. No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Put the M3 nut on the pocket, flat side down, lined up with the hex, and press
+    it in with your thumb (or push it down on the table) until it sits below the surface.
+    The three small ribs inside are meant to squash. If it's very stiff, push it in
+    by threading a bolt in from the bottom and tightening it.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the knob over and tap it. The nut should stay in. Thread your M3 bolt
+    in from the round-hole side so it goes through the nut and out the pocket side.
+    When you tighten, the floor takes the load.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

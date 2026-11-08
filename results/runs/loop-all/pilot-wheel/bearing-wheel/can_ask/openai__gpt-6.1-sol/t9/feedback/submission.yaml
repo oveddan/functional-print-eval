@@ -1,0 +1,571 @@
+task: bearing-wheel
+note: 'Revision 2: replace the one-piece wheel with two bolted halves, printed pocket-up
+  without internal roofs or bridges. Discard the failed wheel. Nominal tread remains
+  50 mm diameter × 16 mm wide, but external joining screw heads/nuts increase the
+  local axial envelope to approximately 21.4 mm. Bench-fit prototype ONLY: no door
+  installation or load-bearing approval. Bearing fits and spacers remain unverified;
+  do not infer a successful fit from the reported 22.24 mm seat dimension.'
+questions:
+- text: Do the bearings seat by hand without rocking in the new coupon?
+  answer: null
+- text: What are the track profile, supported load, bracket clearance and existing
+    bolt length?
+  answer: null
+params:
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original diameter.
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original tread width, excluding new joining hardware.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  seat_allowance:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral; fit still unverified.
+  relief_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_od:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_floor:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tread_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Only the external tread rim is chamfered; mating faces stay flat.
+  join_radius:
+    value: 18.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  join_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  join_screw_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  join_screw_l:
+    value: 20
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  join_head_d:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  join_head_h:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  join_nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  join_nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  axle_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  axle_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Must contact only inner-race metal; verify before assembly.
+  outer_spacer_w:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  inner_race_face_od:
+    value: null
+    unit: mm
+    kind: hardware
+    source: unknown
+    note: ''
+  bench_bolt_l:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_id:
+    value: 8.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  locknut_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  existing_bolt_l:
+    value: null
+    unit: mm
+    kind: hardware
+    source: unknown
+    note: ''
+  bracket_clearance:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+parts:
+- id: seat_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    h = p.bearing_w + p.coupon_floor\n    a = cq.Workplane('XY').circle(p.coupon_od/2).extrude(h)\n\
+    \    a = a.cut(cq.Workplane('XY').circle(p.relief_d/2).extrude(h))\n    pocket\
+    \ = cq.Workplane('XY').workplane(offset=p.coupon_floor).circle((p.bearing_od+p.seat_allowance)/2).extrude(p.bearing_w)\n\
+    \    return a.cut(pocket)\n"
+  print_orientation: Flat backing face at z=0, bearing pocket open upward. No supports
+    or bridging.
+  use_orientation: Fit gauge only; same seat geometry as each wheel half.
+- id: wheel_half_a
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.wheel_w/2\n    floor = h-p.bearing_w\n    if floor\
+    \ <= 0:\n        raise ValueError('Wheel half must exceed bearing width')\n  \
+    \  a = cq.Workplane('XY').circle(p.wheel_d/2).extrude(h)\n    a = a.edges('>Z').chamfer(p.tread_chamfer)\n\
+    \    a = a.cut(cq.Workplane('XY').circle(p.relief_d/2).extrude(h))\n    pocket\
+    \ = cq.Workplane('XY').workplane(offset=floor).circle((p.bearing_od+p.seat_allowance)/2).extrude(p.bearing_w)\n\
+    \    a = a.cut(pocket)\n    r = p.join_radius\n    holes = cq.Workplane('XY').pushPoints([(r,0),(0,r),(-r,0),(0,-r)]).circle(p.join_hole_d/2).extrude(h)\n\
+    \    return a.cut(holes)\n"
+  print_orientation: Flat mating/backing face at z=0; bearing pocket faces upward.
+    No supports, no roof, no bridge.
+  use_orientation: 'Invert this half for assembly: printed z=0 mating face becomes
+    assembly z=8, printed z=8 pocket opening becomes assembly z=0.'
+- id: wheel_half_b
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.wheel_w/2\n    floor = h-p.bearing_w\n    if floor\
+    \ <= 0:\n        raise ValueError('Wheel half must exceed bearing width')\n  \
+    \  a = cq.Workplane('XY').circle(p.wheel_d/2).extrude(h)\n    a = a.edges('>Z').chamfer(p.tread_chamfer)\n\
+    \    a = a.cut(cq.Workplane('XY').circle(p.relief_d/2).extrude(h))\n    pocket\
+    \ = cq.Workplane('XY').workplane(offset=floor).circle((p.bearing_od+p.seat_allowance)/2).extrude(p.bearing_w)\n\
+    \    a = a.cut(pocket)\n    r = p.join_radius\n    holes = cq.Workplane('XY').pushPoints([(r,0),(0,r),(-r,0),(0,-r)]).circle(p.join_hole_d/2).extrude(h)\n\
+    \    return a.cut(holes)\n"
+  print_orientation: Flat mating/backing face at z=0; bearing pocket faces upward.
+    No supports or bridges.
+  use_orientation: Translate upward by 8 mm for assembly; printed z=0 mating face
+    meets half A at assembly z=8.
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.wheel_w-2*p.bearing_w\n    if h <= 0:\n        raise\
+    \ ValueError('Positive spacer length required')\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle((p.axle_d+p.axle_clearance)/2).extrude(h)\n"
+  print_orientation: Annular face at z=0; print solid.
+  use_orientation: Between bearing inner races, assembly z=7 to 9. Bench prototype
+    only.
+- id: outer_spacer_a
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle((p.axle_d+p.axle_clearance)/2).extrude(p.outer_spacer_w)\n"
+  print_orientation: Annular face on bed; print solid.
+  use_orientation: Assembly z=-3 to 0.
+- id: outer_spacer_b
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle((p.axle_d+p.axle_clearance)/2).extrude(p.outer_spacer_w)\n"
+  print_orientation: Annular face on bed; print solid.
+  use_orientation: Assembly z=16 to 19.
+hardware:
+- id: bearings
+  ref: 608ZZ
+  qty: 2
+- id: join_screws
+  ref: ISO 4762 M3x20
+  qty: 4
+- id: join_nuts
+  ref: ISO 4032 M3
+  qty: 4
+- id: bench_axle
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: bench_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: bench_washers
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: join_east
+  fastener: join_screws
+  axis_origin:
+  - 18.5
+  - 0.0
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_half_a
+    feature: External pocket-side face at printed z=8 surrounding east 3.4 mm hole;
+      no counterbore.
+    role: head_seat
+  - part: wheel_half_b
+    feature: Aligned 3.4 mm through hole; nut bears on external pocket-side face.
+    role: clearance
+  nut: join_nuts
+  external: null
+- id: join_north
+  fastener: join_screws
+  axis_origin:
+  - 0.0
+  - 18.5
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_half_a
+    feature: North through hole, head on external face.
+    role: head_seat
+  - part: wheel_half_b
+    feature: Aligned through hole.
+    role: clearance
+  nut: join_nuts
+  external: null
+- id: join_west
+  fastener: join_screws
+  axis_origin:
+  - -18.5
+  - 0.0
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_half_a
+    feature: West through hole, head on external face.
+    role: head_seat
+  - part: wheel_half_b
+    feature: Aligned through hole.
+    role: clearance
+  nut: join_nuts
+  external: null
+- id: join_south
+  fastener: join_screws
+  axis_origin:
+  - 0.0
+  - -18.5
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_half_a
+    feature: South through hole, head on external face.
+    role: head_seat
+  - part: wheel_half_b
+    feature: Aligned through hole.
+    role: clearance
+  nut: join_nuts
+  external: null
+- id: bench_axis
+  fastener: bench_axle
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 12.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_half_a
+    feature: Axis through bearing bore; relief clears bolt. Origin/direction given
+      in half A printed frame.
+    role: clearance
+  - part: inner_spacer
+    feature: 8.5 mm through bore.
+    role: clearance
+  - part: outer_spacer_a
+    feature: 8.5 mm bore; washer outside, inner race inside.
+    role: clearance
+  - part: outer_spacer_b
+    feature: 8.5 mm bore; washer outside, inner race inside.
+    role: clearance
+  nut: bench_nut
+  external: None; unloaded bench assembly only.
+criteria:
+- id: seat_fit
+  part: wheel_half_a
+  feature: Upward-open 22.25 mm bearing seat, 7 mm deep; identical in half B.
+  relation: seats
+  hardware: bearings
+  clearance_mm: 0.25
+  params:
+  - bearing_od
+  - bearing_w
+  - seat_allowance
+  check:
+    method: coupon
+    ref: seat_coupon
+    description: Both bearings must seat squarely by hand, without hammering or perceptible
+      rocking. A measured seat diameter alone does not confirm fit.
+- id: roof_removed
+  part: wheel_half_a
+  feature: Pocket opens upward from a bed-supported annular floor; identical in half
+    B.
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  - relief_d
+  check:
+    method: measure
+    ref: null
+    description: 'Inspect sliced preview before printing: no spanning roof over the
+      pocket, no supports in pocket. Reject any loops, gaps or incomplete seat floors.'
+- id: center_spacer_fit
+  part: inner_spacer
+  feature: Nominal 2 mm long spacer between inner races.
+  relation: seats
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  - spacer_od
+  - inner_race_face_od
+  check:
+    method: measure
+    ref: null
+    description: Verify actual gap and spacer length, parallel ends, and contact only
+      with inner-race metal. Do not tighten an axle to force a mismatched stack together.
+- id: outer_spacers
+  part: outer_spacer_a
+  feature: Small-diameter inner-race contact; identical for spacer B.
+  relation: seats
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - spacer_od
+  - outer_spacer_w
+  - inner_race_face_od
+  check:
+    method: measure
+    ref: null
+    description: Verify both spacers avoid bearing shields and both washers clear
+      the wheel.
+- id: joining_grip
+  part: wheel_half_b
+  feature: External nuts on 16 mm joined wheel stack.
+  relation: engages
+  hardware: join_screws
+  clearance_mm: null
+  params:
+  - wheel_w
+  - join_screw_l
+  - join_nut_h
+  check:
+    method: measure
+    ref: null
+    description: All four nuts must fully engage, with threads beyond each nut; faces
+      must meet flat and rims must align.
+- id: track_unverified
+  part: wheel_half_b
+  feature: Flat tread and protruding joining hardware are unverified against the door
+    mechanism.
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_d
+  - wheel_w
+  - join_head_h
+  - join_nut_h
+  - bracket_clearance
+  check:
+    method: template
+    ref: null
+    description: Do not install. Compare against old wheel and track only with door
+      independently secured. Approximately 21.4 mm overall face-to-face hardware envelope,
+      plus bolt-tip protrusion, requires clearance.
+manual:
+- n: '1'
+  text: Discard the failed one-piece wheel. Do not use an unsupported or partially
+    closed bearing pocket. Secure the door independently before inspecting its mechanism;
+    do not mount this prototype on it.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print seat_coupon pocket-up at 0.2 mm layers, 5 walls, solid infill, no supports.
+    Inspect for a complete floor and clear central hole. Test each bearing by hand.
+    If the result still cannot be assessed, stop before assembly; fit remains unknown.
+  parts:
+  - seat_coupon
+  hardware:
+  - bearings
+  tool: null
+- n: '3'
+  text: 'Print wheel_half_a and wheel_half_b exactly pocket-up, with their flat mating
+    faces on the bed: 6 walls, 6 top/bottom layers, 100% infill, no supports. Check
+    the slicer preview: there must be no roof across either bearing pocket. Print
+    all spacers solid, annular faces down.'
+  parts:
+  - wheel_half_a
+  - wheel_half_b
+  - inner_spacer
+  - outer_spacer_a
+  - outer_spacer_b
+  hardware: []
+  tool: null
+- n: '4'
+  text: Remove bed-edge burrs carefully so the two backing faces meet flat. Hold halves
+    back-to-back, pockets facing outward; align rims and four holes. Install four
+    M3x20 screws from half A's pocket side and four M3 nuts on half B's pocket side.
+    Snug gently in a cross pattern while keeping rims aligned. Do not crush PLA. All
+    nuts must fully engage.
+  parts:
+  - wheel_half_a
+  - wheel_half_b
+  hardware:
+  - join_screws
+  - join_nuts
+  tool: Matching hex key and wrench
+- n: '5'
+  text: Seat one 608 by hand, insert inner_spacer through the other pocket, then seat
+    the second 608. Bearing outside faces should be flush with the outside wheel faces.
+    Check that the spacer contacts only inner races and fits the actual gap without
+    lifting either bearing. If any fit cannot be verified, stop.
+  parts:
+  - wheel_half_a
+  - wheel_half_b
+  - inner_spacer
+  hardware:
+  - bearings
+  tool: null
+- n: '6'
+  text: 'For unloaded bench testing only, stack on the selected M8x40: washer, outer_spacer_a,
+    assembled wheel/bearings with inner_spacer, outer_spacer_b, washer, M8 lock nut.
+    Do not substitute the existing bolt without measuring its length and confirming
+    full nut engagement. Ensure washers and spacers do not touch shields or rotating
+    wheel surfaces.'
+  parts:
+  - wheel_half_a
+  - wheel_half_b
+  - inner_spacer
+  - outer_spacer_a
+  - outer_spacer_b
+  hardware:
+  - bench_axle
+  - bench_washers
+  - bench_nut
+  - bearings
+  tool: null
+- n: '7'
+  text: Advance the axle lock nut only enough to remove loose play while holding the
+    bolt. Do not apply normal M8 tightening torque to printed spacers. Nylon locking
+    section must engage fully. Hand-turn the wheel without load; reject binding, rubbing,
+    rocking, compressed spacers or shifting halves. Do not power-spin.
+  parts:
+  - wheel_half_a
+  - wheel_half_b
+  - inner_spacer
+  - outer_spacer_a
+  - outer_spacer_b
+  hardware:
+  - bench_axle
+  - bench_nut
+  tool: Matching hex key and wrench
+- n: '8'
+  text: This split construction addresses printing failure, not door strength or compatibility.
+    PLA wheel/spacers can creep, and joining hardware adds width. Before a usable
+    repair, establish the track/tread profile, load, bracket clearance, axle length
+    and retention. Prefer a properly rated commercial roller for a weight-bearing
+    door; any bearing-clamped load-bearing redesign needs a suitable precision metal
+    spacer and validation.
+  parts: []
+  hardware: []
+  tool: null

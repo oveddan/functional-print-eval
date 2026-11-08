@@ -1,0 +1,271 @@
+task: nut-knob/M5
+note: Added test coupon for verifying M5 hex nut press-fit and inversion retention.
+  Hand knob for M5 bolt (ISO 4032 nut), 30 mm OD with 6 ergonomic flutes, internal
+  shoulder preventing push-through, and continuous 5.4 mm clearance hole for bolts
+  of any length.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Width across flats of ISO 4032 M5 hex nut
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Height / thickness of ISO 4032 M5 hex nut
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of ergonomic finger grip flutes around perimeter
+  pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of nut pocket from top face (nut sits 0.5 mm recessed inside)
+  flute_center_r:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from center to finger grip cutout centers
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter across the grip lobes
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal thread diameter of M5 bolt
+  rib_r:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of rounded crush rib cylinders on hex flats
+  pocket_af:
+    value: 8.2
+    unit: mm
+    kind: design
+    source: design
+    note: Nut pocket flat-to-flat width before crush ribs (0.2 mm clearance on nut)
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height of the knob
+  rib_protrusion:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Inward protrusion of each rounded crush rib from hex flat
+  bottom_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on bottom outer edge for comfort and elephant foot compensation
+  bolt_clearance_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole diameter for M5 bolt close clearance
+  flute_r:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of finger grip cutout flutes
+  top_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on top outer edge and depth of rib lead-in zone
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    # Base outer cylinder\n\
+    \    knob = cq.Workplane(\"XY\").circle(p.knob_od / 2.0).extrude(p.knob_h)\n \
+    \   \n    # Chamfer top and bottom outer circular rims for comfort and clean printing\n\
+    \    knob = knob.faces(\">Z\").chamfer(p.top_chamfer)\n    knob = knob.faces(\"\
+    <Z\").chamfer(p.bottom_chamfer)\n    \n    # 6 ergonomic finger grip flutes around\
+    \ the perimeter\n    flute_pts = [\n        (p.flute_center_r * math.cos(2.0 *\
+    \ math.pi * i / p.flute_count),\n         p.flute_center_r * math.sin(2.0 * math.pi\
+    \ * i / p.flute_count))\n        for i in range(int(p.flute_count))\n    ]\n \
+    \   flute_cutter = (\n        cq.Workplane(\"XY\")\n        .pushPoints(flute_pts)\n\
+    \        .circle(p.flute_r)\n        .extrude(p.knob_h)\n    )\n    knob = knob.cut(flute_cutter)\n\
+    \    \n    # Continuous central clearance hole for M5 bolt through entire knob\
+    \ (z=0 to z=knob_h)\n    bolt_hole = (\n        cq.Workplane(\"XY\")\n       \
+    \ .circle(p.bolt_clearance_d / 2.0)\n        .extrude(p.knob_h)\n    )\n    knob\
+    \ = knob.cut(bolt_hole)\n    \n    # Hex nut pocket from z = (knob_h - pocket_depth)\
+    \ out through the top face\n    # Vertex radius for regular hexagon: r_corner\
+    \ = (af / 2) / cos(30 deg) = af / sqrt(3)\n    r_corner = (p.pocket_af / 2.0)\
+    \ / math.cos(math.pi / 6.0)\n    hex_pts = [\n        (r_corner * math.cos(i *\
+    \ math.pi / 3.0),\n         r_corner * math.sin(i * math.pi / 3.0))\n        for\
+    \ i in range(6)\n    ]\n    pocket_z = p.knob_h - p.pocket_depth\n    hex_cutter\
+    \ = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=pocket_z)\n   \
+    \     .polyline(hex_pts)\n        .close()\n        .extrude(p.pocket_depth +\
+    \ 1.0)\n    )\n    knob = knob.cut(hex_cutter)\n    \n    # Rounded crush ribs\
+    \ on each of the 6 hex flats to retain the nut by hand press\n    r_flat = p.pocket_af\
+    \ / 2.0\n    r_rib_center = (r_flat - p.rib_protrusion) + p.rib_r\n    rib_pts\
+    \ = [\n        (r_rib_center * math.cos(math.pi / 6.0 + i * math.pi / 3.0),\n\
+    \         r_rib_center * math.sin(math.pi / 6.0 + i * math.pi / 3.0))\n      \
+    \  for i in range(6)\n    ]\n    rib_h = p.pocket_depth - p.top_chamfer\n    ribs\
+    \ = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=pocket_z)\n   \
+    \     .pushPoints(rib_pts)\n        .circle(p.rib_r)\n        .extrude(rib_h)\n\
+    \    )\n    knob = knob.union(ribs)\n    \n    return knob\n"
+  print_orientation: Bottom flat face on the bed (z = 0). No supports required.
+  use_orientation: Nut pocket faces outward/away from clamped workpiece; bolt passes
+    through nut and through-hole out the far side.
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    coupon_w = 16.0\n\
+    \    coupon_h = p.pocket_depth + 2.5\n    pocket_z = coupon_h - p.pocket_depth\n\
+    \    \n    # Base block\n    block = cq.Workplane(\"XY\").box(coupon_w, coupon_w,\
+    \ coupon_h, centered=(True, True, False))\n    \n    # Central bolt clearance\
+    \ hole\n    bolt_hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d / 2.0).extrude(coupon_h)\n\
+    \    block = block.cut(bolt_hole)\n    \n    # Hex pocket\n    r_corner = (p.pocket_af\
+    \ / 2.0) / math.cos(math.pi / 6.0)\n    hex_pts = [\n        (r_corner * math.cos(i\
+    \ * math.pi / 3.0),\n         r_corner * math.sin(i * math.pi / 3.0))\n      \
+    \  for i in range(6)\n    ]\n    hex_cutter = (\n        cq.Workplane(\"XY\")\n\
+    \        .workplane(offset=pocket_z)\n        .polyline(hex_pts)\n        .close()\n\
+    \        .extrude(p.pocket_depth + 1.0)\n    )\n    block = block.cut(hex_cutter)\n\
+    \    \n    # Crush ribs\n    r_flat = p.pocket_af / 2.0\n    r_rib_center = (r_flat\
+    \ - p.rib_protrusion) + p.rib_r\n    rib_pts = [\n        (r_rib_center * math.cos(math.pi\
+    \ / 6.0 + i * math.pi / 3.0),\n         r_rib_center * math.sin(math.pi / 6.0\
+    \ + i * math.pi / 3.0))\n        for i in range(6)\n    ]\n    rib_h = p.pocket_depth\
+    \ - p.top_chamfer\n    ribs = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=pocket_z)\n\
+    \        .pushPoints(rib_pts)\n        .circle(p.rib_r)\n        .extrude(rib_h)\n\
+    \    )\n    block = block.union(ribs)\n    \n    return block\n"
+  print_orientation: Bottom face flat on the bed (z = 0). No supports required.
+  use_orientation: Top face pocket used to test-fit M5 hex nut press and retention.
+hardware:
+- id: nut_m5
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket_fit
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: nut_m5
+  clearance_mm: 0.2
+  params:
+  - pocket_af
+  - pocket_depth
+  - nut_af
+  - nut_h
+  - rib_protrusion
+  check:
+    method: coupon
+    ref: coupon
+    description: Verify that the ISO 4032 M5 nut press-fits firmly into the pocket
+      by hand and stays retained when inverted using the printed test coupon.
+- id: coupon_pocket_fit
+  part: coupon
+  feature: nut_pocket
+  relation: seats
+  hardware: nut_m5
+  clearance_mm: 0.2
+  params:
+  - pocket_af
+  - pocket_depth
+  - nut_af
+  - nut_h
+  - rib_protrusion
+  check:
+    method: coupon
+    ref: coupon
+    description: Test press-fitting the M5 nut into the test coupon by hand and verifying
+      it does not fall out when inverted.
+- id: bolt_clearance
+  part: knob
+  feature: bolt_through_hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_clearance_d
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: Check that an M5 bolt threads freely through the nut and passes completely
+      through the clearance hole without binding.
+- id: nut_retention_shoulder
+  part: knob
+  feature: pocket_shoulder
+  relation: supports
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - knob_h
+  - nut_af
+  - bolt_clearance_d
+  check:
+    method: none
+    ref: null
+    description: Verify that the solid internal shoulder stops the nut and prevents
+      it from pushing out through the far side under clamping loads.
+manual:
+- n: '1'
+  text: Print the test coupon (coupon) flat on the print bed with high-speed PLA at
+    0.2 mm layer height. No supports needed.
+  parts:
+  - coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Test the M5 hex nut fit in the coupon: press the nut into the hex pocket
+    with your thumb. It should seat down to the shoulder and remain firmly retained
+    when turned upside down.'
+  parts:
+  - coupon
+  hardware:
+  - nut_m5
+  tool: null
+- n: '3'
+  text: Print the full knob (knob) with its flat bottom face on the print bed (z =
+    0), using 0.2 mm layer height and 100% infill or 4+ perimeters for maximum strength.
+    No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Align the M5 hex nut with the hex pocket opening on the top face of the knob,
+    using the 0.8 mm lead-in zone to start it straight. Press firmly with your thumb
+    until the nut seats against the solid internal shoulder (~0.5 mm recessed below
+    the top face).
+  parts:
+  - knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '5'
+  text: Turn the knob upside down to confirm retention. Thread the knob onto your
+    M5 bolt; the through-hole allows the bolt to pass fully through the nut and out
+    the far side.
+  parts:
+  - knob
+  hardware:
+  - nut_m5
+  tool: null

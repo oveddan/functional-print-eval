@@ -1,0 +1,272 @@
+task: tripod-plate
+note: 3D-printed Arca-Swiss quick release plate designed for 38 mm drop-in tripod
+  clamps, utilizing the salvaged metal 1/4"-20 webcam mount bolt for secure, reliable
+  thread engagement without risking plastic thread shear.
+questions:
+- text: How hard would it be to 3D print it, both the flat part and the part that
+    screws in? Just as a temporary thing until I find the real one. I know it's metal
+    normally.
+  answer: 'The flat plate 3D prints very easily and cleanly without supports. However,
+    3D printing the threaded 1/4"-20 bolt itself in plastic is dangerous: printed
+    plastic threads shear easily along layer lines under the weight and tilt torque
+    of a camera, which could drop the camera or leave a snapped plastic stud stuck
+    inside the camera''s blind tripod socket. Instead, using your salvaged 1/4"-20
+    metal webcam mount bolt gives you authentic metal threads and safe clamping, housed
+    securely in the custom 3D-printed Arca-Swiss plate.'
+params:
+  coupon_length:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Length of test coupon along clamp axis
+  recess_width:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: Width of bolt head recess channel
+  dovetail_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: measured
+    note: Arca-Swiss dovetail angle
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Webcam mount bolt thread length under head
+  clamp_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Arca-Swiss clamp dovetail base width
+  recess_depth:
+    value: 4.8
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of bolt head recess channel from bottom
+  plate_length:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: Length of quick release plate along clamp axis
+  plate_height:
+    value: 9.5
+    unit: mm
+    kind: design
+    source: design
+    note: Total thickness of the quick release plate
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Webcam mount bolt head height
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Webcam mount bolt head diameter
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 nominal thread outer diameter
+  slot_length:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Total length of camera position adjustment slot
+  bolt_clearance_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance width of slot for 1/4-20 bolt
+  dovetail_h:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of 45-degree dovetail section
+parts:
+- id: arca_plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    base_w = p.clamp_width\n    dovetail_h\
+    \ = p.dovetail_h\n    total_h = p.plate_height\n    length = p.plate_length\n\
+    \    top_w = base_w - 2.0 * dovetail_h\n\n    # Dovetail profile on XZ plane,\
+    \ z = 0 is the bed (bottom face)\n    pts = [\n        (-base_w / 2.0, 0.0),\n\
+    \        (base_w / 2.0, 0.0),\n        (top_w / 2.0, dovetail_h),\n        (top_w\
+    \ / 2.0, total_h),\n        (-top_w / 2.0, total_h),\n        (-top_w / 2.0, dovetail_h),\n\
+    \    ]\n\n    body = (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n\
+    \        .close()\n        .extrude(length)\n        .translate((0, -length /\
+    \ 2.0, 0))\n    )\n\n    # Recess channel on bottom (z = 0) for the 15mm bolt\
+    \ head\n    recess = (\n        cq.Workplane(\"XY\")\n        .rect(p.recess_width,\
+    \ length + 2.0)\n        .extrude(p.recess_depth)\n    )\n\n    # Camera bolt\
+    \ adjustment slot along Y axis\n    travel = p.slot_length - p.bolt_clearance_d\n\
+    \    r = p.bolt_clearance_d / 2.0\n\n    slot_box = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=-1.0)\n        .box(p.bolt_clearance_d, travel,\
+    \ total_h + 2.0)\n        .translate((0, 0, (total_h + 2.0) / 2.0 - 1.0))\n  \
+    \  )\n    hole1 = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n\
+    \        .center(0, travel / 2.0)\n        .circle(r)\n        .extrude(total_h\
+    \ + 2.0)\n    )\n    hole2 = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n\
+    \        .center(0, -travel / 2.0)\n        .circle(r)\n        .extrude(total_h\
+    \ + 2.0)\n    )\n    slot_cut = slot_box.union(hole1).union(hole2)\n\n    return\
+    \ body.cut(recess).cut(slot_cut)\n"
+  print_orientation: Bottom face (z = 0) on the bed
+  use_orientation: Bottom face (z = 0) in clamp, top face against camera
+- id: coupon_arca
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    base_w = p.clamp_width\n    dovetail_h\
+    \ = p.dovetail_h\n    total_h = p.plate_height\n    length = p.coupon_length\n\
+    \    top_w = base_w - 2.0 * dovetail_h\n\n    pts = [\n        (-base_w / 2.0,\
+    \ 0.0),\n        (base_w / 2.0, 0.0),\n        (top_w / 2.0, dovetail_h),\n  \
+    \      (top_w / 2.0, total_h),\n        (-top_w / 2.0, total_h),\n        (-top_w\
+    \ / 2.0, dovetail_h),\n    ]\n\n    body = (\n        cq.Workplane(\"XZ\")\n \
+    \       .polyline(pts)\n        .close()\n        .extrude(length)\n        .translate((0,\
+    \ -length / 2.0, 0))\n    )\n\n    recess = (\n        cq.Workplane(\"XY\")\n\
+    \        .rect(p.recess_width, length + 2.0)\n        .extrude(p.recess_depth)\n\
+    \    )\n\n    hole = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n\
+    \        .circle(p.bolt_clearance_d / 2.0)\n        .extrude(total_h + 2.0)\n\
+    \    )\n\n    return body.cut(recess).cut(hole)\n"
+  print_orientation: Bottom face (z = 0) on the bed
+  use_orientation: Bottom face (z = 0) in clamp, top face against camera
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_mount_joint
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: arca_plate
+    feature: recess_channel
+    role: head_seat
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: dovetail_clamp_fit
+  part: arca_plate
+  feature: dovetail_rails
+  relation: engages
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - clamp_width
+  - dovetail_angle
+  - dovetail_h
+  check:
+    method: coupon
+    ref: coupon_arca
+    description: Verify that the 45-degree Arca-Swiss dovetail bevel engages and clamps
+      firmly in the tripod clamp.
+- id: camera_bolt_clearance
+  part: arca_plate
+  feature: adjustment_slot
+  relation: contains
+  hardware: webcam_bolt
+  clearance_mm: 0.45
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  - slot_length
+  check:
+    method: measure
+    ref: null
+    description: Ensure the 1/4-20 camera bolt shank slides smoothly along the adjustment
+      slot.
+- id: bolt_head_recess
+  part: arca_plate
+  feature: recess_channel
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: 3.0
+  params:
+  - bolt_head_d
+  - recess_width
+  - bolt_head_h
+  - recess_depth
+  check:
+    method: measure
+    ref: null
+    description: Verify the 15mm bolt head sits recessed within the 18mm wide channel
+      so it does not protrude past the clamp seating rails.
+- id: thread_engagement
+  part: arca_plate
+  feature: top_mounting_face
+  relation: supports
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - plate_height
+  - recess_depth
+  check:
+    method: measure
+    ref: null
+    description: Ensure 5.2 mm of 1/4-20 thread protrudes above the plate to safely
+      engage the camera tripod socket without bottoming out.
+manual:
+- n: '1'
+  text: Print the test coupon 'coupon_arca' flat on the bed at 0.2 mm layer height
+    with no supports. Insert it into the tripod clamp and tighten the knob to confirm
+    that the 38 mm 45-degree dovetail seats cleanly and clamps solidly.
+  parts:
+  - coupon_arca
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the final plate 'arca_plate' flat on the bed (z = 0 face down) in high-speed
+    PLA with 0.2 mm layer height, at least 4-5 walls/perimeters, and 40-50% infill
+    for maximum clamping stiffness. No supports are needed.
+  parts:
+  - arca_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Insert the salvaged 1/4"-20 webcam bolt into the bottom channel of the printed
+    plate so its 15 mm head rests flat inside the channel and its threaded stem extends
+    up through the adjustment slot.
+  parts:
+  - arca_plate
+  hardware:
+  - webcam_bolt
+  tool: hand or coin
+- n: '4'
+  text: Place the top flat surface of the plate against the bottom of the camera and
+    thread the bolt into the camera's 1/4"-20 tripod socket. Slide the plate along
+    the slot to achieve optimal balance and ensure the camera's battery door remains
+    accessible, then tighten firmly by hand or with a coin in the bolt head.
+  parts:
+  - arca_plate
+  hardware:
+  - webcam_bolt
+  tool: hand or coin
+- n: '5'
+  text: Open the tripod clamp jaws using the clamp knob, drop the camera with the
+    attached plate into the clamp from above, and tighten the clamp knob securely.
+    Verify the clamp firmly grips both dovetails before letting go.
+  parts:
+  - arca_plate
+  hardware:
+  - webcam_bolt
+  tool: null

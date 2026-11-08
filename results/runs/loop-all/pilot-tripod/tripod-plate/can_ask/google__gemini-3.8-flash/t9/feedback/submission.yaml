@@ -1,0 +1,289 @@
+task: tripod-plate
+note: Arca-Swiss compatible quick release plate redesigned for print orientation with
+  the camera face on the build plate (Z=0), completely eliminating mid-air bridging
+  over the bolt head channel.
+questions:
+- text: How hard would it be to 3D print it, both the flat part and the part that
+    screws in? Just as a temporary thing until I find the real one. I know it's metal
+    normally.
+  answer: Printing the flat plate is quick, straightforward, and strong when printed
+    in PLA with solid perimeters. However, 3D printing a plastic 1/4"-20 threaded
+    screw is not recommended because small 3D-printed plastic threads in shear and
+    tension along layer lines are prone to snapping under the weight and tilt of a
+    camera. Instead, this design uses your salvaged 1/4"-20 metal bolt from the webcam
+    mount. The printed plate features a recessed bottom channel that captures the
+    bolt's 15 mm head and leaves exactly 5.2 mm of metal thread protruding into your
+    camera's socket for full strength and safety.
+params:
+  plate_length:
+    value: 45
+    unit: mm
+    kind: design
+    source: design
+    note: overall length of the quick release plate along the rail
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: height/thickness of the salvaged webcam mount bolt head
+  bolt_thread_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: threaded length under the head of the salvaged webcam bolt
+  slot_width:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: clearance slot width for 1/4-20 camera bolt
+  tripod_plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of the tripod clamp receiver plate opening
+  slot_travel:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: center-to-center travel distance for camera position adjustment
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: diameter of the salvaged webcam mount bolt head
+  thread_protrusion:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: thread length protruding above the camera face into the camera socket
+  counterbore_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: depth of recessed channel so the 5 mm bolt head is completely flush/recessed
+  dovetail_base_height:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: vertical lip height at the base of the dovetail
+  counterbore_width:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: width of the recessed channel providing clearance for the 15 mm bolt head
+  camera_thread:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: nominal diameter of standard 1/4-20 camera mounting thread
+  plate_height:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: standard total thickness of the quick release plate
+  dovetail_bevel_height:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: height of the 45-degree beveled clamping surface
+  dovetail_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: design
+    note: Arca-Swiss standard dovetail angle
+  web_thickness:
+    value: 4.8
+    unit: mm
+    kind: design
+    source: design
+    note: thickness of the mounting web between the bolt seat and the camera face
+parts:
+- id: quick_release_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    w = p.tripod_plate_width\n\
+    \    l = p.plate_length\n    h_tot = p.plate_height\n    h_base = p.dovetail_base_height\n\
+    \    h_bev = p.dovetail_bevel_height\n    w_top = w - 2.0 * h_bev\n    h_neck\
+    \ = h_tot - (h_base + h_bev)\n\n    # Modeled in print orientation:\n    # Camera\
+    \ interface face is on the print bed at Z = 0\n    # Dovetail base and bolt channel\
+    \ are at the top (Z = h_tot)\n    pts = [\n        (-w_top / 2.0, 0.0),\n    \
+    \    (w_top / 2.0, 0.0),\n        (w_top / 2.0, h_neck),\n        (w / 2.0, h_neck\
+    \ + h_bev),\n        (w / 2.0, h_tot),\n        (-w / 2.0, h_tot),\n        (-w\
+    \ / 2.0, h_neck + h_bev),\n        (-w_top / 2.0, h_neck),\n    ]\n\n    # Extrude\
+    \ solid plate along Y centered at Y=0\n    plate = (\n        cq.Workplane(\"\
+    XZ\")\n        .polyline(pts)\n        .close()\n        .extrude(l / 2.0, both=True)\n\
+    \    )\n\n    # Cut channel from the top (Z = h_tot down to Z = p.web_thickness)\n\
+    \    # Because this cut opens upward, it prints with zero bridges\n    cb_w =\
+    \ p.counterbore_width\n    cb_d = p.counterbore_depth\n    channel = (\n     \
+    \   cq.Workplane(\"XY\")\n        .workplane(offset=p.web_thickness)\n       \
+    \ .rect(cb_w, l + 4.0)\n        .extrude(cb_d + 2.0)\n    )\n    plate = plate.cut(channel)\n\
+    \n    # Cut 1/4\"-20 camera screw clearance slot vertically through the web\n\
+    \    slot_w = p.slot_width\n    slot_trav = p.slot_travel\n    slot_box = (\n\
+    \        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n        .rect(slot_w,\
+    \ slot_trav)\n        .extrude(h_tot + 2.0)\n    )\n    slot_cyl1 = (\n      \
+    \  cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n        .center(0, -slot_trav\
+    \ / 2.0)\n        .circle(slot_w / 2.0)\n        .extrude(h_tot + 2.0)\n    )\n\
+    \    slot_cyl2 = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n\
+    \        .center(0, slot_trav / 2.0)\n        .circle(slot_w / 2.0)\n        .extrude(h_tot\
+    \ + 2.0)\n    )\n    slot = slot_box.union(slot_cyl1).union(slot_cyl2)\n    plate\
+    \ = plate.cut(slot)\n\n    return plate\n"
+  print_orientation: Camera interface face flat on the build plate (Z=0). The bolt
+    head channel is open upward, completely eliminating bridging over the bolt seat
+    and slot.
+  use_orientation: Flat face at Z=0 faces upward against the camera base; 38 mm dovetail
+    and runners at Z=10 face downward into the tripod clamp jaws.
+hardware:
+- id: webcam-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_mounting_joint
+  fastener: webcam-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: quick_release_plate
+    feature: channel_seat
+    role: head_seat
+  - part: quick_release_plate
+    feature: camera_screw_slot
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: crit_clamp_width
+  part: quick_release_plate
+  feature: dovetail_base
+  relation: engages
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - tripod_plate_width
+  check:
+    method: measure
+    ref: null
+    description: Measure across the base width with calipers to verify 38.0 mm Arca-Swiss
+      clamp fit
+- id: crit_slot_clearance
+  part: quick_release_plate
+  feature: camera_screw_slot
+  relation: clears
+  hardware: webcam-bolt
+  clearance_mm: 0.65
+  params:
+  - slot_width
+  - camera_thread
+  check:
+    method: measure
+    ref: null
+    description: Check that the 1/4-20 webcam bolt threads pass through freely and
+      slide along the slot
+- id: crit_head_seat
+  part: quick_release_plate
+  feature: channel_seat
+  relation: seats
+  hardware: webcam-bolt
+  clearance_mm: 1.5
+  params:
+  - counterbore_width
+  - bolt_head_d
+  - counterbore_depth
+  - bolt_head_h
+  check:
+    method: measure
+    ref: null
+    description: Verify the 15 mm bolt head sits recessed within the channel against
+      the solid web seat
+- id: crit_camera_support
+  part: quick_release_plate
+  feature: top_camera_face
+  relation: supports
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - plate_height
+  - plate_length
+  check:
+    method: measure
+    ref: null
+    description: Check that the camera face (printed on the bed) is flat, smooth,
+      and firmly supports the camera base
+- id: crit_thread_engagement
+  part: quick_release_plate
+  feature: top_camera_face
+  relation: clears
+  hardware: webcam-bolt
+  clearance_mm: 5.2
+  params:
+  - bolt_thread_len
+  - web_thickness
+  - thread_protrusion
+  check:
+    method: measure
+    ref: null
+    description: Measure bolt thread stickout past the camera face to confirm 5.2
+      mm engagement into the camera socket
+manual:
+- n: '1'
+  text: Print the quick-release plate with the camera interface face flat on the build
+    plate (Z=0). In this orientation, the central channel is open upward, completely
+    eliminating bridging over the bolt recess. The perimeter of the slot prints directly
+    on the build sheet and the bolt seat prints on solid infill, guaranteeing clean
+    walls with zero sagging or loose loops. Use 4-5 perimeters and 40%+ infill.
+  parts:
+  - quick_release_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Once printed, remove the plate from the build bed. Check that the central
+    slot is completely open and clean.
+  parts:
+  - quick_release_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Place the salvaged 1/4"-20 webcam mount bolt into the channel from the top
+    (the runner side) so its head rests against the internal seat at Z=4.8 mm and
+    the threaded stud extends through the slot past the flat camera face.
+  parts:
+  - quick_release_plate
+  hardware:
+  - webcam-bolt
+  tool: null
+- n: '4'
+  text: Align the protruding bolt with the camera's 1/4"-20 tripod socket. Slide along
+    the slot to balance the camera and clear the battery door, then tighten the bolt
+    using the thumb knob until securely clamped against the camera base.
+  parts:
+  - quick_release_plate
+  hardware:
+  - webcam-bolt
+  tool: coin or fingers
+- n: '5'
+  text: Loosen the tripod clamp knob so the clamp jaws open wider than 38 mm. Drop
+    the mounted plate into the clamp from above, center it, and tighten the knob firmly
+    to engage the 45-degree dovetails.
+  parts:
+  - quick_release_plate
+  hardware: []
+  tool: null

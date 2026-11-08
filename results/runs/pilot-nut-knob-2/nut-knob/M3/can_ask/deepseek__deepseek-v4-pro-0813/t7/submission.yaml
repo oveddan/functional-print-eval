@@ -1,0 +1,213 @@
+task: nut-knob/M3
+note: Hand knob, 20 mm diameter, with a press-fit hex pocket for an M3 nut and a through-hole
+  for the bolt. The bolt is the user's own M3 bolt (not in the hardware list); it
+  threads through the nut and its tip exits the bottom of the knob. Included a fit-test
+  coupon to dial in the press fit before printing the final knob. No glue; retention
+  is by interference press fit.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height
+  press_fit:
+    value: -0.05
+    unit: mm
+    kind: design
+    source: design
+    note: interference added to nut across-flats for the pocket
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 2.9
+    unit: mm
+    kind: design
+    source: design
+    note: = nut_h + 0.5, so the nut sits fully inside, 0.5 mm below the rim
+  bolt_clear:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for an M3 bolt major diameter 3.0 mm
+  lead_depth:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knurl_n:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  knurl_depth:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knurl_w:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  l:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: coupon length
+  w:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: coupon width
+  t:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon thickness
+  spacing:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon pocket spacing
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    af = p.nut_af + p.press_fit\n    circ = af * 1.1547005\n\
+    \    k = cq.Workplane(\"XY\").circle(p.knob_d / 2).extrude(p.knob_h)\n\n    pocket\
+    \ = cq.Workplane(\"XY\").polygon(6, circ).extrude(p.pocket_depth)\n    k = k.cut(pocket.translate((0,\
+    \ 0, p.knob_h - p.pocket_depth)))\n\n    lead_circ = (af + 0.8) * 1.1547005\n\
+    \    lead = cq.Workplane(\"XY\").polygon(6, lead_circ).extrude(p.lead_depth)\n\
+    \    k = k.cut(lead.translate((0, 0, p.knob_h - p.lead_depth)))\n\n    shaft =\
+    \ p.knob_h - p.pocket_depth\n    hole = cq.Workplane(\"XY\").circle(p.bolt_clear\
+    \ / 2).extrude(shaft)\n    k = k.cut(hole)\n\n    for i in range(p.knurl_n):\n\
+    \        ang = i * 360.0 / p.knurl_n\n        g = (cq.Workplane(\"XZ\")\n    \
+    \         .moveTo(p.knob_d / 2 - p.knurl_depth, p.knob_h / 2)\n             .rect(p.knurl_depth,\
+    \ p.knob_h + 2)\n             .extrude(p.knurl_w))\n        k = k.cut(g.rotate((0,\
+    \ 0, 0), (0, 0, 1), ang))\n    return k"
+  print_orientation: Bottom (bolt-exit) face on the bed; nut pocket opens upward so
+    no supports are needed.
+  use_orientation: Nut pocket faces up; the M3 bolt threads into the nut and its tip
+    exits the bottom hole.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    plate = cq.Workplane(\"XY\").rect(p.l, p.w).extrude(p.t)\n\
+    \    fits = [0.0, -0.05, -0.10, -0.15]\n    for i, f in enumerate(fits):\n   \
+    \     af = p.nut_af + f\n        circ = af * 1.1547005\n        x = (i - (len(fits)\
+    \ - 1) / 2.0) * p.spacing\n        pk = cq.Workplane(\"XY\").polygon(6, circ).extrude(p.pocket_depth)\n\
+    \        plate = plate.cut(pk.translate((x, 0, p.t - p.pocket_depth)))\n     \
+    \   lead_circ = (af + 0.8) * 1.1547005\n        ld = cq.Workplane(\"XY\").polygon(6,\
+    \ lead_circ).extrude(p.lead_depth)\n        plate = plate.cut(ld.translate((x,\
+    \ 0, p.t - p.lead_depth)))\n        bh = cq.Workplane(\"XY\").circle(p.bolt_clear\
+    \ / 2).extrude(p.t - p.pocket_depth)\n        plate = plate.cut(bh.translate((x,\
+    \ 0, 0)))\n    return plate"
+  print_orientation: Flat on the bed, nut pockets facing up.
+  use_orientation: Flat; press the M3 nut into each pocket to test which press fit
+    holds best.
+hardware:
+- id: m3nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut-fits-pocket
+  part: knob
+  feature: nut pocket
+  relation: engages
+  hardware: m3nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - press_fit
+  - pocket_depth
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut presses into the hex pocket by hand with firm thumb pressure.
+- id: nut-retained-upside-down
+  part: knob
+  feature: nut pocket
+  relation: contains
+  hardware: m3nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - press_fit
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Flip the part upside down; the nut stays in place.
+- id: nut-seats-on-floor
+  part: knob
+  feature: pocket floor
+  relation: seats
+  hardware: m3nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  check:
+    method: none
+    ref: null
+    description: The pocket has a solid floor, so the nut cannot be pushed through
+      the far side.
+manual:
+- n: '1'
+  text: Print the fit coupon first. Press the M3 nut into each of the four hex pockets
+    by hand. The pocket where the nut goes in with firm thumb pressure and stays put
+    when flipped upside down is your press fit.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the knob. The default press fit is -0.05 mm. If the coupon showed a
+    better fit (-0.10 or -0.15), change the press_fit parameter accordingly and re-slice
+    before printing.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M3 nut (ISO 4032 M3) into the hex pocket on top of the knob until
+    it seats on the pocket floor. It must sit fully inside the knob.
+  parts:
+  - knob
+  hardware:
+  - m3nut
+  tool: null
+- n: '4'
+  text: 'Thread the knob onto your M3 bolt: the bolt screws into the nut from the
+    top and its tip passes out through the hole in the bottom of the knob. Tighten
+    by hand.'
+  parts:
+  - knob
+  hardware: []
+  tool: null

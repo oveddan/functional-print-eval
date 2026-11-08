@@ -1,0 +1,442 @@
+task: bearing-wheel
+note: Conditional flat-tread prototype, not a load-rated closet-door replacement.
+  The rail profile, door weight, mounting arrangement and original bolt length could
+  not be established. Do not use this to support the door until those are checked;
+  a grooved or profiled original requires a different wheel. Nominal wheel is 50 x
+  16 mm with two 608 bearings. No CAD execution or physical testing was available.
+  Keep the door independently supported during fitting. Use a known catalog bolt rather
+  than assuming the unidentified bolt is suitable.
+questions:
+- text: Does this wheel carry the door weight, and what load must it carry?
+  answer: null
+- text: What tread profile and rail clearances are required?
+  answer: null
+- text: What are the bracket thickness, axle support arrangement, and original bolt
+    length?
+  answer: null
+params:
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel diameter; verify before service.
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel width; excludes axle collars.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Standard 608 nominal; unverified on these bearings.
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  reported_bolt_shank:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: User's approximate across-shank measurement; bolt length remains unknown.
+  seat_d:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: Starting pocket diameter; adjust after coupon. Must grip outer rings without
+      distorting bearings.
+  coupon_step:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  web_bore:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Central web supports outer rings; verify contact stays on outer rings.
+  coupon_wall:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_web:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Must contact inner-ring metal only, not shields; verify on actual bearings.
+  axle_clearance:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  collar_l:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_l:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_head_d:
+    value: 13
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_head_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_threaded_l:
+    value: 28
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_id:
+    value: 8.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_af:
+    value: 13
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  thread_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bracket_t:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Must be established; assembly instructions assume a single-sided bracket.
+  thread_projection:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Target at least two full threads beyond locknut.
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    gap = p.wheel_w - 2*p.bearing_w\n    if gap <= 0:\n  \
+    \      raise ValueError('Wheel too narrow for two bearings')\n    body = cq.Workplane('XY').circle(p.wheel_d/2).extrude(p.wheel_w)\n\
+    \    lower = cq.Workplane('XY').circle(p.seat_d/2).extrude(p.bearing_w)\n    upper\
+    \ = cq.Workplane('XY').workplane(offset=p.wheel_w-p.bearing_w).circle(p.seat_d/2).extrude(p.bearing_w)\n\
+    \    bore = cq.Workplane('XY').circle(p.web_bore/2).extrude(p.wheel_w)\n    return\
+    \ body.cut(lower).cut(upper).cut(bore)"
+  print_orientation: Wheel axis vertical; lower bearing opening on bed at z=0. Use
+    removable build-plate supports inside the bottom bearing pocket for its annular
+    roof.
+  use_orientation: Axis horizontal in the original axle position; flat cylindrical
+    tread only.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    result = None\n    for i in range(3):\n        d = p.seat_d\
+    \ + (i-1)*p.coupon_step\n        x = i*(p.bearing_od+2*p.coupon_wall+3*p.coupon_web)\n\
+    \        ring = cq.Workplane('XY').center(x,0).circle((p.bearing_od+2*p.coupon_wall)/2).extrude(p.bearing_w+p.coupon_web)\n\
+    \        pocket = cq.Workplane('XY').center(x,0).circle(d/2).extrude(p.bearing_w)\n\
+    \        bore = cq.Workplane('XY').center(x,0).circle(p.web_bore/2).extrude(p.bearing_w+p.coupon_web)\n\
+    \        ring = ring.cut(pocket).cut(bore)\n        result = ring if result is\
+    \ None else result.union(ring)\n    return result"
+  print_orientation: Three separate rings on bed; pocket openings downward. Same support
+    and slicing settings as wheel.
+  use_orientation: Test only; along +X pockets are seat_d minus coupon_step, seat_d,
+    seat_d plus coupon_step.
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.wheel_w - 2*p.bearing_w\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.axle_clearance/2).extrude(h)"
+  print_orientation: Flat annular face on bed, z=0.
+  use_orientation: Between bearing inner rings, coaxial with axle; nominal length
+    2 mm.
+- id: collar_left
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.axle_clearance/2).extrude(p.collar_l)"
+  print_orientation: Flat annular face on bed.
+  use_orientation: Between bracket-side washer and first bearing inner ring.
+- id: collar_right
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.axle_clearance/2).extrude(p.collar_l)"
+  print_orientation: Flat annular face on bed.
+  use_orientation: Between second bearing inner ring and nut-side washer.
+hardware:
+- id: bearings
+  ref: 608ZZ
+  qty: 2
+- id: axle
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washers
+  ref: ISO 7089 M8
+  qty: 3
+joints:
+- id: axle_stack
+  fastener: axle
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -5.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: collar_left
+    feature: 8.5 mm axial bore; collar begins at wheel-frame z=-2
+    role: clearance
+  - part: wheel
+    feature: Two 608 bearings in opposed pockets, first at z=0..7, second at z=9..16;
+      bolt passes through their inner rings
+    role: clearance
+  - part: inner_spacer
+    feature: 8.5 mm axial bore at wheel-frame z=7..9
+    role: clearance
+  - part: collar_right
+    feature: 8.5 mm axial bore at wheel-frame z=16..18
+    role: clearance
+  nut: locknut
+  external: 'Existing single-sided bracket, thickness unknown: actual head location
+    is z=-(5.2 + bracket_t). The listed origin is illustrative for a 0.4 mm bracket,
+    not an established mounting dimension.'
+criteria:
+- id: bearing_fit
+  part: wheel
+  feature: Both bearing seats
+  relation: contains
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - seat_d
+  - bearing_od
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Choose the pocket that accepts a bearing with firm hand pressure,
+      holds it against axial sliding, and leaves it spinning freely. If none pass,
+      change seat_d and reprint coupon. Update wheel seat_d before printing.
+- id: inner_contact
+  part: inner_spacer
+  feature: Annular ends and length
+  relation: supports
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - spacer_od
+  - axle_clearance
+  - bearing_w
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: Confirm both ends touch only inner-ring metal and spacer length equals
+      actual gap with both outer rings fully seated. Reject if it touches shields
+      or prevents full seating.
+- id: collar_contact
+  part: collar_left
+  feature: Bearing-facing annulus (also applies to collar_right)
+  relation: supports
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - spacer_od
+  - collar_l
+  check:
+    method: measure
+    ref: null
+    description: Verify contact on inner ring only; washers must not rub shields or
+      the rotating wheel.
+- id: track_fit
+  part: wheel
+  feature: Flat tread and complete axle envelope
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_d
+  - wheel_w
+  - collar_l
+  check:
+    method: template
+    ref: null
+    description: With door independently supported, compare to original and rail.
+      Reject for a grooved/rounded track requirement, derailment risk, rubbing, or
+      insufficient axle clearance.
+- id: bolt_length
+  part: wheel
+  feature: Axle stack
+  relation: engages
+  hardware: axle
+  clearance_mm: null
+  params:
+  - bolt_l
+  - bracket_t
+  - washer_t
+  - wheel_w
+  - collar_l
+  - nut_h
+  - thread_projection
+  check:
+    method: measure
+    ref: null
+    description: 'For specified single-sided stack require bracket_t + wheel_w + 2*collar_l
+      + 3*washer_t + nut_h + thread_projection <= bolt_l: bracket thickness at most
+      4.7 mm nominal. Confirm full nylon engagement, two threads beyond nut, and no
+      tip interference. Stop if bracket arrangement differs.'
+manual:
+- n: '1'
+  text: Secure and independently support the door; remove the damaged roller only
+    while supported. Establish the rail profile, door load and mounting geometry.
+    This design is an experimental flat wheel, not an approved load-bearing replacement.
+    If these cannot be established, print only for bench testing, not door service.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print fit_coupon at 0.2 mm layers, at least 5 walls, with supports inside
+    the bottom pockets. Remove all supports and burrs without enlarging the seats.
+    Test the bearings in the three pockets, smallest to largest. Do not hammer bearings
+    in. Select a snug pocket that does not bind rotation and update seat_d accordingly.
+  parts:
+  - fit_coupon
+  hardware:
+  - bearings
+  tool: null
+- n: '3'
+  text: Print wheel with 6 walls and 100% infill; use build-plate supports in the
+    lower bearing recess. Print inner_spacer and both collars solid, with a brim if
+    necessary. Remove supports and inspect for cracks, distorted bores or uneven bearing
+    shoulders. Neither printed spacers nor PLA tread have a known service-load rating.
+  parts:
+  - wheel
+  - inner_spacer
+  - collar_left
+  - collar_right
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press one bearing fully into its pocket, loading only the outer ring. Put
+    inner_spacer into the central cavity and insert the second bearing while keeping
+    the spacer coaxial with a loose bolt. Check both bearings seat fully and spacer
+    touches only their inner rings. If either bearing can slide loosely in its pocket,
+    do not assemble for use.
+  parts:
+  - wheel
+  - inner_spacer
+  hardware:
+  - bearings
+  - axle
+  tool: null
+- n: '5'
+  text: 'For a compatible single-sided bracket only, assemble in this order: bolt
+    head, washer, bracket, washer, collar_left, first bearing, inner_spacer, second
+    bearing, collar_right, washer, locknut. Do not substitute the original bolt until
+    its length, thread and strength are established. Check the length inequality and
+    actual thread engagement before tightening. Stop and redesign if the bracket is
+    double-sided, too thick, or has a different stack.'
+  parts:
+  - wheel
+  - inner_spacer
+  - collar_left
+  - collar_right
+  hardware:
+  - axle
+  - washers
+  - locknut
+  - bearings
+  tool: Appropriate hex key and wrench
+- n: '6'
+  text: Hold the bolt and snug the locknut gently while testing rotation. The inner-ring
+    stack must be captured without play, but the wheel must turn freely. Do not use
+    tightening torque to force a poor spacer fit. Stop for binding, shield contact,
+    deformation or loose bearings. PLA spacers can creep; they are unsuitable for
+    sustained high clamp loads.
+  parts:
+  - wheel
+  - inner_spacer
+  - collar_left
+  - collar_right
+  hardware:
+  - axle
+  - locknut
+  tool: null
+- n: '7'
+  text: Bench-test first. With the door still independently supported, check track
+    engagement and clearance over its full travel without putting door weight on the
+    prototype. For a weight-bearing roller, obtain a correctly rated replacement or
+    have the load and retention design verified before service. Inspect regularly
+    for looseness, wear, cracks and creep; keep PLA away from heat and direct sunlight.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

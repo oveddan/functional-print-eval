@@ -1,0 +1,348 @@
+task: nut-knob/M3
+note: 'One-piece, approximately 20 mm hand knob with a hand-inserted captive M3 hex
+  nut. Two integral lateral spring walls grip opposite nut flats; the remaining hex
+  faces resist rotation. A bottom shoulder prevents the nut passing through, while
+  a clearance hole lets the bolt exit. Fit is printer- and nut-dependent: validate
+  the coupon first. This is a female threaded knob, not a captive bolt-head knob.
+  Intended for light hand tightening, not high torque or hot environments.'
+questions:
+- text: Can you measure the nut across flats and its thickness?
+  answer: Cannot measure; use standard dimensions.
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across flats; actual nut unmeasured.
+  nut_thickness:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  height:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hex_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Added to nominal nut AF for the rigid portions of the socket.
+  grip_interference:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Total reduction from nominal AF between spring faces. Increase/decrease
+      in 0.1 mm steps after coupon test.
+  bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance.
+  beam_t:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  beam_root_x:
+    value: -6.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  beam_tip_x:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_start_x:
+    value: -6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_end_x:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_inner_y:
+    value: 1.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_outer_y:
+    value: 4.25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_relief:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hex_entry_extra:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: AF increase at socket entrance.
+  scallop_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_radius:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_radius:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    def hex_points(af):\n        r=af/math.sqrt(3)\n\
+    \        return [(r*math.cos(i*math.pi/3),r*math.sin(i*math.pi/3)) for i in range(6)]\n\
+    \    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(p.height)\n    for i in\
+    \ range(int(p.scallop_count)):\n        a=2*math.pi*i/p.scallop_count\n      \
+    \  cutter=cq.Workplane('XY').center(p.scallop_center_radius*math.cos(a),p.scallop_center_radius*math.sin(a)).circle(p.scallop_radius).extrude(p.height)\n\
+    \        body=body.cut(cutter)\n    af=p.nut_af+p.hex_clearance\n    pocket=cq.Workplane('XY').workplane(offset=p.floor).polyline(hex_points(af)).close().extrude(p.height-p.floor)\n\
+    \    entry=(cq.Workplane('XY').workplane(offset=p.height-p.lead_h).polyline(hex_points(af)).close().workplane(offset=p.lead_h).polyline(hex_points(af+p.hex_entry_extra)).close().loft())\n\
+    \    body=body.cut(pocket).cut(entry)\n    bore=cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(p.height)\n\
+    \    body=body.cut(bore)\n    a=(p.nut_af-p.grip_interference)/2\n    for s in\
+    \ [-1,1]:\n        slot=(cq.Workplane('XY').center((p.slot_start_x+p.slot_end_x)/2,s*(p.slot_inner_y+p.slot_outer_y)/2).rect(p.slot_end_x-p.slot_start_x,p.slot_outer_y-p.slot_inner_y).extrude(p.height))\n\
+    \        body=body.cut(slot)\n        profile=[(s*a,0),(s*(a+p.beam_t),0),(s*(a+p.beam_t),p.height),(s*(a+p.lead_relief),p.height),(s*a,p.height-p.lead_h)]\n\
+    \        beam=(cq.Workplane('YZ',origin=(p.beam_root_x,0,0)).polyline(profile).close().extrude(p.beam_tip_x-p.beam_root_x))\n\
+    \        body=body.union(beam)\n    return body.clean()\n"
+  print_orientation: Flat underside on bed, z=0; nut socket opens upward. Spring walls
+    and isolation slots print vertically. No supports.
+  use_orientation: Insert nut from z=6 face until it seats on the z=2 shoulder. Bolt
+    passes along the Z axis.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import math\n    def hp(af):\n        r=af/math.sqrt(3)\n\
+    \        return [(r*math.cos(i*math.pi/3),r*math.sin(i*math.pi/3)) for i in range(6)]\n\
+    \    body=cq.Workplane('XY').circle(p.coupon_d/2).extrude(p.height)\n    af=p.nut_af+p.hex_clearance\n\
+    \    pocket=cq.Workplane('XY').workplane(offset=p.floor).polyline(hp(af)).close().extrude(p.height-p.floor)\n\
+    \    entry=cq.Workplane('XY').workplane(offset=p.height-p.lead_h).polyline(hp(af)).close().workplane(offset=p.lead_h).polyline(hp(af+p.hex_entry_extra)).close().loft()\n\
+    \    body=body.cut(pocket).cut(entry).cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(p.height))\n\
+    \    a=(p.nut_af-p.grip_interference)/2\n    for s in [-1,1]:\n        body=body.cut(cq.Workplane('XY').center((p.slot_start_x+p.slot_end_x)/2,s*(p.slot_inner_y+p.slot_outer_y)/2).rect(p.slot_end_x-p.slot_start_x,p.slot_outer_y-p.slot_inner_y).extrude(p.height))\n\
+    \        profile=[(s*a,0),(s*(a+p.beam_t),0),(s*(a+p.beam_t),p.height),(s*(a+p.lead_relief),p.height),(s*a,p.height-p.lead_h)]\n\
+    \        beam=cq.Workplane('YZ',origin=(p.beam_root_x,0,0)).polyline(profile).close().extrude(p.beam_tip_x-p.beam_root_x)\n\
+    \        body=body.union(beam)\n    return body.clean()\n"
+  print_orientation: Flat underside at z=0, socket upward; no supports.
+  use_orientation: Test with the same nut and bolt intended for the final knob.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: threaded_connection
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: Central 3.4 mm through bore and recessed nut socket; bolt head remains
+      outside the knob or against the user's workpiece.
+    role: clearance
+  - part: knob
+    feature: Hex socket holding ISO 4032 M3 nut, seated at z=2 mm.
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria:
+- id: hand_fit_retention
+  part: knob
+  feature: Two compliant grip faces, nominally 5.3 mm apart, with top lead-in ramps.
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - grip_interference
+  - beam_t
+  - lead_h
+  - lead_relief
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut must insert squarely using fingers alone, sit completely below
+      the top face, and remain captive when inverted and gently tapped. Reject cracked,
+      whitened, or permanently spread spring walls.
+- id: shoulder
+  part: knob
+  feature: 2 mm bottom shoulder around the through bore; interrupted only outside
+    the central seating area by spring isolation slots.
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor
+  - nut_af
+  - nut_thickness
+  - bolt_d
+  - bolt_clearance
+  - slot_inner_y
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Confirm nut bottoms against the shoulder, cannot pass through the
+      underside, and remains seated under light tightening.
+- id: bolt_path
+  part: knob
+  feature: Axial clearance bore through shoulder.
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Thread bolt through the seated nut from either direction; verify
+      it emerges freely from the opposite face without binding on plastic.
+- id: anti_rotation
+  part: knob
+  feature: Remaining rigid hex faces surrounding the nut corners.
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - hex_clearance
+  - slot_inner_y
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Hold bolt and turn coupon gently in both directions. Nut must not
+      spin freely or spread the spring walls enough to escape. Do not torque against
+      a jammed bolt.
+manual:
+- n: '1'
+  text: Print fit_coupon first in PLA at 0.2 mm layers using the 0.4 mm nozzle. Use
+    4 wall loops and solid infill for this small part; no supports. Inspect the sliced
+    spring walls and make sure the full-height isolation slots remain open. Use modest
+    elephant-foot compensation if normally needed on your printer.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove stray strings from the slots without thinning the grip faces. Align
+    two nut flats with the two straight spring faces. Press the nut down squarely
+    with fingers until it reaches the shoulder. Do not hammer it in or use pliers.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: 'Invert and gently tap the coupon: the nut must stay in. Check bolt passage
+    and gentle turning in both directions. If insertion is too hard, reduce grip_interference
+    by 0.1 mm and reprint. If loose, increase it by 0.1 mm and reprint. Do not exceed
+    0.4 mm total interference; if it still fails, do not use the design without revising
+    the fit. Record the successful setting.'
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '4'
+  text: Recover the nut by threading the bolt into it from the underside and gently
+    pushing it toward the open socket while supporting the coupon. Print knob with
+    the successful grip_interference setting, the same filament, and the same slicing
+    settings. No glue, support material, or additional printed assembly is required.
+  parts:
+  - fit_coupon
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '5'
+  text: Press the nut into knob exactly as tested. Confirm it is fully recessed, repeat
+    the inversion test, and thread the bolt through. The listed M3x16 bolt is a test/use
+    option; actual usable engagement depends on the workpiece thickness. The bolt
+    head does not sit captive inside this knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '6'
+  text: Use only light finger tightening. The nut should bear on the recessed shoulder
+    when the workpiece is on the underside of the knob. Stop if the nut spins, a spring
+    whitens or cracks, or the nut no longer stays in when inverted. PLA can relax
+    with time or heat; recheck retention before use and keep away from hot cars or
+    heated equipment.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

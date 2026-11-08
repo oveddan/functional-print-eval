@@ -26,7 +26,7 @@ If you keep the key in 1Password, read it inline for the one command (use your o
 OPENROUTER_API_KEY="$(op read op://<vault>/OpenRouter/credential)" uv run python -m pbe.try_request "..." --model anthropic/claude-haiku-5.5 --budget 0.25
 ```
 
-Options: `--condition` is one of `pbe.runner.agent.CONDITIONS` (default `can_ask`; `can_run_code` also lets the model run Python and needs the code sandbox), `--max-turns`, `--max-tokens`, and `--out <folder>` to choose where it's saved. In the saved trials the median took 40 s (Haiku) to 12 min (Qwen 3.8 Flash), and the slowest 37 min, so run it in the background.
+Options: `--condition` is one of `pbe.runner.agent.CONDITIONS` (default `can_test`, where the model may ask for test prints before its final design and hears back only where a recorded print decides it; `can_ask` has no test prints; `can_run_code` also lets the model run Python and needs the code sandbox), `--max-turns`, `--max-tokens`, and `--out <folder>` to choose where it's saved. In the saved trials the median took 40 s (Haiku) to 12 min (Qwen 3.8 Flash), and the slowest 37 min, so run it in the background.
 
 ## Read the output
 

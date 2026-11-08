@@ -6,7 +6,7 @@ since the photos are private).
 
     uv run --with pyyaml python report/atlas/build.py
 
-With --readme it instead rewrites README.md's failure-class section from the same
+With --readme it instead rewrites docs/reference.md's failure-class section from the same
 data: the classes the graded tasks test (the `class:` on each requirement in
 tasks/*/requirements.yaml), each with its featured failure and the hosted copies
 (`url:`) of its pictures. That needs no local photos. --check exits 1 if the
@@ -291,8 +291,8 @@ a {{ color: inherit; }}
 """
 
 
-README = ROOT / "README.md"
-GRADED_TASKS = ["tripod-plate", "nut-knob", "bearing-wheel"]  # m5-spacer is a control and tests no class
+README = ROOT / "docs/reference.md"  # the failure classes live in the reference
+GRADED_TASKS = ["tripod-plate", "nut-knob", "bearing-wheel", "estoa-light"]  # m5-spacer is a control and tests no class
 GENERIC = ("C6-printability", "every task: `bridges`, one connected body, fits the bed")
 MARKERS = ("<!-- failure-classes:start (written by report/atlas/build.py --readme; don't edit by hand) -->",
            "<!-- failure-classes:end -->")
@@ -347,7 +347,7 @@ def readme_section(classes, seeds, examples):
 def readme_with(text, classes, seeds, examples):
     start, end = MARKERS
     if start not in text or end not in text:
-        raise SystemExit(f"README.md has no failure-class markers: add {start!r} and {end!r}")
+        raise SystemExit(f"docs/reference.md has no failure-class markers: add {start!r} and {end!r}")
     before, rest = text.split(start, 1)
     _, after = rest.split(end, 1)
     return f"{before}{start}\n{readme_section(classes, seeds, examples)}\n{end}{after}"
@@ -364,8 +364,8 @@ def build_page():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--readme", action="store_true", help="rewrite README.md's failure-class section")
-    parser.add_argument("--check", action="store_true", help="exit 1 if README.md's failure-class section is out of date")
+    parser.add_argument("--readme", action="store_true", help="rewrite docs/reference.md's failure-class section")
+    parser.add_argument("--check", action="store_true", help="exit 1 if docs/reference.md's failure-class section is out of date")
     args = parser.parse_args()
     if not (args.readme or args.check):
         build_page()
@@ -375,11 +375,11 @@ def main():
     updated = readme_with(text, classes, seeds, examples)
     if args.check:
         if updated != text:
-            sys.exit("README.md's failure classes don't match seeds/: run uv run python report/atlas/build.py --readme")
-        print("README.md's failure classes match seeds/")
+            sys.exit("docs/reference.md's failure classes don't match seeds/: run uv run python report/atlas/build.py --readme")
+        print("docs/reference.md's failure classes match seeds/")
         return
     README.write_text(updated)
-    print("README.md's failure-class section updated")
+    print("docs/reference.md's failure-class section updated")
 
 
 if __name__ == "__main__":

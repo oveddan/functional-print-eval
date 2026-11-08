@@ -1,0 +1,218 @@
+task: nut-knob/M5
+note: Hand knob for M5 bolt, 30 mm outer diameter with 6 contoured grip lobes, integrated
+  hex socket for hand-pressed ISO 4032 M5 nut retention without glue, and continuous
+  through-hole for any bolt length. Prints without supports.
+questions: []
+params:
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut height
+  lobe_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of grip lobes around perimeter
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut width across flats
+  pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of hex nut pocket from top face
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height of the knob
+  scallop_r:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of circular scallop cuts for grip
+  pocket_af:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket width across flats for tight hand press fit
+  scallop_offset:
+    value: 15.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial center distance for scallop finger grooves
+  rim_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on top and bottom outer perimeter rims
+  bolt_hole_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for M5 bolt through far side
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 bolt nominal major diameter
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Outer crest diameter of the knob
+parts:
+- id: m5_hand_knob
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    r_outer = p.knob_od\
+    \ / 2.0\n    h_total = p.knob_h\n    c_rim = p.rim_chamfer\n\n    # 1. Main cylindrical\
+    \ body\n    body = cq.Workplane(\"XY\").circle(r_outer).extrude(h_total)\n\n \
+    \   # 2. Chamfer top and bottom outer rims for comfort and bed adhesion\n    body\
+    \ = body.faces(\">Z\").edges().chamfer(c_rim)\n    body = body.faces(\"<Z\").edges().chamfer(c_rim)\n\
+    \n    # 3. Cut finger scallops around perimeter to form 6 smooth lobes\n    scallop_pts\
+    \ = []\n    for i in range(int(p.lobe_count)):\n        angle = 2.0 * math.pi\
+    \ * i / p.lobe_count\n        x = p.scallop_offset * math.cos(angle)\n       \
+    \ y = p.scallop_offset * math.sin(angle)\n        scallop_pts.append((x, y))\n\
+    \n    body = (\n        body.faces(\">Z\")\n        .workplane()\n        .pushPoints(scallop_pts)\n\
+    \        .circle(p.scallop_r)\n        .cutThruAll()\n    )\n\n    # 4. Central\
+    \ clearance through-hole for M5 bolt\n    body = (\n        body.faces(\">Z\"\
+    )\n        .workplane()\n        .circle(p.bolt_hole_d / 2.0)\n        .cutThruAll()\n\
+    \    )\n\n    # 5. Hexagonal pocket for M5 nut (8.00 mm AF confirmed by coupon\
+    \ test)\n    # CadQuery polygon takes inscribed circle diameter (across-corners\
+    \ diameter)\n    hex_d = p.pocket_af / (math.sqrt(3) / 2.0)\n    pocket_z_start\
+    \ = h_total - p.pocket_depth\n\n    hex_cutter = (\n        cq.Workplane(\"XY\"\
+    )\n        .workplane(offset=pocket_z_start)\n        .polygon(6, hex_d)\n   \
+    \     .extrude(p.pocket_depth + 1.0)\n    )\n\n    body = body.cut(hex_cutter)\n\
+    \n    return body\n"
+  print_orientation: Bottom face on print bed (z=0), nut pocket facing up (+Z)
+  use_orientation: Bottom face against workpiece; bolt passes through center; nut
+    sits inside top pocket
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: nut_joint
+  fastener: m5_nut
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: m5_hand_knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  nut: null
+  external: null
+criteria:
+- id: nut_retention_fit
+  part: m5_hand_knob
+  feature: hex_nut_pocket
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: 0.0
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: nut_pocket_test_coupon
+    description: Hex pocket with 8.00 mm across-flats tested in coupon; nut presses
+      in by hand and stays retained upside down without glue
+- id: nut_fully_inside
+  part: m5_hand_knob
+  feature: hex_nut_pocket
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: 0.5
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Nut depth is 4.7 mm and pocket depth is 5.2 mm, keeping the nut fully
+      recessed inside the knob
+- id: nut_axial_stop
+  part: m5_hand_knob
+  feature: internal_stop_shoulder
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - pocket_depth
+  - bolt_hole_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: Internal solid shoulder with 5.4 mm bolt hole stops 8.0 mm hex nut
+      from pushing out far side
+- id: bolt_clearance
+  part: m5_hand_knob
+  feature: bolt_through_hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: M5 bolt passes through 5.4 mm clearance hole out the far side
+manual:
+- n: '1'
+  text: 3D print the m5_hand_knob part flat on the print bed (bottom face at z = 0,
+    nut pocket opening facing up). No supports are needed.
+  parts:
+  - m5_hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Place the knob on a table with the hexagonal socket facing up. Orient an ISO
+    4032 M5 hex nut to align with the flats of the socket.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Press the M5 nut firmly into the hexagonal pocket by hand until it bottoms
+    out against the internal shoulder. The nut sits 0.5 mm below the top surface.
+    Turn the knob upside down to confirm the press fit holds the nut securely in place
+    without glue.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '4'
+  text: Thread an M5 bolt or stud through the knob and nut from either side and tighten
+    by hand using the six contoured grip lobes.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_nut
+  tool: null

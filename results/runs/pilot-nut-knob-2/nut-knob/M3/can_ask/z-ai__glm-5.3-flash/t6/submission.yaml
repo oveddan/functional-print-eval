@@ -1,0 +1,183 @@
+task: nut-knob/M3
+note: ''
+questions: []
+params:
+  knob/pocket_af:
+    value: 5.35
+    unit: mm
+    kind: design
+    source: design
+    note: catalog af 5.5 minus 0.15 press fit; verified by coupon
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "import math\n\ndef build(p):\n    R = p.knob_dia / 2.0\n    H = p.knob_height\n\
+    \    body = cq.Workplane(\"XY\").circle(R).extrude(H)\n    body = body.edges(\"\
+    >Z\").fillet(p.top_fillet)\n    # finger flutes\n    for i in range(int(p.flutes)):\n\
+    \        a = 2.0 * math.pi * i / p.flutes\n        c = R + p.flute_r - p.flute_depth\n\
+    \        cx, cy = c * math.cos(a), c * math.sin(a)\n        body = body.cut(cq.Workplane(\"\
+    XY\", origin=(cx, cy, -1)).circle(p.flute_r).extrude(H + 2))\n    zr = H - p.head_recess_depth\
+    \  # recess floor / nut top plane\n    # head + washer counterbore\n    body =\
+    \ body.cut(cq.Workplane(\"XY\", origin=(0, 0, zr)).circle(p.head_recess_d / 2.0).extrude(p.head_recess_depth\
+    \ + 1))\n    # blind hex nut pocket, press fit (across flats = p.pocket_af)\n\
+    \    af = p.pocket_af\n    ac = af * 2.0 / math.sqrt(3.0)\n    zp = zr - p.pocket_depth\n\
+    \    body = body.cut(cq.Workplane(\"XY\", origin=(0, 0, zp)).polygon(6, ac).extrude(p.pocket_depth\
+    \ + 1))\n    # lead-in: slightly larger hex at the pocket mouth so the nut starts\
+    \ easily\n    af2 = af + p.lead_widen\n    body = body.cut(cq.Workplane(\"XY\"\
+    , origin=(0, 0, zr - p.lead_depth)).polygon(6, af2 * 2.0 / math.sqrt(3.0)).extrude(p.lead_depth\
+    \ + 1))\n    # through hole for the bolt, out the far side\n    body = body.cut(cq.Workplane(\"\
+    XY\", origin=(0, 0, -1)).circle(p.clearance_d / 2.0).extrude(zp + 1))\n    return\
+    \ body"
+  print_orientation: bottom face (z=0) on the bed, fluted barrel vertical
+  use_orientation: 'as printed: flat underside out, top counterbore up'
+- id: fit-coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "import math\n\ndef build(p):\n    W, D, T = 30.0, 14.0, 5.0\n    plate =\
+    \ cq.Workplane(\"XY\").box(W, D, T, centered=(True, True, False))\n    fits =\
+    \ [0.05, 0.15, 0.25]  # reduction of across-flats from nominal nut size\n    for\
+    \ i, f in enumerate(fits):\n        x = -10.0 + i * 10.0\n        af = 5.5 - f\n\
+    \        ac = af * 2.0 / math.sqrt(3.0)\n        zt = T - p.pocket_depth\n   \
+    \     plate = plate.cut(cq.Workplane(\"XY\", origin=(x, 0, zt)).polygon(6, ac).extrude(p.pocket_depth\
+    \ + 0.5))\n        plate = plate.cut(cq.Workplane(\"XY\", origin=(x, 0, zt - p.lead_depth)).polygon(6,\
+    \ (af + p.lead_widen) * 2.0 / math.sqrt(3.0)).extrude(p.lead_depth + 1))\n   \
+    \ return plate"
+  print_orientation: flat face z=0 on the bed, pockets opening upward
+  use_orientation: as printed
+hardware:
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: washer
+  ref: ISO 7089 M3
+  qty: 1
+joints:
+- id: knob-bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: head_recess (7.6 dia x 3.8 deep counterbore at top)
+    role: head_seat
+  - part: knob
+    feature: nut_pocket (blind hex pocket, 5.35 across flats, 2.8 deep)
+    role: nut_pocket
+  - part: knob
+    feature: through_hole (3.3 dia, out the underside)
+    role: clearance
+  nut: nut
+  external: whatever the bolt clamps (unknown)
+criteria:
+- id: nut-contained
+  part: knob
+  feature: nut_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: press the nut into the coupon pockets and turn it upside down; the
+      nut must not fall out and must not push through the blind floor
+- id: nut-pressfit
+  part: knob
+  feature: nut_pocket
+  relation: engages
+  hardware: nut
+  clearance_mm: -0.15
+  params: []
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: middle coupon pocket (5.35 across flats) should accept the nut with
+      firm thumb pressure and grip it
+- id: nut-support
+  part: knob
+  feature: nut_pocket
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: 'pocket is blind: 7.4 mm of solid material between the pocket floor
+      (z=7.4) and the underside; nut cannot be pushed out the far side'
+- id: bolt-clears
+  part: knob
+  feature: through_hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.3
+  params: []
+  check:
+    method: none
+    ref: null
+    description: 3.3 mm hole for M3 bolt; bolt threads through the nut above it and
+      exits the underside
+- id: head-seats
+  part: knob
+  feature: head_recess
+  relation: seats
+  hardware: washer
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: 7.6 dia x 3.8 deep recess takes the M3 washer (od 7, t 0.5) plus
+      5.5 dia socket head (h 3) with 0.3 mm to spare
+manual:
+- n: '1'
+  text: 'Print the fit-coupon flat on the bed (pockets up). Press the M3 hex nut into
+    each of the three hex pockets: they are 5.45, 5.35 and 5.25 mm across flats. Turn
+    the coupon upside down after each and give it a shake. The knob uses the MIDDLE
+    pocket''s fit (5.35 mm): it should need firm thumb pressure to press in and must
+    not drop out upside down.'
+  parts:
+  - fit-coupon
+  hardware:
+  - nut
+  tool: none
+- n: '2'
+  text: If the middle pocket grips and is still pressable by hand, print the knob
+    flat side down. If the middle pocket is too loose or impossible to press by hand,
+    stop and report back before printing the knob.
+  parts:
+  - knob
+  hardware: []
+  tool: 3D printer
+- n: '3'
+  text: Press the M3 hex nut into the knob's hex pocket from the top counterbore,
+    thumb pressure, pushing until the nut is flush with the counterbore floor. It
+    sits in a blind pocket, so it cannot be pushed out of the bottom, and the press
+    fit holds it in any orientation.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Drop the M3 washer into the top counterbore, insert the M3x16 socket head
+    bolt through it, and thread it into the pressed-in nut. Tighten by turning the
+    knob. The bolt tip exits the underside by about 6 mm; swap for a different M3
+    length if your application needs more or less protrusion (any length from 12 mm
+    up works).
+  parts:
+  - knob
+  hardware:
+  - washer
+  - bolt
+  tool: null

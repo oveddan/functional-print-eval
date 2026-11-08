@@ -74,7 +74,15 @@ class Refusal:
         return f"{where}: {self.reason}"
 
 
+# File names that don't ship from the saved runs: every trial's full conversation is 143 MB of the repo's 165, so the
+# ZIP would be over 50 MB. The grades, designs and summaries that reproduce every result do ship; the conversations
+# stay in the repository (Dan, 2026-11-08).
+LEFT_OUT_IN_RUNS = {"transcript.json": "each trial's full conversation: 143 MB in all, over the 50 MB limit; it stays in the repository"}
+
+
 def left_out_reason(path: str) -> str | None:
+    if path.startswith("results/runs/") and path.rsplit("/", 1)[-1] in LEFT_OUT_IN_RUNS:
+        return LEFT_OUT_IN_RUNS[path.rsplit("/", 1)[-1]]
     for prefix, why in LEFT_OUT.items():
         if path == prefix or (prefix.endswith("/") and path.startswith(prefix)):
             return why
@@ -197,6 +205,8 @@ def main():
     print(f"{out}: {out.stat().st_size / 1e6:.1f} MB, from {args.ref}")
     for prefix, why in LEFT_OUT.items():
         print(f"  left out {prefix}: {why}")
+    for name, why in LEFT_OUT_IN_RUNS.items():
+        print(f"  left out results/runs/**/{name}: {why}")
 
 
 if __name__ == "__main__":

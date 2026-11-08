@@ -13,7 +13,7 @@ from pbe.runner import agent, llm, tasks
 from pbe.runner.trial_record import CodeSettings, ModelCall
 
 CLAUDE = "anthropic/claude-haiku-5.5"
-OTHERS = ["openai/gpt-6.1-sol", "google/gemini-4-argon", "deepseek/deepseek-v4-pro-0813"]
+OTHERS = ["openai/gpt-6.1-sol", "google/gemini-4-argon", "deepseek/deepseek-v4-pro-0813", "google/gemini-3.8-flash"]
 ANY_OTHER = OTHERS[0]  # what's posted doesn't depend on which other model it is
 
 

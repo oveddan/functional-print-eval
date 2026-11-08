@@ -1,0 +1,150 @@
+task: tripod-plate
+note: ''
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: plate length; long enough to grip in the jaws and sit under the camera
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: guessed
+    note: plate thickness; must fit the jaw opening, which was not measured. Confirm
+      before printing
+  thru_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for the 1/4-20 bolt shank
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head, measured as 'about 15'
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head height, 'about 5'
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt length under head, 'about 10'; gives about 7 mm of thread
+      above an 8 mm plate
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 nominal major diameter
+parts:
+- id: plate
+  role: final
+  material: PLA (black, high-speed)
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(p.plate_l, p.plate_w, p.plate_t,\
+    \ centered=(True, True, False))\n    thru = cq.Workplane('XY').circle(p.thru_d\
+    \ / 2).extrude(p.plate_t + 1).translate((0, 0, -0.5))\n    cb = cq.Workplane('XY').circle((p.bolt_head_d\
+    \ + 0.5) / 2).extrude(p.bolt_head_h + 0.3).translate((0, 0, -0.1))\n    return\
+    \ plate.cut(thru).cut(cb)\n"
+  print_orientation: flat, bottom face on the bed (counterbore opens to the bed)
+  use_orientation: bottom face down, plate lying flat under the camera, clamped in
+    the tripod jaws
+hardware:
+- id: bolt1
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: j1
+  fastener: bolt1
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: counterbore
+    role: head_seat
+  - part: plate
+    feature: through hole
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: c1
+  part: plate
+  feature: plate outer width and thickness
+  relation: clears
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - plate_w
+  - plate_t
+  check:
+    method: template
+    ref: null
+    description: Confirm the plate slides into the tripod clamp jaws. Plate width
+      is 38 mm; the thickness of 8 mm was guessed, so check it against the jaw opening.
+- id: c2
+  part: plate
+  feature: counterbore for bolt head
+  relation: seats
+  hardware: bolt1
+  clearance_mm: 0.25
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: measure
+    ref: null
+    description: Bolt head should sit fully recessed with the head flat against the
+      pocket floor.
+manual:
+- n: '1'
+  text: Print the plate flat, bottom face on the bed, PLA, 0.2 mm layers. Remove supports
+    if any, and clean out the head pocket on the bottom.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the salvaged 1/4-20 bolt head-first into the pocket on the bottom of
+    the plate, so the head sits flush in the recess and the threaded shank points
+    up through the hole.
+  parts:
+  - plate
+  hardware:
+  - bolt1
+  tool: null
+- n: '3'
+  text: Check that the head sits flat and the shank stands straight up. Trial-fit
+    the plate into the tripod clamp and check the jaws grip it.
+  parts:
+  - plate
+  hardware:
+  - bolt1
+  tool: null
+- n: '4'
+  text: Screw the camera onto the shank by its 1/4-20 socket, hand-tight only. Do
+    not overtighten, because PLA can crack.
+  parts: []
+  hardware: []
+  tool: null

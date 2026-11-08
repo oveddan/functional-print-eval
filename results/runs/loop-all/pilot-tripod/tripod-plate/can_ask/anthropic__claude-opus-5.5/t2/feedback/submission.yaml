@@ -1,0 +1,253 @@
+task: tripod-plate
+note: 'Rev 2: the only change is the roof over the bolt-head recess, which failed
+  on the first print. It''s now a two-layer stepped bridge, so no bridge strand ends
+  at the slot. The clamp fit and head recess are unchanged, since both worked. It''s
+  still a temporary PLA plate, so keep heavy cameras and heat away from it.'
+questions: []
+params:
+  arca_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: guessed
+    note: 'Arca-Swiss width. Confirmed indirectly: the printed qr_plate fits the clamp.'
+  bevel_depth:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: 45-degree dovetail bevel. The printed plate fits the clamp.
+  land:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_len:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_len:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  layer_h:
+    value: 0.2
+    unit: mm
+    kind: world
+    source: asked
+    note: printer layer height; sets the thickness of the stepped bridge layer
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear_d:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  cb_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: head confirmed to fit
+  cb_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_travel:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W = p.arca_width\n    Wt = W - 2*p.bevel_depth\n    z1\
+    \ = p.land\n    z2 = p.land + p.bevel_depth\n    pts = [(-W/2,0),(W/2,0),(W/2,z1),(Wt/2,z2),(Wt/2,p.plate_t),(-Wt/2,p.plate_t),(-Wt/2,z2),(-W/2,z1)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_len/2, both=True)\n\
+    \    cb_len = p.slot_travel + p.cb_d\n    hole = cq.Workplane('XY').slot2D(p.slot_travel\
+    \ + p.bolt_clear_d, p.bolt_clear_d, 90).extrude(p.plate_t)\n    cb = cq.Workplane('XY').slot2D(cb_len,\
+    \ p.cb_d, 90).extrude(p.cb_depth)\n    step_env = cq.Workplane('XY').workplane(offset=p.cb_depth).slot2D(cb_len,\
+    \ p.cb_d, 90).extrude(p.layer_h)\n    step_box = cq.Workplane('XY').workplane(offset=p.cb_depth).rect(p.bolt_clear_d,\
+    \ cb_len).extrude(p.layer_h)\n    step = step_box.intersect(step_env)\n    return\
+    \ body.cut(hole).cut(cb).cut(step)\n"
+  print_orientation: tripod (bottom, widest) face on the bed. The roof over the counterbore
+    is a stepped bridge. The first layer has a slot-wide strip left open along the
+    slot's length, so its bridges span lengthwise between the counterbore ends. The
+    second layer bridges across that strip, leaving only the real slot open. No bridge
+    ends at the hole.
+  use_orientation: bevelled side down in the tripod clamp, narrow flat top against
+    the camera
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    W = p.arca_width\n    Wt = W - 2*p.bevel_depth\n    z1\
+    \ = p.land\n    z2 = p.land + p.bevel_depth\n    pts = [(-W/2,0),(W/2,0),(W/2,z1),(Wt/2,z2),(Wt/2,p.plate_t),(-Wt/2,p.plate_t),(-Wt/2,z2),(-W/2,z1)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().extrude(p.coupon_len/2, both=True)\n"
+  print_orientation: bottom face on the bed
+  use_orientation: clamp it in the tripod head to test the fit
+hardware:
+- id: cam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: cam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: counterbore slot
+    role: head_seat
+  - part: qr_plate
+    feature: clearance slot
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: dovetail_fit
+  part: qr_plate
+  feature: 45-degree side bevels
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - arca_width
+  - bevel_depth
+  - land
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: 'Already confirmed: the plate locks in the clamp'
+- id: head_flush
+  part: qr_plate
+  feature: counterbore slot
+  relation: contains
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - cb_d
+  - cb_depth
+  check:
+    method: measure
+    ref: null
+    description: 'Already confirmed: the head fits its recess'
+- id: roof_clean
+  part: qr_plate
+  feature: stepped bridge roof over counterbore
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - cb_d
+  - cb_depth
+  - layer_h
+  - slot_travel
+  check:
+    method: measure
+    ref: null
+    description: Looking into the counterbore, the roof is flat, with no hanging loops.
+      The bolt passes freely through the slot along its full length.
+- id: thread_reach
+  part: qr_plate
+  feature: floor under counterbore
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - cb_depth
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: About 5 mm of thread sticks out the top. The camera tightens down
+      onto the plate before the bolt bottoms out.
+manual:
+- n: '1'
+  text: Reprint qr_plate in PLA, bottom face down, with 4+ walls and 40%+ infill.
+    Leave supports OFF. The new stepped roof is designed to bridge cleanly. Before
+    reprinting, you can trim the old plate's hole with a craft knife and check the
+    bolt goes through.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Look into the recess. If a stray strand crosses the slot, cut it out with
+    a craft knife.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the webcam bolt up through the slot from the bottom so its head sits
+    in the recess.
+  parts:
+  - qr_plate
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '4'
+  text: Thread the bolt into the camera's tripod socket, sliding it along the slot
+    until the camera balances. Tighten until it's snug, but don't crank it.
+  parts:
+  - qr_plate
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '5'
+  text: Put the plate into the tripod clamp, tighten the knob, and test with a gentle
+    wiggle before letting go. Rubber or grip tape on top of the plate stops the camera
+    twisting.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null

@@ -1,0 +1,203 @@
+task: bearing-wheel
+note: 'A best-judgment replacement: 50 mm crowned tread, 16 mm overall width, with
+  two 608ZZ bearings pressed into opposite-side seats. Because the original running-surface
+  and track profile could not be measured, this is not a guaranteed profile match;
+  check that a shallow crown is compatible with your track before relying on it. Print
+  the fit coupon first: bearing outer-diameter fit is printer-dependent. The wheel
+  is designed for the axle to pass through the bearings; the wheel itself has a slightly
+  larger, non-contact center hole. Ensure your M8 bolt is actually a smooth 8 mm shaft
+  where it passes through the bearing bores and that your existing mount captures
+  the wheel axially.'
+questions: []
+params:
+  wheel_diameter:
+    value: 50
+    unit: mm
+    kind: design
+    source: asked
+    note: Approximate original diameter supplied by user; maximum tread diameter.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: design
+    source: asked
+    note: Approximate original width supplied by user.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bearing nominal outside diameter; supplied data notes a prior 21.22
+      mm reading was low.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bearing nominal width.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bearing nominal bore.
+  bearing_seat_d:
+    value: 22.15
+    unit: mm
+    kind: design
+    source: design
+    note: Starting seat diameter, 0.15 mm clearance over nominal bearing OD; validate
+      with coupon and adjust if needed.
+  seat_depth:
+    value: 7.1
+    unit: mm
+    kind: design
+    source: design
+    note: Seat depth from each wheel side; nominal 0.1 mm deeper than bearing width.
+  axle_clearance_d:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: Wheel center hole clears the bearing bore/axle; the bearings, not this hole,
+      locate the axle.
+  crown_drop:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Tread radius is 1 mm smaller at each edge than at the middle; shallow crowned
+      profile is a guess.
+  coupon_sample_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_thickness:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: roller
+  role: final
+  material: PLA high-speed
+  code: "def build(p):\n    # Revolved crowned tread, with its rotational axis along\
+    \ Z.\n    half = p.wheel_width / 2.0\n    pts = [(0, 0)]\n    n = 24\n    for\
+    \ i in range(n + 1):\n        z = p.wheel_width * i / n\n        r = p.wheel_diameter\
+    \ / 2.0 - p.crown_drop * ((z - half) / half) ** 2\n        pts.append((r, z))\n\
+    \    pts.extend([(0, p.wheel_width), (0, 0)])\n    body = cq.Workplane(\"XZ\"\
+    ).polyline(pts).close().revolve(360, (0, 0), (0, 1))\n    # Opposed bearing counterbores.\
+    \ The remaining central web is 1.8 mm nominal;\n    # its bearing-seat floors\
+    \ are short bridges, well below the stated 50 mm limit.\n    r = p.bearing_seat_d\
+    \ / 2.0\n    body = body.cut(cq.Solid.makeCylinder(r, p.seat_depth, cq.Vector(0,\
+    \ 0, 0), cq.Vector(0, 0, 1)))\n    body = body.cut(cq.Solid.makeCylinder(r, p.seat_depth,\
+    \ cq.Vector(0, 0, p.wheel_width - p.seat_depth), cq.Vector(0, 0, 1)))\n    body\
+    \ = body.cut(cq.Solid.makeCylinder(p.axle_clearance_d / 2.0, p.wheel_width + 2,\
+    \ cq.Vector(0, 0, -1), cq.Vector(0, 0, 1)))\n    return body"
+  print_orientation: 'Print lying on a flat side: wheel axis vertical, one side face
+    on the bed (z=0). No supports intended; bearing-seat floors bridge only the 22
+    mm pocket span.'
+  use_orientation: Wheel axis aligned with the M8 axle; insert one 608ZZ bearing from
+    each side. The crowned tread is the track-contacting surface.
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA high-speed
+  code: "def build(p):\n    # Three through-hole rings test 608 bearing fits: nominal\
+    \ OD -0.1, nominal, +0.1 mm.\n    samples = []\n    for i, delta in enumerate([-0.1,\
+    \ 0.0, 0.1]):\n        x = i * (p.coupon_sample_d + 5)\n        outer = cq.Solid.makeCylinder(p.coupon_sample_d\
+    \ / 2.0, p.coupon_thickness, cq.Vector(x, 0, 0), cq.Vector(0, 0, 1))\n       \
+    \ inner = cq.Solid.makeCylinder((p.bearing_od + delta) / 2.0, p.coupon_thickness\
+    \ + 2, cq.Vector(x, 0, -1), cq.Vector(0, 0, 1))\n        samples.append(cq.Workplane(obj=outer.cut(inner)))\n\
+    \    result = samples[0]\n    for s in samples[1:]:\n        result = result.union(s)\n\
+    \    return result"
+  print_orientation: Flat on the bed, rings lying in the XY plane; z=0 on bed.
+  use_orientation: Try a bearing in each ring. Use the one that gives a firm hand
+    press without cracking; adapt the final wheel's bearing_seat_d accordingly.
+hardware:
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+joints: []
+criteria:
+- id: two_bearing_seats
+  part: roller
+  feature: opposed 22.15 mm nominal counterbores, each 7.1 mm deep
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: 0.15
+  params:
+  - bearing_od
+  - bearing_width
+  - bearing_seat_d
+  - seat_depth
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: Test fit with the coupon before printing the wheel. Choose a firm
+      press fit; adjust bearing_seat_d if needed.
+- id: axle_passage
+  part: roller
+  feature: 8.6 mm through center hole; axle runs through the bearing bores
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - axle_clearance_d
+  - bearing_bore
+  check:
+    method: measure
+    ref: null
+    description: 'Check the actual bolt shaft at the bearing locations: nominal M8
+      threaded portions may not pass freely through every bearing''s nominal 8 mm
+      bore.'
+- id: track_profile
+  part: roller
+  feature: shallow crowned tread, 1 mm radius reduction at each edge
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_diameter
+  - wheel_width
+  - crown_drop
+  check:
+    method: measure
+    ref: null
+    description: Compare the crowned tread and 50 mm diameter with the door track
+      and old wheel before installation; profile was not measurable.
+manual:
+- n: '1'
+  text: Print the bearing_fit_coupon flat on the bed. Try a bearing in each sample
+    ring. Select the firm, non-cracking press fit and adjust the final roller's bearing_seat_d
+    to match that sample if the 22.15 mm starting value is not right.
+  parts:
+  - bearing_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print roller with one flat side on the bed. No supports are intended. Inspect
+    the bearing seats and center hole; remove only loose strings or burrs.
+  parts:
+  - roller
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608ZZ bearing into each side's seat, keeping them square. Stop if
+    the fit requires excessive force or starts splitting the print.
+  parts:
+  - roller
+  hardware:
+  - bearing_608
+  tool: Hand press; do not hammer directly on bearing races.
+- n: '4'
+  text: Pass the existing M8 bolt through the bearing bores and install the wheel
+    in the door mount. Tighten or retain the bolt in the original mounting arrangement
+    so it holds the inner races/assembly without clamping the wheel. Verify free rotation
+    and track engagement by hand before using the door.
+  parts:
+  - roller
+  hardware: []
+  tool: Existing door-mount hardware

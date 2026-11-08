@@ -1,0 +1,190 @@
+task: bearing-wheel
+note: 'A printable generic flat-tread roller is feasible: it uses two user-supplied
+  608ZZ bearings as the running surfaces on the user''s M8 bolt. The old tread profile
+  and door track were not measurable, so this is not guaranteed to track correctly;
+  check that the door''s rail accepts a mostly flat, slightly edge-rounded wheel before
+  relying on it. Print and test the coupon first—the bearing-seat fit is printer-dependent.
+  The user''s bolt and door mounting arrangement are reused; bolt length and retention
+  details are unknown.'
+questions: []
+params:
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original wheel diameter, as reported by the user.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original wheel width, as reported by the user.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal 608 bearing outside diameter.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal 608 bearing width.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal 608 bearing bore, for an M8 axle.
+  bearing_seat_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: Initial bearing-pocket diameter. Verify press fit with the coupon; adjust
+      for the printer if needed.
+  seat_depth:
+    value: 7.15
+    unit: mm
+    kind: design
+    source: design
+    note: Slightly deeper than the 7 mm bearing so bearing faces are just recessed.
+  axle_clearance_d:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Printed wheel's central through-hole; bearings, not the printed hole, run
+      on the M8 axle.
+  edge_round:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Rounds the outer tread edges; leaves most of the tread flat.
+  coupon_od:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_thickness:
+    value: 8.15
+    unit: mm
+    kind: design
+    source: design
+    note: Seat depth plus a 1 mm floor for testing the bearing fit.
+parts:
+- id: roller
+  role: final
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    body = cq.Workplane(\"XY\").circle(p.wheel_d / 2).extrude(p.wheel_width)\n\
+    \    body = body.edges(\"%Circle\").fillet(p.edge_round)\n    bore = cq.Workplane(\"\
+    XY\").circle(p.axle_clearance_d / 2).extrude(p.wheel_width)\n    body = body.cut(bore)\n\
+    \    lower_seat = cq.Workplane(\"XY\").circle(p.bearing_seat_d / 2).extrude(p.seat_depth)\n\
+    \    upper_seat = (cq.Workplane(\"XY\").workplane(offset=p.wheel_width - p.seat_depth)\n\
+    \                  .circle(p.bearing_seat_d / 2).extrude(p.seat_depth))\n    return\
+    \ body.cut(lower_seat).cut(upper_seat)"
+  print_orientation: Lay one flat circular face on the bed; wheel axis is vertical
+    (Z).
+  use_orientation: Wheel axis through the two bearing bores; install the two bearings
+    from opposite faces. The rounded outer circumference rolls on the door track.
+- id: seat_coupon
+  role: coupon
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    coupon = cq.Workplane(\"XY\").circle(p.coupon_od / 2).extrude(p.coupon_thickness)\n\
+    \    through = cq.Workplane(\"XY\").circle(p.axle_clearance_d / 2).extrude(p.coupon_thickness)\n\
+    \    seat = (cq.Workplane(\"XY\").workplane(offset=p.coupon_thickness - p.seat_depth)\n\
+    \            .circle(p.bearing_seat_d / 2).extrude(p.seat_depth))\n    return\
+    \ coupon.cut(through).cut(seat)"
+  print_orientation: Flat bottom on the bed, with the bearing-seat opening facing
+    up.
+  use_orientation: Test the fit by pressing one 608ZZ bearing into the top pocket.
+    The pocket is a sample of the roller's bearing seat.
+hardware: []
+joints: []
+criteria:
+- id: bearing_press_fit
+  part: seat_coupon
+  feature: top bearing pocket
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: seat_coupon
+    description: Print the coupon and press in one 608ZZ bearing. It should seat firmly
+      without cracking the coupon; if loose or too tight, adjust bearing_seat_d and
+      reprint the coupon before the roller.
+- id: axle_clearance
+  part: roller
+  feature: central through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - axle_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Confirm the user's M8 bolt shank passes through the printed wheel
+      without rubbing. The bearing inner races fit the M8 shank.
+- id: track_compatibility
+  part: roller
+  feature: outer tread
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_d
+  - wheel_width
+  check:
+    method: measure
+    ref: null
+    description: Compare the flat, edge-rounded tread with the door's rail and old
+      wheel remnants; track profile compatibility cannot be confirmed from the available
+      information.
+manual:
+- n: '1'
+  text: Print the seat_coupon flat on the bed. Press one 608ZZ bearing into its pocket
+    to check the fit. If the fit is not firm but installable, adjust bearing_seat_d
+    and reprint the coupon before printing the full roller.
+  parts:
+  - seat_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check that the door track can run on a mostly flat wheel tread, and that the
+    assembled wheel's approximately 50 mm diameter and 16 mm width suit the door.
+    The original tread profile is unknown.
+  parts:
+  - roller
+  hardware: []
+  tool: null
+- n: '3'
+  text: Print the roller with one circular face on the bed. Remove any brim or strings
+    from the bearing pockets and axle hole.
+  parts:
+  - roller
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press one 608ZZ bearing into each face, taking care not to force them in crooked.
+    The bearings sit in opposite pockets with a short printed web between them.
+  parts:
+  - roller
+  hardware: []
+  tool: null
+- n: '5'
+  text: Pass the user's M8 bolt through the bearing inner races and reinstall the
+    wheel in the door. Retain the assembly using the existing door mounting arrangement.
+    Tighten only enough to secure the inner races; do not clamp the wheel or outer
+    races so they cannot spin freely. Check clearance to the door and track by hand
+    before loading it.
+  parts:
+  - roller
+  hardware: []
+  tool: null

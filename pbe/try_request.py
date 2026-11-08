@@ -22,7 +22,7 @@ from pbe.runner.trial_record import TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "results/local/try"
-DEFAULT_CONDITION = "can_ask"
+DEFAULT_CONDITION = agent.TEST_CONDITION  # the model may ask for test prints before its final design
 GENERAL_CHECKS_ONLY = ("Only the general checks ran: the parts build, each is one piece, each fits the bed, and every "
                        "overhang can be bridged. Nothing checks that the design fits or does what you asked. "
                        "\"not graded\" means no recorded test print decides that check for this geometry.")

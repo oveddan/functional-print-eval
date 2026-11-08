@@ -1,0 +1,358 @@
+task: tripod-plate
+note: Temporary, unverified Arca-like quick-release plate prototype. Only nominal
+  plate width and approximate bolt dimensions are known. The 45-degree, 4 mm-high
+  dovetail is an assumption, not a confirmed tripod interface. No camera load rating
+  is claimed. Print and check the coupon first; do not mount a camera until all manual
+  checks pass. Use the metal salvaged bolt; no printed camera screw is supplied. PLA
+  can creep and soften in heat; this is not a permanent replacement.
+questions:
+- text: Exact clamp profile, lip height, jaw contact length and available adjustment?
+  answer: null
+- text: Camera mounting socket usable thread depth, surrounding surface geometry,
+    and camera/lens weight?
+  answer: null
+- text: Webcam bolt drive type and accurately measured dimensions?
+  answer: Head approximately 15 mm across and 5 mm high; length under head approximately
+    10 mm. Drive type unknown.
+params:
+  plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: User supplied width of plate the clamp takes; not a verified profile measurement.
+  jaw_height:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  jaw_contact_length:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  camera_mass:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Not used for a load calculation; no load rating established.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate head width; verify maximum envelope.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate length under head.
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 diameter.
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  camera_thread_d:
+    value: 6.35
+    unit: mm
+    kind: world
+    source: asked
+    note: User confirmed 1/4-20 socket.
+  profile_height:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Unverified trial profile.
+  profile_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: design
+    note: Trial angle from vertical, not measured.
+  plate_length:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_length:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_thickness:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Includes dovetail.
+  screw_grip:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Distance from head bearing face to camera contact face. With measured 10
+      mm bolt, nominal projection is 4 mm.
+  bore_allowance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance.
+  head_allowance:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance.
+  bottom_clearance:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Minimum required space beyond installed screw tip; verify socket depth physically.
+  minimum_turns:
+    value: 3
+    unit: count
+    kind: design
+    source: design
+    note: Minimum full turns of actual thread engagement; lead-in threads do not count.
+      Camera manufacturer's requirements override this.
+parts:
+- id: profile_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    neck = p.plate_width - 2*p.profile_height*math.tan(math.radians(p.profile_angle))\n\
+    \    slab = p.plate_thickness - p.profile_height\n    base = cq.Workplane('XY').rect(p.coupon_length,\
+    \ p.plate_width).extrude(slab)\n    rail = (cq.Workplane('XY').workplane(offset=slab)\n\
+    \            .rect(p.coupon_length, neck)\n            .workplane(offset=p.profile_height).rect(p.coupon_length,\
+    \ p.plate_width)\n            .loft(combine=True))\n    return base.union(rail)\n"
+  print_orientation: Broad rectangular face on the bed at z=0; dovetail points upward.
+    No supports.
+  use_orientation: 'Invert after printing: broad bed face faces the camera; dovetail
+    faces down into the clamp. X runs along the jaws.'
+- id: camera_plate
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    neck = p.plate_width - 2*p.profile_height*math.tan(math.radians(p.profile_angle))\n\
+    \    slab = p.plate_thickness - p.profile_height\n    base = cq.Workplane('XY').rect(p.plate_length,\
+    \ p.plate_width).extrude(slab)\n    rail = (cq.Workplane('XY').workplane(offset=slab)\n\
+    \            .rect(p.plate_length, neck)\n            .workplane(offset=p.profile_height).rect(p.plate_length,\
+    \ p.plate_width)\n            .loft(combine=True))\n    body = base.union(rail)\n\
+    \    bore = cq.Workplane('XY').circle((p.bolt_d+p.bore_allowance)/2).extrude(p.plate_thickness)\n\
+    \    recess = (cq.Workplane('XY').workplane(offset=p.screw_grip)\n           \
+    \   .circle((p.bolt_head_d+p.head_allowance)/2)\n              .extrude(p.plate_thickness-p.screw_grip))\n\
+    \    return body.cut(bore).cut(recess)\n"
+  print_orientation: Camera contact face flat on bed at z=0. Screw-head recess opens
+    upward. No supports; dovetail side slopes are 45 degrees.
+  use_orientation: 'Invert: printed z=0 face against camera; printed z=12 faces the
+    tripod. X runs along clamp jaws. Bolt inserts from printed +Z toward -Z.'
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_attachment
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 11.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: camera_plate
+    feature: Central 16 mm nominal head recess; head bearing face at printed z=6,
+      head outer face approximately z=11
+    role: head_seat
+  - part: camera_plate
+    feature: Central 6.95 mm nominal through clearance bore
+    role: clearance
+  nut: null
+  external: Camera 1/4-20 female socket, depth and usable thread engagement unverified
+criteria:
+- id: clamp_profile
+  part: camera_plate
+  feature: Opposed assumed 45-degree dovetail flanks
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - profile_height
+  - profile_angle
+  - jaw_height
+  check:
+    method: coupon
+    ref: profile_coupon
+    description: Unloaded coupon must drop into open clamp and seat without rocking,
+      then be captured beneath both lips with knob tightened normally. Reject tip-only
+      contact, bottoming of the moving jaw, or ability to lift out. Short coupon does
+      not prove full-length plate fit or strength.
+- id: bolt_clearance
+  part: camera_plate
+  feature: Through bore and upward-opening head recess
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bolt_head_d
+  - bolt_head_h
+  - bore_allowance
+  - head_allowance
+  - plate_thickness
+  - screw_grip
+  check:
+    method: measure
+    ref: null
+    description: Bolt must insert freely, head must seat flat at z=6, and its outer
+      face must remain inside the plate envelope. Confirm tool access and no head
+      contact with tripod.
+- id: camera_engagement
+  part: camera_plate
+  feature: Camera-side screw projection
+  relation: engages
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - screw_grip
+  - socket_depth
+  - bottom_clearance
+  - minimum_turns
+  - bolt_pitch
+  check:
+    method: measure
+    ref: null
+    description: Measure actual projection (nominal 4 mm). Confirm usable socket depth
+      exceeds projection by at least 1 mm and at least three full turns actually engage
+      before plate seats. Stop if either cannot be confirmed; nominal thread pitch
+      alone is not proof.
+- id: camera_seating
+  part: camera_plate
+  feature: 50 x 38 mm bed-printed camera contact face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_length
+  - plate_width
+  check:
+    method: measure
+    ref: null
+    description: Check camera base is flat, plate does not obstruct battery doors
+      or touch lens, and tightened plate cannot rotate. Unverified camera mass means
+      no load rating.
+manual:
+- n: '1'
+  text: Treat this as an unloaded prototype. The actual clamp profile and camera socket
+    depth are unknown. If you cannot perform the following checks, use a compatible
+    commercial replacement instead.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print profile_coupon in the specified orientation, 0.2 mm layers, six walls
+    and 100% infill. No supports. Remove brim or elephant-foot material without changing
+    the angled contact surfaces.
+  parts:
+  - profile_coupon
+  hardware: []
+  tool: null
+- n: '3'
+  text: 'With no camera attached, open the clamp and invert the coupon into it, X
+    along jaws. Check both angled faces seat evenly beneath the lips, with no rocking
+    or interference from the upper shoulder. Tighten normally by hand. Try to lift,
+    twist and slide it out by hand. Reject any release, cracking, stress whitening,
+    edge-only contact or jaw travel bottoming. If it fails, stop: the assumed profile
+    needs measured redesign, not extra tightening.'
+  parts:
+  - profile_coupon
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'Only after the coupon fits, print camera_plate broad camera face down, 0.2
+    mm layers, six walls and 100% infill, no supports. Inspect for poor layer bonding
+    or warping. Fit the full plate into the empty clamp and repeat all unloaded checks,
+    including full-length seating and bolt-head clearance. There are no anti-slide
+    stop screws: always support the plate when loosening the clamp.'
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Insert camera_bolt through the recess from the dovetail side. Its head must
+    bear flat on the recessed floor and be fully below the outer plate face. Confirm
+    you can tighten it using its actual drive without damaging it; stop if the recess
+    prevents tool access. Measure the actual screw projection above the camera face;
+    expected approximately 4 mm.
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: Calipers and the drive tool matching the salvaged bolt
+- n: '6'
+  text: Before threading into the camera, establish usable socket depth using the
+    camera manufacturer's specification or a careful blunt nonmetallic depth probe;
+    a probe alone does not establish usable thread length. Require at least 1 mm clearance
+    beyond the screw tip and at least three full turns of real engagement before the
+    plate seats. Do not proceed if either is uncertain. Never force a screw to check
+    depth; never substitute an M6 screw. If dimensions fail, redesign screw_grip or
+    obtain a suitable commercial screw/plate; do not improvise with unlisted spacers.
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '7'
+  text: 'On a padded surface, hold the camera securely, hand-start the bolt and tighten
+    gently with the correct drive. Verify plate seats flat without rocking or rotation
+    and no controls, lens or doors are obstructed. If the screw stops before the plate
+    seats, remove it immediately: it may be bottoming out. Do not overcome movement
+    by overtightening PLA.'
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: Drive tool matching the salvaged bolt
+- n: '8'
+  text: Keep both hands supporting the camera while placing it into the clamp and
+    tightening the knob. Verify both lips capture the plate, and gently check lift,
+    slide and rotation with support maintained over a padded surface. This check does
+    not establish a load rating. Do not use with heavy or long lenses, at steep tilt,
+    in heat or direct sun, unattended, overhead, or while carrying the tripod. If
+    security is uncertain, do not release the camera. Inspect for cracks or loosening
+    each time and replace with the correct plate as soon as possible.
+  parts:
+  - camera_plate
+  hardware:
+  - camera_bolt
+  tool: null

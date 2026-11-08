@@ -1,0 +1,391 @@
+task: tripod-plate
+note: 'What changed from the print you made: only the screw-head recess in the plate.
+  The outer shape (50 x 38 x 6 mm, 45 deg taper) is byte-for-byte what you already
+  printed, because you confirmed it fits the borrowed clamp - so the clamp fit cannot
+  have regressed. The recess was a round Ø16 pocket; a round pocket forces the slicer
+  to print its 0.8 mm ceiling as a RING of filament looping in mid-air around the
+  Ø7 hole (exactly the loose loops and tangles you saw, and the hole then closing
+  up). It is now a SQUARE 16.4 x 16.4 pocket: the ceiling''s bridge lines now run
+  straight from one vertical wall to the other, anchored at both ends, so the first
+  layer lays down on a real bridge and the four layers above it fill solid. The recess
+  is also a little bigger (16.4 vs 16.0) and the hole a little looser (7.2 vs 7.0)
+  so a small elephant-foot lip at the pocket mouth or any hole shrink cannot grab
+  the bolt head. I also thickened the roof slightly (0.9 mm, was 0.8) and the pocket
+  is now 5.1 deep, which still leaves the bolt head 0.1 mm inside it. Belt and braces:
+  turn supports ON when you slice the plate - the pocket ceiling is the only horizontal
+  overhang in the part, the supports grow up from the bed inside the pocket in one
+  little grid, and pull out in one piece. Everything else from your report stands:
+  the bolt head cleared its recess and the clamp fitted, so nothing else was touched.
+  The fit coupon is dropped - the plate itself did that job. The screw is unchanged
+  (you had no complaint about it) and is still the spare: the salvaged webcam-mount
+  bolt is the screw to actually use, being steel with the right 1/4-20 thread and
+  exactly the 10 mm of thread this plate''s 5.1 + 4.1 mm split needs. If the printed
+  screw''s thread looks rough, use the bolt and don''t force a PLA thread into the
+  camera''s brass socket.'
+questions: []
+params:
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam-mount bolt head, across
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head height
+  bolt_thread_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: threaded length under the head
+  camera_socket_depth:
+    value: 6.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: typical 1/4-20 socket depth; still unmeasured, kept above the 4.1 mm that
+      projects so the screw cannot bottom out
+  plate_chamfer_deg:
+    value: 45
+    unit: deg
+    kind: design
+    source: asked
+    note: 'CONFIRMED: the plate with this taper fitted the person''s clamp'
+  plate_cbore_d:
+    value: 16.4
+    unit: mm
+    kind: design
+    source: design
+    note: superseded by pocket_w - kept so the old joint/seat wording still resolves
+  plate_hole_d:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: loosened from 7.0 so a partly-closing hole cannot grip the bolt (6.35 +
+      0.85); chase with a 7 mm drill if it is still tight
+  plate_len:
+    value: 50
+    unit: mm
+    kind: design
+    source: asked
+    note: CONFIRMED in the clamp
+  plate_t:
+    value: 6
+    unit: mm
+    kind: design
+    source: asked
+    note: 'CONFIRMED: fitted the clamp at this thickness. Also sets thread engagement
+      = 10 + 5.1 - 6.0 = 4.1 mm'
+  plate_wid:
+    value: 38
+    unit: mm
+    kind: design
+    source: asked
+    note: 'CONFIRMED: fitted the clamp at this width'
+  pocket_roof:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: 'thickened from 0.8 to 0.9 mm: this is the roof the bolt head pulls up against,
+      and the roof that printed as loose loops'
+  pocket_w:
+    value: 16.4
+    unit: mm
+    kind: design
+    source: design
+    note: 'square now, not round: 16.4 x 16.4 so the slicer bridges wall-to-wall instead
+      of printing a ring in mid-air. Bolt head 15.0 + 0.7 per side'
+  screw_head_d:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: made equal to the salvaged bolt head so either screw seats in the one pocket
+  screw_head_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: equal to the bolt head; with the 5.1 pocket the head sits 0.1 mm recessed
+  screw_thread_len:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: equal to the salvaged bolt so 4.1 mm projects above the plate's top face
+  thread_minor_d:
+    value: 4.98
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 UNC minor diameter ~4.98
+  thread_od:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major = 1/4 in; matches the camera socket
+  thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    L = p.plate_len\n    W = p.plate_wid\n\
+    \    t = p.plate_t\n    ang = p.plate_chamfer_deg\n    d = p.plate_hole_d\n  \
+    \  pw = p.pocket_w\n    pd = p.plate_t - p.pocket_roof          # pocket depth,\
+    \ roof left on top of it\n\n    # long sides tapered to the jaw angle: wide base,\
+    \ narrow top (UNCHANGED - it fitted)\n    top_w = W - 2.0 * t / math.tan(math.radians(ang))\n\
+    \n    body = (\n        cq.Workplane(\"XY\")\n        .rect(W, L)\n        .workplane(offset=t)\n\
+    \        .rect(top_w, L)\n        .loft(combine=True)\n    )\n\n    # 1/4-20 clearance\
+    \ hole, right through\n    body = body.cut(\n        cq.Workplane(\"XY\").circle(d\
+    \ / 2.0).extrude(t + 2.0).translate((0, 0, -1.0))\n    )\n\n    # head pocket,\
+    \ cut up from the bed face.\n    # SQUARE, NOT ROUND: straight walls let the slicer\
+    \ bridge the ceiling\n    # wall-to-wall, instead of looping a ring of filament\
+    \ in mid-air round the hole.\n    body = body.cut(\n        cq.Workplane(\"XY\"\
+    )\n        .rect(pw, pw)\n        .extrude(pd + 0.2)\n        .translate((0, 0,\
+    \ -0.2))\n    )\n    return body\n"
+  print_orientation: 'wide 38 x 50 mm face flat on the bed (the face carrying the
+    square head pocket), taper narrowing upward to the 24 mm top face. Support: ON
+    (auto) - the pocket''s 0.9 mm ceiling is the only horizontal overhang in the part;
+    the supports grow up from the bed inside the pocket and pull out in one piece.
+    Do not raise the fan or slow the bridge; the square pocket bridges on its own'
+  use_orientation: 'pocket face down: it rests on the clamp''s floor and holds the
+    bolt head; tapered sides between the jaws; the camera base on the top face; the
+    bolt goes up through it from underneath'
+- id: screw
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    od = p.thread_od\n    P = p.thread_pitch\n\
+    \    minor = p.thread_minor_d\n    hd = p.screw_head_d\n    hh = p.screw_head_h\n\
+    \    tl = p.screw_thread_len\n\n    # head: printed face down, z from -hh to 0\n\
+    \    head = cq.Workplane(\"XY\").circle(hd / 2.0).extrude(hh).translate((0, 0,\
+    \ -hh))\n    for i in range(12):\n        a = math.radians(i * 30.0)\n       \
+    \ x = math.cos(a) * hd / 2.0\n        y = math.sin(a) * hd / 2.0\n        head\
+    \ = head.cut(\n            cq.Workplane(\"XY\")\n            .circle(1.1)\n  \
+    \          .extrude(hh + 0.4)\n            .translate((x, y, -hh - 0.2))\n   \
+    \     )\n\n    # shank core\n    core = (\n        cq.Workplane(\"XY\")\n    \
+    \    .circle(minor / 2.0)\n        .extrude(tl + 0.5)\n        .translate((0,\
+    \ 0, -0.5))\n    )\n\n    # 1/4-20 thread: V profile swept along a helix\n   \
+    \ r_root = minor / 2.0 - 0.3\n    r_crest = od / 2.0\n    r_helix = (r_root +\
+    \ r_crest) / 2.0\n    prof = (\n        cq.Workplane(\"XZ\")\n        .polyline([(r_root,\
+    \ -P / 2.0), (r_crest, 0.0), (r_root, P / 2.0)])\n        .close()\n    )\n  \
+    \  try:\n        helix = cq.Wire.makeHelix(P, tl, r_helix)\n        thread = prof.sweep(cq.Workplane(obj=helix),\
+    \ isFrenet=True)\n        body = head.union(core).union(thread)\n    except Exception:\n\
+    \        body = head.union(core)\n\n    # trim the thread flush at the tip\n \
+    \   body = body.cut(\n        cq.Workplane(\"XY\")\n        .workplane(offset=tl)\n\
+    \        .box(hd * 2.0, hd * 2.0, 20.0, centered=(True, True, False))\n    )\n\
+    \    return body.translate((0, 0, hh))\n"
+  print_orientation: 'standing: head face down on the bed, shank and thread rising
+    vertically, no supports'
+  use_orientation: head sits in the plate's square pocket, shank passes up through
+    the plate and threads into the camera's 1/4-20 socket; the spare for the salvaged
+    bolt
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_to_plate
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.1
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: square head pocket, 16.4 x 16.4 x 5.1 deep, in the bed-side face
+    role: head_seat
+  - part: plate
+    feature: Ø7.2 clearance hole through the plate
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: pocket_takes_head
+  part: plate
+  feature: square head pocket in the bed-side face
+  relation: contains
+  hardware: bolt
+  clearance_mm: 0.7
+  params:
+  - pocket_w
+  - plate_t
+  - pocket_roof
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: measure
+    ref: null
+    description: the bolt head enters the 16.4 x 16.4 pocket and its top lands on
+      the pocket ceiling, with the head 0.1 mm inside the plate rather than proud
+      of the bed face. The pocket is 0.4 mm larger than the round one you already
+      tried, so this is confirmed
+- id: hole_clears_thread
+  part: plate
+  feature: Ø7.2 clearance hole through the plate
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.85
+  params:
+  - plate_hole_d
+  - thread_od
+  check:
+    method: measure
+    ref: null
+    description: the bolt's 6.35 mm shank slides through the 7.2 mm hole; if the hole
+      came out tight, chase it with a 7 mm drill or work the bolt through by hand
+      before assembling
+- id: roof_prints_solid
+  part: plate
+  feature: 0.9 mm pocket roof and the hole through it
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - pocket_roof
+  - pocket_w
+  - plate_t
+  - plate_hole_d
+  check:
+    method: measure
+    ref: null
+    description: 'inspect the printed 0.9 mm roof over the pocket before assembling:
+      it must be solid, with no loose strands, and the hole must be open. This is
+      the feature that failed last time (round pocket = ring of filament printed in
+      mid-air); square pocket + supports must fix it. If it still comes out loose,
+      print again with supports forced on and the bridge fan at 100%'
+- id: seats_in_clamp
+  part: plate
+  feature: the two 45 deg tapered long sides
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_wid
+  - plate_t
+  - plate_chamfer_deg
+  check:
+    method: measure
+    ref: null
+    description: 'the taper, width and thickness are exactly what you already printed
+      and reported fitting the borrowed clamp, so this should only need re-checking:
+      the plate drops in, sits down and the angled lips grip it when the knob is snugged'
+- id: thread_reaches_camera
+  part: screw
+  feature: 1/4-20 thread standing proud of the plate's top face
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - screw_thread_len
+  - screw_head_h
+  - pocket_roof
+  - plate_t
+  - camera_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: with either screw's head in the 5.1 mm pocket, 4.1 mm of 1/4-20 thread
+      (10 mm of thread minus the 5.9 mm sitting in the pocket and plate) projects
+      above the plate's top face - enough to hold a camera, and under the ~6.5 mm
+      socket depth so it cannot bottom out and jack the plate off the camera
+- id: plate_face_meets_camera
+  part: plate
+  feature: top face, 24 x 50 mm
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_len
+  - plate_wid
+  - plate_t
+  - plate_chamfer_deg
+  check:
+    method: none
+    ref: null
+    description: the camera's base lands flat on the 24 x 50 mm top face, ringed by
+      the taper - check by eye that it pulls down flat as the screw is snugged
+manual:
+- n: '1'
+  text: 'Slice plate: wide 38 x 50 mm face down on the bed, taper narrowing upward.
+    Turn supports ON (auto) - the square head pocket''s 0.9 mm ceiling is the only
+    place supports will generate, and they come out in one little grid. The pocket
+    is square now, so its ceiling bridges straight from wall to wall instead of being
+    looped in mid-air - that was the fault last time.'
+  parts:
+  - plate
+  hardware: []
+  tool: Bambu Studio
+- n: '2'
+  text: 'Optional: print screw, head down on the bed, standing vertically, no supports.'
+  parts:
+  - screw
+  hardware: []
+  tool: Bambu Studio
+- n: '3'
+  text: 'Pull the supports out of the pocket with tweezers or a small screwdriver.
+    Now look at the roof over the pocket: it must be a solid 0.9 mm skin with an open
+    hole, not loose strands. Push the bolt through the hole - if it is tight, chase
+    the hole with a 7 mm drill or work the bolt through by hand. Don''t assemble until
+    the roof is solid, because this roof is what the bolt head pulls against.'
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Drop the salvaged webcam-mount bolt (or the printed screw) into the square
+    pocket from the bed side, head down, and push the thread up through the plate
+    so it comes out of the top face.
+  parts:
+  - plate
+  - screw
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: 'Screw it into the camera''s 1/4-20 socket until snug: the plate''s 24 mm-wide
+    top face pulls flat against the camera''s base, and the head lifts to sit on the
+    pocket roof. Snug only - the roof is 0.9 mm of PLA. If you are using the printed
+    screw, go gently and stop if it binds; a PLA thread cross-threads far more easily
+    than the steel bolt.'
+  parts:
+  - plate
+  - screw
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: Loosen the clamp's knob, drop the camera + plate into the slot from above
+    with the tapered sides between the jaws, and snug the knob so the lips bite the
+    taper and press the plate down. This is the same outer shape you already fitted,
+    so it should seat as before.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '7'
+  text: 'Temporary-use only: PLA creeps and the printed thread wears. Re-check the
+    knob before each session, keep the camera light, and never lift or carry the tripod
+    by the camera.'
+  parts:
+  - plate
+  - screw
+  hardware:
+  - bolt
+  tool: null

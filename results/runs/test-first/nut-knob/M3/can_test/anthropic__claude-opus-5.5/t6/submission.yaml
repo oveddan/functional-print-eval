@@ -1,0 +1,177 @@
+task: nut-knob/M3
+note: The press-fit size hasn't been tested on your printer. A plain 5.45 mm hex was
+  too tight, and the 5.55, 5.65 and 5.75 mm test pieces couldn't be reported. So the
+  pocket is a loose 5.75 mm hex with three crush ribs, which brings it back to about
+  5.50 mm and should still press in by hand. If the nut falls out, make rib_protrude
+  0.35. If it won't go in, make it 0.15.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af:
+    value: 5.75
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hex; grip comes from crush ribs. A 5.45 full-face pocket was too
+      tight on this printer (test print)
+  rib_protrude:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: net 5.50 across each rib/flat pair
+  rib_d:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits this far below the top face
+  lead_in:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: rib-free mouth so the nut starts square
+  knob_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 9.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    H = p.knob_h\n    depth = p.nut_h + p.recess\n\
+    \    floor = H - depth\n    b = cq.Workplane('XY').circle(p.knob_d/2).extrude(H)\n\
+    \    R = p.knob_d/2 + 1.0\n    for i in range(int(p.scallop_n)):\n        a =\
+    \ 2*math.pi*i/p.scallop_n\n        b = b.cut(cq.Workplane('XY').center(R*math.cos(a),\
+    \ R*math.sin(a)).circle(p.scallop_r).extrude(H))\n    b = b.cut(cq.Workplane('XY').workplane(offset=floor).polygon(6,\
+    \ p.pocket_af/math.cos(math.radians(30))).extrude(depth + 1))\n    b = b.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(H\
+    \ + 1))\n    rr = p.rib_d/2\n    dist = p.pocket_af/2 + rr - p.rib_protrude\n\
+    \    rib_h = depth - p.lead_in\n    for ang in (30, 150, 270):\n        t = math.radians(ang)\n\
+    \        rib = cq.Workplane('XY').workplane(offset=floor).center(dist*math.cos(t),\
+    \ dist*math.sin(t)).circle(rr).extrude(rib_h)\n        b = b.union(rib)\n    return\
+    \ b\n"
+  print_orientation: solid face (with the small bolt hole) on the bed, nut pocket
+    opening facing up
+  use_orientation: solid face against the work, bolt enters through the small hole
+    and comes out through the nut pocket
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_press
+  part: knob
+  feature: hex pocket with 3 crush ribs
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - rib_protrude
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: 'Nut presses in by hand, sits below the top face and stays in when
+      the knob is turned upside down and tapped. Not checked by a test print: the
+      coupon results couldn''t be reported'
+- id: floor_stop
+  part: knob
+  feature: pocket floor with 3.4 mm hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The 3.4 mm hole is far smaller than the nut, so the nut can't go
+      through the floor
+manual:
+- n: '1'
+  text: Print the knob with the solid face on the bed and the hex pocket facing up.
+    Print it in PLA with 0.2 mm layers, 4 walls and at least 30% infill. It doesn't
+    need supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Set the M3 nut square over the pocket, lined up with the hex. Push it in with
+    your thumb or press it against the table until it sits just below the top face.
+    The three small ribs inside crush a little and hold it. If it's very stiff, press
+    it in with the flat of a screwdriver.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down and tap it to check that the nut stays in.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: 'Use: put the solid face toward the work, start the M3 bolt in the small hole,
+    and turn the knob. The bolt threads through the nut and comes out of the pocket
+    side. When you tighten, the nut pulls against the solid floor.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

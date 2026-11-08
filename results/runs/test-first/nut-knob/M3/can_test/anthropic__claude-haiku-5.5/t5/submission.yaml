@@ -1,0 +1,147 @@
+task: nut-knob/M3
+note: ''
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Requested outer diameter
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Overall knob height
+  floor_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Solid floor under the nut; nut seats on it
+  lip_t:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Retaining lip at the top, thickness
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 height
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt thread diameter
+  bolt_clear:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole for M3 through the floor; smaller than nut AF so nut cannot
+      drop out the bottom
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: 'Nut channel across flats: nut AF plus 0.2 mm clearance for hand press-in'
+  lip_af:
+    value: 5.1
+    unit: mm
+    kind: design
+    source: design
+    note: Top lip opening across flats, smaller than nut AF; PLA flexes so nut snaps
+      past it. Needs a fit test
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    k = 1.1547  # circumscribed diameter = AF / cos(30deg)\n\
+    \    body = cq.Workplane('XY').circle(p.knob_d / 2).extrude(p.knob_h).edges().chamfer(0.8)\n\
+    \    channel = (cq.Workplane('XY').workplane(offset=p.floor_t)\n             \
+    \  .polygon(6, p.pocket_af * k)\n               .extrude(p.knob_h - p.floor_t\
+    \ - p.lip_t))\n    lip = (cq.Workplane('XY').workplane(offset=p.knob_h - p.lip_t)\n\
+    \           .polygon(6, p.lip_af * k)\n           .extrude(p.lip_t + 1))\n   \
+    \ bolt = cq.Workplane('XY').workplane(offset=-1).circle(p.bolt_clear / 2).extrude(p.knob_h\
+    \ + 2)\n    return body.cut(channel).cut(lip).cut(bolt)\n"
+  print_orientation: 'Flat face down: z=0 is the bottom of the knob, lip at the top
+    (z=10)'
+  use_orientation: 'Upright: floor at bottom, nut channel open at top, lip retains
+    the nut'
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut-captive
+  part: knob
+  feature: hex nut channel with top lip
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - lip_af
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Nut sits inside the channel, retained by the lip; lip opening 5.1
+      mm AF vs nut 5.5 AF. Check that nut stays when knob is inverted after press-in.
+- id: bolt-clear
+  part: knob
+  feature: bolt clearance hole through floor
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clear
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: 3.4 mm hole clears M3 bolt, and is smaller than nut AF so nut cannot
+      pass out the bottom.
+manual:
+- n: '1'
+  text: Print the knob upright (bottom flat on the bed, nut opening at the top).
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check the nut opening at the top lip fits the nut. Line the nut up with the
+    top opening, flats aligned with the hex pocket.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Press the M3 hex nut down through the top lip by hand until it rests on the
+    floor inside the knob. It should click past the lip and stay put when the knob
+    is turned upside down.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread your M3 bolt up through the clearance hole in the floor and into the
+    nut, then tighten by hand by turning the knob.
+  parts: []
+  hardware: []
+  tool: null

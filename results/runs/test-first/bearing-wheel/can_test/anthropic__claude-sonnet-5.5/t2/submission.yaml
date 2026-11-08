@@ -1,0 +1,241 @@
+task: bearing-wheel
+note: 'A 50 x 16 mm PLA wheel with two 608 bearings pressed into opposite faces. The
+  pocket size was tested with a coupon: 22.09 mm gave a snug fit. A printed 2 mm spacer
+  on the M8 bolt separates the inner races. The wheel has a flat tread, because the
+  track profile and bracket gap could not be measured. PLA may creep under a heavy
+  door load, so check it after a few weeks.'
+questions:
+- text: Does the track need a grooved wheel? I made a flat tread with chamfered edges
+    because the track profile couldn't be measured. A V-groove or lips can be added
+    if the old wheel had one.
+  answer: null
+- text: Is the M8 bolt long enough to go through the bracket(s) plus 16 mm of wheel?
+    I couldn't check its length, so the M8x50 in the hardware list is a stand-in for
+    your own bolt.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD 22.000; user measured about 22
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: user measured about 8 mm shank
+  pocket_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'coupon: 22.09 snug press fit, 22.19 holds, 21.99 would not fit'
+  web_hole_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: clears the inner race (about 12.5 mm), leaves about 3 mm of outer-race seat
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: under the inner race OD so it only touches the inner races
+  spacer_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: spacer bore clearance on the bolt
+  tread_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  mouth_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in and elephant-foot relief at pocket mouths
+  clr_a:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  clr_b:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  clr_c:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = p.wheel_w\n    pr = (p.bearing_od + p.pocket_clear)\
+    \ / 2\n    web = w - 2 * p.bearing_w\n    body = cq.Workplane('XY').circle(p.wheel_od\
+    \ / 2).extrude(w).faces('>Z or <Z').chamfer(p.tread_chamfer)\n    bot = cq.Workplane('XY').circle(pr).extrude(p.bearing_w)\n\
+    \    top = cq.Workplane('XY').workplane(offset=w - p.bearing_w).circle(pr).extrude(p.bearing_w)\n\
+    \    hole = cq.Workplane('XY').circle(p.web_hole_d / 2).extrude(w)\n    body =\
+    \ body.cut(bot).cut(top).cut(hole)\n    c = p.mouth_chamfer\n    cone_b = cq.Solid.makeCone(pr\
+    \ + c, pr, c, cq.Vector(0, 0, 0), cq.Vector(0, 0, 1))\n    cone_t = cq.Solid.makeCone(pr\
+    \ + c, pr, c, cq.Vector(0, 0, w), cq.Vector(0, 0, -1))\n    body = body.cut(cone_b).cut(cone_t)\n\
+    \    return body\n"
+  print_orientation: flat on one rim face, axis vertical (z)
+  use_orientation: axis horizontal, rolling on the rim
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    web = p.wheel_w - 2 * p.bearing_w\n    return cq.Workplane('XY').circle(p.spacer_od\
+    \ / 2).circle((p.bolt_d + p.spacer_clear) / 2).extrude(web)\n"
+  print_orientation: flat, axis vertical
+  use_orientation: on the bolt between the two bearing inner races
+- id: press-fit-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    res = None\n    web = p.wheel_w - 2 * p.bearing_w\n  \
+    \  h = web + p.bearing_w\n    for i, c in enumerate([p.clr_a, p.clr_b, p.clr_c]):\n\
+    \        x = i * 34\n        body = cq.Workplane('XY').center(x, 0).circle(15).extrude(h)\n\
+    \        pocket = cq.Workplane('XY').workplane(offset=web).center(x, 0).circle((p.bearing_od\
+    \ + c) / 2).extrude(p.bearing_w + 1)\n        hole = cq.Workplane('XY').center(x,\
+    \ 0).circle(p.web_hole_d / 2).extrude(h)\n        body = body.cut(pocket).cut(hole)\n\
+    \        res = body if res is None else res.union(body)\n    return res\n"
+  print_orientation: flat, pocket opening facing up
+  use_orientation: same
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets (both faces)
+  relation: contains
+  hardware: bearing
+  clearance_mm: 0.1
+  params:
+  - bearing_od
+  - pocket_clear
+  - bearing_w
+  check:
+    method: coupon
+    ref: press-fit-coupon
+    description: 22.09 mm pocket gave a snug press fit that held upside down; 22.1
+      used
+- id: c2
+  part: wheel
+  feature: central web hole
+  relation: clears
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - web_hole_d
+  check:
+    method: measure
+    ref: null
+    description: 16 mm hole leaves the bearing inner race free to turn; web only touches
+      the outer race
+- id: c3
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - spacer_clear
+  check:
+    method: measure
+    ref: null
+    description: 8.4 mm bore on the 8 mm bolt
+- id: c4
+  part: spacer
+  feature: end faces
+  relation: supports
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: 2 mm long, so it sits between the two inner races and takes the bolt
+      clamping load
+manual:
+- n: '1'
+  text: Print the wheel flat on one rim face and the spacer flat. Use 4 or more walls
+    and about 25% infill or more on the wheel so the rim is strong. No supports.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into a pocket on either face of the wheel until it sits
+    flush. Use even pressure, for example a flat board or a vise. The fit is snug
+    on purpose.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: Turn the wheel over and press the second bearing in the same way. A 2 mm web
+    in the middle separates the two bearings.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '4'
+  text: Slide the M8 bolt through the bracket and the first bearing. Put the spacer
+    on the bolt, then pass the bolt through the second bearing. The spacer sits between
+    the two inner races, so tightening squeezes the inner races and not the printed
+    wheel.
+  parts:
+  - spacer
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Tighten the bolt into its nut or bracket. Spin the wheel by hand. It should
+    turn freely with no rubbing. If it drags, loosen the bolt slightly. Then hang
+    the door.
+  parts: []
+  hardware: []
+  tool: M8 spanner or hex key

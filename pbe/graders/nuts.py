@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from shapely.geometry import Point, Polygon
 from shapely.ops import polylabel, unary_union
 
+from pbe.graders import assumed
 from pbe.graders.checks import Verdict
 from pbe.graders.sections import clear_width, holes, holes_by_layer, holes_in, section, sections_by_layer, single_final
 from pbe.parts import catalog
@@ -242,21 +243,30 @@ def _measured():
     return {nut: sorted(rows) for nut, rows in table.items()}
 
 
-def verdict(label, clearance):
-    """What the prints say at this clearance: "holds", "loose", "falls out", "won't go in", a
-    READ_AS reading, or None if they can't say: between measured steps that disagree, or beyond them in a direction
-    the trend doesn't settle. Tighter than "won't go in" and looser than "loose" are settled."""
+def reading(label, clearance) -> tuple[str | None, float | None]:
+    """(outcome, the printed clearance it was assumed from, or None if it was printed or the trend settles it).
+    Outcomes are "holds", "loose", "falls out", "won't go in" or a READ_AS reading. Tighter than "won't go in" and
+    looser than "loose" are settled; between steps that disagree, or beyond the steps where the trend doesn't settle
+    it, the nearest step within the assumption tolerance decides (assumed.py); further than that, None."""
     rows = _measured()[label]
     for printed, outcome in rows:
         if abs(clearance - printed) <= TOL:
-            return outcome
+            return outcome, None
     below = [outcome for printed, outcome in rows if printed < clearance]
     above = [outcome for printed, outcome in rows if printed > clearance]
-    if below and above:
-        return below[-1] if below[-1] == above[0] else None
-    if above:
-        return above[0] if above[0] == "won't go in" else None
-    return below[-1] if below[-1] in ("loose", "falls out") else None
+    if below and above and below[-1] == above[0]:
+        return below[-1], None
+    if above and not below and above[0] == "won't go in":
+        return above[0], None
+    if below and not above and below[-1] in ("loose", "falls out"):
+        return below[-1], None
+    close = assumed.nearest(clearance, rows)
+    return (close[1], close[0]) if close else (None, None)
+
+
+def verdict(label, clearance):
+    """What the prints say at this clearance, or what the nearest print says within the assumption tolerance."""
+    return reading(label, clearance)[0]
 
 
 def _holds(label, clearance):
@@ -265,7 +275,7 @@ def _holds(label, clearance):
 
 
 def _pocket_holds(label, found, af):
-    """The same for a pocket. The prints only speak for plain ones."""
+    """The same for a pocket. The prints only speak for plain ones: crush ribs or clips are a different thing."""
     return _holds(label, found.across - af) if found.plain else None
 
 
@@ -352,14 +362,17 @@ def _coupon_sizes(sub, built, nut, af):
     return sizes
 
 
-def _reading(found, clearance, af, said):
+def _reading(found, clearance, af, label):
     """What the prints say about this pocket, in words."""
     if not found.plain:
         return f"pocket {found.across:.2f} across flats at its tightest, with ribs, clips, a lip or relief: no print has measured those"
-    reading = f"pocket {found.across:.2f} across flats, {clearance:+.2f} over the {af} nut: prints say {said or 'not measured'}"
+    said, assumed_from = reading(label, clearance)
+    words = f"pocket {found.across:.2f} across flats, {clearance:+.2f} over the {af} nut: prints say {said or 'not measured'}"
+    if assumed_from is not None:
+        words += f" ({assumed.note(assumed_from, ' mm clearance')})"
     if said == "loose":
-        reading += " (nobody has turned that one upside down)"
-    return reading
+        words += " (nobody has turned that one upside down)"
+    return words
 
 
 def _coupon_rescue(sub, built, nut, label, part_id, found, af) -> Verdict | str:
@@ -395,7 +408,7 @@ def fit(sub, built, nut, label):
     if found is None:
         return None, "no hex pocket for a nut to fit"
     clearance = round(found.across - af, 3) or 0.0  # or 0.0: a tiny negative would print as "-0.00"
-    reading = _reading(found, clearance, af, verdict(label, clearance))
+    reading = _reading(found, clearance, af, label)
     holds = _holds(label, clearance) if found.plain else None
     if holds:
         return True, reading

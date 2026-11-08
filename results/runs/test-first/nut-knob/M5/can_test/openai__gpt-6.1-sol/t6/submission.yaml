@@ -1,0 +1,249 @@
+task: nut-knob/M5
+note: One-piece, approximately 30 mm hand knob with a recessed M5 hex nut, a solid
+  retaining floor and a through-bore. Six small crush ribs provide nut retention rather
+  than making the entire hex pocket undersized. The test results were unavailable
+  and the actual nut could not be measured, so hand-insertion force and upside-down
+  retention remain unverified; check these before use. Intended for light hand tightening,
+  not high torque or hot environments.
+questions:
+- text: Which test pocket gave a hand-press fit that retained the nut upside down?
+  answer: Results unavailable for all three test pockets.
+- text: Can the actual nut's across-flats dimension and thickness be measured?
+  answer: Cannot measure; use best judgment.
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across flats; actual nut unmeasured.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af:
+    value: 8.3
+    unit: mm
+    kind: design
+    source: design
+    note: Hex clearance behind the local retaining ribs.
+  pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal nut top sits 0.5 mm below mouth when seated.
+  rib_tip_af:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: Opposing rib tips; nominal local interference 0.1 mm per side. Unverified
+      fit.
+  rib_width:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_root_overlap:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_extra_af:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_radius:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_radius:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    def hexpts(af):\n        r = af / math.sqrt(3)\n\
+    \        return [(r*math.cos(math.radians(30+60*i)), r*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    floor = p.knob_h-p.pocket_depth\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n\
+    \    for i in range(int(p.scallop_count)):\n        a = 2*math.pi*i/p.scallop_count\n\
+    \        x = p.scallop_center_radius*math.cos(a)\n        y = p.scallop_center_radius*math.sin(a)\n\
+    \        cut = cq.Workplane('XY').center(x,y).circle(p.scallop_radius).extrude(p.knob_h)\n\
+    \        body = body.cut(cut)\n    pocket = cq.Workplane('XY').workplane(offset=floor).polyline(hexpts(p.pocket_af)).close().extrude(p.pocket_depth)\n\
+    \    body = body.cut(pocket)\n    # Small triangular ribs merge into each flat\
+    \ wall; their tips can compress.\n    tri = [(p.pocket_af/2+p.rib_root_overlap,-p.rib_width/2),\
+    \ (p.pocket_af/2+p.rib_root_overlap,p.rib_width/2), (p.rib_tip_af/2,0)]\n    for\
+    \ i in range(6):\n        rib = cq.Workplane('XY').workplane(offset=floor).polyline(tri).close().extrude(p.pocket_depth)\n\
+    \        body = body.union(rib.rotate((0,0,0),(0,0,1),60*i))\n    # Flared mouth\
+    \ also tapers the retaining ribs for hand insertion.\n    entry = cq.Workplane('XY').workplane(offset=p.knob_h-p.entry_h).polyline(hexpts(p.rib_tip_af)).close().workplane(offset=p.entry_h).polyline(hexpts(p.pocket_af+p.entry_extra_af)).close().loft()\n\
+    \    body = body.cut(entry)\n    bore = cq.Workplane('XY').circle(p.bore_d/2).extrude(p.knob_h)\n\
+    \    return body.cut(bore)\n"
+  print_orientation: Flat circular underside on bed, z=0; hex pocket faces upward.
+    No supports or bridging required.
+  use_orientation: Nut enters the upper hex opening. The bolt enters the nut from
+    that side and exits through the smaller hole in the opposite face. The solid floor
+    prevents the nut being pushed through the knob.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_recess
+  part: hand_knob
+  feature: Hex pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.5
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: After seating, confirm the entire nut is below the pocket rim and
+      rests on the floor.
+- id: nut_retention
+  part: hand_knob
+  feature: Six tapered crush ribs
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - rib_tip_af
+  - rib_width
+  - entry_h
+  check:
+    method: measure
+    ref: null
+    description: 'Unvalidated fit: nut must press fully home using fingers, remain
+      in place upside down and withstand a gentle shake. Do not use if loose or if
+      insertion requires hammering.'
+- id: nut_stop
+  part: hand_knob
+  feature: Solid floor around through-bore
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - pocket_depth
+  - bore_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Confirm nut rests flat on the pocket floor and cannot pass through
+      the smaller bore.
+- id: bolt_clearance
+  part: hand_knob
+  feature: Axial through-bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bore_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: With the intended M5 bolt, verify smooth threading through the nut
+      and free passage out of the underside. Bolt not supplied as part of this knob.
+manual:
+- n: '1'
+  text: 'Print hand_knob with its flat underside on the bed and pocket upward: 0.2
+    mm layers, 4 walls, 5 top/bottom layers and 30% infill. Use no supports. Let it
+    cool before removing.'
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove loose strings from the hex pocket and bore. Align the nut flats with
+    the pocket and press it straight down with your thumb on a firm surface, until
+    it rests on the floor. The tapered ribs are intended to yield slightly. Do not
+    hammer it or use the bolt to force it in; stop if it will not seat by hand.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: 'Confirm that the nut is entirely below the rim. Turn the knob upside down
+    over a tray and gently shake it. If the nut falls out, or if the knob cracks,
+    the fit has failed: do not use glue or assume it is secure. A revised rib fit
+    and reprint are needed.'
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread your intended M5 bolt into the nut from the pocket side. Check that
+    it emerges freely through the opposite face. Turn the scalloped knob by hand;
+    the hex walls transmit torque and the floor stops the nut passing through. This
+    is a captive-nut knob, not a cap that captures the bolt head.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Use light hand torque only. Recheck retention after initial use; repeated
+    nut removal can wear the ribs. Keep the PLA knob away from heat.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null

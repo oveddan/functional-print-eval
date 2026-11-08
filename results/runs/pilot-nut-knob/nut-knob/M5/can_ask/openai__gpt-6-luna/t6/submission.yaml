@@ -1,0 +1,201 @@
+task: nut-knob/M5
+note: One-piece knob with a captive, hand-pressed M5 hex nut. The nut loads from the
+  underside; a split snap lip retains it when inverted, and the smaller through-bore
+  plus the solid far-side seat prevent it passing through the far side. The separate
+  M5x30 screw is optional listed hardware for use with the knob. Print with the nut-entry
+  face on the bed. PLA snap features can vary with printer calibration; press the
+  nut in steadily and stop if the tabs show cracking.
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Outside diameter.
+  knob_h:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut across flats.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height.
+  pocket_clearance:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Added to nut across-flats dimension for the main hex pocket.
+  throat_reduction:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats reduction at the retaining throat; the slotted lower wall flexes
+      as the nut is pressed past it.
+  ramp_h:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_recess:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Recess below the nut's seated position.
+  bore_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance bore for an M5 bolt; smaller than the nut's outside dimensions.
+  slot_width:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Six vertical relief slots around the snap wall.
+  slot_start_r:
+    value: 3.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_end_r:
+    value: 11.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_height:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef hex_points(af):\n    r = af / math.sqrt(3.0)\n\
+    \    return [(r * math.cos(math.radians(60*i)), r * math.sin(math.radians(60*i)))\
+    \ for i in range(6)]\n\ndef hex_prism(af, z, height):\n    return cq.Workplane('XY').polyline(hex_points(af)).close().extrude(height).val().translate(cq.Vector(0,\
+    \ 0, z))\n\ndef hex_wire(af, z):\n    w = cq.Workplane('XY').polyline(hex_points(af)).close().wire().val()\n\
+    \    return w.translate(cq.Vector(0, 0, z))\n\ndef build(p):\n    depth = p.nut_h\
+    \ + p.nut_recess\n    cavity_af = p.nut_af + p.pocket_clearance\n    throat_af\
+    \ = p.nut_af - p.throat_reduction\n    body = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2.0).extrude(p.knob_h).val()\n    lead = cq.Solid.makeLoft([hex_wire(throat_af,\
+    \ 0), hex_wire(cavity_af, p.ramp_h)], True)\n    body = body.cut(lead)\n    body\
+    \ = body.cut(hex_prism(cavity_af, p.ramp_h, depth - p.ramp_h))\n    body = body.cut(cq.Solid.makeCylinder(p.bore_d\
+    \ / 2.0, p.knob_h, cq.Vector(0, 0, 0)))\n    slot_len = p.slot_end_r - p.slot_start_r\n\
+    \    for i in range(6):\n        slot = cq.Solid.makeBox(slot_len, p.slot_width,\
+    \ p.slot_height,\n                                cq.Vector(p.slot_start_r, -p.slot_width/2.0,\
+    \ 0))\n        slot = slot.rotate((0, 0, 0), (0, 0, 1), 60*i)\n        body =\
+    \ body.cut(slot)\n    return body"
+  print_orientation: Place the circular nut-entry face at z=0 on the build plate;
+    the bolt bore is vertical.
+  use_orientation: Nut-entry side faces down when the knob is held in normal use;
+    the opposite face is the bolt-head side.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints: []
+criteria:
+- id: nut_seat
+  part: knob
+  feature: Internal hex pocket, sized for the M5 nut; nut seats against the closed
+    far-side shoulder.
+  relation: seats
+  hardware: nut
+  clearance_mm: 0.25
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clearance
+  check:
+    method: measure
+    ref: null
+    description: Press the nut in from the entry face. Confirm it seats fully inside
+      the knob and that the far-side shoulder prevents it passing through.
+- id: nut_retention
+  part: knob
+  feature: Split snap throat at the nut-entry face.
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - throat_reduction
+  - slot_width
+  - slot_height
+  check:
+    method: measure
+    ref: null
+    description: After pressing the nut past the lip, turn the knob upside down and
+      confirm the nut stays captured without adhesive. Do not force it if the PLA
+      tabs crack.
+- id: bolt_bore
+  part: knob
+  feature: Through-bore from the far face into the captive nut.
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.3
+  params:
+  - bore_d
+  check:
+    method: measure
+    ref: null
+    description: Pass the M5 bolt through the bore and engage it with the nut; confirm
+      the threaded end can emerge from the nut-entry side.
+manual:
+- n: '1'
+  text: Print the knob with the nut-entry face on the build plate. Let it cool fully
+    before fitting the nut.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M5 nut with the hex pocket and press it in from the entry face,
+    steadily, until it seats against the internal shoulder and snaps past the retaining
+    lip. The nut remains recessed inside the knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Check retention by turning the knob upside down. The nut should stay captured
+    without glue. If the fit is too tight or the snap tabs crack, stop rather than
+    forcing it.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Feed the M5x30 bolt from the opposite face through the clearance bore and
+    thread it into the captive nut. Its threaded end can emerge from the nut-entry
+    side.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null

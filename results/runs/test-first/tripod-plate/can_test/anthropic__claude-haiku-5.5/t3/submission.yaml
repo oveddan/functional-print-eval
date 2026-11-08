@@ -1,0 +1,113 @@
+task: tripod-plate
+note: ''
+questions:
+- text: Plate length and thickness were not measured (guessed as 60 mm and 6 mm).
+    Please measure them before printing.
+  answer: null
+- text: Is the bolt head seated correctly? The webcam bolt head dimensions were measured
+    roughly and may not match exactly.
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: asked
+    note: Width of the tripod clamp plate the camera plate must match (from measurement
+      reply).
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: guessed
+    note: Length not measured. Confirm against the real plate before printing.
+  plate_t:
+    value: 6
+    unit: mm
+    kind: design
+    source: guessed
+    note: Thickness not measured. Confirm against the real plate before printing.
+  hole_d:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance for the 1/4-20 bolt shank.
+  head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: Head width of the salvaged webcam bolt (measured as about 15 mm).
+  head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: Head height of the salvaged webcam bolt (about 5 mm).
+parts:
+- id: plate
+  role: final
+  material: PLA high-speed black
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(p.plate_l, p.plate_w, p.plate_t,\
+    \ centered=(True, True, False))\n    plate = plate.faces('>Z').workplane().hole(p.hole_d)\n\
+    \    recess = cq.Workplane('XY').circle(p.head_d / 2).extrude(p.head_h)\n    return\
+    \ plate.cut(recess)"
+  print_orientation: bottom face flat on the bed (z=0 is the underside of the plate)
+  use_orientation: flat, plate on the tripod clamp, bolt head in the underside recess,
+    shank pointing up into the camera
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: bolt-head
+  part: plate
+  feature: underside recess for the bolt head
+  relation: seats
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  check:
+    method: measure
+    ref: null
+    description: Check the recess is about 15 mm across and 5 mm deep for the bolt
+      head.
+- id: bolt-clear
+  part: plate
+  feature: through hole for the 1/4-20 bolt shank
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - hole_d
+  check:
+    method: measure
+    ref: null
+    description: Check the hole takes the bolt shank without binding.
+manual:
+- n: '1'
+  text: Print the plate flat, bottom face on the bed, with no supports.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the salvaged 1/4-20 webcam bolt head-first into the underside recess
+    so the head sits in the pocket and the shank passes up through the hole.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Screw the camera onto the bolt end from above. Tighten by hand only; PLA and
+    this bolt are not meant for heavy torque.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null

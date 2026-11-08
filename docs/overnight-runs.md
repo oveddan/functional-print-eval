@@ -90,11 +90,11 @@ Ask a first session in the new environment to do this and report each result:
 4. One cheap trial: `uv run python -m pbe.eval --run cloud-smoke --task m5-spacer --model anthropic/claude-haiku-5.5 --trials 1 --budget 0.50`. A 401 means the proxy didn't replace the placeholder header.
 5. Commit and push `results/runs/cloud-smoke` to the session's branch.
 
-A run stopped by a reclaimed VM resumes: trials already saved are skipped. Results survive only if pushed, and `results/runs/**/parts/` isn't committed, so meshes have to be rebuilt with `--regrade`. Atlas assets (`report/atlas/examples.yaml`) are on Dan's Mac, so the atlas doesn't build in the cloud.
+A run stopped by a reclaimed VM resumes: trials already saved are skipped. Results survive only if pushed, and `results/runs/**/parts/` isn't committed, so meshes have to be rebuilt with `--regrade`. The atlas's photos (`report/atlas/examples.yaml`) aren't in the repo, so the atlas doesn't build in the cloud.
 
 ## What one overnight iteration does
 
-1. Read `CLAUDE.md`, `PLAN.md`, `docs/scoring.md` and the tail of `CHANGELOG.md`, and add up the saved `cost_usd` of runs so far.
+1. Read `CLAUDE.md`, `docs/plan.md`, `docs/scoring.md` and the tail of `CHANGELOG.md`, and add up the saved `cost_usd` of runs so far.
 2. Run the test suite (`uv run pytest`). If it fails before any change, stop.
 3. Run the eval on the current tasks and models with `--budget`, writing under `results/`.
 4. Read every failure transcript. Classify each as format, design, grader bug, or task bug.
@@ -117,7 +117,7 @@ A run stopped by a reclaimed VM resumes: trials already saved are skipped. Resul
 ```
 You are running the print-build-eval iterate loop unattended overnight. Nobody can answer questions until morning, so decide with the rules below and write down what you decided.
 
-Setup: read CLAUDE.md, PLAN.md, docs/scoring.md, the end of CHANGELOG.md, and docs/overnight-runs.md. Create/confirm branch overnight/<today's date> and work only there. Never touch main. Do not push (local) / push only this branch (cloud). Do not change settings or create repos.
+Setup: read CLAUDE.md, docs/plan.md, docs/scoring.md, the end of CHANGELOG.md, and docs/overnight-runs.md. Create/confirm branch overnight/<today's date> and work only there. Never touch main. Do not push (local) / push only this branch (cloud). Do not change settings or create repos.
 
 Secrets: the key is in OPENROUTER_API_KEY. Never print, echo, log, or commit it, and never run env/printenv or any command that would show it.
 

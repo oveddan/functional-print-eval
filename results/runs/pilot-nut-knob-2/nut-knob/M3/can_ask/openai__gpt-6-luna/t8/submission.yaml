@@ -1,0 +1,178 @@
+task: nut-knob/M3
+note: Single-piece, support-free axial hand knob for a catalog M3 hex nut. Press the
+  nut into the top opening; the slotted snap fingers retain it while the solid floor
+  prevents it being pushed out the bottom. An M3 bolt enters from the top, engages
+  the nut, and passes through the floor to emerge from the opposite side. The existing
+  bolt is not included because its length was not specified. The 20 mm diameter is
+  the outside diameter; the grip is a smooth round cylinder.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Approximate requested outside diameter.
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Solid material beneath the nut, except for the bolt passage.
+  pocket_roof_z:
+    value: 8.8
+    unit: mm
+    kind: design
+    source: design
+    note: Height where the nut pocket meets the retaining throat.
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut thickness.
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: Nut pocket across flats, providing print clearance around the catalog nut.
+  throat_af:
+    value: 5.25
+    unit: mm
+    kind: design
+    source: design
+    note: Narrow snap-retention throat; slotted petals flex outward as the nut is
+      pressed in.
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Axial passage through the floor for the M3 bolt.
+  petal_slot_w:
+    value: 0.65
+    unit: mm
+    kind: design
+    source: design
+    note: Six radial relief slots in the compliant snap fingers.
+  petal_slot_start_r:
+    value: 2.3
+    unit: mm
+    kind: design
+    source: design
+    note: Slots start at the inner throat and extend to the outside edge.
+  petal_slot_z:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Slot bottoms; leaves the lower body tied together.
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA)
+  code: "import math\n\ndef build(p):\n    # Regular hexagons specified by across-flats\
+    \ dimension.\n    def hex_points(af):\n        r = af / math.sqrt(3.0)\n     \
+    \   return [(r * math.cos(i * math.pi / 3.0),\n                 r * math.sin(i\
+    \ * math.pi / 3.0)) for i in range(6)]\n\n    s = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2.0).extrude(p.knob_h).val()\n\n    # Captive nut well: closed at the bottom\
+    \ except for the bolt passage.\n    pocket = (cq.Workplane('XY').workplane(offset=p.floor_t)\n\
+    \              .polyline(hex_points(p.pocket_af)).close()\n              .extrude(p.pocket_roof_z\
+    \ - p.floor_t).val())\n    s = s.cut(pocket)\n\n    # Smaller hex throat traps\
+    \ the nut above the well; the bolt still passes through it.\n    throat = (cq.Workplane('XY').workplane(offset=p.pocket_roof_z)\n\
+    \              .polyline(hex_points(p.throat_af)).close()\n              .extrude(p.knob_h\
+    \ - p.pocket_roof_z + 0.1).val())\n    s = s.cut(throat)\n\n    # Clearance through\
+    \ the floor, coaxial with the nut.\n    bolt_hole = (cq.Workplane('XY').circle(p.bolt_clearance_d\
+    \ / 2.0)\n                 .extrude(p.floor_t + 0.1).val())\n    s = s.cut(bolt_hole)\n\
+    \n    # Six radial slits make the upper throat petals compliant for hand insertion.\n\
+    \    # The slots reach the perimeter and stop below the top, leaving a connected\
+    \ lower body.\n    for i in range(6):\n        a = i * math.pi / 3.0\n       \
+    \ ux, uy = math.cos(a), math.sin(a)\n        vx, vy = -uy, ux\n        r0 = p.petal_slot_start_r\n\
+    \        r1 = p.knob_d / 2.0 + 0.5\n        w = p.petal_slot_w / 2.0\n       \
+    \ pts = [(r0*ux + side*w*vx, r0*uy + side*w*vy) for side in (-1, 1)]\n       \
+    \ pts += [(r1*ux + side*w*vx, r1*uy + side*w*vy) for side in (1, -1)]\n      \
+    \  slot = (cq.Workplane('XY').workplane(offset=p.petal_slot_z)\n             \
+    \   .polyline(pts).close()\n                .extrude(p.knob_h - p.petal_slot_z\
+    \ + 0.1).val())\n        s = s.cut(slot)\n    return s"
+  print_orientation: Print with the flat circular base (z=0) on the bed, cavity and
+    nut insertion opening facing up. No supports are intended.
+  use_orientation: Hold the cylindrical outside as the hand grip. The nut presses
+    into the upper opening; insert the M3 bolt from that same opening so it threads
+    into the nut and exits through the opposite, floor side.
+hardware:
+- id: nut_m3
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut-retention
+  part: knob
+  feature: hex nut pocket and slotted retaining throat
+  relation: seats
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af
+  - throat_af
+  - petal_slot_w
+  - petal_slot_z
+  check:
+    method: measure
+    ref: null
+    description: Press the nut fully into the top opening by hand, then turn the printed
+      knob upside down. The nut should remain captive without glue; it must not pass
+      through the bottom floor.
+- id: bolt-passage
+  part: knob
+  feature: coaxial throat and floor passage
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Verify the intended M3 bolt passes through the axial opening, threads
+      into the seated nut, and projects out through the opposite floor side.
+manual:
+- n: '1'
+  text: Print one knob with its flat circular base on the build plate and the nut
+    opening facing up. Use the stated 0.2 mm layer height; do not use supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the ISO 4032 M3 nut straight into the top opening until it rests in
+    the hexagonal pocket. The six slotted petals flex to admit it and spring back
+    to retain it. Check retention by turning the knob upside down.
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  tool: null
+- n: '3'
+  text: Insert the M3 bolt from the nut-opening side, engage its threads with the
+    captive nut, and continue until the bolt emerges through the opposite floor-side
+    passage.
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  tool: null

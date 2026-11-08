@@ -1,0 +1,488 @@
+task: tripod-plate
+note: 'Revision 2. The first print failed the same way on every part that had one:
+  a circular roof printed over a void with a hole in it, anchored only round its outside
+  - the pocket''s ceiling in the plate and the wedge coupon, and a flat slot roof
+  in the screw. Fixes: the plate and wedge coupon now print with the narrow 19 x 38
+  mm camera face on the bed, so the pocket opens upward and the 8 mm hole ends exactly
+  where the pocket starts; the pocket floor then sits on solid layers and nothing
+  bridges. The screw''s thread is now a rounded 0.4 mm-radius profile swept as a tube
+  instead of a sharp 60 deg V (round cross-sections slice cleanly and self-support),
+  and the drive is a 45 deg V-groove instead of a flat-roofed slot. Unchanged: 38
+  mm dovetail, 5 mm pocket, 5.5 mm protrusion, the metal bolt remaining interchangeable.
+  Still light duty - snug with a coin, no heavy lenses, keep PLA out of a hot car.'
+questions:
+- text: The clamp's jaw angle and channel depth were never measured, so I kept the
+    standard 45 degree dovetail on a 38 mm plate. If the wedge coupon still sits on
+    top of the jaws instead of wedging down between them, tell me and I will re-profile
+    the flanks.
+  answer: null
+- text: Camera socket depth is still unmeasured; I kept the protrusion at the standard
+    5.5 mm. If the thread coupon bottoms out with its shoulder more than about 1 mm
+    clear of the camera's base, tell me and I will shorten the stud.
+  answer: null
+- text: Does the rounded thread now run into the camera cleanly, and does the plate
+    drop in and lock without rocking? Those two answers decide whether this is finished.
+  answer: null
+params:
+  bolt_head_d:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam-mount bolt, head across
+  bolt_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt, head height
+  bolt_shank_len:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt, under the head
+  camera_socket_depth:
+    value: 6.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: not measured; typical camera socket. Design only needs 5.5 mm so it is safe
+      for anything 6 mm or deeper
+  clear_hole_d:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: 1/4-20 is 6.35; the extra lets the screw self-align with the camera's socket
+  coupon_knob_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: bigger knob on the thread coupon for hand testing
+  coupon_knob_h:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: thread coupon knob height
+  coupon_len:
+    value: 22.0
+    unit: mm
+    kind: design
+    source: design
+    note: long enough to carry the full pocket with 2.75 mm end walls
+  engagement:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: protrusion above the camera face = pocket_depth + stud_len - plate_t; standard
+      tripod screw figure
+  groove_d:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: V-groove depth; half the opening width gives 45 deg walls that print without
+      support
+  groove_w:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: coin/screwdriver V-groove opening across the knob's outer face
+  knob_d:
+    value: 16.0
+    unit: mm
+    kind: design
+    source: design
+    note: fits the 16.5 pocket
+  knob_h:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: equals the pocket depth so the knob sits flush
+  plate_len:
+    value: 38.0
+    unit: mm
+    kind: design
+    source: design
+    note: short enough to drop into any clamp that takes a 38 mm plate; lengthen if
+      the clamp's opening is longer
+  plate_t:
+    value: 9.5
+    unit: mm
+    kind: design
+    source: design
+    note: 5 mm pocket for the bolt head plus 4.5 mm of material over it
+  plate_width:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the borrowed clamp takes, measured at the clamp
+  pocket_d:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: 15 mm bolt head plus 1.5 mm total clearance
+  pocket_depth:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: equals the bolt head height so the head sits flush with the clamp face
+  stud_len:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: matched to the salvaged bolt's shank so both screws give the same protrusion
+  thread_depth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: effective thread height from crest to the core; shallower than the 0.69
+      standard so a printed thread does not bind
+  thread_od:
+    value: 6.2
+    unit: mm
+    kind: design
+    source: design
+    note: printed 0.15 under the 6.35 nominal so it starts easily
+  thread_od_nominal:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4 inch major diameter of the camera thread
+  thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 UNC, from the pitch table
+  thread_tube_r:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: radius of the round profile swept along the helix; round cross-sections
+      print and slice far more reliably than a sharp V
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    W = p.plate_width          #\
+    \ 38 at the clamp face (top of the print)\n    L = p.plate_len            # 38\n\
+    \    T = p.plate_t              # 9.5\n    hw_clamp = W / 2.0         # 19\n \
+    \   hw_cam = hw_clamp - T      # 9.5  (45 deg flanks)\n\n    prof = (\n      \
+    \  cq.Workplane(\"XZ\")\n        .polyline(\n            [(-hw_cam, 0.0), (hw_cam,\
+    \ 0.0), (hw_clamp, T), (-hw_clamp, T)]\n        )\n        .close()\n    )\n \
+    \   body = prof.extrude(L, both=True)\n\n    zf = T - p.pocket_depth         \
+    \ # 4.5: pocket floor, measured from the camera face\n    # through hole, from\
+    \ the bed up to the pocket floor - ends exactly where the pocket starts\n    body\
+    \ = body.cut(\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n\
+    \        .circle(p.clear_hole_d / 2.0)\n        .extrude(zf + 1.0)\n    )\n  \
+    \  # pocket, opening upward so nothing is bridged\n    body = body.cut(\n    \
+    \    cq.Workplane(\"XY\")\n        .workplane(offset=zf)\n        .circle(p.pocket_d\
+    \ / 2.0)\n        .extrude(T - zf + 1.0)\n    )\n    return body"
+  print_orientation: narrow camera face (19 x 38 mm) on the bed, z = 0 is that face;
+    the part widens upward at 45 deg to the 38 x 38 mm clamp face and the pocket opens
+    upward, so there is no bridge anywhere - only a print-clean 45 deg overhang on
+    the flanks
+  use_orientation: wide 38 mm face down into the clamp, the 19 x 38 mm camera face
+    up against the camera's base
+- id: screw
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    r_major = p.thread_od / 2.0\n\
+    \    core_r = r_major - p.thread_depth\n    tube_r = p.thread_tube_r\n    r_ctr\
+    \ = r_major - tube_r\n    kh = p.knob_h\n    L = p.stud_len\n    z0 = kh + 0.6\
+    \                 # thread starts just above the knob\n    z1 = kh + L - 1.5 \
+    \            # smooth lead-in left at the tip\n\n    s = cq.Workplane(\"XY\").circle(p.knob_d\
+    \ / 2.0).extrude(kh)\n\n    # V-groove drive: 45 deg walls, apex up, opens on\
+    \ the bed face - self supporting\n    s = s.cut(\n        cq.Workplane(\"YZ\"\
+    )\n        .polyline(\n            [\n                (-p.groove_w / 2.0, 0.0),\n\
+    \                (p.groove_w / 2.0, 0.0),\n                (0.0, p.groove_d),\n\
+    \            ]\n        )\n        .close()\n        .extrude(p.knob_d + 6.0,\
+    \ both=True)\n    )\n\n    # stud core\n    s = s.union(cq.Workplane(\"XY\").workplane(offset=kh).circle(core_r).extrude(L))\n\
+    \n    # rounded thread: a tube swept along the helix (round profile -> no frame\
+    \ ambiguity,\n    # no thin flange, slices as solid geometry)\n    helix = cq.Wire.makeHelix(\n\
+    \        pitch=p.thread_pitch, height=z1 - z0, radius=r_ctr, center=(0.0, 0.0,\
+    \ z0)\n    )\n    prof = cq.Workplane(\"XZ\").moveTo(r_ctr, z0).circle(tube_r)\n\
+    \    s = s.union(prof.sweep(helix, isFrenet=True))\n\n    # small chamfer on the\
+    \ stud tip\n    tip = cq.Solid.makeCone(\n        core_r, 0.1, 0.6, cq.Vector(0.0,\
+    \ 0.0, kh + L - 0.6), cq.Vector(0.0, 0.0, 1.0)\n    )\n    s = s.cut(cq.Workplane(obj=tip))\n\
+    \    return s"
+  print_orientation: knob's outer face (the face with the V-groove) on the bed, 1/4-20
+    stud pointing up; V-groove walls are 45 deg and the rounded thread self-supports,
+    so no supports needed
+  use_orientation: knob down inside the plate's pocket with its V-groove facing the
+    clamp, 1/4-20 stud up into the camera's socket
+- id: coupon_wedge
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    W = p.plate_width\n    T = p.plate_t\n\
+    \    hw_clamp = W / 2.0\n    hw_cam = hw_clamp - T\n\n    prof = (\n        cq.Workplane(\"\
+    XZ\")\n        .polyline(\n            [(-hw_cam, 0.0), (hw_cam, 0.0), (hw_clamp,\
+    \ T), (-hw_clamp, T)]\n        )\n        .close()\n    )\n    body = prof.extrude(p.coupon_len,\
+    \ both=True)\n\n    zf = T - p.pocket_depth\n    body = body.cut(\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=-1.0)\n        .circle(p.clear_hole_d / 2.0)\n\
+    \        .extrude(zf + 1.0)\n    )\n    body = body.cut(\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=zf)\n        .circle(p.pocket_d / 2.0)\n    \
+    \    .extrude(T - zf + 1.0)\n    )\n    return body"
+  print_orientation: 'narrow camera face on the bed, same as the plate: pocket opens
+    upward, nothing bridged'
+  use_orientation: same as the plate but only 22 mm long - a slice of the plate to
+    test the clamp fit and the bolt head pocket
+- id: coupon_thread
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    r_major = p.thread_od / 2.0\n\
+    \    core_r = r_major - p.thread_depth\n    tube_r = p.thread_tube_r\n    r_ctr\
+    \ = r_major - tube_r\n    kh = p.coupon_knob_h\n    L = p.stud_len\n    z0 = kh\
+    \ + 0.6\n    z1 = kh + L - 1.5\n\n    s = cq.Workplane(\"XY\").circle(p.coupon_knob_d\
+    \ / 2.0).extrude(kh)\n\n    s = s.cut(\n        cq.Workplane(\"YZ\")\n       \
+    \ .polyline(\n            [\n                (-p.groove_w / 2.0, 0.0),\n     \
+    \           (p.groove_w / 2.0, 0.0),\n                (0.0, p.groove_d),\n   \
+    \         ]\n        )\n        .close()\n        .extrude(p.coupon_knob_d + 6.0,\
+    \ both=True)\n    )\n\n    s = s.union(cq.Workplane(\"XY\").workplane(offset=kh).circle(core_r).extrude(L))\n\
+    \n    helix = cq.Wire.makeHelix(\n        pitch=p.thread_pitch, height=z1 - z0,\
+    \ radius=r_ctr, center=(0.0, 0.0, z0)\n    )\n    prof = cq.Workplane(\"XZ\").moveTo(r_ctr,\
+    \ z0).circle(tube_r)\n    s = s.union(prof.sweep(helix, isFrenet=True))\n\n  \
+    \  tip = cq.Solid.makeCone(\n        core_r, 0.1, 0.6, cq.Vector(0.0, 0.0, kh\
+    \ + L - 0.6), cq.Vector(0.0, 0.0, 1.0)\n    )\n    s = s.cut(cq.Workplane(obj=tip))\n\
+    \    return s"
+  print_orientation: knob's outer face on the bed, 1/4-20 stud pointing up; V-groove
+    walls 45 deg, rounded thread self-supports
+  use_orientation: hand test piece - screw the rounded 1/4-20 stud into the camera's
+    socket to check fit and engagement depth
+hardware:
+- id: bolt1
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: j_camera_screw
+  fastener: bolt1
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: pocket floor, 16.5 mm dia x 5 mm deep, opening at the clamp face
+    role: head_seat
+  - part: plate
+    feature: 8 mm through hole in the pocket floor
+    role: clearance
+  nut: null
+  external: camera 1/4-20 socket
+criteria:
+- id: c_flank_wedge
+  part: plate
+  feature: 45 deg flanks, 38 mm clamp face tapering to 19 mm
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - plate_t
+  - plate_len
+  check:
+    method: coupon
+    ref: coupon_wedge
+    description: 'drop the coupon into the clamp and tighten the knob: it must wedge
+      on its flanks and pull flat onto the clamp''s floor with no rock'
+- id: c_pocket_floor_supported
+  part: plate
+  feature: pocket floor at the top of the print
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  - pocket_depth
+  - clear_hole_d
+  check:
+    method: none
+    ref: null
+    description: 'printed camera-face-down: the pocket opens upward and the pocket
+      floor rests on the solid 8 mm-hole walls below it, so unlike the first version
+      there is no annular bridge over the pocket'
+- id: c_pocket_holds_head
+  part: plate
+  feature: 16.5 mm dia x 5 mm deep pocket
+  relation: contains
+  hardware: bolt1
+  clearance_mm: 1.5
+  params:
+  - pocket_d
+  - pocket_depth
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: measure
+    ref: null
+    description: the salvaged bolt's 15 mm head must drop fully into the pocket; coupon_wedge
+      carries the same pocket so check it there first
+- id: c_thread_clears_plate
+  part: plate
+  feature: 8 mm through hole
+  relation: clears
+  hardware: null
+  clearance_mm: 1.65
+  params:
+  - clear_hole_d
+  - thread_od_nominal
+  check:
+    method: measure
+    ref: null
+    description: 1/4-20 thread (6.35 mm) passes the hole with room to self-align on
+      the camera's socket
+- id: c_stud_engages_socket
+  part: screw
+  feature: 1/4-20 x 10 mm rounded-profile stud
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - stud_len
+  - thread_pitch
+  - thread_od
+  - thread_depth
+  - thread_tube_r
+  - camera_socket_depth
+  check:
+    method: coupon
+    ref: coupon_thread
+    description: 'screw the coupon into the camera by hand: about 4-5 turns, stopping
+      with the shoulder 3-4 mm clear of the camera''s base, i.e. the socket is deeper
+      than the 5.5 mm the screw needs'
+- id: c_protrusion
+  part: screw
+  feature: stud protrusion above the camera face
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - stud_len
+  - pocket_depth
+  - plate_t
+  - engagement
+  check:
+    method: measure
+    ref: null
+    description: with the knob flush in the pocket the stud tip stands 5.5 mm above
+      the camera face, so the camera seats flat and the thread does not bottom out
+- id: c_knob_sits_flush
+  part: screw
+  feature: 16 mm knob in the 16.5 mm pocket, V-groove drive
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_d
+  - knob_h
+  - pocket_d
+  - pocket_depth
+  - groove_w
+  - groove_d
+  check:
+    method: none
+    ref: null
+    description: knob is flush with the clamp face so the plate sits flat on the clamp's
+      floor; the V-groove drive opens on that face with 45 deg walls, so it needs
+      no support
+- id: c_camera_face_supports
+  part: plate
+  feature: 19 x 38 mm camera face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - plate_t
+  - plate_len
+  check:
+    method: none
+    ref: null
+    description: flat top face carries the camera's base, screw centred in it
+manual:
+- n: '1'
+  text: 'Print the two coupons first - coupon_wedge and coupon_thread - PLA, 0.2 mm
+    layers, no supports. Both now print with no bridging anywhere: the wedge coupon
+    sits on its narrow 19 mm face with the pocket opening upward, and the thread coupon
+    prints knob-down with the V-groove opening onto the bed.'
+  parts:
+  - coupon_wedge
+  - coupon_thread
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: 'Test coupon_wedge in the borrowed clamp: open the knob, drop it in with its
+    wide 38 mm face down, tighten. It must wedge on its flanks and be pulled flat
+    onto the clamp''s floor without rocking. Also confirm the clamp''s opening is
+    at least 38 mm long (the full plate is 38 mm) and that the salvaged bolt''s head
+    drops fully into the coupon''s pocket.'
+  parts:
+  - coupon_wedge
+  hardware:
+  - bolt1
+  tool: null
+- n: '3'
+  text: 'Test coupon_thread in the camera: screw the rounded 1/4-20 stud in by hand.
+    Expect about 4-5 turns, stopping with the knob 3-4 mm clear of the camera''s base
+    - that gap proves the socket is deeper than the 5.5 mm the screw needs. If it
+    is rough, chase the first turn with a knife or lightly sand the ridge.'
+  parts:
+  - coupon_thread
+  hardware: []
+  tool: knife (optional)
+- n: '4'
+  text: 'Print the plate and the screw: PLA, 0.2 mm layers, no supports and no brim
+    needed. The plate goes narrow camera face down, so the pocket opens upward and
+    only the 45 deg flanks overhang. The screw goes knob-down with its V-groove on
+    the bed.'
+  parts:
+  - plate
+  - screw
+  hardware: []
+  tool: 3D printer
+- n: '5'
+  text: 'Fit the camera to the plate: lay the camera with its base facing you, set
+    the plate on it with the wide 38 mm face pointing away, drop the screw into the
+    pocket knob-up, and turn it with the edge of a coin seated in the V-groove until
+    the camera''s base is snug against the plate. Snug only - it is a plastic thread.'
+  parts:
+  - plate
+  - screw
+  hardware: []
+  tool: coin
+- n: '6'
+  text: 'Mount: flip the assembly, open the clamp''s knob, drop the plate''s wide
+    face into the jaws and tighten. It should pull down flat and stay put.'
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '7'
+  text: 'Optional metal thread: the salvaged bolt is interchangeable - its 15 mm head
+    fits the same pocket and its 10 mm shank gives the same 5.5 mm protrusion. Its
+    head sits flush so there is nothing to grip; nip it round with needle-nose pliers,
+    or rest the plate face-down on a rubber mat so the head bites while you turn the
+    camera onto the stud.'
+  parts:
+  - plate
+  hardware:
+  - bolt1
+  tool: needle-nose pliers

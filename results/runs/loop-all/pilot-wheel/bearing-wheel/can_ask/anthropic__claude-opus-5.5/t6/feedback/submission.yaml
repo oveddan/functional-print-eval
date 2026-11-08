@@ -1,0 +1,235 @@
+task: bearing-wheel
+note: I took out the centre ring that printed as a tangled roof. The bore now goes
+  straight through, so there's nothing hanging over air, and a separate printed ring
+  spaces the bearings instead. The fit is set to 22.09 mm from your coupon. The rim
+  is still flat because its profile is unknown.
+questions:
+- text: Did the old wheel have a groove in its rim that rides on a rail?
+  answer: null
+- text: What's the inside gap between the bracket arms?
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide; bracket gap not measured
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: re-measured ~22 mm; 608 nominal 22.000
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal width
+  bearing_inner_race_od:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: approximate 608 inner race land OD
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  pocket_fit:
+    value: 0.09
+    unit: mm
+    kind: design
+    source: design
+    note: 'coupon: 22.09 hole was a snug press fit that held the bearing upside down'
+  bearing_proud:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: each bearing stands 0.3 mm proud of the wheel face
+  outer_spacer_od:
+    value: 21.6
+    unit: mm
+    kind: design
+    source: design
+    note: slips into the 22.09 bore
+  outer_spacer_id:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: bears on the outer races only, clear of the inner race (~12)
+  rim_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    pd = p.bearing_od + p.pocket_fit\n    w = cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w)\n\
+    \    w = w.edges('%CIRCLE').chamfer(p.rim_chamfer)\n    bore = cq.Workplane('XY').circle(pd/2).extrude(p.wheel_w)\n\
+    \    return w.cut(bore)\n"
+  print_orientation: flat face down, axle vertical
+  use_orientation: axle horizontal in door bracket
+- id: outer_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    t = p.wheel_w - 2*(p.bearing_w - p.bearing_proud)\n  \
+    \  return cq.Workplane('XY').circle(p.outer_spacer_od/2).circle(p.outer_spacer_id/2).extrude(t)\n"
+  print_orientation: flat end down
+  use_orientation: inside the wheel bore, between the two bearing outer races
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    t = p.wheel_w - 2*(p.bearing_w - p.bearing_proud)\n  \
+    \  return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_id/2).extrude(t)\n"
+  print_orientation: flat end down
+  use_orientation: on the bolt between the two bearing inner races
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: bore
+    role: clearance
+  - part: spacer
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: door roller bracket arms, clamped outside the washers
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing bore
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_od
+  - pocket_fit
+  check:
+    method: coupon
+    ref: fit_coupon (previous print, 22.09 hole)
+    description: Bearing presses in snug and holds upside down, same as the 22.09
+      coupon hole.
+- id: c2
+  part: outer_spacer
+  feature: outer diameter
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - outer_spacer_od
+  - pocket_fit
+  check:
+    method: measure
+    ref: null
+    description: The outer spacer drops into the wheel bore freely.
+- id: c3
+  part: spacer
+  feature: outer diameter
+  relation: clears
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - spacer_od
+  - bearing_inner_race_od
+  - outer_spacer_id
+  check:
+    method: measure
+    ref: null
+    description: The inner spacer sits inside the outer spacer without touching it.
+      After assembly the wheel spins freely.
+manual:
+- n: '1'
+  text: Print the wheel, outer_spacer and spacer flat. Use 4+ walls and 40% infill
+    on the wheel. Trim any elephant-foot lip at the bore entry.
+  parts:
+  - wheel
+  - outer_spacer
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one bearing into the wheel bore until it's just proud of the face (about
+    0.3 mm). Press on the outer race only.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: vise or flat block
+- n: '3'
+  text: Flip the wheel over. Drop the outer_spacer (the large ring) into the bore
+    so it rests on the first bearing. Press the second bearing in from that side until
+    it stops on the ring. Both bearings should now stand slightly proud.
+  parts:
+  - wheel
+  - outer_spacer
+  hardware:
+  - bearing
+  tool: vise or flat block
+- n: '4'
+  text: Push the bolt through the bracket arm, a washer, the first bearing, the small
+    spacer (inside the wheel), the second bearing, a washer and the other bracket
+    arm. Then fit the lock nut.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - bolt
+  - washer
+  - locknut
+  tool: 6 mm hex key, 13 mm spanner
+- n: '5'
+  text: Tighten until snug. The wheel must still spin freely. If it doesn't fit the
+    bracket gap, leave out one or both washers.
+  parts: []
+  hardware:
+  - locknut
+  tool: null

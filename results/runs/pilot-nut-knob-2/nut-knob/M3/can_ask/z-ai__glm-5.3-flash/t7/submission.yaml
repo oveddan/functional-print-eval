@@ -1,0 +1,221 @@
+task: nut-knob/M3
+note: ''
+questions: []
+params:
+  knob_body_d:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: valley diameter of the grip lobes; lobe tips reach ~20 mm
+  knob_height:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: gives 9.3 mm of floor under the nut so it can't be pushed through
+  lobe_count:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_center_r:
+    value: 7.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_d:
+    value: 4.8
+    unit: mm
+    kind: design
+    source: design
+    note: lobe tips land at 20 mm across
+  m3_nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  m3_nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut thickness
+  pocket_af:
+    value: 5.55
+    unit: mm
+    kind: design
+    source: design
+    note: 'main hex pocket: 0.05 mm snug fit per flat pair, below the lip'
+  lip_af:
+    value: 5.25
+    unit: mm
+    kind: design
+    source: design
+    note: 'snap-lip opening: nut must be squeezed ~0.25 mm to pass; this is what holds
+      it in upside down'
+  lip_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 2.7
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits 0.3 mm below the top face, resting on the pocket floor
+  leadin_af:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: chamfered lead-in above the lip to guide the nut in
+  leadin_depth:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for M3 bolt through the pocket floor and out the bottom; too small
+      for the nut to pass
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.knob_body_d\
+    \ / 2).extrude(p.knob_height)\n    lobes = (cq.Workplane(\"XY\")\n           \
+    \  .polarArray(p.lobe_center_r, 0, 360, p.lobe_count)\n             .circle(p.lobe_d\
+    \ / 2)\n             .extrude(p.knob_height))\n    knob = body.union(lobes)\n\
+    \    # main hex pocket (snug fit)\n    knob = (knob.faces(\">Z\").workplane()\n\
+    \            .polygon(6, 2 * p.pocket_af / math.sqrt(3))\n            .cutBlind(-p.pocket_depth))\n\
+    \    # snap lip: cutting the smaller hex only partway down leaves a 0.6 mm lip\n\
+    \    knob = (knob.faces(\">Z\").workplane()\n            .polygon(6, 2 * p.lip_af\
+    \ / math.sqrt(3))\n            .cutBlind(-p.lip_h))\n    # chamfered lead-in above\
+    \ the lip\n    knob = (knob.faces(\">Z\").workplane()\n            .polygon(6,\
+    \ 2 * p.leadin_af / math.sqrt(3))\n            .cutBlind(-p.leadin_depth))\n \
+    \   # bolt clearance hole through pocket floor and out the bottom\n    knob =\
+    \ knob.faces(\">Z\").workplane().circle(p.bolt_hole_d / 2).cutThruAll()\n    return\
+    \ knob\n"
+  print_orientation: bottom face (the closed end opposite the nut pocket) flat on
+    the bed, pocket opening pointing up
+  use_orientation: 'as printed: pocket opening up, bolt exits the bottom'
+- id: nut-fit-coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    b = cq.Workplane(\"XY\").rect(14, 14).extrude(5)\n\
+    \    b = (b.faces(\">Z\").workplane()\n         .polygon(6, 2 * p.pocket_af /\
+    \ math.sqrt(3))\n         .cutBlind(-p.pocket_depth))\n    b = (b.faces(\">Z\"\
+    ).workplane()\n         .polygon(6, 2 * p.lip_af / math.sqrt(3))\n         .cutBlind(-p.lip_h))\n\
+    \    b = (b.faces(\">Z\").workplane()\n         .polygon(6, 2 * p.leadin_af /\
+    \ math.sqrt(3))\n         .cutBlind(-p.leadin_depth))\n    b = b.faces(\">Z\"\
+    ).workplane().circle(p.bolt_hole_d / 2).cutThruAll()\n    return b\n"
+  print_orientation: bottom face flat on the bed, pocket opening pointing up
+  use_orientation: as printed, for testing the nut fit
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 2
+- id: m3_nut_coupon
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut-captive
+  part: knob
+  feature: hex nut pocket with snap lip
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: -0.25
+  params:
+  - pocket_af
+  - lip_af
+  - lip_h
+  - pocket_depth
+  - m3_nut_af
+  - m3_nut_h
+  check:
+    method: coupon
+    ref: nut-fit-coupon
+    description: 'Press an M3 nut into the coupon pocket by hand: it should pass the
+      lip with firm finger pressure, rest on the pocket floor 0.3 mm below the top
+      face, and stay in when the coupon is turned upside down and shaken.'
+- id: nut-not-through
+  part: knob
+  feature: pocket floor under the nut
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - bolt_hole_d
+  - m3_nut_af
+  check:
+    method: none
+    ref: null
+    description: Pocket floor is 9.3 mm thick with only a 3.4 mm hole, so the nut
+      (5.5 mm across flats) cannot be pushed out the far side.
+- id: bolt-clears
+  part: knob
+  feature: central through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_hole_d
+  check:
+    method: none
+    ref: null
+    description: 3.4 mm hole clears an M3 bolt (3.0 mm) so it threads through the
+      nut and exits the bottom.
+manual:
+- n: '1'
+  text: Print the nut-fit-coupon first, pocket opening up, on its flat bottom.
+  parts:
+  - nut-fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Test the fit: place an M3 hex nut (flats aligned with the pocket flats) on
+    the coupon''s lead-in and press it in with your fingers against a table. It should
+    squeeze past the lip with firm finger pressure and drop onto the pocket floor.
+    Turn the coupon upside down over your palm and shake it — the nut must stay in.
+    If it needs pliers, or if it rattles loose, tell me and I''ll adjust the lip.'
+  parts:
+  - nut-fit-coupon
+  hardware:
+  - m3_nut_coupon
+  tool: null
+- n: '3'
+  text: Print the knob, pocket opening up, flat bottom on the bed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'Press the second M3 nut into the knob''s pocket the same way: flats aligned,
+    push straight down on a hard surface until it clicks past the lip and seats on
+    the pocket floor. No glue needed.'
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '5'
+  text: Thread your M3 bolt up through the hole in the knob's bottom, into the captive
+    nut. The bolt head bears on the knob's top face around the recessed nut. Now you
+    can tighten or loosen the bolt by turning the knob with your fingers.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null

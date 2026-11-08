@@ -1,0 +1,242 @@
+task: nut-knob/M3
+note: A 20 mm fluted hand knob for an M3 bolt with integrated crush-rib retention
+  for an ISO 4032 M3 nut. Prints cleanly on the build plate with zero supports.
+questions: []
+params:
+  flute_center_offset:
+    value: 10.6
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from center to flute cutter axis
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for M3 bolt through the knob
+  crush_rib_width:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Width of each crush rib along the flat
+  crush_rib_height:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Inward radial height of crush ribs on hex flats to retain the nut
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal width across flats for ISO 4032 M3 hex nut
+  flute_radius:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of grip flutes
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter across the knob lobes
+  shoulder_height:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Height of internal stop shoulder from the bottom face
+  knob_height:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob
+  lead_in_depth:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the circular alignment lead-in
+  lead_in_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of the circular alignment lead-in at the top face
+  hex_af_clearance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance added to nominal AF for the base hex pocket
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of grip flutes around perimeter
+  nut_thickness:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal thickness of ISO 4032 M3 hex nut
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of M3 bolt
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    # Main outer cylinder\
+    \ resting on z = 0\n    knob = (\n        cq.Workplane(\"XY\")\n        .cylinder(p.knob_height,\
+    \ p.knob_od / 2.0)\n        .translate((0, 0, p.knob_height / 2.0))\n    )\n\n\
+    \    # 6 ergonomic flutes around perimeter\n    num_flutes = int(p.flute_count)\n\
+    \    for i in range(num_flutes):\n        angle = math.radians(i * 360.0 / num_flutes)\n\
+    \        fx = p.flute_center_offset * math.cos(angle)\n        fy = p.flute_center_offset\
+    \ * math.sin(angle)\n        knob = (\n            knob.faces(\">Z\")\n      \
+    \      .workplane()\n            .transformed(offset=cq.Vector(fx, fy, 0))\n \
+    \           .circle(p.flute_radius)\n            .cutThruAll()\n        )\n\n\
+    \    # Through-hole for M3 bolt\n    knob = (\n        knob.faces(\">Z\")\n  \
+    \      .workplane()\n        .circle(p.bolt_clearance_d / 2.0)\n        .cutThruAll()\n\
+    \    )\n\n    # Top circular lead-in for easy nut positioning\n    knob = (\n\
+    \        knob.faces(\">Z\")\n        .workplane()\n        .circle(p.lead_in_d\
+    \ / 2.0)\n        .cutBlind(-p.lead_in_depth)\n    )\n\n    # 2D cross section\
+    \ of hex pocket with 6 crush ribs on the flats\n    base_af = p.nut_af + p.hex_af_clearance\n\
+    \    r_flat = base_af / 2.0\n    half_flat = r_flat * math.tan(math.radians(30))\n\
+    \    half_rib = p.crush_rib_width / 2.0\n\n    pts = []\n    for i in range(6):\n\
+    \        angle = math.radians(60.0 * i + 30.0)\n        cos_a = math.cos(angle)\n\
+    \        sin_a = math.sin(angle)\n        tx = -sin_a\n        ty = cos_a\n\n\
+    \        p_c1 = (r_flat * cos_a - half_flat * tx, r_flat * sin_a - half_flat *\
+    \ ty)\n        p_r1 = (r_flat * cos_a - half_rib * tx, r_flat * sin_a - half_rib\
+    \ * ty)\n        p_tip = ((r_flat - p.crush_rib_height) * cos_a, (r_flat - p.crush_rib_height)\
+    \ * sin_a)\n        p_r2 = (r_flat * cos_a + half_rib * tx, r_flat * sin_a + half_rib\
+    \ * ty)\n\n        pts.extend([p_c1, p_r1, p_tip, p_r2])\n\n    hex_cut_depth\
+    \ = p.knob_height - p.shoulder_height\n    knob = (\n        knob.faces(\">Z\"\
+    )\n        .workplane()\n        .polyline(pts)\n        .close()\n        .cutBlind(-hex_cut_depth)\n\
+    \    )\n\n    return knob\n"
+  print_orientation: Bottom face (z=0) flat on the build plate
+  use_orientation: Outer flutes gripped by fingers; tightened onto M3 bolt
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: knob_nut_joint
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_through_hole
+    role: clearance
+  nut: m3_nut
+  external: null
+criteria:
+- id: nut_pocket_contains_nut
+  part: knob
+  feature: hex_nut_pocket
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_thickness
+  - knob_height
+  - shoulder_height
+  check:
+    method: measure
+    ref: null
+    description: Nut fits fully inside the hex pocket below the top surface.
+- id: nut_seats_on_shoulder
+  part: knob
+  feature: internal_shoulder
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - bolt_clearance_d
+  - nut_af
+  - shoulder_height
+  check:
+    method: measure
+    ref: null
+    description: Nut seats firmly on the internal shoulder and cannot be pushed through
+      the far side.
+- id: bolt_through_hole_clears
+  part: knob
+  feature: bolt_through_hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt clears through the center hole of the knob and passes out
+      the other side.
+- id: nut_retention_ribs
+  part: knob
+  feature: crush_ribs
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - hex_af_clearance
+  - crush_rib_height
+  check:
+    method: measure
+    ref: null
+    description: Crush ribs provide friction to retain the nut when turned upside
+      down without glue.
+manual:
+- n: '1'
+  text: Place the ISO 4032 M3 hex nut into the circular lead-in recess on the top
+    face of the knob and align its flats with the hexagonal pocket.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '2'
+  text: Press the nut down firmly with your thumb until it bottoms out against the
+    internal shoulder. The integrated crush ribs will retain the nut snugly so it
+    stays in place when turned upside down, with no glue required.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Thread your M3 bolt through the knob. The through-hole allows the bolt to
+    pass fully through the nut and exit out the other side.
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  - m3_nut
+  tool: null

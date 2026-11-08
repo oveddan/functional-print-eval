@@ -1,0 +1,148 @@
+task: tripod-plate
+note: ''
+questions:
+- text: How much does your camera weigh with the lens you'll use? I couldn't get this
+    measurement. A PLA plate with a 1/4-20 stud is only suitable for light cameras,
+    roughly under 1 kg, and this is a temporary fix.
+  answer: null
+- text: Is the webcam bolt head round or hex? I assumed round. If it is hex, the 15.5
+    mm pocket may be too small and the head won't seat.
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: tripod clamp takes a 38 mm wide plate
+  plate_len:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: long enough to hold the camera base; adjust if the camera foot is larger
+  floor_t:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: 3 layers under the bolt head
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam bolt head height
+  roof_t:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: roof over the head, printed after the insert pause
+  plate_t:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: floor_t + head_h + roof_t
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head across, assumed round
+  head_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: pocket clearance around the head
+  hole_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for 1/4-20 shank (6.35 mm)
+  stud_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt length under head; about 4 mm stands above the plate
+parts:
+- id: plate
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(p.plate_len, p.plate_w,\
+    \ p.plate_t, centered=(True, True, False))\n    cav = cq.Workplane('XY').workplane(offset=p.floor_t).circle((p.head_d\
+    \ + p.head_clear) / 2).extrude(p.head_h)\n    hole = cq.Workplane('XY').workplane(offset=-1).circle(p.hole_d\
+    \ / 2).extrude(p.plate_t + 2)\n    return plate.cut(cav).cut(hole)\n"
+  print_orientation: flat, bottom on the bed
+  use_orientation: flat on the tripod clamp, stud pointing up
+hardware:
+- id: stud
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: stud-seat
+  part: plate
+  feature: head pocket and shank hole
+  relation: seats
+  hardware: stud
+  clearance_mm: 0.5
+  params:
+  - head_d
+  - head_clear
+  - head_h
+  - floor_t
+  - hole_d
+  check:
+    method: measure
+    ref: null
+    description: Bolt head sits on the floor of the pocket and is captured by the
+      roof; shank exits the roof hole. Confirm the head cannot be pulled through.
+- id: clamp-width
+  part: plate
+  feature: plate width
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  check:
+    method: measure
+    ref: null
+    description: Plate width is 38 mm to match the tripod clamp.
+manual:
+- n: '1'
+  text: Print the plate flat, bottom on the bed, 0.2 mm layers. Set a pause (or the
+    printer's filament-change/pause) at the layer at 5.6 mm height, which is just
+    under the roof.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: When the print pauses at 5.6 mm, drop the salvaged 1/4-20 bolt head-first
+    into the open pocket so the head sits on the floor and the shank points up through
+    the hole. Resume the print to close the roof over the head.
+  parts:
+  - plate
+  hardware:
+  - stud
+  tool: null
+- n: '3'
+  text: Check the bolt is seated and cannot be pulled out downward. Screw the camera
+    onto the stud by hand; it should go on fully.
+  parts: []
+  hardware:
+  - stud
+  tool: null
+- n: '4'
+  text: Clamp the plate in the tripod head as the original plate would sit, and tighten
+    the clamp until it grips the plate's edges firmly.
+  parts:
+  - plate
+  hardware: []
+  tool: null

@@ -1,0 +1,131 @@
+task: bearing-wheel
+note: ''
+questions:
+- text: Does the M8 bolt slide through a 608 bearing bore? The bore is 8.0 nominal
+    (about 7.94 measured) and the bolt is about 8 mm, so it may not fit. If it doesn't,
+    the bolt needs filing down or another axle is needed.
+  answer: null
+- text: What is the bracket's bolt hole size and arm spacing? The wheel is 16 mm wide,
+    so it has to fit the existing gap.
+  answer: null
+- text: Does the old wheel have a groove or crown that rides on the track? This design
+    uses a flat tread. If the track has a rail the wheel must ride in, a flat wheel
+    may wander.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel diameter, from the user
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel width, from the user
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: world
+    source: catalog
+    note: 608 OD nominal; one earlier reading was 21.22 at an angle, so re-check
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: world
+    source: catalog
+    note: 608 width nominal
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: world
+    source: catalog
+    note: 608 bore nominal; measured about 7.94
+  axle_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: User's M8 bolt shank, about 8 mm. Bolt and bore are both about 8 mm, so
+      the fit is unverified
+  press_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for pressing bearings into PLA pockets
+  axle_clear:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: Centre hole clearance for the bolt
+parts:
+- id: wheel
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    w = p.wheel_w\n    body = cq.Workplane('XY').circle(p.wheel_od\
+    \ / 2).extrude(w)\n    pocket_d = p.bearing_od + p.press_clear\n    pd = p.bearing_w\n\
+    \    body = body.cut(cq.Workplane('XY').circle(pocket_d / 2).extrude(pd))\n  \
+    \  body = body.cut(cq.Workplane('XY').workplane(offset=w - pd).circle(pocket_d\
+    \ / 2).extrude(pd))\n    body = body.cut(cq.Workplane('XY').circle(p.axle_clear\
+    \ / 2).extrude(w))\n    return body"
+  print_orientation: Flat face down, axle vertical (z = 0 on bed, bearing pockets
+    open at top and bottom)
+  use_orientation: Axle horizontal, wheel rolls on its outer diameter
+hardware: []
+joints: []
+criteria:
+- id: c-bearing-pocket
+  part: wheel
+  feature: bearing pocket (both ends)
+  relation: contains
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bearing_od
+  - press_clear
+  check:
+    method: measure
+    ref: null
+    description: 608 bearing presses into the pocket without play after printing
+- id: c-axle-bore
+  part: wheel
+  feature: centre axle hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - axle_clear
+  - axle_d
+  check:
+    method: measure
+    ref: null
+    description: M8 bolt passes through the wheel's centre hole without binding
+manual:
+- n: '1'
+  text: Print the wheel flat (bearing pockets facing up and down). Test-fit one 608
+    bearing in each pocket. It should press in snugly by hand or with a vise; if it's
+    loose, reprint with press_clear reduced.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into each end of the wheel so both sit flush or slightly
+    recessed, with the web in the middle.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Check that your M8 bolt slides through the bearing bores. If it doesn't, stop
+    and do not force it. Otherwise slide the bolt through the bearings and wheel,
+    then mount the wheel in the door bracket the way the old wheel was mounted. Do
+    not overtighten; the wheel must spin freely.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

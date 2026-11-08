@@ -1,0 +1,542 @@
+task: bearing-wheel
+note: Conditional fit prototype, not a certified door repair. Flat-tread 50 × 16 mm
+  split wheel for two nominal 608 bearings. Track profile, door support arrangement,
+  load, bracket clearance and existing bolt length remain unknown. Do not install
+  on a top-hung door or rely on it to retain a door. Do not put the door's weight
+  on this prototype until compatibility and safe support have been established. PLA
+  creep and wear make this unsuitable as an unqualified permanent replacement. A matching
+  manufacturer-rated roller is preferred.
+questions:
+- text: Track profile, mounting arrangement and whether the door is top-hung?
+  answer: User could not measure; unknown.
+- text: Existing bolt length, bracket thickness and door weight?
+  answer: Not supplied. Existing shank is about 8 mm; this does not establish usable
+    bolt length.
+params:
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original diameter, not verified.
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original width; excludes axle hardware.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User reports about 22 mm; fit must be tested.
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User reports about 7 mm.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 608 bore.
+  existing_shank_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate; existing bolt length and thread unknown.
+  existing_bolt_length:
+    value: null
+    unit: mm
+    kind: hardware
+    source: unknown
+    note: ''
+  bracket_stack:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  door_mass:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Not used to claim a load rating.
+  bearing_fit_allowance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance; slip fit, not press fit.
+  centre_gap:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Inner-race spacer length; leaves 0.6 mm exterior retaining lips at nominal
+      bearing widths.
+  face_opening_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: Must contact inner race only; verify against actual bearing, not seals.
+  axle_clearance_d:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  outer_spacer_w:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  fastener_radius:
+    value: 17.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  fastener_count:
+    value: 3
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  m3_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  m3_head_d:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_head_h:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_head_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  m3_nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  recess_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  m3_length:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m8_length:
+    value: 30
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Specified alternative axle, not identification of the user's bolt.
+  m8_nut_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M8.
+  m8_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m8_washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m8_washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  coupon_wall:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_h:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    d=p.bearing_od+p.bearing_fit_allowance\n    return cq.Workplane('XY').circle(d/2+p.coupon_wall).circle(d/2).extrude(p.coupon_h)\n"
+  print_orientation: Flat annular face on bed, z=0.
+  use_orientation: Test bearing outside diameter only; not part of assembly.
+- id: wheel_head_half
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    h=p.wheel_w/2\n    lip=(p.wheel_w-2*p.bearing_w-p.centre_gap)/2\n\
+    \    if lip <= 0: raise ValueError('Insufficient wheel width for bearings and\
+    \ spacer')\n    s=cq.Workplane('XY').circle(p.wheel_d/2).extrude(h)\n    s=s.cut(cq.Workplane('XY').circle(p.face_opening_d/2).extrude(h))\n\
+    \    s=s.cut(cq.Workplane('XY').workplane(offset=lip).circle((p.bearing_od+p.bearing_fit_allowance)/2).extrude(h-lip))\n\
+    \    for i in range(int(p.fastener_count)):\n        a=2*math.pi*i/p.fastener_count\n\
+    \        x,y=p.fastener_radius*math.cos(a),p.fastener_radius*math.sin(a)\n   \
+    \     s=s.cut(cq.Workplane('XY').center(x,y).circle((p.m3_d+p.m3_clearance)/2).extrude(h))\n\
+    \        s=s.cut(cq.Workplane('XY').center(x,y).circle((p.m3_head_d+p.m3_head_clearance)/2).extrude(p.recess_depth))\n\
+    \    return s\n"
+  print_orientation: Exterior face z=0 on bed; large bearing pocket opens upward.
+    Small underside head recess roofs bridge approximately 6 mm.
+  use_orientation: 'Assembly coordinates unchanged: exterior z=0; split face z=8.'
+- id: wheel_nut_half
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    h=p.wheel_w/2\n    lip=(p.wheel_w-2*p.bearing_w-p.centre_gap)/2\n\
+    \    if lip <= 0: raise ValueError('Insufficient wheel width for bearings and\
+    \ spacer')\n    s=cq.Workplane('XY').circle(p.wheel_d/2).extrude(h)\n    s=s.cut(cq.Workplane('XY').circle(p.face_opening_d/2).extrude(h))\n\
+    \    s=s.cut(cq.Workplane('XY').workplane(offset=lip).circle((p.bearing_od+p.bearing_fit_allowance)/2).extrude(h-lip))\n\
+    \    for i in range(int(p.fastener_count)):\n        a=2*math.pi*i/p.fastener_count\n\
+    \        x,y=p.fastener_radius*math.cos(a),p.fastener_radius*math.sin(a)\n   \
+    \     s=s.cut(cq.Workplane('XY').center(x,y).circle((p.m3_d+p.m3_clearance)/2).extrude(h))\n\
+    \        s=s.cut(cq.Workplane('XY').center(x,y).polygon(6,2*(p.m3_nut_af+p.nut_clearance)/math.sqrt(3)).extrude(p.recess_depth))\n\
+    \    return s\n"
+  print_orientation: Exterior face z=0 on bed; bearing pocket upward. Nut recess roofs
+    bridge less than 7 mm.
+  use_orientation: 'Flip 180 degrees about X, then translate +16 mm in Z: split faces
+    meet at assembly z=8. Align three screw holes.'
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.axle_clearance_d/2).extrude(p.centre_gap)\n"
+  print_orientation: Flat ring on bed, z=0; four layers at 0.2 mm.
+  use_orientation: Between the two bearing inner races, assembly z=7.6 to 8.4 at nominal
+    dimensions.
+- id: head_side_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.axle_clearance_d/2).extrude(p.outer_spacer_w)\n"
+  print_orientation: Flat ring on bed.
+  use_orientation: On axle against first bearing inner race; projects beyond wheel
+    face.
+- id: nut_side_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.axle_clearance_d/2).extrude(p.outer_spacer_w)\n"
+  print_orientation: Flat ring on bed.
+  use_orientation: On axle against second bearing inner race; projects beyond wheel
+    face.
+hardware:
+- id: bearings
+  ref: 608ZZ
+  qty: 2
+- id: wheel_screws
+  ref: ISO 4762 M3x12
+  qty: 3
+- id: wheel_nuts
+  ref: ISO 4032 M3
+  qty: 3
+- id: axle
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: axle_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: axle_washers
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: wheel_closure
+  fastener: wheel_screws
+  axis_origin:
+  - 17.5
+  - 0.0
+  - 3.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel_head_half
+    feature: Three cylindrical recess floors, repeated at 120 degrees; screw underside
+      seats at assembly z=3.2.
+    role: head_seat
+  - part: wheel_head_half
+    feature: Three 3.4 mm through holes.
+    role: clearance
+  - part: wheel_nut_half
+    feature: Aligned through holes.
+    role: clearance
+  - part: wheel_nut_half
+    feature: Three outward-opening hex pockets; assembly floors at z=12.8.
+    role: nut_pocket
+  nut: wheel_nuts
+  external: null
+- id: conditional_axle
+  fastener: axle
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -3.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: head_side_spacer
+    feature: 8.5 mm axial bore.
+    role: clearance
+  - part: inner_spacer
+    feature: 8.5 mm axial bore.
+    role: clearance
+  - part: nut_side_spacer
+    feature: 8.5 mm axial bore.
+    role: clearance
+  nut: axle_nut
+  external: Actual bracket is unmeasured. Axis origin assumes a bench stack with no
+    bracket; installation requires a verified stack and accessibility.
+criteria:
+- id: bearing_slip_fit
+  part: wheel_head_half
+  feature: 22.2 mm bearing pocket
+  relation: contains
+  hardware: bearings
+  clearance_mm: 0.2
+  params:
+  - bearing_od
+  - bearing_fit_allowance
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: Both bearings must enter by hand without forcing and without appreciable
+      rocking. Adjust diametral allowance and reprint coupon if needed.
+- id: inner_race_contact
+  part: inner_spacer
+  feature: Spacer end faces
+  relation: seats
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - spacer_od
+  - axle_clearance_d
+  - centre_gap
+  check:
+    method: measure
+    ref: null
+    description: Confirm ring faces contact metal inner races only, not bearing shields
+      or outer races. Reject if not verifiable. Spacer must sit flat and remain intact.
+- id: rotating_clearance
+  part: head_side_spacer
+  feature: Projection beyond wheel face
+  relation: clears
+  hardware: axle_washers
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  - centre_gap
+  - outer_spacer_w
+  - face_opening_d
+  check:
+    method: measure
+    ref: null
+    description: Nominal spacer projection is 1.4 mm. Washers and bracket must not
+      contact the wheel or bearing shields throughout rotation. Verify both sides.
+- id: track_fit
+  part: wheel_head_half
+  feature: Flat cylindrical tread and wheel envelope
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_d
+  - wheel_w
+  check:
+    method: template
+    ref: null
+    description: With door independently supported, compare assembled wheel to original
+      and track without loading it. Flat tread is an unverified assumption. Reject
+      for a groove, crown, flange requirement, interference or loss of retention.
+- id: axle_length_check
+  part: nut_side_spacer
+  feature: Complete stationary axle stack
+  relation: engages
+  hardware: axle
+  clearance_mm: null
+  params:
+  - m8_length
+  - bearing_w
+  - centre_gap
+  - outer_spacer_w
+  - m8_washer_t
+  - m8_nut_h
+  - m8_pitch
+  - bracket_stack
+  check:
+    method: measure
+    ref: null
+    description: 'Bench grip is 22 mm before nut: 14 mm bearings + 0.8 mm centre spacer
+      + 4 mm outer spacers + 3.2 mm washers. M8x30 only reaches nominal end of an
+      8 mm nut with NO bracket, so is NOT approved for bracket installation. Installed
+      bolt must exceed full grip plus bracket thickness plus 8 mm nut plus at least
+      one 1.25 mm thread. Use only a verified suitable listed length; otherwise stop.'
+manual:
+- n: '1'
+  text: Secure the door independently so it cannot fall, tip or leave its track. Do
+    not remove a supporting roller without appropriate support. If this is top-hung,
+    or you cannot establish how the door is supported and retained, stop at bench
+    testing and obtain the correct rated replacement.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print bearing_fit_coupon at 0.2 mm layers and check both bearings. Use a hand
+    slip fit, not a forced interference fit. Do not hammer bearings into PLA.
+  parts:
+  - bearing_fit_coupon
+  hardware:
+  - bearings
+  tool: null
+- n: '3'
+  text: Print the six final parts in their specified orientations, 0.2 mm layers,
+    at least six walls and 100% infill. No supports are needed; the small screw/nut
+    recess roofs bridge under 7 mm. Remove burrs and inspect the thin exterior bearing-retention
+    lips for missing layers or cracks.
+  parts:
+  - wheel_head_half
+  - wheel_nut_half
+  - inner_spacer
+  - head_side_spacer
+  - nut_side_spacer
+  hardware: []
+  tool: null
+- n: '4'
+  text: Lay wheel_head_half exterior face down. Seat one bearing in its upward pocket.
+    Place inner_spacer on the inner race. Verify it touches only that race. Place
+    the second bearing on the spacer, then lower the flipped wheel_nut_half over it.
+    Align the screw holes. Bearings seat against the outside lips; their outer races
+    are separated by 0.8 mm at nominal dimensions.
+  parts:
+  - wheel_head_half
+  - wheel_nut_half
+  - inner_spacer
+  hardware:
+  - bearings
+  tool: null
+- n: '5'
+  text: Insert three M3 nuts into the exterior hex pockets and the three M3x12 screws
+    from the opposite exterior face. Tighten evenly only until split faces meet and
+    screws are snug. Nominal nut engagement is full 2.4 mm, with screw tips recessed.
+    Stop if the split will not close, bearings bind, or PLA distorts. Recheck screw
+    security frequently; no threadlocker is specified.
+  parts:
+  - wheel_head_half
+  - wheel_nut_half
+  hardware:
+  - wheel_screws
+  - wheel_nuts
+  tool: 2.5 mm hex key
+- n: '6'
+  text: 'Bench axle order: M8 bolt head, washer, head_side_spacer, first bearing inner
+    race, inner_spacer, second bearing inner race, nut_side_spacer, washer, locknut.
+    Ensure the bearing bores slide onto the axle without force. The M8x30 is only
+    a nominal bench-stack bolt: it has no length allowance for a bracket or a protruding
+    thread. Do not interpret this as approval to install it on the door.'
+  parts:
+  - head_side_spacer
+  - inner_spacer
+  - nut_side_spacer
+  hardware:
+  - axle
+  - axle_washers
+  - axle_nut
+  - bearings
+  tool: null
+- n: '7'
+  text: For any later mounting trial, first measure the bracket and axle stack. Require
+    a verified M8 length giving full locknut engagement and at least one thread beyond
+    the nut; use an appropriate listed ISO 4762 length only if it fits the actual
+    mounting arrangement. The user's existing bolt is unidentified beyond approximate
+    shank diameter. If a suitable axle cannot be verified, stop. Never tighten directly
+    against the rotating wheel or outer bearing races.
+  parts: []
+  hardware:
+  - axle
+  - axle_nut
+  - axle_washers
+  tool: null
+- n: '8'
+  text: Tighten the bench axle gently while turning the wheel. Only the inner races
+    and spacers should be clamped. Stop if rotation becomes rough, the wheel rubs
+    the washers, or spacers crush. Do not solve binding by leaving the axle loose.
+    Printed spacers can creep and do not establish a permanent structural joint.
+  parts:
+  - inner_spacer
+  - head_side_spacer
+  - nut_side_spacer
+  hardware:
+  - axle
+  - axle_nut
+  tool: null
+- n: '9'
+  text: With the door still independently supported, compare the wheel's flat tread,
+    diameter, width, side clearance and retention with the track and original roller.
+    Any mismatch means reject this design. Do not put the door's weight on the prototype
+    based on this fit check. Unknown load and track geometry prevent a safe service
+    rating; obtain a matching rated roller for normal use.
+  parts:
+  - wheel_head_half
+  - wheel_nut_half
+  hardware: []
+  tool: null

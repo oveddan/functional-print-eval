@@ -1,0 +1,219 @@
+task: nut-knob/M5
+note: Pocket AF 8.10 mm chosen from the coupon (8.00 tight, 8.10 snug and retained,
+  8.20 loose). A 0.4 mm entry chamfer offsets elephant foot. Knob is 30 mm across
+  with 8 grip scallops. The scallop cuts reduce the outer diameter at those points.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  hole_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt through-hole is 5.5 mm
+  pocket_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: measured
+    note: 'from coupon: 8.10 pocket snug and retained nut upside down; 8.00 tight;
+      8.20 loose'
+  c1:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c2:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c3:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  depth_extra:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits 0.3 mm below the open face
+  floor_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    depth = p.nut_h + p.depth_extra\n    af =\
+    \ p.nut_af + p.pocket_clear\n    d = af / math.cos(math.radians(30))\n    k =\
+    \ cq.Workplane('XY').circle(p.knob_d / 2).extrude(p.knob_h)\n    k = k.faces('>Z').edges().chamfer(1.0)\n\
+    \    R = p.knob_d / 2 + p.scallop_r * 0.45\n    for i in range(int(p.scallop_n)):\n\
+    \        a = 2 * math.pi * i / p.scallop_n\n        c = cq.Workplane('XY').center(R\
+    \ * math.cos(a), R * math.sin(a)).circle(p.scallop_r).extrude(p.knob_h)\n    \
+    \    k = k.cut(c)\n    pocket = cq.Workplane('XY').polygon(6, d).extrude(depth)\n\
+    \    cham = cq.Workplane('XY').polygon(6, d + 0.8).workplane(offset=0.4).polygon(6,\
+    \ d).loft()\n    hole = cq.Workplane('XY').circle((p.bolt_d + p.hole_clear) /\
+    \ 2).extrude(p.knob_h)\n    return k.cut(pocket).cut(cham).cut(hole)\n"
+  print_orientation: open nut-pocket face down on the bed (z=0), top up; the pocket
+    ceiling bridges only ~9 mm
+  use_orientation: pocket side facing the work, bolt tip emerging from the top hole
+- id: nut-fit-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    depth = p.nut_h + p.depth_extra\n    h =\
+    \ depth + p.floor_t\n    w = cq.Workplane('XY').box(40, 16, h, centered=(True,\
+    \ True, False))\n    for x, c in [(-13, p.c1), (0, p.c2), (13, p.c3)]:\n     \
+    \   d = (p.nut_af + c) / math.cos(math.radians(30))\n        pocket = cq.Workplane('XY').center(x,\
+    \ 0).polygon(6, d).extrude(depth)\n        cham = cq.Workplane('XY').center(x,\
+    \ 0).polygon(6, d + 0.8).workplane(offset=0.4).polygon(6, d).loft()\n        hole\
+    \ = cq.Workplane('XY').center(x, 0).circle((p.bolt_d + p.hole_clear) / 2).extrude(h)\n\
+    \        w = w.cut(pocket).cut(cham).cut(hole)\n    return w\n"
+  print_orientation: pocket opening face down on the bed
+  use_orientation: same
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: bolt-through-knob
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: hex nut pocket
+    role: nut_pocket
+  - part: knob
+    feature: 5.5 mm bolt through-hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: c-nut-pocket
+  part: knob
+  feature: hex nut pocket (8.1 mm AF, 5.0 mm deep)
+  relation: seats
+  hardware: nut
+  clearance_mm: 0.1
+  params:
+  - nut_af
+  - pocket_clear
+  - nut_h
+  - depth_extra
+  check:
+    method: coupon
+    ref: nut-fit-coupon
+    description: 8.10 mm pocket pressed in by hand and held the nut when inverted
+      and shaken
+- id: c-bolt-hole
+  part: knob
+  feature: bolt through-hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - hole_clear
+  check:
+    method: measure
+    ref: null
+    description: M5 bolt passes through the 5.5 mm hole in the top floor
+- id: c-nut-capture
+  part: knob
+  feature: top floor (3+ mm) over the pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - depth_extra
+  check:
+    method: none
+    ref: null
+    description: Nut is fully inside; the 5.5 mm hole is smaller than the nut so it
+      cannot exit the far side
+manual:
+- n: '1'
+  text: Print the knob with the open hex-pocket face down on the bed, no supports.
+    The nut-fit coupon is not needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the M5 hex nut into the hex pocket on the underside, with its flats lined
+    up to the pocket walls. Press it in with your thumb until it bottoms against the
+    ceiling. It sits about 0.3 mm below the face. It is a snug fit and will stay in
+    when the knob is turned upside down.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Thread the M5 bolt into the nut from the pocket side. The bolt tip comes out
+    through the 5.5 mm hole in the top. Turn the knob to tighten.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null

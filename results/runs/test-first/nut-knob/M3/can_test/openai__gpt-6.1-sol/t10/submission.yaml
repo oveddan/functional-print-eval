@@ -1,0 +1,203 @@
+task: nut-knob/M3
+note: One-piece, approximately 20 mm hand knob with a captive press-fit M3 nut. Uses
+  the 5.70 mm across-flats pocket that passed your hand-insertion, inversion and shake
+  test. The solid floor prevents the nut passing through the opposite face; the central
+  hole lets the bolt pass through. Friction retention is validated for your tested
+  nut and print settings, not unlimited removal/reinsertion cycles.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across flats.
+  nut_height:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_diameter:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt interface; choose bolt length for the application.
+  knob_diameter:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_thickness:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_recess:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Nut top sits this far below the knob's pocket-side face.
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: 'Tested: inserts with hand pressure, snug, and retained when inverted and
+      shaken.'
+  bolt_clearance_diameter:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_cut_radius:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_center_radius:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    h = p.floor_thickness + p.nut_height\
+    \ + p.nut_recess\n    body = cq.Workplane('XY').circle(p.knob_diameter/2).extrude(h)\n\
+    \    for i in range(int(p.grip_count)):\n        angle = 2*math.pi*i/p.grip_count\n\
+    \        x = p.grip_cut_center_radius*math.cos(angle)\n        y = p.grip_cut_center_radius*math.sin(angle)\n\
+    \        cutter = cq.Workplane('XY').center(x,y).circle(p.grip_cut_radius).extrude(h)\n\
+    \        body = body.cut(cutter)\n    pocket = (cq.Workplane('XY').workplane(offset=p.floor_thickness)\n\
+    \              .polygon(6,2*p.pocket_af/math.sqrt(3))\n              .extrude(p.nut_height+p.nut_recess))\n\
+    \    bore = cq.Workplane('XY').circle(p.bolt_clearance_diameter/2).extrude(h)\n\
+    \    return body.cut(pocket).cut(bore)"
+  print_orientation: Flat face with only the round bolt hole on the bed at z=0; hex
+    pocket opens upward. No supports.
+  use_orientation: Nut enters the hex-pocket face and rests on the internal floor.
+    Bolt can enter either face; keep the pocket side accessible for installation.
+hardware:
+- id: captive_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: hand_press_retention
+  part: hand_knob
+  feature: 5.70 mm across-flats hexagonal pocket
+  relation: engages
+  hardware: captive_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  check:
+    method: coupon
+    ref: nut_fit_test
+    description: User tested 5.40/5.50/5.60/5.70 mm pockets. Only 5.70 mm inserted
+      with acceptable pushing and stayed in when inverted and shaken.
+- id: nut_below_face
+  part: hand_knob
+  feature: Pocket depth is 2.70 mm for a nominal 2.40 mm nut
+  relation: contains
+  hardware: captive_nut
+  clearance_mm: null
+  params:
+  - nut_height
+  - nut_recess
+  - floor_thickness
+  check:
+    method: measure
+    ref: null
+    description: After pressing fully home, verify that the entire nut lies below
+      the pocket opening.
+- id: nut_stop
+  part: hand_knob
+  feature: 1.60 mm floor surrounding 3.50 mm through-hole
+  relation: supports
+  hardware: captive_nut
+  clearance_mm: null
+  params:
+  - floor_thickness
+  - bolt_clearance_diameter
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Verify the nut rests on the floor. The 3.50 mm round hole is smaller
+      than the nut and cannot pass it.
+- id: bolt_passage
+  part: hand_knob
+  feature: Central through-hole aligned with nut thread
+  relation: clears
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - bolt_diameter
+  - bolt_clearance_diameter
+  check:
+    method: measure
+    ref: null
+    description: Thread an M3 bolt through the installed nut by hand and verify its
+      tip exits the opposite face without binding against plastic.
+manual:
+- n: '1'
+  text: 'Print hand_knob with its flat underside on the bed and hex pocket facing
+    upward. Use the same settings as the successful coupon: 0.4 mm nozzle, 0.2 mm
+    layers, same PLA. Use 4 walls and 100% infill; no supports.'
+  parts:
+  - hand_knob
+  hardware: []
+  tool: Bambu Lab X1C
+- n: '2'
+  text: Let the part cool and remove it from the bed. Clear any loose strands from
+    the pocket and through-hole, but do not sand or enlarge the pocket; its fit provides
+    retention.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Align the M3 nut's flats with the hex pocket. With the knob supported on a
+    flat surface, press the nut straight in using thumb pressure until it rests against
+    the floor. Its top should be slightly below the rim. Do not hammer it or use the
+    bolt to force it in.
+  parts:
+  - hand_knob
+  hardware:
+  - captive_nut
+  tool: null
+- n: '4'
+  text: 'Turn the knob upside down over a tray and shake gently. The nut must stay
+    seated. If it falls out, or will not seat by hand, stop: the fit differs from
+    the tested coupon and needs retuning, not glue.'
+  parts:
+  - hand_knob
+  hardware:
+  - captive_nut
+  tool: null
+- n: '5'
+  text: Thread your application’s M3 bolt through the nut and confirm its end passes
+    freely through the round hole. Choose a listed M3 screw length to suit the assembly.
+    Tighten the knob with fingertips only; do not use pliers. The floor blocks nut
+    escape through the round-hole side, but avoid excessive axial pull toward the
+    open pocket or repeated nut removal.
+  parts:
+  - hand_knob
+  hardware:
+  - captive_nut
+  tool: null

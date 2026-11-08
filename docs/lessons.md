@@ -40,7 +40,7 @@ Raw material for Dan to rewrite. One lesson per entry, each with its evidence. N
 
 **A fix for one failure can surface the next one.** Most fixed plates still fail on what the report never mentioned, mostly the dovetail upside down, so passes went from 0 to 3. Three revisions got worse: a lost recess, a plate in pieces, a deck too thick for the bolt. Evidence: `loop-tripod`'s `loop.json`.
 
-**A check can fail a known fix.** R3 failed Opus's drill-out skin as "no hole runs through", though `PLAN.md` says a drill-out layer passes and the knob's check already allowed one. The tripod check had never met one. Evidence: `CHANGELOG.md`, 2026-11-06.
+**A check can fail a known fix.** R3 failed Opus's drill-out skin as "no hole runs through", though `docs/plan.md` says a drill-out layer passes and the knob's check already allowed one. The tripod check had never met one. Evidence: `CHANGELOG.md`, 2026-11-06.
 
 ## What physical truth can decide
 

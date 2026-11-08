@@ -1,0 +1,142 @@
+task: tripod-plate
+note: ''
+questions:
+- text: Plate length and thickness were not measured. The 60 mm length and 8 mm thickness
+    are placeholders and must be checked against the real plate before printing the
+    final part.
+  answer: null
+- text: Clamp lip depth was not measured. The plate's grip edges may need a chamfer
+    or groove if the lips don't grip a flat edge.
+  answer: null
+- text: The salvaged bolt's head size is approximate (about 15 mm across, 5 mm high).
+    Check the pocket fit with the actual bolt.
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes
+  plate_len:
+    value: 60
+    unit: mm
+    kind: design
+    source: guessed
+    note: placeholder; plate length was not returned by measurement. Must be checked
+      against the real plate
+  plate_t:
+    value: 8
+    unit: mm
+    kind: design
+    source: guessed
+    note: placeholder; plate thickness was not returned by measurement. Must be checked
+      against the real plate
+  shank_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 nominal major diameter
+  shank_clear:
+    value: 6.85
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for the 1/4-20 bolt shank
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam bolt head, approximate ('about 15 mm')
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam bolt head height, approximate
+parts:
+- id: plate
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(p.plate_len, p.plate_w,\
+    \ p.plate_t).translate((0, 0, p.plate_t / 2))\n    hole = cq.Workplane('XY').circle(p.shank_clear\
+    \ / 2).extrude(p.plate_t)\n    pocket = cq.Workplane('XY').circle((p.head_d +\
+    \ 0.5) / 2).extrude(p.head_h + 0.5)\n    return plate.cut(hole).cut(pocket)\n"
+  print_orientation: bottom face on the bed (pocket opens downward)
+  use_orientation: flat on the tripod clamp, bolt head in the underside pocket, threaded
+    end up into the camera
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: C1
+  part: plate
+  feature: underside pocket for the bolt head
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  check:
+    method: measure
+    ref: null
+    description: Confirm the bolt head sits flush in the pocket and does not pull
+      up through the hole.
+- id: C2
+  part: plate
+  feature: clearance hole for 1/4-20 shank
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - shank_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt shank passes through the hole without binding.
+- id: C3
+  part: plate
+  feature: plate width against tripod clamp
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  check:
+    method: measure
+    ref: null
+    description: Plate fits the clamp jaws at 38 mm width.
+manual:
+- n: '1'
+  text: Print the plate flat, bottom face on the bed, with no supports.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Push the salvaged 1/4-20 bolt up through the plate's hole from underneath
+    so the head sits in the pocket.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Screw the camera onto the threaded end that sticks up through the top of the
+    plate. Hand-tighten only.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Slide the plate into the tripod clamp from above and tighten the knob gently.
+    Do not overtighten; PLA can crack.
+  parts: []
+  hardware: []
+  tool: null

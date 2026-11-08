@@ -1,0 +1,191 @@
+task: bearing-wheel
+note: 'Unknown: the bracket gap, rail width and the old tread profile. The user couldn''t
+  measure these. The wheel has a flat tread with chamfered edges. If the rail needs
+  a groove or flange, it will need a revision. Bearing pocket fit comes from a printed
+  test: a 22.29 mm seat gave a snug fit.'
+questions:
+- text: What is the gap between the bracket arms where the wheel sits, and what is
+    the rail profile?
+  answer: The user could not measure either.
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD 22.0; user caliper reading ~22
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal width
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: shank ~8 mm
+  pocket_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: 'print test: 22.29 seat holds bearing snugly; 21.99 too tight'
+  bearing_protrude:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: bearing stands proud of wheel face so the washers, not the wheel, touch
+      the bracket
+  web_hole_d:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: larger than the 608 inner race (~12 mm) so only the outer races touch the
+      web
+  tread_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_d_tested:
+    value: 22.29
+    unit: mm
+    kind: design
+    source: measured
+    note: coupon seat that fitted
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    pocket_d = p.bearing_od + p.pocket_clearance\n    depth\
+    \ = p.bearing_w - p.bearing_protrude\n    w = cq.Workplane('XY').circle(p.wheel_od\
+    \ / 2).extrude(p.wheel_w)\n    w = w.faces('>Z or <Z').edges().chamfer(p.tread_chamfer)\n\
+    \    bottom = cq.Workplane('XY').circle(pocket_d / 2).extrude(depth)\n    top\
+    \ = cq.Workplane('XY').workplane(offset=p.wheel_w - depth).circle(pocket_d / 2).extrude(depth)\n\
+    \    hole = cq.Workplane('XY').circle(p.web_hole_d / 2).extrude(p.wheel_w)\n \
+    \   return w.cut(bottom).cut(top).cut(hole)\n"
+  print_orientation: one flat face on the bed, axis vertical
+  use_orientation: axis horizontal, rolling on the rail
+- id: pocket-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    d = p.bearing_od + p.pocket_clearance\n    depth = p.bearing_w\
+    \ - p.bearing_protrude\n    w = cq.Workplane('XY').box(30, 30, 8, centered=(True,\
+    \ True, False))\n    cut = cq.Workplane('XY').workplane(offset=8 - depth).circle(d\
+    \ / 2).extrude(depth + 1)\n    return w.cut(cut)\n"
+  print_orientation: flat, pockets up
+  use_orientation: test only
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: web_hole
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets (both faces)
+  relation: contains
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bearing_od
+  - pocket_clearance
+  - bearing_w
+  - bearing_protrude
+  check:
+    method: coupon
+    ref: pocket-coupon
+    description: 608 bearing presses in snugly and doesn't fall out when inverted
+      (tested at 22.29 mm)
+- id: c2
+  part: wheel
+  feature: web centre hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - web_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: bolt and bearing inner races pass through the 14 mm hole without
+      touching the web
+manual:
+- n: '1'
+  text: Print the wheel flat on the bed with no supports (PLA, 0.2 mm layers, about
+    4 walls, 20-30% infill for strength).
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into each pocket (one from each face) until it bottoms
+    on the centre web. Press it in by hand or with a vise, pushing on the outer race
+    only. Each bearing should stand about 0.3 mm proud of the wheel face.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: Thread the M8 bolt through the bracket with a washer, then through both bearings'
+    inner races, then a second washer, and fasten. Use the locknut if the bolt does
+    not thread into the bracket. Tighten only until the bearings' inner races are
+    clamped between the washers. The washers should touch only the inner races and
+    the bracket, not the wheel. Check that the wheel spins freely.
+  parts: []
+  hardware:
+  - bolt
+  - washer
+  - locknut
+  tool: M8 wrench / hex key
+- n: '4'
+  text: Rehang the door. If the bracket gap is under about 19.5 mm, the washers may
+    not fit. In that case leave out one or both and check that the wheel doesn't rub.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

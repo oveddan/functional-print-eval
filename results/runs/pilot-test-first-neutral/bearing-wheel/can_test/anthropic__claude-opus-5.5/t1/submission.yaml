@@ -1,0 +1,237 @@
+task: bearing-wheel
+note: 608 bearing seats are sized from the test print (22.1 mm seats were snug). The
+  tread profile, bracket gap and bolt length weren't measured, so the tread is flat
+  and the bolt length is a guess.
+questions:
+- text: Does the old wheel have a groove in its tread (for a ridged track), or is
+    it flat? This design uses a flat tread with chamfered edges.
+  answer: null
+- text: How wide is the gap in the bracket and how thick are its arms? The M8x35 bolt
+    assumes about 2 mm arms.
+  answer: null
+params:
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: re-measured with flat jaws, ~22; 608 nominal 22.000
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  inner_race_od:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 inner ring land ~12 mm; spacers stay under this so they don't touch
+      the shields
+  seat_fit:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: measured
+    note: 'coupon: 22.09 seat was snug and held upside down'
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 50'
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 16'
+  lip_bore:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: lip supports outer race only (outer race ID ~19)
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear_d:
+    value: 8.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  side_spacer_t:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    lip=p.wheel_w-2*p.bearing_w\n    seat=p.bearing_od+2*p.seat_fit\n\
+    \    w=cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w)\n    w=w.faces('>Z').edges().chamfer(p.edge_chamfer)\n\
+    \    w=w.faces('<Z').edges().chamfer(p.edge_chamfer)\n    w=w.cut(cq.Workplane('XY').circle(seat/2).extrude(p.bearing_w))\n\
+    \    w=w.cut(cq.Workplane('XY').workplane(offset=p.bearing_w+lip).circle(seat/2).extrude(p.bearing_w))\n\
+    \    w=w.cut(cq.Workplane('XY').circle(p.lip_bore/2).extrude(p.wheel_w))\n   \
+    \ return w"
+  print_orientation: flat on one face, axle vertical
+  use_orientation: axle horizontal through the door bracket
+- id: center_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    lip=p.wheel_w-2*p.bearing_w\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.bolt_clear_d/2).extrude(lip)"
+  print_orientation: flat
+  use_orientation: on the bolt between the two bearings' inner races
+- id: side_spacer_1
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.bolt_clear_d/2).extrude(p.side_spacer_t)"
+  print_orientation: flat
+  use_orientation: on the bolt between bearing inner race and bracket
+- id: side_spacer_2
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.bolt_clear_d/2).extrude(p.side_spacer_t)"
+  print_orientation: flat
+  use_orientation: on the bolt between bearing inner race and bracket
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: side_spacer_1
+    feature: bore
+    role: clearance
+  - part: center_spacer
+    feature: bore
+    role: clearance
+  - part: side_spacer_2
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: door roller bracket arms (thickness unmeasured)
+criteria:
+- id: bearing_seat
+  part: wheel
+  feature: bearing pockets
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - seat_fit
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: 22.09 seat snug, held upside down
+- id: bolt_clear
+  part: center_spacer
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: ''
+- id: fits_bracket
+  part: wheel
+  feature: overall width + side spacers (19 mm)
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - side_spacer_t
+  check:
+    method: measure
+    ref: null
+    description: check the stack fits the bracket gap; leave out side spacers if it's
+      tight
+manual:
+- n: '1'
+  text: Print the wheel flat on one face at 0.2 mm, 4 walls, 40% infill (the ledge
+    in the middle of the bore is a short overhang and prints fine without supports).
+    Print the three spacer rings flat.
+  parts:
+  - wheel
+  - center_spacer
+  - side_spacer_1
+  - side_spacer_2
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into each side of the wheel until it sits on the middle
+    ledge. Push on the outer ring only. Squeezing them in a vise between two flat
+    pieces of wood works well. Both bearings should end up flush with the wheel faces.
+  parts:
+  - wheel
+  hardware: []
+  tool: vise or clamp
+- n: '3'
+  text: Drop the center spacer into the wheel bore so it sits between the two bearings'
+    inner rings. The bolt will hold it in line.
+  parts:
+  - center_spacer
+  - wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Put a washer on the bolt, then pass the bolt through the first bracket arm,
+    a side spacer, the wheel, the second side spacer, and the second arm. If the bracket
+    gap is narrower than 19 mm, leave out one or both side spacers.
+  parts:
+  - side_spacer_1
+  - side_spacer_2
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  tool: null
+- n: '5'
+  text: Put the second washer and the lock nut on. Tighten until the bracket is clamped
+    but the wheel still spins freely. The spacers press only on the inner rings, so
+    the bolt can be firm.
+  parts: []
+  hardware:
+  - washer
+  - locknut
+  tool: 6 mm hex key + 13 mm spanner

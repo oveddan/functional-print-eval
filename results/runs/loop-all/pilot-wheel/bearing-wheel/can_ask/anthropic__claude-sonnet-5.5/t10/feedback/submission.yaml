@@ -1,0 +1,548 @@
+task: bearing-wheel
+note: 'Change from round 1: the wheel is now two 8 mm halves printed joining-face
+  down. This removes the 22 mm bridge over the bottom bearing pocket that printed
+  badly (loose loops, hole partly closed). The halves are joined with 4 M3x12 screws
+  and nuts. The bearing pocket stays at 22.09 mm, which your coupon showed is a snug
+  press fit. The spacers are unchanged. PLA can creep under a heavy door, so check
+  the wheel after a few weeks. PETG would be better if you can print it.'
+questions:
+- text: 'What profile is the track: flat, V, or a round groove? I still assumed a
+    plain flat tread.'
+  answer: null
+- text: How wide is the free gap in the bracket, and how thick is the metal? I still
+    assumed an M8x50 bolt.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide; now two 8 mm halves
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: measured about 22; 608 nominal 22.000
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: measured about 7; 608 nominal 7
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M8 shank measured about 8
+  pocket_clearance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'Printed 22.09 mm seat on your coupon: bearing goes in snug and holds upside
+      down. 21.99 would not go in, 22.19 was looser. Kept at 0.1.'
+  web_bore:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: hole through each 1 mm web; clears the 608 inner race shoulder (~12 mm)
+  center_spacer_len:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: total web (2 mm, 1 mm per half) + 0.2 so inner races sit just off the web
+  center_spacer_od:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  end_spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: inside the inner race face so washer/bracket never touches the spinning
+      outer race
+  end_spacer_len:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tread_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer only on the outer face edge of each half
+  bolt_len:
+    value: 50
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: bracket gap/thickness unknown; stack 20.2 mm + 2 washers 3.2 + lock nut
+      8 = 31.4 mm
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height, for the join screws
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  m3_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_head_d:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_head_h:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  screw_circle_r:
+    value: 17.5
+    unit: mm
+    kind: design
+    source: design
+    note: radius of the 4 M3 join screws, in the rim between the bearing pocket (r
+      11) and the tread (r 25)
+  screw_hole_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: added to M3 diameter for through holes
+  head_cb_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: added to M3 head diameter for counterbore
+  nut_pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: added to nut across-flats and height for the hex pocket
+  coupon_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pocket_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel_a
+  role: final
+  material: PLA (black), 4 perimeters, 30% gyroid infill
+  code: "def build(p):\n    h = p.wheel_w/2\n    r = p.wheel_od/2\n    web = h - p.bearing_w\n\
+    \    pd = p.bearing_od + p.pocket_clearance\n    R = p.screw_circle_r\n    pts\
+    \ = [(R, 0), (0, R), (-R, 0), (0, -R)]\n    body = cq.Workplane('XY').circle(r).extrude(h).faces('>Z').chamfer(p.tread_chamfer)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=web).circle(pd/2).extrude(p.bearing_w\
+    \ + 1)\n    bore = cq.Workplane('XY').circle(p.web_bore/2).extrude(h)\n    holes\
+    \ = cq.Workplane('XY').pushPoints(pts).circle((p.m3_d + p.screw_hole_clear)/2).extrude(h)\n\
+    \    cb = (cq.Workplane('XY').workplane(offset=h - p.m3_head_h - 0.2)\n      \
+    \    .pushPoints(pts).circle((p.m3_head_d + p.head_cb_clear)/2).extrude(p.m3_head_h\
+    \ + 1.2))\n    return body.cut(pocket).cut(bore).cut(holes).cut(cb)\n"
+  print_orientation: flat joining face (the web side) on the bed, bearing pocket opening
+    upward. Nothing needs bridging.
+  use_orientation: one half of the wheel; joined face to face with wheel_b, axis along
+    the bolt
+- id: wheel_b
+  role: final
+  material: PLA (black), 4 perimeters, 30% gyroid infill
+  code: "def build(p):\n    h = p.wheel_w/2\n    r = p.wheel_od/2\n    web = h - p.bearing_w\n\
+    \    pd = p.bearing_od + p.pocket_clearance\n    R = p.screw_circle_r\n    pts\
+    \ = [(R, 0), (0, R), (-R, 0), (0, -R)]\n    body = cq.Workplane('XY').circle(r).extrude(h).faces('>Z').chamfer(p.tread_chamfer)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=web).circle(pd/2).extrude(p.bearing_w\
+    \ + 1)\n    bore = cq.Workplane('XY').circle(p.web_bore/2).extrude(h)\n    holes\
+    \ = cq.Workplane('XY').pushPoints(pts).circle((p.m3_d + p.screw_hole_clear)/2).extrude(h)\n\
+    \    nd = (p.nut_af + p.nut_pocket_clear) / 0.8660254\n    nd_depth = p.nut_h\
+    \ + p.nut_pocket_clear\n    nuts = (cq.Workplane('XY').workplane(offset=h - nd_depth)\n\
+    \            .pushPoints(pts).polygon(6, nd).extrude(nd_depth + 1))\n    return\
+    \ body.cut(pocket).cut(bore).cut(holes).cut(nuts)\n"
+  print_orientation: flat joining face (the web side) on the bed, bearing pocket opening
+    upward. Nothing needs bridging.
+  use_orientation: other half of the wheel; joined face to face with wheel_a
+- id: spacer_center
+  role: final
+  material: PLA (black)
+  code: "def build(p):\n    return (cq.Workplane('XY').circle(p.center_spacer_od/2)\n\
+    \            .circle((p.bolt_d+p.spacer_bolt_clearance)/2).extrude(p.center_spacer_len))\n"
+  print_orientation: flat on bed, tube axis vertical
+  use_orientation: on the bolt between the two bearings' inner races, inside the wheel
+    web
+- id: spacer_end
+  role: final
+  material: PLA (black) - print 2 copies
+  code: "def build(p):\n    return (cq.Workplane('XY').circle(p.end_spacer_od/2)\n\
+    \            .circle((p.bolt_d+p.spacer_bolt_clearance)/2).extrude(p.end_spacer_len))\n"
+  print_orientation: flat on bed, tube axis vertical
+  use_orientation: on the bolt, one each side outside the bearings, against the inner
+    races
+- id: fit_coupon
+  role: coupon
+  material: PLA (black)
+  code: "def build(p):\n    pitch = p.bearing_od + 8\n    plate = cq.Workplane('XY').rect(pitch*3,\
+    \ p.bearing_od+6).extrude(p.coupon_h)\n    for i, d in enumerate((-0.1, 0.0, 0.1)):\n\
+    \        x = (i-1)*pitch\n        pk = (cq.Workplane('XY').workplane(offset=p.coupon_h-p.coupon_pocket_depth)\n\
+    \              .center(x, 0).circle((p.bearing_od+p.pocket_clearance+d)/2)\n \
+    \             .extrude(p.coupon_pocket_depth))\n        plate = plate.cut(pk)\n\
+    \    return plate\n"
+  print_orientation: flat on bed, pockets open upward
+  use_orientation: test piece only (already printed; the 22.09 mm pocket was the right
+    fit)
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: join_screw
+  ref: ISO 4762 M3x12
+  qty: 4
+- id: join_nut
+  ref: ISO 4032 M3
+  qty: 4
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -8.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel_a
+    feature: web_bore
+    role: clearance
+  - part: spacer_center
+    feature: bore
+    role: clearance
+  - part: spacer_end
+    feature: bore
+    role: clearance
+  - part: spacer_end
+    feature: end_face
+    role: washer
+  nut: locknut
+  external: null
+- id: join1
+  fastener: join_screw
+  axis_origin:
+  - 17.5
+  - 0.0
+  - 4.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_a
+    feature: screw_counterbore
+    role: head_seat
+  - part: wheel_a
+    feature: screw_hole
+    role: clearance
+  - part: wheel_b
+    feature: screw_hole
+    role: clearance
+  - part: wheel_b
+    feature: nut_pocket
+    role: nut_pocket
+  nut: join_nut
+  external: null
+- id: join2
+  fastener: join_screw
+  axis_origin:
+  - 0.0
+  - 17.5
+  - 4.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_a
+    feature: screw_counterbore
+    role: head_seat
+  - part: wheel_a
+    feature: screw_hole
+    role: clearance
+  - part: wheel_b
+    feature: screw_hole
+    role: clearance
+  - part: wheel_b
+    feature: nut_pocket
+    role: nut_pocket
+  nut: join_nut
+  external: null
+- id: join3
+  fastener: join_screw
+  axis_origin:
+  - -17.5
+  - 0.0
+  - 4.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_a
+    feature: screw_counterbore
+    role: head_seat
+  - part: wheel_a
+    feature: screw_hole
+    role: clearance
+  - part: wheel_b
+    feature: screw_hole
+    role: clearance
+  - part: wheel_b
+    feature: nut_pocket
+    role: nut_pocket
+  nut: join_nut
+  external: null
+- id: join4
+  fastener: join_screw
+  axis_origin:
+  - 0.0
+  - -17.5
+  - 4.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_a
+    feature: screw_counterbore
+    role: head_seat
+  - part: wheel_a
+    feature: screw_hole
+    role: clearance
+  - part: wheel_b
+    feature: screw_hole
+    role: clearance
+  - part: wheel_b
+    feature: nut_pocket
+    role: nut_pocket
+  nut: join_nut
+  external: null
+criteria:
+- id: c1
+  part: wheel_a
+  feature: bearing_pocket
+  relation: contains
+  hardware: bearing
+  clearance_mm: 0.1
+  params:
+  - bearing_od
+  - pocket_clearance
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Your coupon: the 22.09 mm pocket held a bearing snugly. The same
+      pocket is used in both halves.'
+- id: c2
+  part: wheel_b
+  feature: bearing_pocket
+  relation: contains
+  hardware: bearing
+  clearance_mm: 0.1
+  params:
+  - bearing_od
+  - pocket_clearance
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Same pocket as wheel_a.
+- id: c3
+  part: wheel_a
+  feature: web_bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - web_bore
+  check:
+    method: measure
+    ref: null
+    description: Bearing inner race shoulder (about 12 mm) sits freely in the 13 mm
+      web bore.
+- id: c4
+  part: spacer_end
+  feature: end_face
+  relation: supports
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - end_spacer_od
+  - end_spacer_len
+  check:
+    method: measure
+    ref: null
+    description: End spacers touch only the inner race; the wheel spins freely by
+      hand after tightening.
+- id: c5
+  part: spacer_center
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - spacer_bolt_clearance
+  check:
+    method: measure
+    ref: null
+    description: M8 bolt slides through the spacer.
+- id: c6
+  part: wheel_b
+  feature: nut_pocket
+  relation: seats
+  hardware: join_nut
+  clearance_mm: 0.1
+  params:
+  - nut_af
+  - nut_h
+  - nut_pocket_clear
+  check:
+    method: measure
+    ref: null
+    description: M3 nut drops into the hex pocket and does not spin when the screw
+      is tightened.
+- id: c7
+  part: wheel_a
+  feature: screw_counterbore
+  relation: seats
+  hardware: join_screw
+  clearance_mm: null
+  params:
+  - m3_head_d
+  - m3_head_h
+  - head_cb_clear
+  check:
+    method: measure
+    ref: null
+    description: M3 screw head sits below the wheel face.
+manual:
+- n: '1'
+  text: Print wheel_a and wheel_b with the flat joining face down (pocket opening
+    up, no supports), 4 perimeters, about 30% infill. Print 1 spacer_center and 2
+    spacer_end flat on the bed.
+  parts:
+  - wheel_a
+  - wheel_b
+  - spacer_center
+  - spacer_end
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into the pocket of each wheel half until it bottoms
+    out. This is the fit you tested on the coupon. Push with flat, even pressure on
+    the outer race (a vise with flat blocks works). Don't hammer.
+  parts:
+  - wheel_a
+  - wheel_b
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: Drop an M3 nut into each of the four hex pockets in wheel_b.
+  parts:
+  - wheel_b
+  hardware:
+  - join_nut
+  tool: null
+- n: '4'
+  text: Put the center spacer in the web bore of wheel_b. Lay wheel_a on wheel_b,
+    joining faces together, bolt-hole circles lined up. Push an M3x12 screw into each
+    counterbore, through both halves and into the nut. Tighten the 4 screws evenly
+    until the halves are firmly together. Don't overtighten, because PLA can crack.
+  parts:
+  - wheel_a
+  - wheel_b
+  - spacer_center
+  hardware:
+  - join_screw
+  - join_nut
+  tool: 2.5 mm hex key
+- n: '5'
+  text: Check that the M8 bolt slides through the bearings and spacer and the wheel
+    spins freely.
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: 'Mount: put an end spacer on each side of the wheel against the bearing inner
+    races. Pass the bolt through the bracket with a washer on each side of the bracket,
+    with the wheel stack in the mounting position. Tighten the lock nut until there
+    is no side play. The wheel must still spin freely by hand. Back off a little if
+    it drags.'
+  parts:
+  - spacer_end
+  hardware:
+  - bolt
+  - washer
+  - locknut
+  tool: 13 mm spanner and 6 mm hex key
+- n: '7'
+  text: Hang the door and test it. If the wheel rubs the bracket, add a washer on
+    the bolt or reprint the end spacers a little longer.
+  parts: []
+  hardware: []
+  tool: null

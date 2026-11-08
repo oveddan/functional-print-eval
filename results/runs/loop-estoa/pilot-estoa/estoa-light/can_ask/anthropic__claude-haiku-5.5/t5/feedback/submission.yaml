@@ -1,0 +1,579 @@
+task: estoa-light
+note: ''
+questions:
+- text: Disc thickness (the board itself, edge-on). Assumed 1.6 mm; it sets the M3x8
+    screw length.
+  answer: null
+- text: Perfboard thickness. Assumed 1.6 mm; it sets the post height and the box depth.
+  answer: null
+- text: Which way is the ESP32 USB port offset (3.99 mm)? Assumed +x of the perfboard.
+    If wrong, the USB cutout shifts.
+  answer: null
+params:
+  box_w:
+    value: 64
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  box_h:
+    value: 84
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  box_d:
+    value: 31.1
+    unit: mm
+    kind: design
+    source: design
+    note: post 8 + perfboard 1.6 + ESP32 16 + 1.5 clearance + roof 4
+  wall_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  front_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: roof, holds the 4 mm M3x4x5 insert
+  post_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: top of the perfboard posts, measured from the wall
+  post_d:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  m2_pilot_d:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tab_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: hanging tab thickness; lies flat on the wall
+  perf_l:
+    value: 70
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  perf_w:
+    value: 50
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  perf_t:
+    value: 1.6
+    unit: mm
+    kind: world
+    source: guessed
+    note: not measured; asked
+  perf_hole_d:
+    value: 2.4
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  perf_hole_inset:
+    value: 2.1
+    unit: mm
+    kind: world
+    source: measured
+    note: 0.9 mm edge gap + 1.2 mm radius
+  esp_h:
+    value: 16
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  esp_port_bottom:
+    value: 12.54
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  esp_port_h:
+    value: 3.2
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  esp_port_w:
+    value: 10.67
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  esp_port_x_off:
+    value: 3.99
+    unit: mm
+    kind: world
+    source: measured
+    note: off the ESP32 centreline; assumed toward +x of the perfboard, not confirmed
+  esp_port_edge:
+    value: 4.8
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  esp_edge_to_board:
+    value: 7.53
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  disc_d:
+    value: 241.6
+    unit: mm
+    kind: world
+    source: measured
+    note: derived from edge-to-hole and hole-to-hole readings
+  disc_hole_pitch:
+    value: 33.5
+    unit: mm
+    kind: world
+    source: measured
+    note: 30.2 gap + 3.3 hole
+  disc_hole_d:
+    value: 3.3
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  disc_t:
+    value: 1.6
+    unit: mm
+    kind: world
+    source: guessed
+    note: not measured; asked
+  insert_hole_d:
+    value: 4.3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_len:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  wall_head_d:
+    value: 9
+    unit: mm
+    kind: world
+    source: asked
+    note: ''
+  wall_gap:
+    value: 3.5
+    unit: mm
+    kind: world
+    source: asked
+    note: ''
+  wall_shank_d:
+    value: 4.2
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  hang_spacing:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hang_y:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: keyhole centre height; tabs sit above the box top
+  keyhole_d:
+    value: 9.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_w:
+    value: 4.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_len:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  usb_cut_w:
+    value: 12.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  usb_cut_h:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  wire_slot_w:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  wire_slot_y:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: box
+  role: final
+  material: PLA, matte white
+  code: "import cadquery as cq\n\ndef build(p):\n    W, H, D = p.box_w, p.box_h, p.box_d\n\
+    \    t, ft = p.wall_t, p.front_t\n    body = cq.Workplane('XY').box(W, H, D, centered=(True,\
+    \ True, False))\n    # open at the back (z=0): the wall closes it\n    cav = cq.Workplane('XY').box(W\
+    \ - 2*t, H - 2*t, D - ft + 1, centered=(True, True, False)).translate((0, 0, -1))\n\
+    \    body = body.cut(cav)\n    cx = p.perf_w/2 - p.perf_hole_inset\n    cy = p.perf_l/2\
+    \ - p.perf_hole_inset\n    for sx in (-1, 1):\n        for sy in (-1, 1):\n  \
+    \          x, y = sx*cx, sy*cy\n            a = sx*(cx - p.post_d/2)\n       \
+    \     b = sx*(W/2 - t + 1)\n            blk = cq.Workplane('XY').box(abs(b - a),\
+    \ p.post_d, p.post_h, centered=(True, True, False)).translate(((a + b)/2, y, 0))\n\
+    \            body = body.union(blk)\n            pilot = cq.Workplane('XY').circle(p.m2_pilot_d/2).extrude(p.post_h\
+    \ + 2).translate((x, y, -1))\n            body = body.cut(pilot)\n    # hanging\
+    \ tabs above the box top, flat on the wall\n    y0 = H/2 - 4\n    y1 = p.hang_y\
+    \ + 6\n    for sx in (-1, 1):\n        x = sx*p.hang_spacing/2\n        tab =\
+    \ cq.Workplane('XY').box(16, y1 - y0, p.tab_t, centered=(True, False, False)).translate((x,\
+    \ y0, 0))\n        big = cq.Workplane('XY').circle(p.keyhole_d/2).extrude(p.tab_t\
+    \ + 2).translate((x, p.hang_y, -1))\n        slot = cq.Workplane('XY').box(p.slot_w,\
+    \ p.slot_len, p.tab_t + 2, centered=(True, False, False)).translate((x, p.hang_y\
+    \ - p.slot_len, -1))\n        rnd = cq.Workplane('XY').circle(p.slot_w/2).extrude(p.tab_t\
+    \ + 2).translate((x, p.hang_y - p.slot_len, -1))\n        tab = tab.cut(big).cut(slot).cut(rnd)\n\
+    \        body = body.union(tab)\n    # heat-set insert holes in the roof\n   \
+    \ for sx in (-1, 1):\n        h = cq.Workplane('XY').circle(p.insert_hole_d/2).extrude(ft\
+    \ + 2).translate((sx*p.disc_hole_pitch/2, 0, D - ft - 1))\n        body = body.cut(h)\n\
+    \    # wire slot near top of roof\n    ws = cq.Workplane('XY').box(p.wire_slot_w,\
+    \ 6, 10).translate((0, p.wire_slot_y, D - 2))\n    body = body.cut(ws)\n    #\
+    \ USB-C access in bottom wall\n    port_z = p.post_h + p.perf_t + p.esp_port_bottom\
+    \ + p.esp_port_h/2\n    usb = cq.Workplane('XY').box(p.usb_cut_w, 8, p.usb_cut_h).translate((p.esp_port_x_off,\
+    \ -H/2 + 2, port_z))\n    body = body.cut(usb)\n    return body\n"
+  print_orientation: back (open rim, z=0) on the bed; roof support removable through
+    the open back
+  use_orientation: back flat against the wall, roof facing out
+hardware:
+- id: m3_screw
+  ref: ISO 4762 M3x8
+  qty: 2
+- id: insert
+  ref: insert M3x4x5
+  qty: 2
+- id: m2_self_tap
+  ref: own:m2x6-self-tapping
+  qty: 4
+- id: led_disk
+  ref: own:led-disk
+  qty: 1
+- id: perfboard
+  ref: own:perfboard
+  qty: 1
+- id: esp32
+  ref: own:esp32
+  qty: 1
+joints:
+- id: disc_L
+  fastener: m3_screw
+  axis_origin:
+  - 16.75
+  - 0.0
+  - 32.7
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: insert hole +x
+    role: insert
+  nut: null
+  external: null
+- id: disc_R
+  fastener: m3_screw
+  axis_origin:
+  - -16.75
+  - 0.0
+  - 32.7
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: insert hole -x
+    role: insert
+  nut: null
+  external: null
+criteria:
+- id: usb_access
+  part: box
+  feature: USB-C cutout in bottom wall
+  relation: clears
+  hardware: esp32
+  clearance_mm: 0.5
+  params:
+  - esp_port_x_off
+  - esp_port_bottom
+  - esp_port_h
+  - esp_h
+  - usb_cut_w
+  - usb_cut_h
+  check:
+    method: measure
+    ref: null
+    description: Plug a USB-C charger in once the box is closed
+- id: disc_inserts
+  part: box
+  feature: M3 inserts in roof
+  relation: seats
+  hardware: insert
+  clearance_mm: null
+  params:
+  - insert_hole_d
+  - disc_hole_pitch
+  check:
+    method: none
+    ref: null
+    description: ''
+- id: disc_screws
+  part: box
+  feature: disc screw holes
+  relation: engages
+  hardware: m3_screw
+  clearance_mm: null
+  params:
+  - m3_len
+  - disc_t
+  check:
+    method: none
+    ref: null
+    description: ''
+- id: perfboard_posts
+  part: box
+  feature: perfboard corner posts
+  relation: supports
+  hardware: m2_self_tap
+  clearance_mm: null
+  params:
+  - perf_hole_inset
+  - post_h
+  - m2_pilot_d
+  check:
+    method: none
+    ref: null
+    description: ''
+- id: wall_keyholes
+  part: box
+  feature: keyhole tabs above box top
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - hang_spacing
+  - hang_y
+  - keyhole_d
+  - slot_w
+  - wall_head_d
+  - wall_gap
+  - tab_t
+  check:
+    method: measure
+    ref: null
+    description: Check the head fits the keyhole and the box hangs flat
+manual:
+- n: '1'
+  text: Print the box with its open back on the bed. Support is needed under the roof
+    inside the box; pull it out through the open back after printing.
+  parts:
+  - box
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one M3x4x5 heat-set insert into each of the two 4.3 mm holes in the
+    roof, from inside the box.
+  parts:
+  - box
+  hardware:
+  - insert
+  tool: soldering iron
+- n: '3'
+  text: Set the perfboard with the ESP32 on its top face onto the four corner posts,
+    ESP32 side toward the roof, USB-C port toward the bottom wall. Fix each corner
+    with an M2x6 self-tapping screw through the board's corner hole, from the ESP32
+    side.
+  parts:
+  - box
+  hardware:
+  - m2_self_tap
+  - perfboard
+  - esp32
+  tool: null
+- n: '4'
+  text: Route the four wires from the perfboard out through the 8 x 6 mm slot near
+    the top of the roof and across the back of the disc to its input connector at
+    12 o'clock.
+  parts: []
+  hardware:
+  - led_disk
+  tool: null
+- n: '5'
+  text: Lay the disc against the roof so its two 3.3 mm holes line up with the inserts
+    (3 and 9 o'clock). Drive an M3x8 socket head screw through each hole from the
+    LED side into its insert.
+  parts:
+  - box
+  hardware:
+  - m3_screw
+  - led_disk
+  tool: null
+- n: '6'
+  text: 'Drive two #8 wall screws into the wall 40 mm apart, heads about 3.5 mm out.
+    Slide the keyholes in the two top tabs over the heads, then drop the box so the
+    heads sit in the narrow slots.'
+  parts:
+  - box
+  hardware: []
+  tool: null
+- n: '7'
+  text: Plug the USB-C charger into the ESP32 through the bottom-wall cutout.
+  parts:
+  - box
+  hardware:
+  - esp32
+  tool: null
+assembly:
+  parts:
+  - origin:
+    - 0.0
+    - 0.0
+    - 0.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    part: box
+  items:
+  - origin:
+    - 0.0
+    - 0.0
+    - 31.1
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: led_disk
+  - origin:
+    - 0.0
+    - 0.0
+    - 9.6
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: perfboard
+  - origin:
+    - 3.99
+    - -32.27
+    - 23.74
+    x_axis:
+    - 0.0
+    - -1.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: esp32
+  screws:
+  - item: m3_screw
+    head:
+    - 16.75
+    - 0.0
+    - 32.7
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m3_screw
+    head:
+    - -16.75
+    - 0.0
+    - 32.7
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m2_self_tap
+    head:
+    - 22.9
+    - 32.9
+    - 9.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m2_self_tap
+    head:
+    - -22.9
+    - 32.9
+    - 9.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m2_self_tap
+    head:
+    - 22.9
+    - -32.9
+    - 9.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: m2_self_tap
+    head:
+    - -22.9
+    - -32.9
+    - 9.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0

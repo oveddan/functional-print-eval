@@ -1,0 +1,452 @@
+task: bearing-wheel
+note: 'Replaces the snapped 50 x 16 mm roller: one wheel carrying two 608 bearings
+  press-fitted into printed pockets, rolling on the existing M8 bolt in the hanger
+  fork. The hanger gap and track profile could not be measured, so the margin is built
+  into the geometry: total width across the bearings equals the old wheel''s 16 mm;
+  the bearings sit 0.15 mm proud of the plastic so the clamp load goes into steel,
+  not PLA; the rim is dished 0.7 mm so it cannot rub the fork plates or channel walls;
+  a 2.5 x 1.5 mm centre groove covers a track with a rib as well as a flat floor.
+  Print the fit coupon first - it settles whether the 21.9 mm seat is a real press
+  fit on their machine. Reuse the original M8 bolt if it reaches past the fork with
+  the nut; otherwise ISO 4762 M8x40. One thing I could not design around: there is
+  no axle sleeve in the hardware list and a printed sleeve cannot pass through an
+  8 mm bearing bore, so the bolt head and nut necessarily react on the bearing faces
+  - hence "tighten only until play disappears".'
+questions: []
+params:
+  axle_bore_d:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: axle_d + 0.6 so the threaded shank turns freely inside the wheel and never
+      rubs printed plastic
+  axle_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Person measured the bolt shank at 8 mm (M8)
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured by the person; matches the M8 axle
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured by the person on their 608s; 608ZZ nominal OD 22.000 -0.008
+  bearing_proud:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket depth = bearing_width - 0.15, so each bearing stands 0.15 mm PROUD
+      of the plastic hub face and the fork plates clamp steel, never the print
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured by the person; 608 nominal width 7.0
+  coupon_len:
+    value: 62
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pocket_dia_b:
+    value: 21.75
+    unit: mm
+    kind: design
+    source: design
+    note: 'Second, tighter test pocket: if the bearing falls out of 21.90 but grips
+      21.75, the wheel seat needs adhesive on the outer race'
+  coupon_thk:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Leaves a 2.15 mm floor under the 6.85 mm test pockets
+  coupon_wid:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  groove_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Tread centre groove depth, to clear a raised rib in the track if their track
+      has one
+  groove_width:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Tread centre groove width at the groove floor
+  hub_od:
+    value: 27.4
+    unit: mm
+    kind: design
+    source: design
+    note: 'Raised central boss carrying the bearing seats: 2.75 mm wall around the
+      21.9 mm pocket and a 2.75 mm wide first-layer ring for bed adhesion'
+  hub_width:
+    value: 15.7
+    unit: mm
+    kind: design
+    source: design
+    note: Width of the printed plastic between the two hub faces; + 2 x bearing_proud
+      = 16.0 mm overall
+  old_wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel was 'about 16 mm wide'; total width across the two bearing faces
+      matches this so it drops into the same fork gap
+  pocket_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree lead-in at each pocket mouth so the bearing starts square and
+      the race is not shaved on entry
+  pocket_dia:
+    value: 21.9
+    unit: mm
+    kind: design
+    source: design
+    note: bearing_od - 0.10 mm diametral interference for a press fit in PLA; verified
+      on the coupon before the wheel is trusted
+  rim_relief:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: Tread band dished back 0.7 mm per side (band width 14.3 mm) so the rim cannot
+      rub the fork plates or the channel walls
+  tread_chamfer:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree lead-in at both tread edges so the wheel enters the channel without
+      wedging
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel diameter as reported by the person; keeps the door hanging at
+      its original height
+parts:
+- id: wheel
+  role: final
+  material: PLA (their high-speed black PLA), 100% infill
+  code: "def build(p):\n    R   = p.wheel_od / 2.0\n    Wh  = p.hub_width\n    Rh\
+    \  = p.hub_od / 2.0\n    rel = p.rim_relief\n    Rp  = p.pocket_dia / 2.0\n  \
+    \  dep = p.bearing_width - p.bearing_proud\n    lc  = p.pocket_chamfer\n    rb\
+    \  = p.axle_bore_d / 2.0\n    tc  = p.tread_chamfer\n    gw  = p.groove_width\n\
+    \    gd  = p.groove_depth\n    z0 = rel\n    z1 = Wh - rel\n    zc = Wh / 2.0\n\
+    \n    def rev(pts):\n        return cq.Workplane(\"XZ\").polyline([(float(a),\
+    \ float(b)) for a, b in pts]).close().revolve(360, (0, 0, 0), (0, 1, 0))\n\n \
+    \   # meridian section: r along local x, axle direction along local y (= global\
+    \ z, bed at z=0)\n    prof = [(0.0, 0.0), (Rh, 0.0), (Rh, z0), (R - tc, z0), (R,\
+    \ z0 + tc),\n            (R, z1 - tc), (R - tc, z1), (Rh, z1), (Rh, Wh), (0.0,\
+    \ Wh)]\n    out = rev(prof)\n\n    cuts = [\n        cq.Workplane(\"XY\").circle(rb).extrude(Wh),\
+    \                                       # axle bore, clears M8 threads\n     \
+    \   cq.Workplane(\"XY\", (0.0, 0.0, -0.5)).circle(Rp).extrude(dep + 0.5),    \
+    \         # bearing pocket A (bed side)\n        cq.Workplane(\"XY\", (0.0, 0.0,\
+    \ Wh + 0.5)).circle(Rp).extrude(-(dep + 0.5)),      # bearing pocket B (top side)\n\
+    \        rev([(Rp - 0.05, 0.0), (Rp + lc, 0.0), (Rp - 0.05, lc)]),           \
+    \            # lead-in chamfer A\n        rev([(Rp - 0.05, Wh), (Rp + lc, Wh),\
+    \ (Rp - 0.05, Wh - lc)]),                    # lead-in chamfer B\n        rev([(R\
+    \ - gd, zc - gw / 2.0), (R - gd, zc + gw / 2.0),                          # tread\
+    \ centre groove\n             (R + 1.0, zc + gw / 2.0 + gd), (R + 1.0, zc - gw\
+    \ / 2.0 - gd)]),\n    ]\n    for c in cuts:\n        out = out.cut(c)\n    return\
+    \ out\n"
+  print_orientation: Wheel axis vertical, hub face A (flat annular face at z=0, 27.4
+    mm boss) flat on the bed; no supports, 6 mm brim. Pocket A opens onto the bed,
+    pocket B is a top-down hole; the only bridged feature is the 2.0 mm floor between
+    the two pockets over a 21.9 mm void, well inside their 50 mm bridge limit.
+  use_orientation: Wheel axis horizontal along the M8 axle bolt in the hanger fork;
+    50 mm tread rolls in the track, hub faces clamped by the fork plates through the
+    bearing faces.
+- id: fit-coupon
+  role: coupon
+  material: PLA, same spool and same settings as the wheel
+  code: "def build(p):\n    L  = p.coupon_len\n    Wd = p.coupon_wid\n    T  = p.coupon_thk\n\
+    \    dep = p.bearing_width - p.bearing_proud\n    out = cq.Workplane(\"XY\").box(L,\
+    \ Wd, T, centered=(False, False, False))\n    pa = cq.Workplane(\"XY\", (13.0,\
+    \ Wd / 2.0, T + 0.5)).circle(p.pocket_dia / 2.0).extrude(-(dep + 0.5))\n    pb\
+    \ = cq.Workplane(\"XY\", (37.0, Wd / 2.0, T + 0.5)).circle(p.coupon_pocket_dia_b\
+    \ / 2.0).extrude(-(dep + 0.5))\n    bh = cq.Workplane(\"XY\", (53.0, Wd / 2.0,\
+    \ -0.5)).circle(p.axle_bore_d / 2.0).extrude(T + 1.0)\n    for c in (pa, pb, bh):\n\
+    \        out = out.cut(c)\n    return out\n"
+  print_orientation: Flat on the bed, 9 mm thick, both pockets and the through-hole
+    opening upward; no supports. Pocket A is 13 mm from the short end at 21.90 mm
+    (identical to the wheel's seat); pocket B is 21.75 mm; the 8.6 mm hole at the
+    far end tests axle clearance.
+  use_orientation: Test only - read it before pressing bearings into the wheel, then
+    scrap it.
+hardware:
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+- id: axle_bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: locknut_m8
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer_m8
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: axle-bore
+    role: clearance
+  - part: wheel
+    feature: hub-face-a
+    role: head_seat
+  nut: locknut_m8
+  external: 'Door hanger bracket fork: the two plates the old wheel sat between, holes
+    ~8.5 mm. The bolt head and the ISO 10511 M8 lock nut clamp these plates; with
+    ISO 7089 M8 washers under the head and the nut to spread the load.'
+criteria:
+- id: bearing-seat-fit
+  part: wheel
+  feature: bearing-pocket-a
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: null
+  params:
+  - pocket_dia
+  - bearing_od
+  - bearing_width
+  - bearing_proud
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: 'Press a bearing into the 21.90 mm pocket on the coupon: it should
+      need firm thumb pressure, sit square, and stay in when the coupon is turned
+      upside down. If it drops out, use the 21.75 mm pocket result to judge and glue
+      the outer race in the wheel with a bead of cyano or epoxy.'
+- id: clamp-on-steel-not-plastic
+  part: wheel
+  feature: hub-face-a
+  relation: faces
+  hardware: bearing_608
+  clearance_mm: null
+  params:
+  - hub_width
+  - bearing_width
+  - bearing_proud
+  - old_wheel_width
+  check:
+    method: measure
+    ref: null
+    description: 'With both bearings pressed in, measure across the two bearing faces:
+      it must read 16.0 mm (the old wheel''s width) and a straightedge laid across
+      the hub face must show the steel standing about 0.15 mm proud. If the plastic
+      is proud of the steel, the fork plates will pinch the print and the wheel will
+      bind.'
+- id: axle-turns-freely
+  part: wheel
+  feature: axle-bore
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: 0.3
+  params:
+  - axle_bore_d
+  - axle_d
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: 'The 8.6 mm hole on the coupon: the bare bolt, threads and all, must
+      pass through by hand and the wheel must rock on the bolt without the threads
+      touching printed plastic.'
+- id: fits-the-fork
+  part: wheel
+  feature: rim-band
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - hub_width
+  - old_wheel_width
+  - rim_relief
+  check:
+    method: measure
+    ref: null
+    description: 'Lower the wheel into the hanger fork before pressing the bearings
+      in: the 50 mm rim band must drop in without rubbing the plates, and the plates
+      must land on the 27.4 mm boss faces. If the fork is tighter than the old wheel,
+      sand 0.2 mm off both hub faces.'
+- id: ride-height
+  part: wheel
+  feature: tread-band
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - groove_depth
+  check:
+    method: measure
+    ref: null
+    description: Tread diameter 50 mm at the shoulders, same as the old wheel, so
+      the door hangs at its original height. If the door now rubs the head guide,
+      the track has a rib taller than the 1.5 mm groove and the groove needs deepening.
+- id: track-rib-clearance
+  part: wheel
+  feature: tread-groove
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - groove_width
+  - groove_depth
+  check:
+    method: none
+    ref: null
+    description: 'Dry-fit: roll the door and look at where the tread is burnished.
+      Burnishing on both shoulders means the track floor is flat (good); burnishing
+      down the middle means a rib is touching and the groove must be cut deeper with
+      a round file.'
+manual:
+- n: '1'
+  text: 'Print the fit coupon first, flat on the bed, no supports. Use the exact settings
+    you will use for the wheel: 0.2 mm layers, 0.4 mm nozzle, 3 or more perimeters,
+    100% infill, a brim. It is a 62 x 24 x 9 mm plate with two blind bearing pockets
+    (21.90 mm and 21.75 mm, both 6.85 mm deep) and one 8.6 mm through-hole.'
+  parts:
+  - fit-coupon
+  hardware: []
+  tool: printer
+- n: '2'
+  text: 'Test the fit. Press one bearing into the 21.90 mm pocket with your thumb:
+    it should need real pressure and should stay put when you turn the plate upside
+    down over a soft surface. Push the bare bolt through the 8.6 mm hole. Note which
+    pocket gripped and which was loose - that is how the wheel''s seats will behave.'
+  parts:
+  - fit-coupon
+  hardware:
+  - bearing_608
+  - axle_bolt
+  tool: null
+- n: '3'
+  text: 'Print the wheel lying flat: hub face A (the 27.4 mm boss face) down on the
+    bed, wheel axis vertical, 6 mm brim, no supports, 3+ perimeters, 100% infill,
+    0.2 mm layers. If the other hanger on the door is worn too, print a second one
+    now while the spool is loaded - you will need two more bearings and another M8
+    bolt for it.'
+  parts:
+  - wheel
+  hardware: []
+  tool: printer
+- n: '4'
+  text: 'Clean up. Pull the brim away from the two hub faces and out of the bearing
+    pockets. Run the bolt through the wheel''s 8.6 mm axle bore, and through both
+    bearings on their own: everything must slide by hand. If a pocket mouth is burred,
+    clear it with a knife twisted in the 0.6 mm lead-in chamfer - not a drill.'
+  parts:
+  - wheel
+  hardware:
+  - axle_bolt
+  - bearing_608
+  tool: craft knife
+- n: '5'
+  text: 'Press the bearings in with the bolt itself - no press needed. Rest the wheel
+    on the bench with pocket A facing up. Drop the bolt through a bearing, then through
+    the wheel''s centre bore from that pocket side, so the bearing floats on the bolt
+    inside the pocket. Put a washer and the nut on the protruding end and tighten:
+    it draws the bearing straight in until its inner end hits the printed pocket floor
+    and stops. Loosen, remove, repeat for the other side. Each bearing should end
+    up with its face about 0.15 mm PROUD of the plastic boss.'
+  parts:
+  - wheel
+  hardware:
+  - bearing_608
+  - axle_bolt
+  - washer_m8
+  - locknut_m8
+  tool: 13 mm spanner
+- n: '6'
+  text: 'Check the one thing that decides whether this rolls: measure across the two
+    bearing faces, it should read 16.0 mm, and lay a ruler or a coin across a hub
+    face - the steel must touch the ruler and the plastic must sit a hair below it.
+    If the plastic is proud, the fork will pinch the print instead of the bearing,
+    so press that bearing fully home again, or shave 0.1-0.2 mm off the hub face with
+    sandpaper on glass.'
+  parts:
+  - wheel
+  hardware:
+  - bearing_608
+  tool: calipers or ruler
+- n: '7'
+  text: Dry-fit into the door hanger fork. Slip the wheel between the two plates and
+    check the plates land squarely on the two bearing faces, not on the 50 mm rim,
+    and that the wheel spins when you flick it. If the fork gap is tighter than the
+    old wheel was, sand 0.2 mm off both hub faces and re-check.
+  parts:
+  - wheel
+  hardware:
+  - axle_bolt
+  tool: null
+- n: '8'
+  text: 'Check the tread against the track before loading the door. Roll the door
+    and look at the shiny wear band on the tread. Two shiny bands near the edges with
+    a clean stripe between them means a centre rib is clearing the groove. One shiny
+    band down the middle means the rib is bottoming in the groove: deepen it with
+    a round file or a 3 mm drill bit held in the tread, then re-check. If the door
+    rubs the head guide, the print has shrunk under 50 mm across the tread - reprint
+    rather than shim it.'
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '9'
+  text: 'Assemble. Bolt, one ISO 7089 M8 washer, hanger plate, wheel in the fork,
+    hanger plate, second washer, ISO 10511 M8 nylon-insert lock nut. Tighten only
+    until the free play in the wheel just disappears, then stop - over-tightening
+    squeezes the bearing faces against the bracket and the wheel feels sluggish. Flick
+    it: it should spin several times and coast. If it feels braked, back the nut off
+    a quarter turn at a time until it coasts.'
+  parts:
+  - wheel
+  hardware:
+  - axle_bolt
+  - washer_m8
+  - locknut_m8
+  tool: 13 mm spanner
+- n: '10'
+  text: 'Hang the door, cycle it ten times, then check the wheel still coasts and
+    the nut has not backed off. Re-check after a week: PLA creeps slowly where a bearing
+    presses on it, so if the wheel turns notchy again, ease the lock nut back a quarter
+    turn. If a bearing ever works loose in its pocket, clean the pocket, put two drops
+    of cyano or epoxy on the OUTER race only, and press it back in.'
+  parts:
+  - wheel
+  hardware:
+  - locknut_m8
+  - bearing_608
+  tool: 13 mm spanner

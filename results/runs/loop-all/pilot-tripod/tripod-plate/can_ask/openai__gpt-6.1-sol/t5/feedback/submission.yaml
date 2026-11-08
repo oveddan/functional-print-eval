@@ -1,0 +1,261 @@
+task: tripod-plate
+note: Unchanged unloaded fit-test geometry. No fit results were available, so there
+  is no basis for adjusting dimensions or approving camera use. Do not mount a camera
+  on this print. A nominal 38 mm clamp width does not verify dovetail compatibility.
+  Use the metal salvaged bolt, never a printed camera screw, in any later validated
+  design. Obtain the correct manufacturer's plate if fit and socket engagement cannot
+  be verified.
+questions:
+- text: Did both clamp jaws seat on the angled flanks, with tightening travel remaining
+    and no rocking or sliding?
+  answer: null
+- text: Did the metal bolt head seat flat, clear the pocket and remain accessible?
+  answer: null
+- text: What are the head model, jaw profile, camera socket usable depth and camera/lens
+    load?
+  answer: null
+params:
+  plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported accepted plate width; exact profile datum unconfirmed.
+  camera_thread_major:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal 1/4-20 major diameter.
+  camera_thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length.
+  socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  jaw_angle:
+    value: null
+    unit: deg
+    kind: world
+    source: unknown
+    note: ''
+  jaw_height:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  test_flank_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: design
+    note: Unverified trial angle from vertical, not measured clamp geometry.
+  test_flank_height:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_length:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: Available clamp length unverified.
+  deck_width:
+    value: 44
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hole_diametral_allowance:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_diametral_allowance:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_depth_allowance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  trial_thread_projection:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Geometric target only; socket engagement not approved.
+parts:
+- id: unloaded_plate_test
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    grip = p.bolt_length - p.trial_thread_projection\n\
+    \    recess = p.bolt_head_h + p.head_depth_allowance\n    total = grip + recess\n\
+    \    shoulder = total - p.test_flank_height\n    neck = p.plate_width - 2*p.test_flank_height*math.tan(math.radians(p.test_flank_angle))\n\
+    \    if grip <= 0 or shoulder <= 0 or neck <= p.bolt_head_d + p.head_diametral_allowance:\n\
+    \        raise ValueError('Invalid test dimensions')\n    deck = cq.Workplane('XY').rect(p.deck_width,p.plate_length).extrude(shoulder)\n\
+    \    foot = (cq.Workplane('XY').workplane(offset=shoulder)\n            .rect(neck,p.plate_length)\n\
+    \            .workplane(offset=p.test_flank_height)\n            .rect(p.plate_width,p.plate_length).loft(combine=True))\n\
+    \    body = deck.union(foot)\n    shaft = cq.Workplane('XY').circle((p.camera_thread_major+p.hole_diametral_allowance)/2).extrude(total)\n\
+    \    pocket = (cq.Workplane('XY').workplane(offset=grip)\n              .circle((p.bolt_head_d+p.head_diametral_allowance)/2).extrude(recess))\n\
+    \    return body.cut(shaft).cut(pocket)\n"
+  print_orientation: Broad flat camera-contact face on bed at z=0. Recess opens upward.
+    No supports required for trial 45-degree flanks.
+  use_orientation: 'For unloaded testing only, flip over: broad flat face upward,
+    recessed bolt head downward toward tripod.'
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: trial_camera_bolt_location
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 7.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: unloaded_plate_test
+    feature: Annular recess floor at z = bolt_length - trial_thread_projection; axis
+      origin is under-head bearing plane.
+    role: head_seat
+  - part: unloaded_plate_test
+    feature: Central unthreaded bore.
+    role: clearance
+  nut: null
+  external: 'Camera 1/4-20 socket: DO NOT engage during this unloaded test; depth
+    and engagement unverified.'
+criteria:
+- id: profile_match
+  part: unloaded_plate_test
+  feature: Angled flanks and deck clearance
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - test_flank_angle
+  - test_flank_height
+  - deck_width
+  - plate_length
+  check:
+    method: coupon
+    ref: unloaded_plate_test
+    description: Without camera or bolt, verify both jaws contact flanks, not deck
+      edges; knob retains tightening travel; plate does not rock, lift, twist or slide
+      free under firm hand manipulation. Passing is not a load rating.
+- id: bolt_fit
+  part: unloaded_plate_test
+  feature: Central bore and head recess
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - camera_thread_major
+  - bolt_head_d
+  - bolt_head_h
+  - hole_diametral_allowance
+  - head_diametral_allowance
+  - head_depth_allowance
+  check:
+    method: coupon
+    ref: unloaded_plate_test
+    description: Away from tripod and camera, verify free shaft passage, flat head
+      seating, head below dovetail bottom, and driver access.
+- id: projection
+  part: unloaded_plate_test
+  feature: Thread protruding beyond flat face
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - trial_thread_projection
+  - socket_depth
+  check:
+    method: measure
+    ref: null
+    description: Measure actual exposed thread with head seated; nominal 3 mm. Socket
+      clearance remains unverified. Obtain camera manufacturer's engagement requirements
+      and usable socket depth before any usable redesign; never probe depth by tightening
+      the bolt.
+manual:
+- n: '1'
+  text: This repeat print is unchanged because no fit feedback was available. It is
+    only an unloaded gauge. Do not attach a camera or lens. Ask the owner for the
+    tripod head model and correct plate specification.
+  parts:
+  - unloaded_plate_test
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print with the broad flat face on the bed, at 0.2 mm layers, six walls and
+    100% infill, without supports. Reject cracks, layer gaps or warping. These settings
+    do not establish load capacity.
+  parts:
+  - unloaded_plate_test
+  hardware: []
+  tool: Bambu Lab X1C and slicer
+- n: '3'
+  text: Remove burrs without rounding the sloping flanks. With no bolt or camera,
+    drop into the clamp and tighten normally by hand. Check both jaw contacts, deck
+    clearance and remaining tightening travel. Reject rocking, slipping, edge-only
+    contact or a knob reaching its stop. Never force the clamp.
+  parts:
+  - unloaded_plate_test
+  hardware: []
+  tool: null
+- n: '4'
+  text: Remove the gauge from the tripod. Insert the metal bolt through the recessed
+    side and check head seating, clearance and tool access. Measure exposed thread
+    above the flat face; nominal 3 mm. Do not screw it into the camera.
+  parts:
+  - unloaded_plate_test
+  hardware:
+  - camera_bolt
+  tool: Calipers or ruler
+- n: '5'
+  text: Before any usable redesign, obtain actual jaw geometry, head model, usable
+    camera socket depth and camera/lens load. If these cannot be verified, use the
+    correct manufacturer's replacement plate. Do not rely on this gauge to secure
+    equipment; PLA can creep or fracture and soften in heat.
+  parts:
+  - unloaded_plate_test
+  hardware: []
+  tool: null

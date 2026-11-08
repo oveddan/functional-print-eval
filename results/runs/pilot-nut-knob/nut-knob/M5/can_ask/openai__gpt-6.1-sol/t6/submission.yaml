@@ -1,0 +1,320 @@
+task: nut-knob/M5
+note: 'One-piece, approximately 30 mm M5 hand knob. A top-loading hex pocket prevents
+  nut rotation; six small interference ribs retain the nut without glue. A 3 mm floor
+  prevents the nut passing through the opposite face, while a 5.6 mm clearance hole
+  lets the bolt pass through. Print the fit coupon first: unmeasured nut dimensions
+  and printer variation prevent guaranteeing a hand press-fit without testing. The
+  coupon is a test print, not part of the finished assembly.'
+questions:
+- text: Can you measure the nut across flats and its thickness?
+  answer: Cannot measure; use best judgment.
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across flats; actual nut not measured.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal major diameter.
+  bolt_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral allowance; through-hole diameter is 5.6 mm.
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_extra_depth:
+    value: 1.3
+    unit: mm
+    kind: design
+    source: design
+    note: Nut sits this far below the opening when fully seated.
+  pocket_af_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Unribbed hex pocket is nominal nut AF plus this clearance.
+  fit_af:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: Effective distance across opposing rib tips. Replace with the successful
+      coupon value before printing the knob.
+  rib_r:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_height:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Ribs taper outward over the final 1 mm at the pocket mouth.
+  rib_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pitch:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_link_w:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_fit_start:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_fit_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_count:
+    value: 4
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  cut_overrun:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Boolean cutting overrun.
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    h = p.floor_t + p.nut_h + p.pocket_extra_depth\n\
+    \    pocket_af = p.nut_af + p.pocket_af_clearance\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \    for i in range(int(p.scallop_count)):\n        a = 2*math.pi*i/p.scallop_count\n\
+    \        x,y = p.scallop_center_r*math.cos(a),p.scallop_center_r*math.sin(a)\n\
+    \        tool = cq.Workplane('XY').center(x,y).circle(p.scallop_r).extrude(h+p.cut_overrun)\n\
+    \        body = body.cut(tool)\n    pocket = cq.Workplane('XY').workplane(offset=p.floor_t).polygon(6,pocket_af/math.cos(math.pi/6)).extrude(h-p.floor_t+p.cut_overrun)\n\
+    \    body = body.cut(pocket)\n    # Hexagon vertices are at 0,60,... degrees;\
+    \ flat normals are at 30,90,... .\n    center_r = p.fit_af/2 + p.rib_r\n    tip_r\
+    \ = max(p.cut_overrun, center_r-pocket_af/2+p.cut_overrun)\n    for i in range(int(p.rib_count)):\n\
+    \        a = math.pi/6 + i*2*math.pi/p.rib_count\n        x,y = center_r*math.cos(a),center_r*math.sin(a)\n\
+    \        rib = cq.Workplane('XY').workplane(offset=p.floor_t).center(x,y).circle(p.rib_r).extrude(h-p.floor_t-p.lead_height)\n\
+    \        lead = cq.Workplane('XY').workplane(offset=h-p.lead_height).center(x,y).circle(p.rib_r).workplane(offset=p.lead_height).circle(tip_r).loft()\n\
+    \        body = body.union(rib).union(lead)\n    hole = cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(h+p.cut_overrun)\n\
+    \    return body.cut(hole).clean()\n"
+  print_orientation: Broad, closed underside flat on the bed at z=0; hex pocket faces
+    upward. No supports.
+  use_orientation: Press the nut into the upward-facing pocket until it reaches the
+    floor. Bolt enters through either the pocket or the underside clearance hole.
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    h = p.floor_t + p.nut_h + p.pocket_extra_depth\n\
+    \    pocket_af = p.nut_af + p.pocket_af_clearance\n    result = None\n    for\
+    \ j in range(int(p.coupon_count)):\n        x0 = j*p.coupon_pitch\n        fit\
+    \ = p.coupon_fit_start + j*p.coupon_fit_step\n        body = cq.Workplane('XY').center(x0,0).circle(p.coupon_d/2).extrude(h)\n\
+    \        pocket = cq.Workplane('XY').workplane(offset=p.floor_t).center(x0,0).polygon(6,pocket_af/math.cos(math.pi/6)).extrude(h-p.floor_t+p.cut_overrun)\n\
+    \        body = body.cut(pocket)\n        center_r = fit/2+p.rib_r\n        tip_r\
+    \ = max(p.cut_overrun,center_r-pocket_af/2+p.cut_overrun)\n        for i in range(int(p.rib_count)):\n\
+    \            a = math.pi/6+i*2*math.pi/p.rib_count\n            x,y = x0+center_r*math.cos(a),center_r*math.sin(a)\n\
+    \            rib = cq.Workplane('XY').workplane(offset=p.floor_t).center(x,y).circle(p.rib_r).extrude(h-p.floor_t-p.lead_height)\n\
+    \            lead = cq.Workplane('XY').workplane(offset=h-p.lead_height).center(x,y).circle(p.rib_r).workplane(offset=p.lead_height).circle(tip_r).loft()\n\
+    \            body = body.union(rib).union(lead)\n        hole = cq.Workplane('XY').center(x0,0).circle((p.bolt_d+p.bolt_clearance)/2).extrude(h+p.cut_overrun)\n\
+    \        body = body.cut(hole)\n        result = body if result is None else result.union(body)\n\
+    \    link = cq.Workplane('XY').center((p.coupon_count-1)*p.coupon_pitch/2,0).rect((p.coupon_count-1)*p.coupon_pitch,p.coupon_link_w).extrude(p.floor_t)\n\
+    \    result = result.union(link)\n    for j in range(int(p.coupon_count)):\n \
+    \       hole = cq.Workplane('XY').center(j*p.coupon_pitch,0).circle((p.bolt_d+p.bolt_clearance)/2).extrude(h+p.cut_overrun)\n\
+    \        result = result.cut(hole)\n    return result.clean()\n"
+  print_orientation: Four socket floors and connecting strip on bed at z=0; all pockets
+    upward. No supports.
+  use_orientation: Test nut insertion in individual pockets. In increasing local X
+    order, throat sizes are 7.8, 7.9, 8.0 and 8.1 mm.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: hand_fit
+  part: knob
+  feature: Six vertical ribs inside hex pocket
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - fit_af
+  - rib_r
+  - lead_height
+  - pocket_af_clearance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Select a pocket that allows full insertion with firm thumb pressure,
+      without tools or cracked plastic, and retains the nut when inverted and gently
+      tapped. Transfer that throat dimension to fit_af. Do not print the final knob
+      until a pocket passes.
+- id: recess
+  part: knob
+  feature: Pocket depth above retaining floor
+  relation: contains
+  hardware: nut
+  clearance_mm: 1.3
+  params:
+  - nut_h
+  - pocket_extra_depth
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: With nut fully seated, confirm no portion projects above the opening.
+- id: floor
+  part: knob
+  feature: Continuous floor surrounding central bolt hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - bolt_d
+  - bolt_clearance
+  - nut_af
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Check the nut seats on the floor and cannot pass through its smaller
+      round opening.
+- id: bolt_passage
+  part: knob
+  feature: 5.6 mm axial through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.6
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Before inserting the nut, check the intended M5 bolt slides through
+      the printed hole freely. After insertion, verify it threads through the nut
+      and emerges from the opposite side.
+manual:
+- n: '1'
+  text: 'Print fit_coupon in the supplied orientation using the same PLA and settings
+    planned for the knob: 0.2 mm layers, 0.4 mm nozzle, 4 wall loops, 5 bottom/top
+    layers, 30% infill. No supports. Keep pocket interiors free of support material;
+    avoid slicer hole-size compensation changes between test and final.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Identify pockets along the row: local X=0 is 7.8 mm, followed by 7.9, 8.0
+    and 8.1 mm at X=16, 32 and 48 mm. Mark these on the print while referencing the
+    slicer view. Start with 8.1 and move toward smaller sizes until retention is adequate.
+    Align the nut''s flats with the pocket and press straight down by hand. Do not
+    hammer, heat, or use a vise. Stop if excessive force is needed.'
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: The selected fit must let the nut reach the floor, remain fully below the
+    opening, and stay in place when inverted and gently tapped over a tray. Check
+    that the intended M5 bolt passes through the floor hole and screws through the
+    nut. Remove the test nut by pressing it back toward the open pocket with a slender
+    blunt tool through the clearance hole; do not pry against the ribs. If none of
+    the four pockets passes, adjust coupon_fit_start and reprint a new test range;
+    do not force an unsuitable fit.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: Optional blunt rod smaller than the clearance hole, for coupon nut removal
+- n: '4'
+  text: Set fit_af to the successful pocket's throat size and generate/print knob
+    with the same settings as the coupon. Its broad underside goes on the bed and
+    its nut pocket faces up. Let it cool fully and clear loose strings from the pocket.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: Align and hand-press the M5 hex nut fully down to the pocket floor. Repeat
+    the upside-down retention check. No glue is needed. Screw the knob onto the intended
+    M5 bolt, or insert that bolt through the underside and nut. The nut is rotation-captured;
+    it is not a captive bolt head. Choose sufficient bolt thread length for your application.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '6'
+  text: Use for light-duty hand tightening only. Do not use pliers or other leverage,
+    and stop if the pocket cracks or the nut turns in the plastic. PLA can soften
+    in heat and relax over time; keep away from hot environments and replace the knob
+    if nut retention loosens.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

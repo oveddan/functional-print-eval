@@ -19,7 +19,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import trimesh  # noqa: E402
-from matplotlib.patches import PathPatch, Rectangle  # noqa: E402
+from matplotlib.patches import Patch, PathPatch, Rectangle  # noqa: E402
 from matplotlib.path import Path as MplPath  # noqa: E402
 from shapely import affinity  # noqa: E402
 from shapely.geometry import Polygon  # noqa: E402
@@ -49,6 +49,7 @@ class Figure:
     view: str  # "strands", "across" (a cut straight across at the pocket), "side" (a vertical cut), "side-y"
     nut: str = ""  # draw this nut in its pocket
     bearings: bool = False  # draw a 608 in each seat and an M8 down the middle
+    dimensions: bool = False  # label the pocket's width and draw the nut beside it with its own
     notes: list = field(default_factory=list)
 
 
@@ -61,7 +62,8 @@ FIGURES = [
     Figure("wheel-narrow-ledge", "pilot-wheel/bearing-wheel/can_ask/anthropic__claude-sonnet-5.5/t3", "wheel", "side", bearings=True),
     Figure("wheel-cone", "pilot-wheel/bearing-wheel/can_ask/anthropic__claude-opus-5.5/t1", "wheel", "side", bearings=True),
     Figure("knob-snap-lip", "pilot-nut-knob-2/nut-knob/M3/can_ask/anthropic__claude-haiku-5.5/t1", "knob", "side", nut="ISO 4032 M3"),
-    Figure("knob-no-clearance", "pilot-nut-knob-2/nut-knob/M3/can_ask/anthropic__claude-sonnet-5.5/t1", "knob", "across", nut="ISO 4032 M3"),
+    Figure("knob-no-clearance", "pilot-nut-knob-2/nut-knob/M3/can_ask/anthropic__claude-sonnet-5.5/t1", "knob", "across", nut="ISO 4032 M3",
+           dimensions=True),
     Figure("knob-ribs-opus", "pilot-nut-knob/nut-knob/M5/can_ask/anthropic__claude-opus-5.5/t2", "knob", "across", nut="ISO 4032 M5"),
     Figure("knob-ribs-sol", "pilot-nut-knob/nut-knob/M5/can_ask/openai__gpt-6.1-sol/t1", "", "across", nut="ISO 4032 M5"),
 ]
@@ -185,7 +187,7 @@ def _tightest_layer(mesh, pocket, across, centre):
     return best[1:]
 
 
-def draw_across(ax, mesh, nut):
+def draw_across(ax, mesh, nut, dimensions=False):
     """The pocket cut across where it's tightest, with the nut drawn where it has to go."""
     spec = catalog.resolve(nut)
     pocket = _pocket(mesh, nut)
@@ -198,7 +200,30 @@ def draw_across(ax, mesh, nut):
     if overlap is not None and overlap.area > 0.01:  # where the nut has to push plastic out of the way
         ax.add_patch(_patch(overlap, facecolor=HARDWARE, edgecolor="none", alpha=0.75))
     view = nut_shape.buffer(spec["af"] * 0.9)
+    if dimensions:
+        view = view.union(_dimensions(ax, pocket, spec, centre, layer.bounds[2]))
     _frame(ax, view, pad=0.5)
+
+
+def _width_line(ax, x0, x1, y, text, colour):
+    """A dimension line from x0 to x1 at height y, with its label above."""
+    ax.annotate("", xy=(x0, y), xytext=(x1, y), arrowprops={"arrowstyle": "<->", "color": colour, "lw": 1.0})
+    ax.text((x0 + x1) / 2, y + 0.35, text, ha="center", va="bottom", fontsize=7.5, color=colour)
+
+
+def _dimensions(ax, pocket, spec, centre, knob_right):
+    """The pocket's measured width across flats over it, and the nut drawn to its right with its own width, so the
+    two numbers sit side by side. Returns the area the labels take, for framing."""
+    cx, cy = centre
+    half = pocket.across / 2
+    top = cy + spec["af"] / math.sqrt(3) + 0.6
+    _width_line(ax, cx - half, cx + half, top, f"pocket {pocket.across:.2f} mm", EDGE)
+    nut_x = knob_right + spec["af"] * 0.9  # clear of the knob, so it reads as a separate part
+    nut = hexagon(spec["af"], (nut_x, cy), 30)
+    ax.add_patch(_patch(nut, facecolor=HARDWARE, edgecolor=HARDWARE, alpha=0.85))
+    ax.add_patch(_patch(nut.buffer(-spec["af"] * 0.28), facecolor="white", edgecolor="none"))
+    _width_line(ax, nut_x - spec["af"] / 2, nut_x + spec["af"] / 2, top, f"nut {spec['af']:.1f} mm", HARDWARE)
+    return Polygon([(cx - half, cy), (nut_x + spec["af"], cy), (nut_x + spec["af"], top + 1.6), (cx - half, top + 1.6)])
 
 
 def draw_side(ax, mesh, fig):
@@ -216,6 +241,11 @@ def draw_side(ax, mesh, fig):
                 ax.add_patch(Rectangle((x, z), (BEARING["od"] - BEARING["bore"]) / 2, BEARING["width"],
                                        facecolor=HARDWARE, alpha=0.55, edgecolor=HARDWARE, lw=1))
         ax.add_patch(Rectangle((-4, -1), 8, height + 2, facecolor="none", edgecolor=HARDWARE, lw=1, ls=":"))
+        ax.legend(handles=[Patch(facecolor=PART, edgecolor=EDGE, label="Printed wheel"),
+                           Patch(facecolor=HARDWARE, alpha=0.55, edgecolor=HARDWARE, label="Bearings"),
+                           Patch(facecolor="none", edgecolor=HARDWARE, ls=":", label="Bolt")],
+                  loc="upper center", bbox_to_anchor=(0.5, -0.02), ncol=3, frameon=False, fontsize=7.5,
+                  handlelength=1.2, columnspacing=1.0)
     if fig.nut:
         spec = catalog.resolve(fig.nut)
         pocket = _pocket(mesh, fig.nut)
@@ -240,7 +270,7 @@ def draw(fig):
         return draw_strands(path, mesh)
     figure, ax = plt.subplots(figsize=(3.4, 2.8), dpi=130)
     if fig.view == "across":
-        draw_across(ax, mesh, fig.nut)
+        draw_across(ax, mesh, fig.nut, fig.dimensions)
     else:
         draw_side(ax, mesh, fig)
     _scale_bar(ax)

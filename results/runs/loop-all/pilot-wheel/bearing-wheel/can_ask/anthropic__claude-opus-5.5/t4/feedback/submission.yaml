@@ -1,0 +1,256 @@
+task: bearing-wheel
+note: 'Changes from the last version: the flat ring roof over the bottom pocket is
+  now built from stepped bridge layers (a slot layer, then a square layer, then the
+  round hole), so every layer spans straight between supports. The press fit stays
+  at 22.1 mm because you confirmed it. You can use your own M8 bolt if it''s long
+  enough.'
+questions:
+- text: Was the old wheel's running surface flat or grooved?
+  answer: null
+- text: What is the inside gap of the bracket?
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  rim_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: re-measured ~22
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_inner_race_od:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 inner race land ~12 mm
+  press_allow:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'confirmed by coupon and wheel: snug, holds upside down'
+  shoulder_id:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: touches outer races only
+  layer_h:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: printer layer height; bridge-step layers are one layer each
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    pd = p.bearing_od + p.press_allow\n    return cq.Workplane('XY').circle(p.coupon_od/2).circle(pd/2).extrude(p.coupon_h)\n"
+  print_orientation: flat face on bed
+  use_orientation: test only
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w)\n\
+    \    w = w.edges().chamfer(p.rim_chamfer)\n    pd = p.bearing_od + p.press_allow\n\
+    \    z0 = p.bearing_w\n    lh = p.layer_h\n    s = p.shoulder_id\n    # bottom\
+    \ and top bearing pockets\n    w = w.cut(cq.Workplane('XY').circle(pd/2).extrude(z0))\n\
+    \    w = w.cut(cq.Workplane('XY').workplane(offset=p.wheel_w - p.bearing_w).circle(pd/2).extrude(p.bearing_w))\n\
+    \    # sequential bridging over the bottom pocket:\n    # layer 1: slot (straight\
+    \ bridges across the pocket, anchored on its wall)\n    w = w.cut(cq.Workplane('XY').workplane(offset=z0).rect(s,\
+    \ pd + 2).extrude(lh))\n    # layer 2: square (bridges across the slot)\n    w\
+    \ = w.cut(cq.Workplane('XY').workplane(offset=z0 + lh).rect(s, s).extrude(lh))\n\
+    \    # above: round bore\n    w = w.cut(cq.Workplane('XY').workplane(offset=z0\
+    \ + 2*lh).circle(s/2).extrude(p.wheel_w - z0 - 2*lh))\n    return w\n"
+  print_orientation: one flat face on bed, axis vertical
+  use_orientation: axis horizontal on the M8 bolt, rim on the track
+- id: race_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    t = p.wheel_w - 2*p.bearing_w\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle((p.bolt_d\
+    \ + p.bolt_clear)/2).extrude(t)\n"
+  print_orientation: flat on bed
+  use_orientation: on the bolt between the two bearing inner races
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -3.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: shoulder bore (bolt passes through bearings)
+    role: clearance
+  - part: race_spacer
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: press
+  part: wheel
+  feature: bearing pockets
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_od
+  - press_allow
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Already confirmed: snug, holds upside down at 22.1'
+- id: roof
+  part: wheel
+  feature: ledge over bottom pocket (slot then square bridge layers)
+  relation: supports
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - shoulder_id
+  - layer_h
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: Underside of the ledge prints as straight bridge strands with no
+      loose loops; the 16 mm bore is clear; the bottom bearing sits flush with the
+      wheel face
+- id: spin
+  part: race_spacer
+  feature: faces
+  relation: supports
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - spacer_od
+  - bearing_inner_race_od
+  check:
+    method: measure
+    ref: null
+    description: Spacer is flat, 2 mm thick, and slides onto the bolt. With the nut
+      tightened, the wheel still spins freely
+- id: fit_door
+  part: wheel
+  feature: rim width and OD
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: Wheel fits in the bracket with washers
+manual:
+- n: '1'
+  text: The coupon fit is already confirmed, so you don't need to reprint it. Print
+    the wheel lying flat with 5 walls and 40% or more infill. The ledge over the bottom
+    pocket now prints as a straight bridge layer with a slot, then a cross layer with
+    a square hole, then the round hole. Turn on bridge detection in the slicer and
+    leave supports off. Check that the 16 mm bore is clear and trim any stray strands.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Check race_spacer: it should be a flat ring about 2 mm thick that slides
+    onto the bolt. Reprint it if it''s warped or has blobs.'
+  parts:
+  - race_spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one bearing into the bottom pocket until it sits on the ledge. Drop
+    race_spacer into the bore, then press in the second bearing from the other side.
+    Push on the outer rings only.
+  parts:
+  - wheel
+  - race_spacer
+  hardware:
+  - bearing
+  tool: vise or socket
+- n: '4'
+  text: Push the bolt through the bracket, a washer, the wheel and a second washer,
+    then out through the other side of the bracket, and fit the lock nut. Tighten
+    until the wheel has no wobble but still spins freely. If the gap is wider than
+    18 mm, add more washers, keeping them clear of the bearings' outer rings.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  - locknut
+  tool: 6 mm hex key, 13 mm spanner

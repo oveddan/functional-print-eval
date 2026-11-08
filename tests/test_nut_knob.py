@@ -294,7 +294,7 @@ def test_every_size_loads_with_its_own_nut_in_its_reference(nut):
     pytest.param(design("M3", clearance=0.0), {"R4"}, set(), id="wont-go-in"),
     pytest.param(design("M5", clearance=0.3), {"R4"}, set(), id="falls-out"),
     # no print has settled this clearance: not graded, which is still not a pass
-    pytest.param(design("M5", clearance=0.15), set(), {"R4"}, id="between-steps"),
+    pytest.param(design("M5", clearance=-0.3), set(), {"R4"}, id="tighter-than-any-print"),
     # the pocket itself is wrong, so the checks that need a hex pocket can't say
     pytest.param(design(code=ROUND_POCKET), {"R3"}, {"R4", "R5"}, id="round-pocket"),
     pytest.param(design(nut_af=13.0), {"R3"}, {"R4", "R5"}, id="an-M8-pocket-in-an-M5-knob"),
@@ -367,7 +367,6 @@ def test_a_bed_pocket_with_a_plain_hole_is_not_measured(tmp_path):
 
 
 @pytest.mark.parametrize("sub", [
-    pytest.param(with_coupon(design(clearance=0.3), clearances=(0.15, 0.25)), id="M5-grid-between-the-steps"),
     pytest.param(with_coupon(design(clearance=0.3), clearances=(0.2, 0.3)), id="M5-loose-nobody-turned-over"),
 ])
 def test_a_coupon_no_print_can_judge_is_not_a_failure(tmp_path, sub):
@@ -434,11 +433,13 @@ def test_a_crash_in_a_design_is_one_failure(tmp_path):
     ("M5", 0.05, "holds"),         # between two steps that agree
     ("M8", 0.15, "loose"),         # ... a label other than "holds" too
     ("M3", 0.15, "holds"),         # ... one of them read through READ_AS
-    ("M5", 0.15, None),            # between two that disagree
-    ("M3", 0.05, None),            # Gemini 4 Argon's M3 knob: between "won't go in" and READ_AS's "holds"
+    ("M5", 0.15, "holds"),         # between two that disagree: the nearest decides, the tighter on a tie (graders/assumed.py)
+    ("M3", 0.05, "won't go in"),   # Gemini 4 Argon's M3 knob: midway between "won't go in" and READ_AS's "holds"
     ("M3", -0.2, "won't go in"),   # tighter than "won't go in" is settled
-    ("M5", -0.1, None),            # tighter than "holds" isn't: it might not go in
-    ("M3", 0.5, None),             # looser than "holds" isn't: it might fall out
+    ("M5", -0.1, "holds"),         # tighter than "holds", within the assumption tolerance of it
+    ("M5", -0.3, None),            # ... and further than that: it might not go in
+    ("M3", 0.5, "holds"),          # looser than "holds", within the tolerance
+    ("M3", 0.6, None),             # ... and further than that: it might fall out
     ("M5", 0.5, "falls out"),      # looser than "falls out" is settled
 ])
 def test_verdict_reads_what_the_prints_say(label, clearance, expected):
@@ -449,7 +450,8 @@ def test_verdict_reads_what_the_prints_say(label, clearance, expected):
     ("M3", -0.1, False), ("M5", 0.3, False),   # won't go in, falls out
     ("M5", 0.05, True),
     ("M5", 0.2, None),                         # "loose": nobody has turned it over
-    ("M5", 0.15, None),                        # no print says
+    ("M5", 0.15, True),                        # the nearest print, 0.1, held
+    ("M5", -0.3, None),                        # no print near it says
     ("M3", 0.1, True),                         # with force it goes in (nuts.READ_AS)
 ])
 def test_holds_is_settled_only_where_prints_settle_it(label, clearance, expected):

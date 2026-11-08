@@ -1,0 +1,292 @@
+task: tripod-plate
+note: 'Temporary replacement for a lost quick-release plate + camera screw. The actual
+  1/4"-20 thread comes from the salvaged webcam-mount bolt (printing a 1/4"-20 thread
+  in PLA would be too weak). Two printed parts: a 38 mm Arca-style dovetail plate
+  and a thumb knob that grips the bolt head. I only got the 38 mm clamp width from
+  you, so the dovetail lip depth/angle are assumed Arca-Swiss — print the small coupons
+  first and check the fit before the full parts.'
+questions: []
+params:
+  plate_width_top:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: measured
+    note: Width the tripod clamp takes (your 38 mm measurement).
+  dovetail_angle:
+    value: 45.0
+    unit: deg
+    kind: world
+    source: guessed
+    note: Assumed Arca-Swiss dovetail angle; verify with coupon_plate_fit.
+  lip_depth:
+    value: 3.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: Typical Arca dovetail lip height; sand the coupon if the clamp needs less.
+  plate_length:
+    value: 50.0
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length; can be shortened if it overhangs the tripod.
+  plate_thickness:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: Kept thin so the 10 mm bolt still protrudes ~5 mm into the camera socket.
+  screw_clear_d:
+    value: 6.6
+    unit: mm
+    kind: hardware
+    source: design
+    note: Clearance hole for the 1/4-20 bolt shank.
+  thread_14_20_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4 inch = 6.35 mm major diameter for 1/4-20.
+  bolt_head_d:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Salvaged bolt head diameter (your ~15 mm).
+  bolt_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Salvaged bolt head height (your ~5 mm).
+  bolt_under_head_len:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Salvaged bolt threaded length under the head (your ~10 mm).
+  knob_od:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: Thumb knob outer diameter.
+  knob_h:
+    value: 9.0
+    unit: mm
+    kind: design
+    source: design
+    note: Thumb knob height.
+  knob_pocket_d:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket to press over the bolt head; make snug, glue if loose.
+  knob_pocket_depth:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Bolt head height + small clearance.
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    off = p.lip_depth / math.tan(math.radians(p.dovetail_angle))\n\
+    \    hw_top = p.plate_width_top / 2\n    hw_bot = hw_top - off\n    vh = p.plate_thickness\
+    \ - p.lip_depth\n    profile = (cq.Workplane('XZ').polyline([\n        (-hw_bot,\
+    \ 0),\n        (hw_bot, 0),\n        (hw_bot, vh),\n        (hw_top, p.plate_thickness),\n\
+    \        (-hw_top, p.plate_thickness),\n        (-hw_bot, vh),\n    ]).close())\n\
+    \    plate = profile.extrude(p.plate_length, both=True)\n    hole = (cq.Workplane('XY').center(0,\
+    \ 0)\n            .circle(p.screw_clear_d / 2)\n            .extrude(p.plate_thickness\
+    \ + 5))\n    return plate.cut(hole)\n"
+  print_orientation: narrow 32 mm-wide bottom face on the bed (z = 0 is that face)
+  use_orientation: 'as printed: 38 mm flat top face against the camera, 32 mm bottom
+    face down into the tripod clamp'
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    r = p.knob_od / 2\n    n = 16\n    pts\
+    \ = [(r * math.cos(2 * math.pi * i / n), r * math.sin(2 * math.pi * i / n)) for\
+    \ i in range(n)]\n    knob = cq.Workplane('XY').polyline(pts).close().extrude(p.knob_h)\n\
+    \    knob = (knob.faces('>Z').workplane()\n            .center(0, 0)\n       \
+    \     .circle(p.knob_pocket_d / 2)\n            .cutBlind(-p.knob_pocket_depth))\n\
+    \    return knob\n"
+  print_orientation: flat 16-sided bottom face on the bed (z = 0); the pocket opens
+    upward, away from the bed
+  use_orientation: pocket faces up; the salvaged bolt head drops into the pocket with
+    its threaded shank pointing up
+- id: coupon_plate_fit
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import math\n    off = p.lip_depth / math.tan(math.radians(p.dovetail_angle))\n\
+    \    hw_top = p.plate_width_top / 2\n    hw_bot = hw_top - off\n    vh = p.plate_thickness\
+    \ - p.lip_depth\n    profile = (cq.Workplane('XZ').polyline([\n        (-hw_bot,\
+    \ 0),\n        (hw_bot, 0),\n        (hw_bot, vh),\n        (hw_top, p.plate_thickness),\n\
+    \        (-hw_top, p.plate_thickness),\n        (-hw_bot, vh),\n    ]).close())\n\
+    \    return profile.extrude(12, both=True)\n"
+  print_orientation: narrow 32 mm face on the bed
+  use_orientation: same orientation as the full plate; slide it into the tripod clamp
+    to test the dovetail fit
+- id: coupon_knob_fit
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    outer = p.knob_pocket_d + 8\n    k = cq.Workplane('XY').circle(outer\
+    \ / 2).extrude(6)\n    k = (k.faces('>Z').workplane()\n         .center(0, 0)\n\
+    \         .circle(p.knob_pocket_d / 2)\n         .cutBlind(-p.knob_pocket_depth))\n\
+    \    return k\n"
+  print_orientation: flat face on the bed, pocket up
+  use_orientation: 'test piece: press the salvaged bolt head into the pocket to check
+    the fit'
+hardware:
+- id: bolt_1420
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: bolt_1420
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: through_hole
+    role: clearance
+  - part: knob
+    feature: head_pocket
+    role: head_seat
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: plate_dovetail_fit
+  part: plate
+  feature: dovetail_profile
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width_top
+  - lip_depth
+  - dovetail_angle
+  check:
+    method: coupon
+    ref: coupon_plate_fit
+    description: The coupon cross-section must slide into the tripod clamp and be
+      gripped when the clamp is closed.
+- id: knob_pocket_fit
+  part: knob
+  feature: head_pocket
+  relation: seats
+  hardware: bolt_1420
+  clearance_mm: null
+  params:
+  - knob_pocket_d
+  - bolt_head_d
+  - bolt_head_h
+  - knob_pocket_depth
+  check:
+    method: coupon
+    ref: coupon_knob_fit
+    description: The salvaged bolt head should sit fully in the pocket; snug is good,
+      loose means use glue.
+- id: bolt_tip_engagement
+  part: plate
+  feature: through_hole
+  relation: clears
+  hardware: bolt_1420
+  clearance_mm: 0.25
+  params:
+  - screw_clear_d
+  - thread_14_20_major_d
+  - bolt_under_head_len
+  - plate_thickness
+  check:
+    method: measure
+    ref: null
+    description: The bolt shank must pass freely through the plate; it should protrude
+      about 5 mm past the top (under-head 10 mm minus plate 5 mm) and thread into
+      the camera without bottoming out.
+manual:
+- n: '1'
+  text: Print coupon_plate_fit only. Try sliding it into the tripod's clamp channel.
+    It should go in and be gripped when the clamp is closed. If it is too wide, sand
+    the two sloped faces lightly; if the clamp does not grip it, the lip depth needs
+    to change before printing the full plate.
+  parts:
+  - coupon_plate_fit
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print coupon_knob_fit only. Press the head of the salvaged webcam-mount bolt
+    into its pocket. It should be snug; if it is loose, plan to add a dab of super
+    glue when fitting the real knob; if it is far too tight, scrape or warm the pocket
+    slightly.
+  parts:
+  - coupon_knob_fit
+  hardware:
+  - bolt_1420
+  tool: null
+- n: '3'
+  text: Print plate.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Print knob.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: Push the salvage bolt up through the center hole in the underside of plate,
+    so its threaded end sticks out of the 38 mm-wide top face.
+  parts:
+  - plate
+  hardware:
+  - bolt_1420
+  tool: null
+- n: '6'
+  text: Press knob onto the bolt head from below until the head seats in the pocket.
+    If it spins on the head, put a small dab of super glue between the head and pocket.
+  parts:
+  - knob
+  hardware:
+  - bolt_1420
+  tool: null
+- n: '7'
+  text: Set the camera on the plate with its tripod socket over the bolt, then turn
+    knob clockwise to screw the bolt into the camera until snug. Do not overtighten.
+  parts:
+  - plate
+  - knob
+  hardware:
+  - bolt_1420
+  tool: null
+- n: '8'
+  text: Open the tripod clamp, sit the plate (with camera mounted) into the channel,
+    and close the clamp. If anything interferes with the knob, mount the camera after
+    clamping instead.
+  parts:
+  - plate
+  - knob
+  hardware:
+  - bolt_1420
+  tool: null
+- n: '9'
+  text: 'Use as a temporary fix only: PLA is not metal. If the bolt protrudes too
+    far or too little, file a little off the tip or add a paper shim between plate
+    and camera.'
+  parts:
+  - plate
+  hardware:
+  - bolt_1420
+  tool: null

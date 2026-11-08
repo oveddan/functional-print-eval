@@ -1,0 +1,427 @@
+task: bearing-wheel
+note: 'Conditional fit prototype: plain 50 mm diameter × 16 mm wide wheel with two
+  608 bearings. The 22.1 mm nominal bearing seat was selected from the successful
+  print test. Track profile, bracket dimensions and door load remain unknown; do not
+  treat this as a rated load-bearing replacement. Do not install if the original tread
+  was grooved or crowned. Printed inner-race spacers require contact and free-spin
+  checks and can creep under preload. A specified catalog M8×40 axle is provided rather
+  than assuming the unknown-length existing bolt fits.'
+questions:
+- text: Is this a load-bearing bottom roller or a top guide, and what load does it
+    carry?
+  answer: null
+- text: What are the actual old tread profile, diameter, width, bracket geometry and
+    available clearances?
+  answer: Cannot measure; original diameter and width were approximately 50 mm and
+    16 mm.
+- text: What is the existing bolt's under-head length?
+  answer: null
+- text: Does an 11 mm spacer contact only the bearing inner ring, clear the shields,
+    and allow free rotation?
+  answer: Spacer test was printed but not evaluated.
+params:
+  old_diameter:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate only.
+  old_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate only.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  existing_bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  existing_bolt_length:
+    value: null
+    unit: mm
+    kind: hardware
+    source: unknown
+    note: ''
+  bracket_thickness:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  bracket_clear_width:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  inner_ring_contact_od:
+    value: null
+    unit: mm
+    kind: hardware
+    source: unknown
+    note: ''
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  seat_allowance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal 22.1 mm seat printed about 22.09 mm, accepted bearing snugly and
+      retained it upside down.
+  web_bore:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Unverified inner-ring contact; must clear shields.
+  axle_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  outer_spacer_length:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  axle_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  axle_length:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  axle_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_thickness:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  locknut_height:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  minimum_exposed_threads:
+    value: 2
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  maximum_single_bracket_thickness:
+    value: 6.3
+    unit: mm
+    kind: design
+    source: design
+    note: 40 - (14 bearings + 2 center spacer + 4 outer spacers + 3.2 washers + 8
+      locknut + 2.5 exposed thread). Only applies to the described single-plate mounting.
+parts:
+- id: wheel
+  role: final
+  material: PLA, black
+  code: "def build(p):\n    w=cq.Workplane('XY').circle(p.wheel_d/2).extrude(p.wheel_width)\n\
+    \    w=w.edges('%Circle').chamfer(p.edge_chamfer)\n    bore=cq.Workplane('XY').circle(p.web_bore/2).extrude(p.wheel_width)\n\
+    \    lower=cq.Workplane('XY').circle((p.bearing_od+p.seat_allowance)/2).extrude(p.bearing_width)\n\
+    \    upper=cq.Workplane('XY').workplane(offset=p.wheel_width-p.bearing_width).circle((p.bearing_od+p.seat_allowance)/2).extrude(p.bearing_width)\n\
+    \    return w.cut(bore).cut(lower).cut(upper)"
+  print_orientation: Axle vertical, broad annular side at z=0. No supports. The lower
+    seat's approximately 2 mm radial shoulder is a short unsupported ledge.
+  use_orientation: Axle follows local Z. Bearings occupy z=0–7 and z=9–16; plain cylindrical
+    tread rolls on a compatible flat track.
+- id: center_spacer
+  role: final
+  material: PLA, black
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle((p.axle_d+p.axle_clearance)/2).extrude(p.wheel_width-2*p.bearing_width)"
+  print_orientation: Flat annular face on bed, z=0.
+  use_orientation: Between the two bearing inner rings; assembled at wheel z=7–9.
+- id: outer_spacer_head
+  role: final
+  material: PLA, black
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle((p.axle_d+p.axle_clearance)/2).extrude(p.outer_spacer_length)"
+  print_orientation: Flat annular face on bed, z=0.
+  use_orientation: Between head-side bearing inner ring and washer; assembled at wheel
+    z=-2–0.
+- id: outer_spacer_bracket
+  role: final
+  material: PLA, black
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle((p.axle_d+p.axle_clearance)/2).extrude(p.outer_spacer_length)"
+  print_orientation: Flat annular face on bed, z=0.
+  use_orientation: Between opposite bearing inner ring and bracket; assembled at wheel
+    z=16–18.
+hardware:
+- id: bearings
+  ref: 608ZZ
+  qty: 2
+- id: axle
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: axle_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: axle_washers
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: roller_axle
+  fastener: axle
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -3.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: outer_spacer_head
+    feature: Axial bore; washer between screw head and spacer
+    role: clearance
+  - part: wheel
+    feature: Two bearing counterbores; bolt passes through bearing bores without clamping
+      wheel body
+    role: clearance
+  - part: center_spacer
+    feature: Axial bore between inner rings
+    role: clearance
+  - part: outer_spacer_bracket
+    feature: Axial bore; spacer stands bearing off bracket
+    role: clearance
+  nut: axle_nut
+  external: Existing single mounting plate, after bracket-side spacer; washer and
+    locknut on far side. Bracket geometry and hole compatibility unverified.
+criteria:
+- id: bearing_seat_fit
+  part: wheel
+  feature: Both 22.1 mm diameter × 7 mm deep bearing seats
+  relation: contains
+  hardware: bearings
+  clearance_mm: 0.1
+  params:
+  - bearing_od
+  - bearing_width
+  - seat_allowance
+  check:
+    method: coupon
+    ref: fit_rings
+    description: Nominal 22.1 mm test bore printed 22.09 mm and retained the bearing
+      upside down; confirmed snug insertion. Full-part seating still needs checking.
+- id: center_length
+  part: center_spacer
+  feature: 2 mm separation between inner rings
+  relation: supports
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - wheel_width
+  - bearing_width
+  check:
+    method: measure
+    ref: null
+    description: Both bearings must seat fully with spacer touching both inner rings,
+      without bowing shields or leaving axial slack.
+- id: spacer_contact
+  part: outer_spacer_head
+  feature: 11 mm OD bearing contact face; same geometry on other spacers
+  relation: clears
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - spacer_od
+  - inner_ring_contact_od
+  check:
+    method: template
+    ref: spacer_trial
+    description: 'Unverified test: check spacer contacts ONLY inner ring. Hold inner
+      ring via spacer and turn outer ring; any shield rubbing, drag, or uncertain
+      contact is a stop condition.'
+- id: track_compatibility
+  part: wheel
+  feature: Plain 50 × 16 mm tread
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_d
+  - wheel_width
+  - bracket_clear_width
+  check:
+    method: template
+    ref: wheel
+    description: With door independently supported, confirm matching plain tread profile,
+      bracket clearance, track retention and unobstructed travel. Unknown load rating;
+      this check does not establish structural safety.
+- id: axle_stack
+  part: outer_spacer_bracket
+  feature: Single-plate axle mounting stack
+  relation: seats
+  hardware: axle
+  clearance_mm: null
+  params:
+  - axle_length
+  - washer_thickness
+  - locknut_height
+  - maximum_single_bracket_thickness
+  check:
+    method: measure
+    ref: null
+    description: Actual single bracket thickness must be at most 6.3 mm for two exposed
+      threads with this stack. Bolt must pass freely through bracket and bearings,
+      engage nylon fully and have end clearance. Fork brackets or different mounting
+      stacks require redesign.
+manual:
+- n: '1'
+  text: Secure and independently support the door before removing anything. This is
+    a conditional prototype, not a certified load-bearing roller. If this is the door's
+    weight-bearing wheel, use a correctly rated replacement for service; reserve this
+    print for supported fit checks until its load capability is independently established.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print wheel and all three spacers at 0.2 mm layers, with 6 walls and 100%
+    infill; no supports. Keep the axle vertical as modeled. Clear bore strings and
+    any first-layer lip without enlarging bearing seats. Do not scale the model to
+    adjust fit.
+  parts:
+  - wheel
+  - center_spacer
+  - outer_spacer_head
+  - outer_spacer_bracket
+  hardware: []
+  tool: null
+- n: '3'
+  text: Check the spacer_trial against an inner ring, or use an outer spacer. It must
+    contact only the inner ring and must not touch its shield. Rotate the outer ring
+    while gently holding the inner ring with the spacer. Stop if rubbing occurs or
+    contact cannot be confirmed. Check each bearing spins freely before assembly.
+  parts:
+  - outer_spacer_head
+  - outer_spacer_bracket
+  - center_spacer
+  hardware:
+  - bearings
+  tool: null
+- n: '4'
+  text: Hand-press one bearing squarely into the wheel until its outer ring reaches
+    the internal shoulder. Load only the outer ring when inserting it. Insert center_spacer
+    through the opposite seat, then install the second bearing. Use the loose axle
+    to align the spacer if helpful. Both bearing outer faces should be flush with
+    the wheel faces. Do not hammer, force a tight seat, or drive a bearing through
+    its inner ring.
+  parts:
+  - wheel
+  - center_spacer
+  hardware:
+  - bearings
+  - axle
+  tool: null
+- n: '5'
+  text: 'Only for a compatible single mounting plate: assemble in order screw head,
+    M8 washer, outer_spacer_head, bearing/wheel/center-spacer assembly, outer_spacer_bracket,
+    existing bracket, M8 washer, M8 locknut. The 16 mm OD washers must remain outside
+    the printed spacers, never directly against bearing shields. Use the specified
+    40 mm bolt; do not assume the existing unknown-length bolt is suitable.'
+  parts:
+  - wheel
+  - center_spacer
+  - outer_spacer_head
+  - outer_spacer_bracket
+  hardware:
+  - axle
+  - axle_washers
+  - axle_nut
+  - bearings
+  tool: null
+- n: '6'
+  text: Check bracket thickness is no more than 6.3 mm for this exact stack, at least
+    two threads project beyond the fully engaged locknut, and the screw tip and head
+    clear the door and track. Snug only until axial play disappears; do not apply
+    normal M8 structural bolt torque to PLA spacers. Hold the bolt with a hex key
+    while turning the locknut. Wheel must spin freely after tightening. Stop if tightening
+    causes drag, distortion or cracking.
+  parts:
+  - wheel
+  - center_spacer
+  - outer_spacer_head
+  - outer_spacer_bracket
+  hardware:
+  - axle
+  - axle_nut
+  tool: Hex key and wrench
+- n: '7'
+  text: Keep the door supported while checking track engagement and full travel. Reject
+    if the original wheel had a groove or crown, retention is uncertain, anything
+    rubs, or dimensions differ. For a confirmed non-load-bearing guide application,
+    inspect after initial operation and periodically for spacer creep, looseness,
+    tread wear and cracks; remove immediately if found. Do not use near heat or as
+    a safety-critical restraint.
+  parts:
+  - wheel
+  - center_spacer
+  - outer_spacer_head
+  - outer_spacer_bracket
+  hardware: []
+  tool: null

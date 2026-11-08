@@ -1,0 +1,334 @@
+task: nut-knob/M5
+note: 'Hand knob, Ø30 × 15 mm, one printed piece. M5 hex nut snaps into an underside
+  pocket through a retaining lip ring (Ø8.8, between the nut''s 8.0 across-flats and
+  9.24 across-corners, so only the corners engage): presses in by hand with a click,
+  cannot fall out upside-down, no glue. Nut sits ~1.8 mm recessed, fully enclosed;
+  the far side is solid except the Ø5.4 clearance hole, so it can never be pushed
+  through. The bolt threads through the nut and its tip exits the knob''s top. In
+  use, thread tension presses the nut against the pocket''s closed floor (not the
+  lip), so the snap is unloaded. Prints mouth-up with no supports (worst overhang:
+  a 32°/0.5 mm ring; zero bridges, well under the 50 mm bridge limit). Print the fit_coupon
+  first: it repeats the exact pocket geometry to verify the snap and the bolt pass-through;
+  adjust lip_d ±0.2 mm if needed, then print the knob. Needs ≥6.5 mm of protruding
+  M5 thread so the nut is fully engaged before the knob clamps.'
+questions:
+- text: Is your bolt a standard M5 (5.0 mm nominal thread/shank) so it passes the
+    Ø5.4 clearance hole?
+  answer: Assumed a standard M5 (Ø5.0 shank); the printed hole is Ø5.4, which leaves
+    ~0.2 mm per side even after shrinkage. If your bolt has an oversized shank, tell
+    me and I'll bump hole_d.
+- text: OK that the nut is captured permanently (removing it later means prying it
+    back past the snap lip)?
+  answer: Yes — the pocket holds it captive at any angle; the coupon test in step
+    2 verifies this before you print the real knob.
+params:
+  chamfer_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: 'lead-out ramp under the lip: 0.5 radial over 0.8 axial = 32° overhang,
+      self-supporting'
+  hole_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: M5 shaft 5.0 + 0.4 clearance; bolt passes through the nut and out the far
+      side
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: '''about 30 mm across'' per your request'
+  knob_h:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: grip height; leaves 8.5 mm of material above the pocket floor around the
+      bolt hole
+  lead_d:
+    value: 11.2
+    unit: mm
+    kind: design
+    source: design
+    note: mouth funnel so the nut drops in roughly centered
+  lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: widens toward the mouth, fully supported in print orientation
+  lip_d:
+    value: 8.8
+    unit: mm
+    kind: design
+    source: design
+    note: 'snap lip: between nut AF 8.0 (flats pass freely) and AC 9.24 (corners catch)'
+  nut_ac:
+    value: 9.24
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 'derived: af / cos 30° = 9.238'
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height
+  pocket_bore_d:
+    value: 9.8
+    unit: mm
+    kind: design
+    source: design
+    note: nut AC 9.24 + ~0.28/side, so the nut floats and self-aligns on the bolt
+  pocket_depth:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: nut 4.7 + capture zone; nut sits ~1.8 mm recessed below the face, fully
+      inside
+  scallop_d:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: rim grip notches, 1.2 mm deep
+  scallop_n:
+    value: 20
+    unit: count
+    kind: design
+    source: design
+    note: grip scallops around the rim
+  snap_interference:
+    value: 0.22
+    unit: mm
+    kind: design
+    source: design
+    note: (nut_ac - lip_d)/2 per corner side; print shrink adds ~0.05
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    H = p.knob_h\n    R = p.knob_d / 2.0\n\n\
+    \    # body: cylinder, closed top face on the bed (z=0), pocket mouth up at z=H\n\
+    \    body = cq.Workplane(\"XY\").circle(R).extrude(H)\n\n    # grip scallops around\
+    \ the rim (vertical, no overhangs)\n    cutters = None\n    for i in range(int(p.scallop_n)):\n\
+    \        a = 2.0 * math.pi * i / float(p.scallop_n)\n        c = (\n         \
+    \   cq.Workplane(\"XY\", origin=(R * math.cos(a), R * math.sin(a), -1.0))\n  \
+    \          .circle(p.scallop_d / 2.0)\n            .extrude(H + 2.0)\n       \
+    \ )\n        cutters = c if cutters is None else cutters.union(c)\n    body =\
+    \ body.cut(cutters)\n\n    # bolt clearance hole, straight through\n    body =\
+    \ body.cut(cq.Workplane(\"XY\").circle(p.hole_d / 2.0).extrude(H))\n\n    # nut\
+    \ pocket, opening up at z=H, from the mouth downward:\n    #   lead-in funnel\
+    \ (r_lead -> r_lip) / snap lip band (r_lip) /\n    #   32-deg ramp back out (r_lip\
+    \ -> r_bore) / straight bore to the floor\n    r_bore = p.pocket_bore_d / 2.0\n\
+    \    r_lip = p.lip_d / 2.0\n    r_lead = p.lead_d / 2.0\n    z_floor = H - p.pocket_depth\n\
+    \    z_cham_lo = H - p.lead_h - p.band_h - p.chamfer_h\n    z_cham_hi = z_cham_lo\
+    \ + p.chamfer_h\n    z_band_hi = z_cham_hi + p.band_h\n\n    def cyl(z0, r, h):\n\
+    \        return cq.Workplane(\"XY\", origin=(0.0, 0.0, z0)).circle(r).extrude(h)\n\
+    \n    def frustum(z0, r0, z1, r1):\n        return (\n            cq.Workplane(\"\
+    XY\", origin=(0.0, 0.0, z0))\n            .circle(r0)\n            .workplane(offset=z1\
+    \ - z0)\n            .circle(r1)\n            .loft()\n        )\n\n    pocket\
+    \ = (\n        cyl(z_floor, r_bore, z_cham_lo - z_floor)\n        .union(frustum(z_cham_lo,\
+    \ r_bore, z_cham_hi, r_lip))\n        .union(cyl(z_cham_hi, r_lip, p.band_h))\n\
+    \        .union(frustum(z_band_hi, r_lip, H, r_lead))\n    )\n    return body.cut(pocket)\n"
+  print_orientation: closed top face (bolt-exit side) flat on the bed at z=0, pocket
+    opening up; no supports needed
+  use_orientation: pocket opening faces down toward the bolt it screws onto; bolt
+    tip exits the flat top face
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    H = 8.0\n    body = cq.Workplane(\"XY\").circle(8.0).extrude(H)\n\
+    \    body = body.cut(cq.Workplane(\"XY\").circle(p.hole_d / 2.0).extrude(H))\n\
+    \n    # identical pocket stack to the knob, so the coupon tests the real fit\n\
+    \    r_bore = p.pocket_bore_d / 2.0\n    r_lip = p.lip_d / 2.0\n    r_lead = p.lead_d\
+    \ / 2.0\n    z_floor = H - p.pocket_depth\n    z_cham_lo = H - p.lead_h - p.band_h\
+    \ - p.chamfer_h\n    z_cham_hi = z_cham_lo + p.chamfer_h\n    z_band_hi = z_cham_hi\
+    \ + p.band_h\n\n    def cyl(z0, r, h):\n        return cq.Workplane(\"XY\", origin=(0.0,\
+    \ 0.0, z0)).circle(r).extrude(h)\n\n    def frustum(z0, r0, z1, r1):\n       \
+    \ return (\n            cq.Workplane(\"XY\", origin=(0.0, 0.0, z0))\n        \
+    \    .circle(r0)\n            .workplane(offset=z1 - z0)\n            .circle(r1)\n\
+    \            .loft()\n        )\n\n    pocket = (\n        cyl(z_floor, r_bore,\
+    \ z_cham_lo - z_floor)\n        .union(frustum(z_cham_lo, r_bore, z_cham_hi, r_lip))\n\
+    \        .union(cyl(z_cham_hi, r_lip, p.band_h))\n        .union(frustum(z_band_hi,\
+    \ r_lip, H, r_lead))\n    )\n    return body.cut(pocket)\n"
+  print_orientation: flat side down on the bed, pocket opening up; no supports needed
+  use_orientation: test piece only, held pocket-up for the fit check
+hardware:
+- id: nut-m5
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: nut_press_fit
+  fastener: nut-m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 15.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: pocket_bore (snap lip band Ø8.8 retains it; bore Ø9.8 below)
+    role: nut_pocket
+  nut: null
+  external: null
+- id: bolt_through
+  fastener: nut-m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: center_hole
+    role: clearance
+  - part: knob
+    feature: nut bore, threads engage the bolt
+    role: thread
+  nut: null
+  external: user's M5 bolt / stud (the knob screws onto it)
+criteria:
+- id: c_nut_capture
+  part: knob
+  feature: pocket_bore
+  relation: contains
+  hardware: nut-m5
+  clearance_mm: null
+  params:
+  - nut_ac
+  - lip_d
+  - pocket_bore_d
+  - pocket_depth
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Press the nut into the coupon's pocket with firm thumb pressure;
+      it must click past the lip and stay in when the coupon is turned pocket-down
+      and tapped.
+- id: c_nut_fully_inside
+  part: knob
+  feature: pocket
+  relation: contains
+  hardware: nut-m5
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_depth
+  - hole_d
+  check:
+    method: none
+    ref: null
+    description: 'Pocket 6.5 deep vs 4.7 nut: sits ~1.8 mm recessed, fully enclosed;
+      far side is closed except the Ø5.4 hole (Ø9.8 nut cannot pass), so it can never
+      be pushed out the far side.'
+- id: c_bolt_path
+  part: knob
+  feature: center_hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - hole_d
+  check:
+    method: coupon
+    ref: null
+    description: 'Thread your M5 bolt into the nut through the coupon: smooth hand
+      turn, tip must exit the coupon''s far side.'
+- id: c_snap_force
+  part: knob
+  feature: lip_band
+  relation: engages
+  hardware: nut-m5
+  clearance_mm: null
+  params:
+  - snap_interference
+  - lip_d
+  - nut_ac
+  check:
+    method: coupon
+    ref: null
+    description: Snap should need firm thumb pressure (~20-60 N) with a visible/audible
+      click. Too tight to press by hand → reprint with lip_d +0.2; nut rattles out
+      or drops when inverted → lip_d −0.2. Confirm on the coupon before printing the
+      knob.
+manual:
+- n: '1'
+  text: 'Print the test coupon first (fit_coupon): flat side down, pocket opening
+    up, no supports, 0.2 mm layers. It copies the knob''s exact pocket geometry.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Capture test: hold the coupon pocket-up, drop the M5 nut in, and press it
+    through the lip with firm thumb pressure against a table edge. It should click
+    in and sit recessed ~1.8 mm below the surface. Flip the coupon pocket-down and
+    tap it on the table: the nut must not fall out.'
+  parts:
+  - fit_coupon
+  hardware:
+  - nut-m5
+  tool: null
+- n: '3'
+  text: 'Bolt test: thread your M5 bolt into the nut through the coupon''s center
+    hole. It must turn smoothly by hand and the tip must come out the coupon''s far
+    side.'
+  parts:
+  - fit_coupon
+  hardware:
+  - nut-m5
+  tool: null
+- n: '4'
+  text: 'Adjust if needed, then reprint the coupon: nut won''t press in by hand →
+    increase lip_d by 0.2 mm; nut rattles out or drops when inverted → decrease lip_d
+    by 0.2 mm. Proceed only when both tests pass.'
+  parts:
+  - fit_coupon
+  hardware:
+  - nut-m5
+  tool: null
+- n: '5'
+  text: 'Print the knob (knob): same orientation — closed top face on the bed, pocket
+    opening up, no supports.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '6'
+  text: 'Capture the nut in the knob: pocket-up, press the M5 nut in with firm thumb
+    pressure until it clicks past the lip. It sits ~1.8 mm inside the pocket, fully
+    enclosed. No glue.'
+  parts:
+  - knob
+  hardware:
+  - nut-m5
+  tool: null
+- n: '7'
+  text: 'Check and use: turn the knob pocket-down and shake — the nut stays put. Screw
+    the knob onto your M5 bolt (needs ≥6.5 mm of thread protruding); the bolt passes
+    through the nut and out the knob''s far side. Grip the scalloped rim to tighten
+    by hand.'
+  parts:
+  - knob
+  hardware:
+  - nut-m5
+  tool: null

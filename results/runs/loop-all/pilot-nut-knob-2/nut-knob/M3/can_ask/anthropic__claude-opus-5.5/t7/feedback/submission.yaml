@@ -1,0 +1,261 @@
+task: nut-knob/M3
+note: 'Changed from the last version. The ''5.10 mm pocket'' you reported is the circle
+  that touches the three rib tips. Since you couldn''t give coupon results, I rechecked
+  the maths and found my own mistake. With ribs on alternating flats, every rib presses
+  into the nut, so 5.10 meant about 0.2 mm of interference per rib. That''s probably
+  too tight to press in by hand. The knob default is now a 5.40 circle (rib_proud
+  0.15), and the coupon is shifted looser (5.60 to 5.30) so you can tune from it.
+  Everything else is unchanged: 20 mm scalloped knob, nut fully recessed, and a 3.4
+  mm floor hole that the nut can''t pass through.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats; each flat is 2.75 from centre
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: floor hole; much smaller than the nut, so the nut can't be pushed out the
+      far side
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.4, so the nut sits fully inside
+  rib_r:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_proud:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Rib-tip circle = pocket_af - 2*rib_proud = 5.40, so each rib presses about
+      0.05 into a nut flat (more after normal hole shrink). Was 0.30 (5.10 circle,
+      0.2 per rib), which was likely too tight to press in by hand. Set this from
+      the best coupon cell
+  lead_in:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_cell:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_proud_1:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: rib circle 5.60, loose reference
+  coupon_proud_2:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: rib circle 5.50
+  coupon_proud_3:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: rib circle 5.40, matches knob default
+  coupon_proud_4:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: rib circle 5.30
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    r = p.knob_d/2\n    body = cq.Workplane('XY').circle(r).extrude(p.knob_h)\n\
+    \    n = int(p.scallop_n)\n    for i in range(n):\n        a = 2*math.pi*i/n\n\
+    \        c = r + p.scallop_r*0.5\n        body = body.cut(cq.Workplane('XY').center(c*math.cos(a),\
+    \ c*math.sin(a)).circle(p.scallop_r).extrude(p.knob_h))\n    body = body.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(p.knob_h))\n\
+    \    z0 = p.knob_h - p.pocket_depth\n    af = p.pocket_af\n    body = body.cut(cq.Workplane('XY').workplane(offset=z0).polygon(6,\
+    \ af/math.cos(math.pi/6)).extrude(p.pocket_depth))\n    for k in range(3):\n \
+    \       a = math.radians(30 + 120*k)\n        d = af/2 + p.rib_r - p.rib_proud\n\
+    \        body = body.union(cq.Workplane('XY').workplane(offset=z0).center(d*math.cos(a),\
+    \ d*math.sin(a)).circle(p.rib_r).extrude(p.pocket_depth - p.lead_in))\n    return\
+    \ body\n"
+  print_orientation: Flat bottom face (the far side with only the bolt hole) on the
+    bed, pocket opening up. No supports.
+  use_orientation: The bolt goes through the nut and out through the bottom face.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    cell = p.coupon_cell\n    h = p.pocket_depth\
+    \ + 1.2\n    prouds = [p.coupon_proud_1, p.coupon_proud_2, p.coupon_proud_3, p.coupon_proud_4]\n\
+    \    plate = cq.Workplane('XY').rect(cell*4, cell, centered=False).extrude(h)\n\
+    \    plate = plate.cut(cq.Workplane('XY').polyline([(0,0),(3,0),(0,3)]).close().extrude(h))\n\
+    \    af = p.pocket_af\n    z0 = h - p.pocket_depth\n    for i, pr in enumerate(prouds):\n\
+    \        cx = cell*i + cell/2\n        cy = cell/2\n        plate = plate.cut(cq.Workplane('XY').center(cx,\
+    \ cy).circle(p.bolt_clear_d/2).extrude(h))\n        plate = plate.cut(cq.Workplane('XY').workplane(offset=z0).center(cx,\
+    \ cy).polygon(6, af/math.cos(math.pi/6)).extrude(p.pocket_depth))\n        for\
+    \ k in range(3):\n            a = math.radians(30 + 120*k)\n            d = af/2\
+    \ + p.rib_r - pr\n            plate = plate.union(cq.Workplane('XY').workplane(offset=z0).center(cx\
+    \ + d*math.cos(a), cy + d*math.sin(a)).circle(p.rib_r).extrude(p.pocket_depth\
+    \ - p.lead_in))\n    return plate\n"
+  print_orientation: Flat bottom on the bed, pockets up
+  use_orientation: Hand-held test piece. Cell 1 (loosest) is at the clipped corner.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 5
+joints: []
+criteria:
+- id: nut_retained
+  part: knob
+  feature: hex pocket with crush ribs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - rib_proud
+  - rib_r
+  - nut_af
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The nut presses all the way in by hand and stays in when you hold
+      the piece upside down and shake it
+- id: nut_recessed
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Once seated, the nut's top is at or below the knob face
+- id: floor_stops_nut
+  part: knob
+  feature: pocket floor
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: 3.4 hole vs 5.5 AF nut
+- id: bolt_passes
+  part: knob
+  feature: through hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: ''
+manual:
+- n: '1'
+  text: Print fit_coupon. Cell 1 is at the clipped corner and the ribs get tighter
+    toward cell 4. The rib-tip circles are 5.60, 5.50, 5.40 and 5.30 mm, which match
+    rib_proud 0.05, 0.10, 0.15 and 0.20.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press an M3 nut into each cell by hand, flats lined up, until it touches the
+    floor. Pick the loosest cell where the nut stays in when you turn the coupon upside
+    down and shake it. Set rib_proud to that cell's value. The default of 0.15 is
+    cell 3. If even cell 4 lets the nut fall out, use 0.25. If even cell 1 won't press
+    in, use 0.0.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Print the knob with the pocket facing up and no supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Line the nut's flats up with the pocket and press it straight down until it
+    bottoms out. Push against a table if it's stiff. Its top should sit just below
+    the knob face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the M3 bolt into the nut and out through the bottom hole. Then tighten
+    by hand.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

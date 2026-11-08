@@ -1,0 +1,351 @@
+task: nut-knob/M3
+note: 'Unchanged fit dimensions for this reprint: the retaining-lip opening is 5.20
+  mm across flats; the larger hex socket below it is 5.75 mm across flats. No usable
+  fit result was reported, so there is no evidence for changing either dimension.
+  The finished knob is one printed piece. Print the coupon first to verify hand insertion,
+  retention and bolt passage with your nut.'
+questions:
+- text: Actual nut dimensions?
+  answer: Measurement unavailable; using ISO 4032 M3 catalog nominal dimensions.
+- text: Previous print fit result?
+  answer: Unable to report the result for either part.
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_h:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance; bolt bore is 3.5 mm.
+  socket_clearance:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Main hex socket is 5.75 mm across flats.
+  wall_t:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_interference:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats reduction from nominal nut; retaining opening is 5.20 mm.
+  lip_z:
+    value: 6.2
+    unit: mm
+    kind: design
+    source: design
+    note: Lip underside height; intentional axial play permits longer flexible socket
+      walls.
+  lip_h:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_clearance:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: Entry is 5.95 mm across flats.
+  moat_r:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slit_w:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slit_start_r:
+    value: 2.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slit_overrun:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_r:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cut_extra:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    def hx(af,z,h):\n        r=af/math.sqrt(3)\n\
+    \        pts=[(r*math.cos(math.radians(60*i)),r*math.sin(math.radians(60*i)))\
+    \ for i in range(6)]\n        return cq.Workplane('XY').workplane(offset=z).polyline(pts).close().extrude(h)\n\
+    \    af=p.nut_af+p.socket_clearance\n    outer=af+2*p.wall_t\n    lip=p.nut_af-p.lip_interference\n\
+    \    entry=p.nut_af+p.entry_clearance\n    e=p.cut_extra\n    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n\
+    \    moat=cq.Workplane('XY').workplane(offset=p.floor_h).circle(p.moat_r).extrude(p.knob_h-p.floor_h+e)\n\
+    \    body=body.cut(moat.cut(hx(outer,p.floor_h-e,p.knob_h-p.floor_h+3*e)))\n \
+    \   body=body.cut(hx(af,p.floor_h,p.lip_z-p.floor_h))\n    body=body.cut(hx(lip,p.lip_z,p.lip_h))\n\
+    \    pts1=[(lip/math.sqrt(3)*math.cos(math.radians(60*i)),lip/math.sqrt(3)*math.sin(math.radians(60*i)))\
+    \ for i in range(6)]\n    pts2=[(entry/math.sqrt(3)*math.cos(math.radians(60*i)),entry/math.sqrt(3)*math.sin(math.radians(60*i)))\
+    \ for i in range(6)]\n    lead=cq.Workplane('XY').workplane(offset=p.lip_z+p.lip_h).polyline(pts1).close().workplane(offset=p.lead_h).polyline(pts2).close().loft(combine=True)\n\
+    \    body=body.cut(lead)\n    top=p.lip_z+p.lip_h+p.lead_h\n    body=body.cut(hx(entry,top,p.knob_h-top+e))\n\
+    \    length=p.moat_r+p.slit_overrun-p.slit_start_r\n    for i in range(int(p.finger_count)):\n\
+    \        slot=cq.Workplane('XY').box(length,p.slit_w,p.knob_h-p.floor_h+e,centered=(True,True,False)).translate((p.slit_start_r+length/2,0,p.floor_h)).rotate((0,0,0),(0,0,1),360*i/p.finger_count)\n\
+    \        body=body.cut(slot)\n    body=body.cut(cq.Workplane('XY').workplane(offset=-e).circle((p.bolt_d+p.bore_clearance)/2).extrude(p.knob_h+2*e))\n\
+    \    for i in range(int(p.grip_count)):\n        a=2*math.pi*i/p.grip_count\n\
+    \        scallop=cq.Workplane('XY').workplane(offset=-e).center(p.knob_d/2*math.cos(a),p.knob_d/2*math.sin(a)).circle(p.grip_r).extrude(p.knob_h+2*e)\n\
+    \        body=body.cut(scallop)\n    return body\n"
+  print_orientation: Flat underside on bed at z=0, socket and relief slots opening
+    upward. No supports.
+  use_orientation: Nut enters from z=8 and seats at z=2; bolt passes through the central
+    Z-axis bore.
+- id: socket_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    def hx(af,z,h):\n        r=af/math.sqrt(3)\n\
+    \        pts=[(r*math.cos(math.radians(60*i)),r*math.sin(math.radians(60*i)))\
+    \ for i in range(6)]\n        return cq.Workplane('XY').workplane(offset=z).polyline(pts).close().extrude(h)\n\
+    \    af=p.nut_af+p.socket_clearance\n    outer=af+2*p.wall_t\n    lip=p.nut_af-p.lip_interference\n\
+    \    entry=p.nut_af+p.entry_clearance\n    e=p.cut_extra\n    body=cq.Workplane('XY').circle(p.coupon_d/2).extrude(p.knob_h)\n\
+    \    moat=cq.Workplane('XY').workplane(offset=p.floor_h).circle(p.moat_r).extrude(p.knob_h-p.floor_h+e)\n\
+    \    body=body.cut(moat.cut(hx(outer,p.floor_h-e,p.knob_h-p.floor_h+3*e)))\n \
+    \   body=body.cut(hx(af,p.floor_h,p.lip_z-p.floor_h))\n    body=body.cut(hx(lip,p.lip_z,p.lip_h))\n\
+    \    pts1=[(lip/math.sqrt(3)*math.cos(math.radians(60*i)),lip/math.sqrt(3)*math.sin(math.radians(60*i)))\
+    \ for i in range(6)]\n    pts2=[(entry/math.sqrt(3)*math.cos(math.radians(60*i)),entry/math.sqrt(3)*math.sin(math.radians(60*i)))\
+    \ for i in range(6)]\n    lead=cq.Workplane('XY').workplane(offset=p.lip_z+p.lip_h).polyline(pts1).close().workplane(offset=p.lead_h).polyline(pts2).close().loft(combine=True)\n\
+    \    body=body.cut(lead)\n    top=p.lip_z+p.lip_h+p.lead_h\n    body=body.cut(hx(entry,top,p.knob_h-top+e))\n\
+    \    length=p.moat_r+p.slit_overrun-p.slit_start_r\n    for i in range(int(p.finger_count)):\n\
+    \        slot=cq.Workplane('XY').box(length,p.slit_w,p.knob_h-p.floor_h+e,centered=(True,True,False)).translate((p.slit_start_r+length/2,0,p.floor_h)).rotate((0,0,0),(0,0,1),360*i/p.finger_count)\n\
+    \        body=body.cut(slot)\n    return body.cut(cq.Workplane('XY').workplane(offset=-e).circle((p.bolt_d+p.bore_clearance)/2).extrude(p.knob_h+2*e))\n"
+  print_orientation: Flat underside at z=0 on bed, socket opening upward. No supports.
+  use_orientation: Same as knob; this is a separate fit test, not part of the finished
+    assembly.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: thread_connection
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: Central 3.5 mm through-bore, head external to knob
+    role: clearance
+  - part: knob
+    feature: Split hex socket captures nut above solid floor
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria:
+- id: hand_insertion_retention
+  part: knob
+  feature: Split hex socket and retaining lips
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - socket_clearance
+  - wall_t
+  - lip_interference
+  - lip_z
+  - slit_w
+  check:
+    method: coupon
+    ref: socket_coupon
+    description: 'Nut must snap in with firm thumb pressure without cracking or whitening
+      the fingers. Invert and gently shake: nut must stay inside. Axial play is intentional.'
+- id: fully_recessed
+  part: knob
+  feature: Nut cavity between floor and lips
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - floor_h
+  - lip_z
+  - knob_h
+  check:
+    method: coupon
+    ref: socket_coupon
+    description: Nut must sit entirely below the upper face. Nominal seated nut top
+      is z=4.4 mm; lip underside is z=6.2 mm.
+- id: floor_stop
+  part: knob
+  feature: Solid floor around central bore
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_h
+  - bolt_d
+  - bore_clearance
+  - nut_af
+  check:
+    method: coupon
+    ref: socket_coupon
+    description: Nut cannot pass through the underside under finger pressure.
+- id: bolt_passage
+  part: knob
+  feature: Axial through-bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - bore_clearance
+  check:
+    method: coupon
+    ref: socket_coupon
+    description: Bolt enters from flat underside, threads through nut by hand and
+      emerges from top. Nut must not spin in its socket.
+manual:
+- n: '1'
+  text: 'Print socket_coupon first: PLA, 0.4 mm nozzle, 0.2 mm layers, 3 walls, 5
+    top/bottom layers and 30% infill. Flat underside on bed, no supports. Let cool
+    and ensure the six slits are clear.'
+  parts:
+  - socket_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align nut flats to the hex opening. Press straight down with your thumb until
+    the nut passes the retaining lips and reaches the floor. Do not hammer, heat,
+    glue or use pliers. Stop if force is excessive or a finger cracks or whitens.
+  parts:
+  - socket_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: 'Invert and gently shake: nut must remain inside. Confirm it is fully recessed
+    and cannot pass through the bottom. Insert bolt from the flat underside and turn
+    by hand until its tip emerges on top. Do not tighten the head hard against the
+    coupon. The nut must not spin; slight axial rattle is acceptable.'
+  parts:
+  - socket_coupon
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '4'
+  text: If insertion is too stiff, reduce lip_interference by 0.10 mm and reprint
+    the coupon. If the nut escapes, increase lip_interference by 0.10 mm and retest.
+    If it binds below the lips, increase socket_clearance by 0.10 mm. A failed or
+    cracked coupon is not an approved fit.
+  parts:
+  - socket_coupon
+  hardware: []
+  tool: null
+- n: '5'
+  text: Recover the nut by gently spreading the coupon fingers while lifting with
+    the loosely threaded bolt. Sacrifice the coupon if needed rather than forcing
+    the nut. Print knob with the successful parameters and the same settings. The
+    coupon is not assembled into the finished knob.
+  parts:
+  - socket_coupon
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '6'
+  text: Press the nut into knob and repeat the retention and bolt-passage checks.
+    Use the flat underside against your work, with the bolt through the centre. The
+    supplied M3x16 reference is a functional-test bolt; the required application length
+    depends on the work thickness. Tighten with fingers only, just until snug. Keep
+    PLA away from heat and replace the knob if cracked or if the nut can escape.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

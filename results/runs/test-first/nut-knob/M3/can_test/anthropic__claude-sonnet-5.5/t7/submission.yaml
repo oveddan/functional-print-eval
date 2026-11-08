@@ -1,0 +1,240 @@
+task: nut-knob/M3
+note: 'Pocket size chosen from the print test: 5.70 mm AF (nut AF 5.5 + 0.2) was snug
+  and held the nut when inverted and shaken.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance through the knob
+  pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'Added to nut AF. Coupon: 5.70 mm pocket was snug and retained the nut when
+      inverted and shaken; 5.5 and 5.6 barely/did not go in; 5.8 was looser but held.'
+  pocket_depth:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.4 so the nut sits fully inside
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bed_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  t:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c1:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c2:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c3:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c4:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c5:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    k = cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n\
+    \    k = k.faces('<Z').edges().chamfer(p.bed_chamfer)\n    R = p.knob_d/2 - p.scallop_depth\
+    \ + p.scallop_r\n    for i in range(int(p.scallop_n)):\n        a = 2*math.pi*i/p.scallop_n\n\
+    \        c = cq.Workplane('XY').center(R*math.cos(a), R*math.sin(a)).circle(p.scallop_r).extrude(p.knob_h)\n\
+    \        k = k.cut(c)\n    af = p.nut_af + p.pocket_clear\n    d = af / math.cos(math.radians(30))\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=p.knob_h-p.pocket_depth).polygon(6,\
+    \ d).extrude(p.pocket_depth)\n    hole = cq.Workplane('XY').circle(p.bolt_hole_d/2).extrude(p.knob_h)\n\
+    \    return k.cut(pocket).cut(hole)"
+  print_orientation: grip face (the face without the nut pocket) flat on the bed;
+    nut pocket opens upward
+  use_orientation: pocket face against the work, bolt enters through the pocket
+- id: nut-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    n = 5\n    pitch = 12\n    base = cq.Workplane('XY').box(n*pitch,\
+    \ 12, p.t, centered=(False, True, False))\n    for i, c in enumerate([p.c1, p.c2,\
+    \ p.c3, p.c4, p.c5]):\n        af = p.nut_af + c\n        d = af / math.cos(math.radians(30))\n\
+    \        x = pitch*(i+0.5)\n        pocket = cq.Workplane('XY').workplane(offset=p.t-p.pocket_depth).center(x,\
+    \ 0).polygon(6, d).extrude(p.pocket_depth)\n        hole = cq.Workplane('XY').center(x,\
+    \ 0).circle(p.bolt_hole_d/2).extrude(p.t)\n        base = base.cut(pocket).cut(hole)\n\
+    \    return base"
+  print_orientation: flat, pockets facing up
+  use_orientation: test only
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: bolt-through-knob
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 20.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: c-pocket
+  part: knob
+  feature: hex nut pocket (5.70 mm AF, 2.8 mm deep)
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clear
+  - pocket_depth
+  check:
+    method: coupon
+    ref: nut-coupon
+    description: '5.70 mm pocket: nut pushed in by hand, snug, stayed in when inverted
+      and shaken. Nut (2.4 mm) sits 0.4 mm below the face.'
+- id: c-hole
+  part: knob
+  feature: bolt through hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_hole_d
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes freely through the 3.4 mm hole and threads into the
+      nut.
+- id: c-retain
+  part: knob
+  feature: closed floor above nut
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - pocket_depth
+  check:
+    method: none
+    ref: null
+    description: The nut cannot be pushed through the far side because only the 3.4
+      mm bolt hole exists there; 7.2 mm of solid material above the pocket.
+manual:
+- n: '1'
+  text: Print the knob with the plain grip face on the bed and the hex pocket facing
+    up. No supports. (The coupon is only the test already printed; no need to reprint.)
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Set the M3 nut over the hex pocket in the flat face of the knob, aligning
+    the flats, and press it straight in with your thumb until it bottoms out, 0.4
+    mm below the face. It is a snug press fit; no glue.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Pass the M3 bolt through your work, then thread its tip into the knob's nut
+    side and turn the knob by hand to tighten. The bolt tip can come out through the
+    hole in the top of the knob.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null

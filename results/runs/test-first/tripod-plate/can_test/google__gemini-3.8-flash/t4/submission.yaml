@@ -1,0 +1,229 @@
+task: tripod-plate
+note: Arca-Swiss compatible 38 mm quick release plate designed for 3D printing without
+  supports on a Bambu Lab X1C. Utilizes the salvaged 1/4"-20 metal bolt from the webcam
+  monitor mount for reliable, high-strength attachment to the camera without risking
+  camera drops from printed plastic threads.
+questions:
+- text: How hard would it be to 3D print it, both the flat part and the part that
+    screws in? Just as a temporary thing until I find the real one. I know it's metal
+    normally.
+  answer: "The flat quick release plate is very straightforward and safe to 3D print\
+    \ in PLA. It prints flat on the print bed with no supports required, and it readily\
+    \ withstands the compressive and clamping forces from the tripod clamp jaws. \n\
+    \nHowever, 3D printing the 1/4\"-20 screw itself is strongly discouraged: 3D-printed\
+    \ plastic threads (especially in small diameters like 1/4\") have weak shear and\
+    \ tensile strength along layer lines and can snap suddenly under the weight and\
+    \ leverage of a camera and lens, dropping your camera. \n\nInstead, you can use\
+    \ the metal 1/4\"-20 bolt from your webcam monitor mount! It has standard 1/4\"\
+    -20 threads that thread directly into your camera's tripod socket, providing full\
+    \ metal-to-metal tensile strength while resting flush inside the printed plate's\
+    \ bottom recess."
+params:
+  bolt_head_recess_w:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: Width of central bottom recess for finger access
+  bolt_clearance_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for 1/4-20 screw
+  plate_bevel_angle:
+    value: 45
+    unit: deg
+    kind: hardware
+    source: datasheet
+    note: Arca-Swiss standard dovetail angle
+  plate_h:
+    value: 9.5
+    unit: mm
+    kind: design
+    source: design
+    note: Overall thickness of quick release plate
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of 1/4-20 bolt
+  plate_l:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: Length of quick release plate
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured height of webcam bolt head
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured tripod clamp plate receiver width
+  bolt_head_recess_h:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of bottom recess ensuring bolt head sits flush below plate bottom
+  bolt_head_recess_l:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: Length of central bottom recess for finger access
+  bevel_w:
+    value: 2.25
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Dovetail horizontal taper per side
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured diameter of webcam bolt head
+parts:
+- id: quick_release_plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    w_bot = p.plate_w\n    w_top\
+    \ = p.plate_w - 2 * p.bevel_w\n    h = p.plate_h\n    l = p.plate_l\n\n    # Dovetail\
+    \ profile in XZ plane\n    pts = [\n        (-w_bot / 2, 0),\n        (w_bot /\
+    \ 2, 0),\n        (w_top / 2, h),\n        (-w_top / 2, h),\n    ]\n\n    body\
+    \ = (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n        .close()\n\
+    \        .extrude(l)\n        .translate((0, -l / 2, 0))\n    )\n\n    # Central\
+    \ bottom recess for bolt head and finger access\n    cutout = cq.Workplane(\"\
+    XY\").box(\n        p.bolt_head_recess_w,\n        p.bolt_head_recess_l,\n   \
+    \     p.bolt_head_recess_h,\n        centered=(True, True, False),\n    )\n  \
+    \  body = body.cut(cutout)\n\n    # 1/4\"-20 bolt through-hole\n    hole = (\n\
+    \        cq.Workplane(\"XY\")\n        .cylinder(h * 3, p.bolt_clearance_d / 2)\n\
+    \        .translate((0, 0, h / 2))\n    )\n    body = body.cut(hole)\n\n    return\
+    \ body\n"
+  print_orientation: bottom face on bed (z=0)
+  use_orientation: bottom face in clamp, top face against camera
+hardware:
+- id: webcam-mount-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt_joint
+  fastener: webcam-mount-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: quick_release_plate
+    feature: bottom bolt head counterbore recess
+    role: head_seat
+  - part: quick_release_plate
+    feature: central bolt clearance hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: bolt_shank_clearance
+  part: quick_release_plate
+  feature: central bolt clearance hole
+  relation: clears
+  hardware: webcam-mount-bolt
+  clearance_mm: 0.45
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Verify that the 1/4"-20 bolt passes smoothly through the central
+      hole.
+- id: bolt_head_recess_seat
+  part: quick_release_plate
+  feature: bottom bolt head counterbore recess
+  relation: seats
+  hardware: webcam-mount-bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - bolt_head_recess_h
+  - bolt_head_recess_w
+  - bolt_head_recess_l
+  check:
+    method: measure
+    ref: null
+    description: Verify the bolt head sits flush or recessed below the bottom plane
+      of the plate so it does not interfere with the tripod clamp.
+- id: tripod_clamp_dovetail
+  part: quick_release_plate
+  feature: 45-degree dovetail side flanks
+  relation: engages
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - plate_w
+  - plate_bevel_angle
+  - plate_h
+  - bevel_w
+  check:
+    method: measure
+    ref: null
+    description: Verify the plate drops into the tripod clamp and locks securely when
+      the clamp knob is tightened.
+- id: camera_platform_support
+  part: quick_release_plate
+  feature: top flat camera mounting surface
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_l
+  - plate_h
+  - bevel_w
+  check:
+    method: none
+    ref: null
+    description: Ensure flat top surface provides stable planar support against the
+      bottom of the camera body.
+manual:
+- n: '1'
+  text: Take the salvaged 1/4"-20 bolt from your webcam mount and insert it from underneath
+    into the recess on the bottom of the 3D-printed quick release plate, so the threaded
+    stud points out through the top flat face.
+  parts:
+  - quick_release_plate
+  hardware:
+  - webcam-mount-bolt
+  tool: null
+- n: '2'
+  text: Hold the plate against the bottom of your camera, aligning the bolt with the
+    camera's 1/4"-20 threaded tripod socket. Hand-tighten the bolt using its knurled
+    head in the bottom recess until the plate is firmly and squarely seated against
+    the base of the camera.
+  parts:
+  - quick_release_plate
+  hardware:
+  - webcam-mount-bolt
+  tool: null
+- n: '3'
+  text: Loosen the knob on your tripod head clamp until the jaws open wide enough
+    to accept the plate. Drop the quick release plate into the clamp from above, then
+    tighten the clamp knob firmly so the angled clamp jaws grip the 45-degree dovetails
+    on each side.
+  parts:
+  - quick_release_plate
+  hardware: []
+  tool: null

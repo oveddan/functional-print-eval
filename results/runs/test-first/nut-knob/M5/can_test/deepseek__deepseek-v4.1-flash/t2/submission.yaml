@@ -1,0 +1,311 @@
+task: nut-knob/M5
+note: 'One printed piece: a 30 mm, 6-flute hand knob 9.3 mm tall that captures an
+  ISO 4032 M5 nut in a hex pocket. The pocket is 8.00 mm across flats (deliberately
+  a hair under the nut''s 8.0 mm max) so it is a hand press-fit that grips by friction;
+  the 4.0 mm pocket floor is a shoulder with only a 5.5 mm bolt hole in it, so the
+  nut sits fully inside the knob (its top face 0.6 mm below the knob''s top face),
+  cannot be pushed out the far side, and does not need glue. The bolt comes up through
+  the floor hole, threads through the nut and out into the pocket above it. The pocket
+  size was not calculated but measured out: a coupon with 7.70 / 7.85 / 8.00 mm pockets
+  showed the 8.00 mm one pressed in by hand (tight) and held the nut when inverted
+  and shaken, and the printed knob reproduced it. Two things I could not pin down:
+  your nut''s actual across-flats (you could not measure it), and how much thread
+  your bolt exposes - hence the 8.7 mm figure above. If the grip ever feels weak,
+  the fix is to re-print with pocket_af 7.9 instead of 8.0; if the nut is too hard
+  to press in, go to 8.1.'
+questions: []
+params:
+  bolt_hole_d:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: design
+    note: free-fit clearance hole for the M5 shank (M5 d = 5.0), cut through the pocket
+      floor
+  bolt_thread_needed:
+    value: 8.7
+    unit: mm
+    kind: design
+    source: design
+    note: floor_t + nut_h = 8.7; how much exposed thread the user's bolt needs for
+      the nut to be fully engaged
+  floor_t:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'pocket floor / shoulder: stops the nut going out the far side and takes
+      the tightening load'
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: finger flutes around the rim for tool-free tightening
+  flute_depth:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: how deep each flute cuts into the 30 mm rim; valley radius 12.5
+  flute_r:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: radius of each flute cutter; cutter centres sit at 17.5 from the axis
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: crest diameter of the knob (measured across the ridges of the flutes)
+  knob_h:
+    value: 9.3
+    unit: mm
+    kind: design
+    source: design
+    note: floor_t + pocket_depth
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 width across flats (max); ISO minimum is 7.64
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height
+  pocket_af:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'press-fit pocket across flats. Chosen from the printed coupon: the 8.00
+      mm pocket pressed in by hand (tight) and held the nut when inverted and shaken;
+      confirmed again on the printed knob. Printed pockets come out slightly under
+      nominal, which is what makes the grip.'
+  pocket_depth:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + pocket_top_gap, so the nut sits fully inside the knob
+  pocket_lead_in:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: extra across flats over the top 0.7 mm of the pocket, as a lead-in to start
+      the nut square by hand
+  pocket_lead_in_h:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: height of the lead-in step
+  pocket_top_gap:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: clearance between the nut's top face and the knob's top face once seated
+  rim_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on the outer top and bottom rims
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    r = p.knob_d / 2.0\n\
+    \    h = p.knob_h\n    # fluted disc, printed upright (pocket up)\n    body =\
+    \ cq.Workplane(\"XY\").circle(r).extrude(h)\n    # soften the outer top and bottom\
+    \ rims (done on the plain cylinder)\n    body = body.faces(\">Z\").edges().chamfer(p.rim_chamfer)\n\
+    \    body = body.faces(\"<Z\").edges().chamfer(p.rim_chamfer)\n    # finger flutes\n\
+    \    fcr = r + p.flute_r - p.flute_depth\n    for i in range(int(p.flute_count)):\n\
+    \        a = 2.0 * math.pi * i / p.flute_count\n        cutter = (cq.Workplane(\"\
+    XY\")\n                  .center(fcr * math.cos(a), fcr * math.sin(a))\n     \
+    \             .circle(p.flute_r)\n                  .extrude(h + 2.0))\n     \
+    \   body = body.cut(cutter)\n    # hex pocket for the nut, open at the top\n \
+    \   R = p.pocket_af / math.sqrt(3.0)\n    body = body.cut(cq.Workplane(\"XY\"\
+    ).workplane(offset=p.floor_t)\n                    .polygon(6, 2.0 * R)\n    \
+    \                .extrude(h - p.floor_t + 1.0))\n    # lead-in step at the pocket\
+    \ mouth\n    Ri = (p.pocket_af + p.pocket_lead_in) / math.sqrt(3.0)\n    body\
+    \ = body.cut(cq.Workplane(\"XY\").workplane(offset=h - p.pocket_lead_in_h)\n \
+    \                   .polygon(6, 2.0 * Ri)\n                    .extrude(p.pocket_lead_in_h\
+    \ + 1.0))\n    # bolt clearance hole through the pocket floor\n    body = body.cut(cq.Workplane(\"\
+    XY\").circle(p.bolt_hole_d / 2.0)\n                    .extrude(p.floor_t + 1.0))\n\
+    \    return body\n"
+  print_orientation: flat bottom face on the bed (z = 0, the face with the 5.5 mm
+    bolt hole); hex pocket opening upward. All walls are vertical or slanted inward,
+    so no supports are needed.
+  use_orientation: 'as printed: axis vertical, hex pocket up. The M5 bolt comes up
+    from below through the 5.5 mm floor hole, threads through the captured nut, and
+    comes out into the pocket above the nut.'
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: check_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: bolt_through_knob
+  fastener: check_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bolt_hole (5.5 mm through the pocket floor)
+    role: clearance
+  - part: knob
+    feature: hex_pocket (8.0 mm across flats, 5.3 mm deep, floor at z = 4.0)
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria:
+- id: c1_nut_grip
+  part: knob
+  feature: hex_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  - pocket_depth
+  check:
+    method: coupon
+    ref: coupon C (8.00 mm across flats)
+    description: 'Coupon C printed with the same pocket geometry (8.00 mm across flats,
+      5.3 mm deep, 4.0 mm floor) in a 28 mm boss: the nut pressed in by hand, tight,
+      and stayed in when the piece was turned over and shaken. Then confirmed on the
+      printed knob itself.'
+- id: c2_nut_cannot_escape
+  part: knob
+  feature: pocket_floor
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - bolt_hole_d
+  - nut_af
+  check:
+    method: coupon
+    ref: coupon C (8.00 mm across flats)
+    description: The pocket floor is a solid shoulder 4.0 mm thick with only the 5.5
+      mm bolt hole in it, so the nut (8.0 mm across flats) cannot pass through; the
+      same floor was on coupon C.
+- id: c3_nut_fully_inside
+  part: knob
+  feature: hex_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  - pocket_top_gap
+  check:
+    method: template
+    ref: pocket_depth - nut_h = pocket_top_gap
+    description: 'pocket_depth (5.3) > nut_h (4.7), so the nut''s top face finishes
+      0.6 mm below the knob''s top face: the nut sits fully inside.'
+- id: c4_bolt_clears
+  part: knob
+  feature: bolt_hole
+  relation: clears
+  hardware: check_bolt
+  clearance_mm: 0.5
+  params:
+  - bolt_hole_d
+  check:
+    method: template
+    ref: bolt_hole_d - 5.0
+    description: '5.5 mm hole vs an M5 shank (5.0): 0.5 mm clearance, so the bolt
+      passes freely and comes out on the far side. Checked with the M5x30 screw during
+      assembly.'
+- id: c5_grip
+  part: knob
+  feature: flutes
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - flute_count
+  - flute_depth
+  - knob_d
+  check:
+    method: none
+    ref: null
+    description: Six flutes 2.5 mm deep around the 30 mm rim, giving finger grip for
+      tool-free tightening.
+manual:
+- n: '1'
+  text: Print the knob in PLA with the flat bottom face on the bed and the hex pocket
+    opening upward (no supports). It comes off the plate ready to use.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Clean the hex pocket: pick out any blobs or strings with a fingernail or
+    knife and check the pocket floor (4 mm down) is flat and clean. The pocket is
+    a press fit, so a stray blob is what stops the nut going in.'
+  parts:
+  - knob
+  hardware: []
+  tool: hobby knife or fingernail
+- n: '3'
+  text: Press the ISO 4032 M5 nut into the hex pocket from the top. Start it square
+    in the 0.7 mm lead-in, then push it straight down with your palm until it bottoms
+    out on the pocket floor. It goes in by hand, firmly - the plastic grips the flats.
+    When seated, the nut's top face sits about 0.6 mm below the knob's top face, so
+    the nut is fully inside.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: 'Check the grip: turn the knob upside down and shake it. The nut must stay
+    in the pocket. If it drops out, the print came out loose - do not glue it; re-print
+    the knob and tell me, and I''ll tighten the pocket size.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: 'Check the bolt path: thread an M5 screw up through the 5.5 mm hole in the
+    knob''s bottom face. It should pass straight through the nut and come out into
+    the open pocket above it. Unscrew it again.'
+  parts:
+  - knob
+  hardware:
+  - check_bolt
+  tool: 2.5 mm hex key
+- n: '6'
+  text: 'Fit it: start the knob on your bolt and turn it clockwise. The hex pocket
+    locks the nut against turning and the pocket floor carries the load, so you can
+    tighten it by hand with the fluted rim. Your bolt needs at least about 8.7 mm
+    of exposed thread (4 mm of floor plus the 4.7 mm nut) for the nut to be fully
+    engaged; less thread still works, just with less engagement.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  - check_bolt
+  tool: none

@@ -1,0 +1,209 @@
+task: nut-knob/M3
+note: Nut fit is friction only, so the size is tuned with the coupon. The pocket is
+  open toward the bed, so it prints cleanly. Only the small 3.4 mm hole and hex bridge
+  over the pocket, far below the 50 mm bridging limit.
+questions: []
+params:
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance hole through the top wall
+  knob_d:
+    value: 20
+    unit: mm
+    kind: world
+    source: asked
+    note: about 20 mm across
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: total height, leaves a 7 mm solid cap above the pocket
+  fit_offset:
+    value: 0.0
+    unit: mm
+    kind: design
+    source: guessed
+    note: 'added to nut across-flats for the pocket. 0 = nominal size, so PLA shrinkage
+      gives a light press fit. Tune with the coupon: use the pocket that needs firm
+      thumb pressure but no tools.'
+  depth_extra:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: pocket depth beyond nut thickness, so the nut sits fully inside, recessed
+  lead_in:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: 45 degree chamfer at the pocket mouth
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: grip scallops
+  scallop_d:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: scallop cutter diameter
+  scallop_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: how far scallops cut into the rim
+  coupon_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: pocket size step between the three coupon pockets
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d/2\n    body = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    # grip scallops\n    cr = R + p.scallop_d/2 - p.scallop_depth\n    for i\
+    \ in range(int(p.scallop_n)):\n        a = 2*math.pi*i/p.scallop_n\n        cut\
+    \ = (cq.Workplane('XY').center(cr*math.cos(a), cr*math.sin(a))\n             \
+    \  .circle(p.scallop_d/2).extrude(p.knob_h))\n        body = body.cut(cut)\n \
+    \   af = p.nut_af + p.fit_offset\n    dia = af/math.cos(math.radians(30))\n  \
+    \  depth = p.nut_h + p.depth_extra\n    pocket = cq.Workplane('XY').polygon(6,\
+    \ dia).extrude(depth)\n    body = body.cut(pocket)\n    # lead-in chamfer at the\
+    \ mouth\n    dia2 = (af + 2*p.lead_in)/math.cos(math.radians(30))\n    lead =\
+    \ cq.Workplane('XY').polygon(6, dia2).extrude(p.lead_in, taper=45)\n    body =\
+    \ body.cut(lead)\n    hole = cq.Workplane('XY').circle(p.hole_d/2).extrude(p.knob_h)\n\
+    \    body = body.cut(hole)\n    return body\n"
+  print_orientation: Nut-pocket face (the open hex) flat on the bed, knob upright
+    above it
+  use_orientation: Pocket face toward the work, bolt tip entering the pocket and passing
+    out the top hole
+- id: nut_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    depth = p.nut_h + p.depth_extra\n    t =\
+    \ depth + 1.6\n    blk = cq.Workplane('XY').box(36, 13, t, centered=(True, True,\
+    \ False))\n    for k, x in enumerate((-11, 0, 11)):\n        off = p.fit_offset\
+    \ + (k-1)*p.coupon_step\n        af = p.nut_af + off\n        dia = af/math.cos(math.radians(30))\n\
+    \        pk = cq.Workplane('XY').center(x, 0).polygon(6, dia).extrude(depth)\n\
+    \        dia2 = (af + 2*p.lead_in)/math.cos(math.radians(30))\n        ld = cq.Workplane('XY').center(x,\
+    \ 0).polygon(6, dia2).extrude(p.lead_in, taper=45)\n        h = cq.Workplane('XY').center(x,\
+    \ 0).circle(p.hole_d/2).extrude(t)\n        blk = blk.cut(pk).cut(ld).cut(h)\n\
+    \    return blk\n"
+  print_orientation: Pocket face flat on the bed
+  use_orientation: 'Test only: press an M3 nut into each pocket'
+hardware:
+- id: nut_m3
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket (open at the bed face)
+  relation: contains
+  hardware: nut_m3
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - nut_h
+  - fit_offset
+  - depth_extra
+  check:
+    method: coupon
+    ref: nut_coupon
+    description: Print the coupon first. Press an M3 nut into each of its three pockets
+      (middle = the knob's size). It should need firm thumb pressure, stay put when
+      the coupon is shaken upside down, and sit fully below the face. If the middle
+      pocket is loose, use the smaller one; if the nut won't go in, use the bigger
+      one, and change fit_offset to match.
+- id: c2
+  part: knob
+  feature: solid cap above the pocket (retains nut)
+  relation: supports
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - nut_h
+  - depth_extra
+  - knob_h
+  check:
+    method: measure
+    ref: null
+    description: The nut can only enter from the open face and is stopped by the 7
+      mm cap on the other side, so it cannot be pushed out through the far side.
+- id: c3
+  part: knob
+  feature: M3 through hole in the cap
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - hole_d
+  - bolt_d
+  check:
+    method: template
+    ref: null
+    description: An M3 bolt threaded through the nut passes out of the top hole freely.
+manual:
+- n: '1'
+  text: Print the nut_coupon first, open pockets down on the bed, 0.2 mm layers, PLA.
+    Press an M3 nut into each of the three pockets. Choose the one that needs firm
+    thumb pressure but holds the nut when upside down and shaken. If it is not the
+    middle pocket, change fit_offset by the coupon step (0.1 mm) in that direction
+    before printing the knob.
+  parts:
+  - nut_coupon
+  hardware:
+  - nut_m3
+  tool: null
+- n: '2'
+  text: Print the knob with the hex pocket face flat on the bed. No supports are needed.
+    Use at least 3 walls.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push an M3 hex nut into the hex pocket on the flat face with your thumb, with
+    a flat of the nut lined up with a flat of the pocket. Press until it bottoms out
+    against the cap. It sits slightly below the face.
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  tool: null
+- n: '4'
+  text: Thread your M3 bolt into the nut from the pocket side. Turn the knob until
+    the bolt tip passes through the nut and out of the hole in the top of the knob.
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  tool: null

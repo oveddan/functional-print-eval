@@ -1,0 +1,166 @@
+task: nut-knob/M3
+note: A 20 mm-across-corners hex hand knob with a blind M3 nut pocket. Install the
+  nut through the slotted, undersized entry opening; the flexible printed fingers
+  snap back to retain it. The pocket floor blocks the nut from being pushed through,
+  while the M3 clearance bore continues through the far side. The nut fit depends
+  on printer/material behavior; do not force it if the retaining fingers show whitening
+  or cracking.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Hexagonal knob across opposite corners.
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height.
+  pocket_clearance:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Added across-flats clearance for the nut cavity.
+  pocket_floor_z:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Nut pocket ends here; the floor prevents the nut passing through.
+  lip_t:
+    value: 0.65
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the slotted retaining lip at the nut insertion face.
+  entry_d:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: Smaller than the nut across-flats dimension; slotted fingers flex for insertion
+      and retain the nut.
+  screw_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-bore for an M3 bolt.
+  slot_width:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_outer_r:
+    value: 4.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    # Hexagonal grip; z=0 is the nut insertion face and print\
+    \ bed.\n    body = cq.Workplane('XY').polygon(6, p.knob_d).extrude(p.knob_h)\n\
+    \n    # Nut cavity starts behind the flexible retaining lip.\n    af = p.nut_af\
+    \ + p.pocket_clearance\n    hex_d = af / 0.8660254037844386\n    pocket = (cq.Workplane('XY').workplane(offset=p.lip_t)\n\
+    \              .polygon(6, hex_d).extrude(p.pocket_floor_z - p.lip_t))\n    body\
+    \ = body.cut(pocket)\n\n    # Small entry aperture through the lip and a continuous\
+    \ M3 bolt bore\n    # from the pocket floor through the opposite face.\n    entry\
+    \ = cq.Workplane('XY').circle(p.entry_d / 2).extrude(p.lip_t)\n    bore = (cq.Workplane('XY').workplane(offset=p.pocket_floor_z\
+    \ - 0.05)\n            .circle(p.screw_clearance_d / 2)\n            .extrude(p.knob_h\
+    \ - p.pocket_floor_z + 0.1))\n    body = body.cut(entry).cut(bore)\n\n    # Six\
+    \ radial relief cuts split the entry lip into compliant fingers.\n    # Slots\
+    \ align with the nut's hex corners and extend beyond the nut corners.\n    slot_len\
+    \ = p.slot_outer_r - p.entry_d / 2\n    for i in range(6):\n        slot = (cq.Workplane('XY')\n\
+    \                .box(slot_len, p.slot_width, p.lip_t + 0.15,\n              \
+    \       centered=(False, True, False))\n                .translate((p.entry_d\
+    \ / 2, 0, 0))\n                .rotate((0, 0, 0), (0, 0, 1), i * 60))\n      \
+    \  body = body.cut(slot)\n    return body"
+  print_orientation: Lay the broad nut-entry face (z=0) on the bed; print upright
+    with the knob axis vertical. No supports should be needed.
+  use_orientation: Push an M3 hex nut into the slotted entry face. The bolt enters
+    from the opposite face, passes through the clearance bore, and threads into the
+    captured nut.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_captured
+  part: knob
+  feature: Blind hex nut pocket with a slotted retaining lip; nut remains recessed
+    and is retained against falling out of the entry face.
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clearance
+  - pocket_floor_z
+  - entry_d
+  - lip_t
+  check:
+    method: none
+    ref: null
+    description: Press the nut in by hand and turn the knob entry-face-down; the pocket
+      floor stops inward travel and the lip should retain the nut.
+- id: bolt_path
+  part: knob
+  feature: Axial clearance bore through the far side to the captured M3 nut.
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - screw_clearance_d
+  - knob_h
+  - pocket_floor_z
+  check:
+    method: measure
+    ref: null
+    description: Verify the intended M3 bolt passes through the far-side bore and
+      engages the nut.
+manual:
+- n: '1'
+  text: Print the knob upright with the nut-entry face on the bed. Let the part cool
+    before removing it.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M3 nut with the hex pocket and press it straight into the
+    entry face by hand until it sits fully inside. The slotted lip fingers should
+    flex over the nut corners and return to retain it. Stop if the fingers whiten
+    or crack.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Pass the M3 bolt through the opposite-face bore and thread it into the captive
+    nut. Turn the hexagonal knob by hand to tighten.
+  parts: []
+  hardware: []
+  tool: null

@@ -1,0 +1,305 @@
+task: bearing-wheel
+note: Custom replacement roller wheel for sliding closet door designed for two standard
+  608 skateboard bearings and an M8 bolt axle. Features a dual-profile rim (central
+  U-groove with flat shoulders) compatible with both rounded rail tracks and flat/J-channel
+  tracks.
+questions: []
+params:
+  groove_width:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Top width of rim groove
+  coupon_thickness:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Total thickness of bearing fit test coupon
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Total width of original broken closet door roller wheel
+  lip_thickness:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Axial retaining lip thickness (16mm wheel width - 2*7mm bearings = 2mm)
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Outer diameter of standard 608 bearing
+  spacer_bore:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole clearance diameter in standoff spacer for M8 bolt
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of standoff spacer, clamping only 608 inner race
+  groove_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Central concave U-groove depth on outer rim for rail tracking
+  shoulder_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Corner chamfer on wheel rim shoulders
+  bearing_pocket_d:
+    value: 22.2
+    unit: mm
+    kind: design
+    source: design
+    note: Bore diameter of wheel pocket for snug press fit of 608 bearing in PLA
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Width of standard 608 bearing
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Bore diameter of standard 608 bearing
+  lip_bore:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: Retaining lip inner clearance diameter, clearing inner ring and shield
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Outer diameter of original broken closet door roller wheel
+  coupon_od:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of bearing fit test coupon
+  spacer_length:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Length of standoff spacer providing axial clearance from bracket and bolt
+      head
+  groove_flat:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Flat bottom width of rim groove
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal shank diameter of M8 bolt
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    r_out = p.wheel_od / 2.0\n\
+    \    h = p.wheel_width\n    r_lip = p.lip_bore / 2.0\n    r_pocket = p.bearing_pocket_d\
+    \ / 2.0\n    t_lip = p.lip_thickness\n    chamfer = p.shoulder_chamfer\n    g_depth\
+    \ = p.groove_depth\n    g_width = p.groove_width\n    g_flat = p.groove_flat\n\
+    \n    z_g_start = (h - g_width) / 2.0\n    z_g_bottom1 = (h - g_flat) / 2.0\n\
+    \    z_g_bottom2 = (h + g_flat) / 2.0\n    z_g_end = (h + g_width) / 2.0\n\n \
+    \   pts = [\n        (r_lip, 0.0),\n        (r_out - chamfer, 0.0),\n        (r_out,\
+    \ chamfer),\n        (r_out, z_g_start),\n        (r_out - g_depth, z_g_bottom1),\n\
+    \        (r_out - g_depth, z_g_bottom2),\n        (r_out, z_g_end),\n        (r_out,\
+    \ h - chamfer),\n        (r_out - chamfer, h),\n        (r_pocket, h),\n     \
+    \   (r_pocket, t_lip),\n        (r_lip, t_lip),\n    ]\n\n    wheel = (\n    \
+    \    cq.Workplane(\"XZ\")\n        .polyline(pts)\n        .close()\n        .revolve(360,\
+    \ (0, 0, 0), (0, 0, 1))\n    )\n    return wheel\n"
+  print_orientation: Bottom face (z = 0) with retaining lip flat on the build plate;
+    prints vertically without any supports.
+  use_orientation: Z-axis oriented horizontally along the M8 bolt axle axis.
+- id: wheel_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    spacer = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(p.spacer_od / 2.0)\n        .circle(p.spacer_bore / 2.0)\n\
+    \        .extrude(p.spacer_length)\n    )\n    return spacer\n"
+  print_orientation: Bottom annular face flat on bed (z = 0); extrudes upward along
+    Z. Print 2 copies.
+  use_orientation: Threaded onto M8 bolt, clamping against bearing inner race and
+    providing bracket clearance.
+- id: coupon_bearing_fit
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    r_out = p.coupon_od / 2.0\n\
+    \    h = p.coupon_thickness\n    r_lip = p.lip_bore / 2.0\n    r_pocket = p.bearing_pocket_d\
+    \ / 2.0\n    t_lip = p.lip_thickness\n\n    pts = [\n        (r_lip, 0.0),\n \
+    \       (r_out, 0.0),\n        (r_out, h),\n        (r_pocket, h),\n        (r_pocket,\
+    \ t_lip),\n        (r_lip, t_lip),\n    ]\n\n    coupon = (\n        cq.Workplane(\"\
+    XZ\")\n        .polyline(pts)\n        .close()\n        .revolve(360, (0, 0,\
+    \ 0), (0, 0, 1))\n    )\n    return coupon\n"
+  print_orientation: Bottom face flat on bed (z = 0); prints in ~10 minutes without
+    supports.
+  use_orientation: Bench test coupon to verify 608 bearing push-fit before printing
+    the full wheel.
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 1
+- id: bearing_1
+  ref: 608ZZ
+  qty: 1
+- id: bearing_2
+  ref: 608ZZ
+  qty: 1
+joints:
+- id: wheel_axle_joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel_spacer
+    feature: bore
+    role: clearance
+  - part: roller_wheel
+    feature: bearing_pocket
+    role: clearance
+  nut: nut
+  external: closet_door_bracket
+criteria:
+- id: bearing_pocket_fit
+  part: roller_wheel
+  feature: bearing_pocket
+  relation: contains
+  hardware: bearing_1
+  clearance_mm: 0.2
+  params:
+  - bearing_od
+  - bearing_pocket_d
+  check:
+    method: coupon
+    ref: coupon_bearing_fit
+    description: Test bearing insertion into coupon to ensure firm push-fit without
+      cracking
+- id: lip_bearing_support
+  part: roller_wheel
+  feature: retaining_lip
+  relation: seats
+  hardware: bearing_2
+  clearance_mm: 0.0
+  params:
+  - lip_bore
+  - lip_thickness
+  - bearing_od
+  check:
+    method: measure
+    ref: null
+    description: Verify retaining lip captures outer bearing race while clearing inner
+      race
+- id: spacer_inner_race_engagement
+  part: wheel_spacer
+  feature: bearing_contact_face
+  relation: seats
+  hardware: bearing_1
+  clearance_mm: 0.0
+  params:
+  - spacer_od
+  - bearing_bore
+  check:
+    method: none
+    ref: null
+    description: Verify spacer OD (11.5mm) contacts bearing inner ring without contacting
+      seal or shield
+- id: spacer_bolt_clearance
+  part: wheel_spacer
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - spacer_bore
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Check that M8 bolt slides smoothly through spacer clearance bore
+manual:
+- n: '1'
+  text: Print the test coupon 'coupon_bearing_fit' first (approx. 10 minutes) to verify
+    the press-fit of your 608 bearing into the 3D-printed bore. The bearing should
+    push in snugly with firm thumb pressure.
+  parts:
+  - coupon_bearing_fit
+  hardware: []
+  tool: Bambu Lab X1C 3D printer
+- n: '2'
+  text: Print one 'roller_wheel' and two copies of 'wheel_spacer' in PLA. Use at least
+    4 perimeters / walls and 40% or higher infill (gyroid or cubic) to ensure maximum
+    radial strength under the door's weight.
+  parts:
+  - roller_wheel
+  - wheel_spacer
+  hardware: []
+  tool: Bambu Lab X1C 3D printer
+- n: '3'
+  text: Press the first 608 bearing into the open bore of the roller wheel until it
+    seats firmly against the 2.0 mm bottom retaining lip. Then press the second 608
+    bearing directly behind it until both bearings are fully seated flush with the
+    wheel's top face.
+  parts:
+  - roller_wheel
+  hardware:
+  - bearing_1
+  - bearing_2
+  tool: null
+- n: '4'
+  text: Slide the first 3D-printed wheel spacer onto the M8 bolt until it rests against
+    the bolt head. Then slide the M8 bolt through the bearings inside the assembled
+    roller wheel, and slide the second wheel spacer onto the bolt on the opposite
+    side. The spacers clamp only the stationary inner bearing rings, keeping the wheel
+    free to rotate.
+  parts:
+  - roller_wheel
+  - wheel_spacer
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Pass the protruding M8 bolt shank through the door mounting bracket hole,
+    place the ISO 7089 M8 washer, and thread on the ISO 10511 M8 nylon-insert lock
+    nut. Tighten with a hex wrench until snug against the bracket, confirming the
+    roller wheel spins freely without wobble or rubbing. Rehang the door onto the
+    track.
+  parts: []
+  hardware:
+  - nut
+  - washer
+  tool: 6 mm hex key & 13 mm wrench

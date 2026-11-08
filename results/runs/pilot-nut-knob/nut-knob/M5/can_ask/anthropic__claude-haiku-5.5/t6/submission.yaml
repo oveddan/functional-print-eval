@@ -1,0 +1,157 @@
+task: nut-knob/M5
+note: Nut retention relies on a 0.2 mm press-fit in PLA, not glue. The coupon sets
+  the final pocket size because printer tolerance varies. The nut is not captured
+  by a lip, so if the coupon shows it falls out at every size, the design needs a
+  retention lip, which I have not added. Knob is 30 mm across, 16 mm tall, with a
+  1 mm chamfer on top. Clearance hole 5.5 mm for the M5 bolt.
+questions:
+- text: Does the nut stay in the pocket when the knob is turned upside down at pocket_af
+    7.8 mm?
+  answer: null
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Knob outside diameter, as requested
+  knob_h:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Knob height
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole for M5 bolt through the knob top
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  pocket_af:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across flats, 0.2 mm under the nut so it press-fits and is held
+      by friction. Choose from coupon test (7.9, 7.8 or 7.7)
+  pocket_af_a:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon pocket, loosest
+  pocket_af_b:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon pocket, middle
+  pocket_af_c:
+    value: 7.7
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon pocket, tightest
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    d = p.knob_d\n    h = p.knob_h\n    body\
+    \ = cq.Workplane('XY').circle(d / 2).extrude(h)\n    body = body.faces('>Z').edges().chamfer(1.0)\n\
+    \    pocket_d = p.pocket_af / math.cos(math.radians(30))\n    hexp = cq.Workplane('XY').polygon(6,\
+    \ pocket_d).extrude(p.nut_h)\n    body = body.cut(hexp)\n    hole = cq.Workplane('XY').circle(p.bolt_clear_d\
+    \ / 2).extrude(h)\n    body = body.cut(hole)\n    return body\n"
+  print_orientation: Nut opening (pocket face) on the bed, z=0 at pocket mouth
+  use_orientation: Knob upright, nut pocket facing down, bolt enters from below
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    blk = cq.Workplane('XY').box(56, 14, p.nut_h\
+    \ + 3, centered=(True, True, False))\n    for x, af in [(-18, p.pocket_af_a),\
+    \ (0, p.pocket_af_b), (18, p.pocket_af_c)]:\n        pd = af / math.cos(math.radians(30))\n\
+    \        hexp = cq.Workplane('XY').center(x, 0).polygon(6, pd).extrude(p.nut_h)\n\
+    \        blk = blk.cut(hexp)\n    return blk\n"
+  print_orientation: Pocket mouths on the bed, z=0 at pocket mouth
+  use_orientation: 'Test only: check M5 nut press-fit and retention when inverted'
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket, open at the bottom, depth = nut height
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - pocket_af
+  - nut_h
+  - nut_af
+  check:
+    method: coupon
+    ref: coupon
+    description: Nut presses in by hand and stays in when the knob is inverted, no
+      glue. Pick the pocket size that does this from the coupon.
+- id: bolt_hole
+  part: knob
+  feature: M5 clearance hole through knob top
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: 5.5 mm hole clears M5 bolt
+manual:
+- n: '1'
+  text: Print the coupon first. It has three hex pockets, labelled by position, with
+    across-flats of 7.9, 7.8 and 7.7 mm. Press the M5 nut into each pocket by hand.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Pick the loosest pocket that holds the nut by hand. Turn the coupon upside
+    down and shake it. The nut must not fall out. If it falls out of all three, use
+    7.7 mm. If it won't go in by hand, use 7.9 mm.
+  parts: []
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Set pocket_af in the design to the chosen value and print the knob with the
+    nut pocket face down on the bed. No supports are needed.
+  parts: []
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press the M5 nut into the pocket from the bottom face until it sits flush
+    inside the knob. Push it straight in; do not tap it at an angle.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the M5 bolt up through the part being clamped and into the nut from
+    the bottom, then tighten by hand by turning the knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

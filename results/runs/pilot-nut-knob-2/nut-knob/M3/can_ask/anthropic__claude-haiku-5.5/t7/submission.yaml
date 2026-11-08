@@ -1,0 +1,160 @@
+task: nut-knob/M3
+note: ''
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Knob outer diameter, as requested
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Overall knob height
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height
+  press_af:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: Nut pocket across flats, 0.2 mm under nut so it presses in and grips
+  lip_af:
+    value: 4.9
+    unit: mm
+    kind: design
+    source: design
+    note: Retaining lip opening across flats; nut must snap past it, so it holds when
+      the knob is inverted
+  lip_t:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of retaining lip at the nut entry face
+  bolt_clear:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole for M3 bolt through the top wall
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    body = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2).extrude(p.knob_h)\n    # nut pocket: hex, sits above the lip, closed at\
+    \ top so nut cannot exit far side\n    pocket_d = p.press_af / math.cos(math.radians(30))\n\
+    \    pocket = (cq.Workplane('XY').workplane(offset=p.lip_t)\n              .polygon(6,\
+    \ pocket_d).extrude(p.nut_h))\n    # retaining lip opening at the entry face (z\
+    \ 0 .. lip_t)\n    lip_d = p.lip_af / math.cos(math.radians(30))\n    lip = cq.Workplane('XY').polygon(6,\
+    \ lip_d).extrude(p.lip_t)\n    # bolt clearance through the top wall\n    bolt\
+    \ = (cq.Workplane('XY').workplane(offset=p.lip_t + p.nut_h - 0.01)\n         \
+    \   .circle(p.bolt_clear / 2).extrude(p.knob_h))\n    return body.cut(pocket).cut(lip).cut(bolt)\n"
+  print_orientation: as modeled, nut entry face (z=0) on the bed
+  use_orientation: nut entry face down, bolt entering from below, knob top up
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x12
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket (press_af, nut_h)
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - press_af
+  - nut_h
+  - lip_af
+  - lip_t
+  check:
+    method: coupon
+    ref: null
+    description: Print the knob and press an M3 nut in by hand. It should seat with
+      some resistance and stay in when the knob is inverted. If it is too tight or
+      too loose, adjust press_af (and lip_af) and reprint.
+- id: retaining_lip
+  part: knob
+  feature: entry lip (lip_af, lip_t)
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - lip_af
+  - lip_t
+  check:
+    method: coupon
+    ref: null
+    description: Nut must not fall out when the knob is upside down, and must not
+      push out the far side.
+- id: bolt_clear
+  part: knob
+  feature: bolt clearance hole through top wall
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_clear
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt should pass freely through the top wall hole (3.4 mm).
+manual:
+- n: '1'
+  text: Print the knob with the flat nut-entry face on the bed. No supports are needed;
+    the hex pocket ceiling is a small flat bridge.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove the print from the bed and check that the nut pocket is clean. Clear
+    any stringing from the hex opening with a pin if needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Hold the knob with the entry face up. Start an M3 hex nut (ISO 4032) into
+    the hex opening on the bottom face and press it up by hand. It will snap past
+    the thin lip and seat against the top of the pocket. No tool is needed.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Turn the knob over and shake it gently to confirm the nut stays in the pocket.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the M3 bolt up through the lip opening, through the nut, and into the
+    clearance hole in the top wall. Tighten by turning the knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

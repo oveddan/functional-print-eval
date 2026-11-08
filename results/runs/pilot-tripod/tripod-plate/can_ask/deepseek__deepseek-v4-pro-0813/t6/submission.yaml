@@ -1,0 +1,247 @@
+task: tripod-plate
+note: Temporary quick-release plate. The salvaged 1/4-20 webcam bolt is reused as
+  the camera screw (metal threads, much stronger than printed PLA threads). Only the
+  flat plate and a fit-test coupon are printed.
+questions:
+- text: Is the salvaged bolt's head round/knurled (so the 15.6 mm round counterbore
+    is right), or is it a hexagonal head measured 15 mm across flats (in which case
+    the pocket needs enlarging to clear the corners)?
+  answer: null
+params:
+  tripod_plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: 'User measured: the tripod clamp takes a 38 mm wide plate.'
+  fit_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Per-side clearance so the printed plate slides/clamps without binding.
+  flank_h:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the 45-degree dovetail flank that the tripod clamp grips.
+  plate_T:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Overall plate thickness; chosen so the 10 mm bolt leaves about 5 mm of thread
+      above the camera face.
+  plate_len:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length along the tripod clamp; typical quick-release plate size.
+  coupon_len:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Thin slice of the dovetail cross-section for a fit test before printing
+      the full plate.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User measured 'about 15 mm' across the salvaged bolt head.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User measured 'about 5 mm' head height.
+  bolt_len_uhead:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User measured 'about 10 mm' from under the head to the tip.
+  head_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Added to each side of the head pocket (15 mm -> 15.6 mm).
+  head_proud:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: How much of the bolt head stands below the plate underside so it can be
+      gripped while tightening.
+  hole_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole for a 1/4-20 thread (6.35 mm major diameter).
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    top_w = p.tripod_plate_width - 2.0 * p.fit_clear\n   \
+    \ bottom_w = top_w - 2.0 * p.flank_h\n    z1 = p.plate_T - p.flank_h\n\n    pts\
+    \ = [\n        (-bottom_w/2.0, 0.0),\n        ( bottom_w/2.0, 0.0),\n        (\
+    \ bottom_w/2.0, z1),\n        (   top_w/2.0, p.plate_T),\n        (  -top_w/2.0,\
+    \ p.plate_T),\n        (-bottom_w/2.0, z1),\n    ]\n\n    plate = (\n        cq.Workplane(\"\
+    XZ\")\n        .polyline(pts)\n        .close()\n        .extrude(p.plate_len)\n\
+    \        .translate((0.0, -p.plate_len/2.0, 0.0))\n    )\n\n    cb_depth = p.bolt_head_h\
+    \ - p.head_proud\n    cb_d = p.bolt_head_d + 2.0 * p.head_clear\n\n    cb = (\n\
+    \        cq.Workplane(\"XY\")\n        .circle(cb_d/2.0)\n        .extrude(cb_depth)\n\
+    \    )\n    shank = (\n        cq.Workplane(\"XY\")\n        .circle(p.hole_d/2.0)\n\
+    \        .extrude(p.plate_T - cb_depth + 2.0)\n        .translate((0.0, 0.0, cb_depth))\n\
+    \    )\n\n    return plate.cut(cb).cut(shank)\n"
+  print_orientation: Narrow dovetail face (bottom of the trapezoid) on the bed; flat
+    38 mm camera face up.
+  use_orientation: Narrow face toward the tripod clamp, wide flat face against the
+    bottom of the camera.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    top_w = p.tripod_plate_width - 2.0 * p.fit_clear\n   \
+    \ bottom_w = top_w - 2.0 * p.flank_h\n    z1 = p.plate_T - p.flank_h\n\n    pts\
+    \ = [\n        (-bottom_w/2.0, 0.0),\n        ( bottom_w/2.0, 0.0),\n        (\
+    \ bottom_w/2.0, z1),\n        (   top_w/2.0, p.plate_T),\n        (  -top_w/2.0,\
+    \ p.plate_T),\n        (-bottom_w/2.0, z1),\n    ]\n\n    return (\n        cq.Workplane(\"\
+    XZ\")\n        .polyline(pts)\n        .close()\n        .extrude(p.coupon_len)\n\
+    \        .translate((0.0, -p.coupon_len/2.0, 0.0))\n    )\n"
+  print_orientation: Narrow dovetail face on the bed, same cross-section as the plate.
+  use_orientation: Slides into the tripod clamp to test the dovetail fit.
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: counterbore
+    role: head_seat
+  - part: plate
+    feature: through hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c_dovetail_fit
+  part: fit_coupon
+  feature: dovetail
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - tripod_plate_width
+  - fit_clear
+  - flank_h
+  - plate_T
+  - coupon_len
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Print the coupon first and slide it into the tripod clamp; it should
+      seat and lock without forcing.
+- id: c_head_seat
+  part: plate
+  feature: counterbore
+  relation: seats
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - head_clear
+  - bolt_head_h
+  - head_proud
+  check:
+    method: measure
+    ref: null
+    description: Drop the bolt head into the plate's counterbore; it should fit the
+      15.6 mm pocket and sit about 1 mm proud of the plate underside.
+- id: c_shank_clear
+  part: plate
+  feature: through hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - hole_d
+  check:
+    method: measure
+    ref: null
+    description: The bolt shank should pass through the 6.6 mm hole freely with slight
+      clearance.
+manual:
+- n: '1'
+  text: Print fit_coupon first. Slide it into the tripod clamp where the old plate
+    went; it should seat and the clamp should grip it without forcing.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: If the coupon is too tight, reprint with a slightly larger fit_clear; if it
+    rattles and won't lock, reprint with fit_clear smaller. Then print the full plate,
+    narrow dovetail face down on the bed.
+  parts:
+  - fit_coupon
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Check that the salvaged 1/4-20 bolt threads into the camera's tripod socket
+    by hand a couple of turns. It should be a standard fit; do not force it.
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Lay the plate flat with its wide face up. Drop the bolt head into the counterbore
+    on the underside; the threaded end should poke out of the top and the head should
+    sit roughly flush (about 1 mm proud below the plate).
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Set the camera on the plate, line up its socket, and turn the bolt from underneath
+    with your fingers (pliers for the last turn if needed) until the camera is snug.
+    Do not over-tighten; the plate is PLA.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: Slide the plate into the tripod clamp and lock it. If the slightly proud bolt
+    head keeps the plate from seating flat (some tripods have no center gap), thread
+    it in a little less or use the coupon to confirm there is clearance under the
+    middle.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '7'
+  text: 'Gently rock-test the camera; tighten the tripod clamp. This is temporary:
+    avoid heavy lenses and re-check the bolt and plate periodically.'
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null

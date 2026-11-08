@@ -1,0 +1,249 @@
+task: bearing-wheel
+note: 'Change from the first print: the bearing pocket seat (0.1 mm clearance) fit
+  well, so it''s unchanged. The problem was the roof over the pocket on the bed side.
+  The 14 mm center hole left a ring bridge over a 22 mm pocket, which printed as loose
+  loops and partly closed the hole. I added a 0.4 mm sacrificial disc across the bore
+  at that roof. The bridge now prints as a full disc, and you punch the disc out before
+  assembly. The pocket size, the web and the wheel size are all unchanged. The bracket
+  gap, track profile and bolt length are still unmeasured. I assumed a flat tread
+  and an M8x40 bolt.'
+questions:
+- text: What is the gap in the bracket the wheel sits in? The wheel plus bearings
+    is about 17 mm wide, so this needs checking.
+  answer: null
+- text: 'What shape is the track: a flat rail, a V-groove, or a round rail? The tread
+    is flat, with no groove or flange.'
+  answer: null
+- text: How long is the M8 bolt, and does it fit through the bracket with room for
+    a lock nut? I assumed an M8x40 as a placeholder.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide. Bracket gap not measured
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD is 22.000. User measured about 22
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal width 7. Not measured
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M8 shank, about 8 mm
+  pocket_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Test print gave a 22.09 mm seat. The bearing went in snug and held upside
+      down, so this value stays.
+  pocket_depth:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: less than bearing width, so each bearing sticks out 0.5 mm
+  web_bore:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: bigger than the inner race OD (about 12.6) so only the outer races touch
+      the wheel
+  membrane_t:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Thin sacrificial disc closing the bore at the roof of the bottom pocket.
+      The roof then prints as one full bridge, not a ring bridge with a hole in the
+      middle. Two layers at 0.2 mm.
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_od:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pocket_depth:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_h:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    r = p.wheel_od/2.0\n    pr = (p.bearing_od + p.pocket_clear)/2.0\n\
+    \    body = cq.Workplane('XY').circle(r).extrude(p.wheel_w)\n    body = body.faces('>Z').edges().chamfer(p.edge_chamfer).faces('<Z').edges().chamfer(p.edge_chamfer)\n\
+    \    bot = cq.Workplane('XY').circle(pr).extrude(p.pocket_depth)\n    top = cq.Workplane('XY').workplane(offset=p.wheel_w-p.pocket_depth).circle(pr).extrude(p.pocket_depth)\n\
+    \    z0 = p.pocket_depth + p.membrane_t\n    bore = cq.Workplane('XY').workplane(offset=z0).circle(p.web_bore/2.0).extrude(p.wheel_w\
+    \ - z0)\n    return body.cut(bot).cut(top).cut(bore)\n"
+  print_orientation: Flat on the bed, one flat face down. The pocket on the bed side
+    is open, so it needs no supports. The roof of that pocket is a 22 mm bridge, which
+    is well under your 50 mm limit. A 0.4 mm membrane across the bore keeps that bridge
+    a full disc.
+  use_orientation: Axle horizontal, rolling on the door track. The two bearings sit
+    in pockets on opposite faces. The membrane is removed before assembly.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    pr = (p.bearing_od + p.pocket_clear)/2.0\n    d = cq.Workplane('XY').circle(p.coupon_od/2.0).extrude(p.coupon_h)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=p.coupon_h-p.coupon_pocket_depth).circle(pr).extrude(p.coupon_pocket_depth)\n\
+    \    bore = cq.Workplane('XY').circle(p.web_bore/2.0).extrude(p.coupon_h)\n  \
+    \  return d.cut(pocket).cut(bore)\n"
+  print_orientation: Flat, pocket facing up
+  use_orientation: 'Test only: press a 608 bearing into the pocket to check the fit
+    before printing the wheel.'
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -6.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: web_bore
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - pocket_clear
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Press a 608 bearing into the coupon pocket. It should need firm thumb
+      pressure and not fall out. Your first print was snug and held upside down, so
+      no change is needed.
+- id: c2
+  part: wheel
+  feature: web_bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 3.0
+  params:
+  - web_bore
+  - bolt_d
+  - membrane_t
+  check:
+    method: measure
+    ref: null
+    description: After the membrane is removed, the bolt and bearing inner races pass
+      through the 14 mm web bore without touching it.
+- id: c3
+  part: wheel
+  feature: pocket depth
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - bearing_w
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: With both bearings pressed in, each sticks out about 0.5 mm. The
+      wheel face doesn't touch the washers or the bracket.
+manual:
+- n: '1'
+  text: 'Print the wheel in black PLA with 5 walls and 25% or more infill, flat on
+    the bed. You don''t need supports. The 0.4 mm disc inside the center hole is deliberate:
+    it lets the 22 mm pocket roof print as a clean bridge.'
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove the thin membrane disc from the center bore. Push a knife tip or a
+    6 mm drill through it from the open pocket side, then clean the edge. The 14 mm
+    bore should then be fully open. Trim any strings from the bridge underside in
+    the lower pocket.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one bearing into each face of the wheel, pushing on the outer ring only.
+    Use a flat block and a gentle squeeze in a vise, or tap it with a mallet. Each
+    bearing should stick out about 0.5 mm.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '4'
+  text: Put a washer on the M8 bolt. Pass the bolt through the bearings and the wheel.
+    Put the second washer on the other side. Mount the bolt in the door bracket. The
+    washers must touch only the bearing inner races, not the plastic.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  - bearing
+  tool: null
+- n: '5'
+  text: Tighten the lock nut until the bearings are clamped between the washers and
+    the bracket. The wheel should spin freely. Hang the door and check that the wheel
+    rides on the track.
+  parts: []
+  hardware:
+  - locknut
+  tool: null

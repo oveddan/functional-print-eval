@@ -1,6 +1,6 @@
 # Notes for agents
 
-Start with `PLAN.md` (phases, constraints, Dan's open decisions), then `docs/scoring.md` (the quality bar every task and grader is held to).
+Start with `docs/plan.md` (phases, constraints, Dan's open decisions), then `docs/scoring.md` (the quality bar every task and grader is held to).
 
 - Keep `CHANGELOG.md` current: one entry per change that affects results, with the evidence behind it.
 - Never print, echo or commit API keys. Read them from 1Password at run time.

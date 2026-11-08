@@ -1,0 +1,200 @@
+task: tripod-plate
+note: Unchanged plate. You reported that the clamp and the bolt-head recess both fit,
+  so I removed the fit coupon. I still don't know how the coupon came out. This is
+  a temporary PLA plate, not as strong as metal, so keep a hand on the camera and
+  don't use it with heavy lenses.
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Width of plate the tripod clamp takes. 38 mm is the Arca-Swiss standard.
+  bevel_angle:
+    value: 45
+    unit: mm
+    kind: world
+    source: guessed
+    note: Dovetail side angle. It was guessed, but the printed plate fits the clamp.
+  straight_h:
+    value: 2
+    unit: mm
+    kind: world
+    source: guessed
+    note: Straight lip at the camera face. It was guessed, but the printed plate fits
+      the clamp.
+  bevel_h:
+    value: 6
+    unit: mm
+    kind: world
+    source: guessed
+    note: Height of the dovetail section. It was guessed, but the printed plate fits
+      the clamp.
+  plate_l:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Salvaged webcam bolt head diameter, about 15 mm. The head fits the recess.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Salvaged webcam bolt head height, about 5 mm
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Salvaged webcam bolt length under the head, about 10 mm
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  fit_clr:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for the bolt hole and head pocket.
+  head_depth_extra:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Head sits this far below the jaw face.
+  slot_travel:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Bolt position adjustment along the plate.
+parts:
+- id: plate
+  role: final
+  material: PLA (black), 6 or more walls
+  code: "import math\ndef build(p):\n    t = p.straight_h + p.bevel_h\n    inset =\
+    \ p.bevel_h * math.tan(math.radians(p.bevel_angle))\n    hw = p.plate_w / 2.0\n\
+    \    pts = [(-hw, 0), (hw, 0), (hw, p.straight_h), (hw - inset, t), (-hw + inset,\
+    \ t), (-hw, p.straight_h)]\n    body = cq.Workplane('XZ').polyline(pts).close().extrude(-p.plate_l).translate((0,\
+    \ -p.plate_l / 2.0, 0))\n    thru_d = p.bolt_d + p.fit_clr\n    head_d = p.bolt_head_d\
+    \ + p.fit_clr\n    floor = t - (p.bolt_head_h + p.head_depth_extra)\n    thru\
+    \ = cq.Workplane('XY').slot2D(p.slot_travel + thru_d, thru_d, 90).extrude(t +\
+    \ 1).translate((0, 0, -0.5))\n    pocket = cq.Workplane('XY').workplane(offset=floor).slot2D(p.slot_travel\
+    \ + head_d, head_d, 90).extrude(t)\n    return body.cut(thru).cut(pocket)\n"
+  print_orientation: Wide camera face flat on the bed (z=0). The sides taper inward
+    going up, so no supports are needed.
+  use_orientation: Camera face up against the camera base. Dovetail edges slide into
+    the tripod clamp. The bolt head sits in the pocket on the tripod side.
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 2.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: head pocket floor
+    role: head_seat
+  - part: plate
+    feature: bolt slot
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 tripod socket
+criteria:
+- id: c-dovetail-fit
+  part: plate
+  feature: dovetail edges
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - bevel_angle
+  - straight_h
+  - bevel_h
+  check:
+    method: measure
+    ref: null
+    description: The user printed this and reported it fits the tripod clamp.
+- id: c-bolt-clear
+  part: plate
+  feature: bolt slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - fit_clr
+  - slot_travel
+  check:
+    method: measure
+    ref: null
+    description: The 1/4-20 shank should pass freely through the slot.
+- id: c-head-pocket
+  part: plate
+  feature: head pocket
+  relation: contains
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_depth_extra
+  - fit_clr
+  check:
+    method: measure
+    ref: null
+    description: The user printed this and reported the bolt head fits the recess.
+manual:
+- n: '1'
+  text: Print the plate with the wide flat face down. Use 6 or more walls and 50%
+    or more infill so it is strong.
+  parts:
+  - plate
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Drop the salvaged 1/4-20 webcam bolt into the plate from the pocket side (the
+    narrow side). The shank goes through the slot and the head sits in the pocket.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Hold the camera upside down. Put the plate's wide face against the camera
+    base. Slide the bolt along the slot until it lines up with the camera's 1/4-20
+    socket. Turn the bolt clockwise until the plate is tight against the camera. Don't
+    overtighten, because PLA can crack.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Slide the plate's dovetail edges into the tripod clamp and close the clamp.
+    Support the camera and test the grip before you let go.
+  parts:
+  - plate
+  hardware: []
+  tool: null

@@ -1,0 +1,200 @@
+task: nut-knob/M3
+note: The nut is held by three crush ribs on alternating flats of a slightly oversized
+  hex, so it's a press fit with no glue. The solid floor with a 3.4 mm hole stops
+  the nut going out the far side.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 height
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance; much smaller than the nut so it can't push through
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallops:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_pitch_r:
+    value: 10.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: hex pocket oversize; the ribs do the gripping
+  recess:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: how far below the top face the nut sits, so it is fully inside
+  rib_h:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: crush-rib height; pick it from the coupon
+  rib_w:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    H=p.knob_h; D=p.knob_d\n    body=cq.Workplane('XY').circle(D/2).extrude(H).edges('>Z').chamfer(1.0).edges('<Z').chamfer(0.4)\n\
+    \    n=int(p.scallops)\n    pts=[(p.scallop_pitch_r*math.cos(2*math.pi*i/n),p.scallop_pitch_r*math.sin(2*math.pi*i/n))\
+    \ for i in range(n)]\n    body=body.cut(cq.Workplane('XY').pushPoints(pts).circle(p.scallop_r).extrude(H))\n\
+    \    af=p.nut_af+p.pocket_clear\n    depth=p.nut_h+p.recess\n    pocket=cq.Workplane('XY').workplane(offset=H-depth).polygon(6,af/math.cos(math.pi/6)).extrude(depth+1)\n\
+    \    body=body.cut(pocket)\n    body=body.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(H+1))\n\
+    \    for ang in (30,150,270):\n        t=p.rib_h+0.5\n        rib=cq.Workplane('XY').box(t,p.rib_w,p.nut_h,centered=(True,True,False)).translate((af/2-p.rib_h+t/2,0,H-depth)).rotate((0,0,0),(0,0,1),ang)\n\
+    \        body=body.union(rib)\n    return body\n"
+  print_orientation: Solid face (bolt-entry side, with 3.4 mm hole) on the bed, hex
+    pocket open upward; no supports, no bridges
+  use_orientation: Solid face against the work, so the bolt load pushes the nut onto
+    the pocket floor
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    af=p.nut_af+p.pocket_clear\n    depth=p.nut_h+p.recess\n\
+    \    H=depth+1.5\n    out=None\n    for k,rh in enumerate((p.rib_h-0.1,p.rib_h,p.rib_h+0.1)):\n\
+    \        x=k*12\n        b=cq.Workplane('XY').box(10,10,H,centered=(True,True,False))\n\
+    \        b=b.cut(cq.Workplane('XY').workplane(offset=H-depth).polygon(6,af/math.cos(math.pi/6)).extrude(depth+1))\n\
+    \        b=b.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(H+1))\n \
+    \       for ang in (30,150,270):\n            t=rh+0.5\n            rib=cq.Workplane('XY').box(t,p.rib_w,p.nut_h,centered=(True,True,False)).translate((af/2-rh+t/2,0,H-depth)).rotate((0,0,0),(0,0,1),ang)\n\
+    \            b=b.union(rib)\n        mk=[(-3.8+1.3*j,-3.8) for j in range(k+1)]\n\
+    \        b=b.cut(cq.Workplane('XY').workplane(offset=H-0.6).pushPoints(mk).circle(0.4).extrude(1))\n\
+    \        b=b.translate((x,0,0))\n        out=b if out is None else out.union(b)\n\
+    \    return out\n"
+  print_orientation: Flat on bed, pockets up
+  use_orientation: Hand test only
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 4
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex pocket with crush ribs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clear
+  - rib_h
+  - rib_w
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut presses in with a thumb and doesn't fall out when held upside
+      down and shaken
+- id: c2
+  part: knob
+  feature: nut recess depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - recess
+  check:
+    method: measure
+    ref: null
+    description: Nut top sits about 0.3 mm below the knob face
+- id: c3
+  part: knob
+  feature: 3.4 mm floor hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: Bolt passes freely through; the nut can't pass through it
+manual:
+- n: '1'
+  text: Print fit_coupon. Press an M3 nut into each pocket with your thumb (1 dot
+    = 0.2 mm ribs, 2 = 0.3, 3 = 0.4). Choose the pocket where the nut goes in by hand,
+    sits flat on the floor, and stays put when you turn it upside down and shake it.
+    If 1 dot is best, set rib_h to 0.2; if 3 dots is best, set it to 0.4; otherwise
+    leave it at 0.3.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the knob with the solid face down and the hex pocket facing up. It needs
+    no supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Line the nut up with the hex and press it in with your thumb until it bottoms
+    out, about 0.3 mm below the face. If it's tight, push it down on the table with
+    a coin.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread your M3 bolt in from the solid face. It goes through the nut and out
+    of the pocket side. Fit the knob so the solid face sits against the work. That
+    way the bolt pulls the nut onto the floor and never against the press fit.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

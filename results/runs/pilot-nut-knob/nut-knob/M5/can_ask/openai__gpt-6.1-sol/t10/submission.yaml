@@ -1,0 +1,297 @@
+task: nut-knob/M5
+note: One-piece, approximately 30 mm hand knob with a recessed M5 nut and two integral
+  snap-retaining fingers. The closed pocket floor prevents the nut passing through;
+  the central hole lets the bolt pass through. Nut dimensions are catalog nominal
+  because measurement was unavailable. An optional small fit coupon checks printer/material
+  tolerances before printing the knob; it is not part of the assembly.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 width across flats.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_length:
+    value: 20
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Example compatible fully threaded bolt; choose working length to suit the
+      application.
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  height:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hex_allowance:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Total across-flats clearance, not per side.
+  bore_allowance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  snap_overlap:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Each finger overlaps the nominal nut flat by 0.10 mm after seating.
+  finger_t:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_w:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  relief:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_start:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_axial_play:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_land:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_radius:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_offset:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    a=(p.nut_af+p.hex_allowance)/2\n    outer=a+p.finger_t\n\
+    \    throat=p.nut_af/2-p.snap_overlap\n    lip_z=p.floor+p.nut_h+p.nut_axial_play\n\
+    \    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(p.height)\n    for k in\
+    \ range(int(p.scallop_count)):\n        t=2*math.pi*k/p.scallop_count\n      \
+    \  cut=cq.Workplane('XY').center(p.scallop_offset*math.cos(t),p.scallop_offset*math.sin(t)).circle(p.scallop_radius).extrude(p.height)\n\
+    \        body=body.cut(cut)\n    verts=[(a/math.cos(math.pi/6)*math.cos(math.pi/6+k*math.pi/3),a/math.cos(math.pi/6)*math.sin(math.pi/6+k*math.pi/3))\
+    \ for k in range(6)]\n    pocket=cq.Workplane('XY').workplane(offset=p.floor).polyline(verts).close().extrude(p.height-p.floor)\n\
+    \    body=body.cut(pocket)\n    body=body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bore_allowance)/2).extrude(p.height))\n\
+    \    for angle in (0,180):\n        slots=cq.Workplane('XY').box(p.relief,p.finger_w+2*p.relief,p.height-p.slot_start,centered=(True,True,False)).translate((outer+p.relief/2,0,p.slot_start))\n\
+    \        for sign in (-1,1):\n            side=cq.Workplane('XY').box(p.finger_t+p.relief,p.relief,p.height-p.slot_start,centered=(True,True,False)).translate(((a+outer+p.relief)/2,sign*(p.finger_w/2+p.relief/2),p.slot_start))\n\
+    \            slots=slots.union(side)\n        body=body.cut(slots.rotate((0,0,0),(0,0,1),angle))\n\
+    \        lip=cq.Workplane('XZ').polyline([(a,lip_z),(throat,lip_z),(throat,lip_z+p.lip_land),(a,p.height)]).close().extrude(p.finger_w/2,both=True)\n\
+    \        body=body.union(lip.rotate((0,0,0),(0,0,1),angle))\n    return body\n"
+  print_orientation: Flat closed underside on the bed, z=0; hex pocket and snap fingers
+    face upward. No supports.
+  use_orientation: Insert nut from the pocket side. Bolt enters the central hole from
+    the flat underside and emerges through the nut.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    a=(p.nut_af+p.hex_allowance)/2\n    outer=a+p.finger_t\n\
+    \    throat=p.nut_af/2-p.snap_overlap\n    lip_z=p.floor+p.nut_h+p.nut_axial_play\n\
+    \    body=cq.Workplane('XY').circle(p.coupon_d/2).extrude(p.height)\n    verts=[(a/math.cos(math.pi/6)*math.cos(math.pi/6+k*math.pi/3),a/math.cos(math.pi/6)*math.sin(math.pi/6+k*math.pi/3))\
+    \ for k in range(6)]\n    body=body.cut(cq.Workplane('XY').workplane(offset=p.floor).polyline(verts).close().extrude(p.height-p.floor))\n\
+    \    body=body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bore_allowance)/2).extrude(p.height))\n\
+    \    for angle in (0,180):\n        slots=cq.Workplane('XY').box(p.relief,p.finger_w+2*p.relief,p.height-p.slot_start,centered=(True,True,False)).translate((outer+p.relief/2,0,p.slot_start))\n\
+    \        for sign in (-1,1):\n            side=cq.Workplane('XY').box(p.finger_t+p.relief,p.relief,p.height-p.slot_start,centered=(True,True,False)).translate(((a+outer+p.relief)/2,sign*(p.finger_w/2+p.relief/2),p.slot_start))\n\
+    \            slots=slots.union(side)\n        body=body.cut(slots.rotate((0,0,0),(0,0,1),angle))\n\
+    \        lip=cq.Workplane('XZ').polyline([(a,lip_z),(throat,lip_z),(throat,lip_z+p.lip_land),(a,p.height)]).close().extrude(p.finger_w/2,both=True)\n\
+    \        body=body.union(lip.rotate((0,0,0),(0,0,1),angle))\n    return body\n"
+  print_orientation: Flat underside on bed at z=0; pocket upward. No supports.
+  use_orientation: Test nut insertion and upside-down retention before printing the
+    knob.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x20
+  qty: 1
+joints:
+- id: bolt_through_knob
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: Flat underside around central bore
+    role: head_seat
+  - part: knob
+    feature: Central through-hole
+    role: clearance
+  - part: knob
+    feature: Recessed hex pocket with snap lips
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria:
+- id: nut_seats
+  part: knob
+  feature: Hex pocket and floor
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - hex_allowance
+  - floor
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut presses fully onto floor by hand without cracking or excessive
+      force; hex walls prevent rotation.
+- id: snap_retention
+  part: knob
+  feature: Opposed flexible fingers and retaining lips
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - snap_overlap
+  - finger_t
+  - finger_w
+  - nut_axial_play
+  - height
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'After insertion fingers return inward; nut is below both lips and
+      below the upper face. Invert and gently shake: nut must stay captured.'
+- id: bolt_passage
+  part: knob
+  feature: Central bore and recessed nut
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bore_allowance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Bolt passes freely through printed bore and threads through nut by
+      hand; nut cannot pass through the smaller floor opening.
+manual:
+- n: '1'
+  text: 'Recommended: print fit_coupon first in PLA at 0.2 mm layers, with at least
+    4 walls and 30% infill. Use no supports, especially inside the finger relief slots.
+    Let it cool completely and remove any strings bridging the slots.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the nut's flats with the hex pocket. Press straight down with your thumb
+    until it sits on the floor and both fingers spring back over it. Do not hammer
+    or force it. Check that the nut stays in when inverted and gently shaken, then
+    test the bolt from the underside.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '3'
+  text: If insertion is too tight at the lips, reduce snap_overlap by 0.05 mm and
+    retest. If the hex walls bind, increase hex_allowance by 0.10 mm. If retention
+    is loose, increase snap_overlap by 0.05 mm and retest. Reject cracked or permanently
+    bent fingers. To recover the test nut, gently spread the two fingers only enough
+    to release it while pushing it upward with the unthreaded tip end of the bolt;
+    do not pry hard.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '4'
+  text: Print knob with the successfully tested parameters and the same settings/orientation.
+    Clear strings, allow it to cool, and press the nut into it exactly as tested.
+    The coupon is discarded; the finished knob is one printed piece plus the nut.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: 'Thread the M5 bolt into the nut through the flat underside. Turn the scalloped
+    knob by hand. This is a nut-style hand knob: the nut is captured against rotation,
+    but the bolt is not permanently locked to the knob. Use modest hand torque only;
+    do not use pliers or expose PLA to heat.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

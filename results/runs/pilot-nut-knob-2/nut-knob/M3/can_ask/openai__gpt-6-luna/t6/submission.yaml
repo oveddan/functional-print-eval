@@ -1,0 +1,166 @@
+task: nut-knob/M3
+note: One-piece, support-free knob. The M3 nut loads from the bed-side face into a
+  shallow hex pocket; a 3.4 mm bore continues through the opposite face. The pocket
+  is intentionally slightly undersized across flats for a hand press fit. PLA fit
+  varies, so test the nut gently before fully seating it; do not hammer it in. The
+  nut is recessed from both outside faces when seated.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal outside diameter.
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: Shallow vertical grip grooves.
+  flute_r:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_center_r:
+    value: 9.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across-flats.
+  nut_thickness:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal height.
+  socket_af:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across flats; 0.1 mm below nominal nut AF for press fit.
+  lead_af:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: Mouth width across flats at entry.
+  leadin_depth:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  socket_depth:
+    value: 2.7
+    unit: mm
+    kind: design
+    source: design
+    note: From the end of the lead-in to the pocket floor.
+  bore_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-bore clearance for an M3 bolt.
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA)
+  code: "import math\n\ndef build(p):\n    part = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2).extrude(p.knob_h)\n    # Concave axial flutes leave a round, roughly 20\
+    \ mm maximum grip diameter.\n    for i in range(int(p.flute_count)):\n       \
+    \ a = 2 * math.pi * i / p.flute_count\n        x = p.flute_center_r * math.cos(a)\n\
+    \        y = p.flute_center_r * math.sin(a)\n        cutter = cq.Workplane('XY').center(x,\
+    \ y).circle(p.flute_r).extrude(p.knob_h)\n        part = part.cut(cutter)\n  \
+    \  # Tapered entry followed by the snug hexagonal nut pocket.\n    lead = (cq.Workplane('XY')\n\
+    \            .polygon(6, 2 * p.lead_af / math.sqrt(3))\n            .workplane(offset=p.leadin_depth)\n\
+    \            .polygon(6, 2 * p.socket_af / math.sqrt(3))\n            .loft(combine=True))\n\
+    \    pocket = (cq.Workplane('XY').workplane(offset=p.leadin_depth)\n         \
+    \     .polygon(6, 2 * p.socket_af / math.sqrt(3))\n              .extrude(p.socket_depth))\n\
+    \    part = part.cut(lead).cut(pocket)\n    bore = cq.Workplane('XY').circle(p.bore_d\
+    \ / 2).extrude(p.knob_h)\n    return part.cut(bore)"
+  print_orientation: Flat bed-side face down (z=0); nut-entry opening faces the build
+    plate. The center bore is vertical.
+  use_orientation: Insert the M3 nut into the recessed hex pocket from the bed-side
+    face. The bolt passes through the nut and the bore, exiting the opposite face.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: knob
+  feature: 5.4 mm AF recessed hex pocket with tapered entry
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - socket_af
+  - nut_af
+  - nut_thickness
+  - socket_depth
+  - leadin_depth
+  check:
+    method: measure
+    ref: null
+    description: Press the nut in by hand until it rests on the pocket floor. It should
+      be recessed within the knob and remain seated when the knob is turned over;
+      do not force it if it will not start or seat.
+- id: bolt_passage
+  part: knob
+  feature: 3.4 mm axial through-bore
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - bore_d
+  check:
+    method: measure
+    ref: null
+    description: Confirm the M3 bolt passes through the knob and the installed nut
+      without binding.
+manual:
+- n: '1'
+  text: Print the knob as one part with the nut-entry face on the build plate. Print
+    in PLA at the stated 0.2 mm layer height; no supports are intended.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Place the ISO 4032 M3 nut squarely into the tapered opening on the bed-side
+    face. Press it in by hand until it seats against the pocket floor; stop if it
+    requires excessive force.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Pass the M3x20 bolt through the nut and the knob's center bore. The bolt should
+    emerge from the opposite face.
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  tool: null

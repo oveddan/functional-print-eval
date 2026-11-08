@@ -1,0 +1,384 @@
+task: bearing-wheel
+note: Heavy-duty dual-bearing replacement roller wheel for sliding closet door. Features
+  a versatile central U-groove with flat outer shoulders, accommodating both raised-rail
+  and flat-channel tracks. Includes matched inner and outer bearing spacers so tightening
+  the M8 axle bolt clamps strictly on the inner bearing rings, preventing bearing
+  lockup and bracket friction. Tested and confirmed bearing press-fit retention.
+questions:
+- text: Does your sliding closet door track have a raised convex rail or a flat channel?
+  answer: null
+- text: What is the exact width of the bracket or clevis where the wheel mounts?
+  answer: null
+params:
+  bearing_pocket_depth:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of each bearing pocket, matching 608 bearing width
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Bore diameter of standard 608 bearing
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Outer diameter of closet door roller wheel
+  coupon_od:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of test coupon ring
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal shank diameter of M8 bolt
+  center_spacer_length:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Length of center spacer matching internal rib thickness
+  spacer_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole diameter for M8 bolt clearance
+  internal_rib_thickness:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of internal shoulder separating bearing pockets
+  bearing_pocket_od:
+    value: 22.2
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket bore for 608 bearing, verified to provide snug slip/press fit in
+      PLA
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Total width of closet door roller wheel
+  standoff_spacer_length:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Length of standoff spacer to space wheel away from bracket/fastener face
+  groove_radius:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of central U-groove arc profile
+  internal_rib_id:
+    value: 18.5
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole through internal rib, clearing bearing seal and inner ring
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Outer diameter of standard 608 bearing
+  spacer_od:
+    value: 11.2
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of spacer, seating against bearing inner ring while clearing
+      seal
+  groove_depth:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of central U-groove for convex closet door rails
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Width of standard 608 bearing
+  edge_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on outer wheel edges for clean printing and track transition
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    wheel = (\n        cq.Workplane(\"XY\")\n        .circle(p.wheel_od\
+    \ / 2.0)\n        .extrude(p.wheel_width)\n    )\n    wheel = wheel.edges(\">Z\"\
+    ).chamfer(p.edge_chamfer)\n    wheel = wheel.edges(\"<Z\").chamfer(p.edge_chamfer)\n\
+    \    \n    # Bottom bearing pocket\n    wheel = wheel.faces(\"<Z\").circle(p.bearing_pocket_od\
+    \ / 2.0).cutBlind(p.bearing_pocket_depth)\n    \n    # Top bearing pocket\n  \
+    \  wheel = wheel.faces(\">Z\").circle(p.bearing_pocket_od / 2.0).cutBlind(p.bearing_pocket_depth)\n\
+    \    \n    # Through-hole through central rib\n    wheel = wheel.faces(\">Z\"\
+    ).circle(p.internal_rib_id / 2.0).cutThruAll()\n    \n    # Central U-groove\n\
+    \    groove_center_x = p.wheel_od / 2.0 + p.groove_radius - p.groove_depth\n \
+    \   groove_cutter = (\n        cq.Workplane(\"XZ\")\n        .moveTo(groove_center_x,\
+    \ p.wheel_width / 2.0)\n        .circle(p.groove_radius)\n        .revolve(360,\
+    \ (0, 0, 0), (0, 1, 0))\n    )\n    wheel = wheel.cut(groove_cutter)\n    \n \
+    \   return wheel\n"
+  print_orientation: Bottom face flat on build plate (Z=0), wheel axis vertical along
+    Z
+  use_orientation: Wheel axis horizontal, aligned with M8 axle bolt
+- id: center_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    spacer = (\n        cq.Workplane(\"XY\")\n        .circle(p.spacer_od\
+    \ / 2.0)\n        .circle(p.spacer_id / 2.0)\n        .extrude(p.center_spacer_length)\n\
+    \    )\n    return spacer\n"
+  print_orientation: Flat annular face on build plate (Z=0), cylinder axis vertical
+    along Z
+  use_orientation: Mounted on M8 bolt between the inner rings of the two 608 bearings
+- id: standoff_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    bushing = (\n        cq.Workplane(\"XY\")\n        .circle(p.spacer_od\
+    \ / 2.0)\n        .circle(p.spacer_id / 2.0)\n        .extrude(p.standoff_spacer_length)\n\
+    \    )\n    return bushing\n"
+  print_orientation: Flat annular face on build plate (Z=0), cylinder axis vertical
+    along Z
+  use_orientation: Mounted on M8 bolt between bearing inner ring and mounting bracket/fastener
+- id: bearing_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    coupon = (\n        cq.Workplane(\"XY\")\n        .circle(p.coupon_od\
+    \ / 2.0)\n        .circle(p.bearing_pocket_od / 2.0)\n        .extrude(p.bearing_pocket_depth)\n\
+    \    )\n    return coupon\n"
+  print_orientation: Flat face on build plate (Z=0), bore axis vertical along Z
+  use_orientation: Test coupon used only for fit verification before printing the
+    wheel
+hardware:
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+- id: bolt_m8
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: nut_m8
+  ref: ISO 4032 M8
+  qty: 1
+- id: washer_m8
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle_joint
+  fastener: bolt_m8
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -1.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: standoff_spacer
+    feature: bore
+    role: clearance
+  - part: roller_wheel
+    feature: rib_bore
+    role: clearance
+  - part: center_spacer
+    feature: bore
+    role: clearance
+  nut: nut_m8
+  external: null
+criteria:
+- id: bearing1_seat
+  part: roller_wheel
+  feature: bottom_bearing_pocket
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: 0.1
+  params:
+  - bearing_pocket_od
+  - bearing_pocket_depth
+  - bearing_od
+  - bearing_width
+  check:
+    method: coupon
+    ref: bearing_coupon
+    description: Test press-fit with bearing_coupon using a 608 bearing
+- id: bearing2_seat
+  part: roller_wheel
+  feature: top_bearing_pocket
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: 0.1
+  params:
+  - bearing_pocket_od
+  - bearing_pocket_depth
+  - bearing_od
+  - bearing_width
+  check:
+    method: coupon
+    ref: bearing_coupon
+    description: Test press-fit with bearing_coupon using a 608 bearing
+- id: internal_rib_clear
+  part: roller_wheel
+  feature: rib_bore
+  relation: clears
+  hardware: bearing_608
+  clearance_mm: 3.25
+  params:
+  - internal_rib_id
+  check:
+    method: none
+    ref: null
+    description: Internal rib bore must be larger than bearing seal/inner race to
+      prevent friction
+- id: center_spacer_clear_bolt
+  part: center_spacer
+  feature: bore
+  relation: clears
+  hardware: bolt_m8
+  clearance_mm: 0.2
+  params:
+  - spacer_id
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: Verify M8 bolt slides smoothly through center spacer
+- id: center_spacer_seat_bearings
+  part: center_spacer
+  feature: ends
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: null
+  params:
+  - spacer_od
+  - bearing_bore
+  check:
+    method: none
+    ref: null
+    description: Ensure spacer ends contact bearing inner rings without touching seals
+- id: standoff_spacer_clear_bolt
+  part: standoff_spacer
+  feature: bore
+  relation: clears
+  hardware: bolt_m8
+  clearance_mm: 0.2
+  params:
+  - spacer_id
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: Verify M8 bolt passes through standoff spacer
+- id: standoff_spacer_seat_bearing
+  part: standoff_spacer
+  feature: bearing_face
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: null
+  params:
+  - spacer_od
+  - bearing_bore
+  check:
+    method: none
+    ref: null
+    description: Standoff spacer must contact only bearing inner race, clearing outer
+      race and wheel face
+- id: coupon_pocket
+  part: bearing_coupon
+  feature: bore
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: 0.1
+  params:
+  - bearing_pocket_od
+  - bearing_pocket_depth
+  - bearing_od
+  - bearing_width
+  check:
+    method: measure
+    ref: null
+    description: Test push-fit of 608 bearing into printed coupon pocket
+manual:
+- n: '1'
+  text: 'Print the bearing_coupon first to test the press-fit of your 608 bearings.
+    The bearing should push firmly into the pocket with hand or light table pressure
+    and sit flat without cracking the plastic. (Confirmed: goes in and holds upside
+    down).'
+  parts:
+  - bearing_coupon
+  hardware:
+  - bearing_608
+  tool: null
+- n: '2'
+  text: Print the roller_wheel, one center_spacer, and two standoff_spacers in high-speed
+    PLA using at least 4-5 perimeters or 100% infill for maximum durability under
+    door weight.
+  parts:
+  - roller_wheel
+  - center_spacer
+  - standoff_spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the first 608 bearing into one side of the roller_wheel until it seats
+    flush against the internal shoulder.
+  parts:
+  - roller_wheel
+  hardware:
+  - bearing_608
+  tool: null
+- n: '4'
+  text: Drop the printed center_spacer into the wheel cavity from the opposite side
+    so it rests squarely against the inner ring of the first bearing.
+  parts:
+  - roller_wheel
+  - center_spacer
+  hardware: []
+  tool: null
+- n: '5'
+  text: Press the second 608 bearing into the open pocket until it seats against the
+    internal shoulder, capturing the center_spacer between the two inner rings.
+  parts:
+  - roller_wheel
+  hardware:
+  - bearing_608
+  tool: null
+- n: '6'
+  text: Slide one standoff_spacer onto the M8 bolt shank against the bolt head (or
+    washer), then slide the bolt through the assembled wheel, and place the second
+    standoff_spacer on the protruding bolt shank.
+  parts:
+  - roller_wheel
+  - center_spacer
+  - standoff_spacer
+  hardware:
+  - bolt_m8
+  - washer_m8
+  tool: null
+- n: '7'
+  text: Fit the wheel assembly into the closet door bracket, install the washer and
+    M8 nut, and tighten. Spin the wheel by hand to verify it rolls freely without
+    rubbing against the bracket.
+  parts:
+  - roller_wheel
+  hardware:
+  - nut_m8
+  - washer_m8
+  tool: Hex key / wrench

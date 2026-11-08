@@ -1,0 +1,249 @@
+task: nut-knob/M5
+note: One-piece 30 mm fluted M5 hand knob with an internal blind-floor hexagonal press-fit
+  pocket for an ISO 4032 M5 nut and a full through-hole for the M5 bolt. Prints flat
+  on the bed without supports.
+questions: []
+params:
+  nut_depth_margin:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Extra pocket depth beyond nut height so the nut sits fully recessed inside
+      the knob
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut thickness
+  flute_offset:
+    value: 17.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial center distance of the flute cutout circles
+  flute_r:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each concave finger grip flute
+  coupon_od:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the test coupon
+  nut_af_clearance:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: Press-fit clearance added to nut width across flats for hand insertion and
+      friction retention
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of the hand knob across lobes (~30 mm requested)
+  bolt_clearance_d:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole diameter for M5 bolt shaft (0.3 mm radial clearance)
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Total thickness/height of the hand knob
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M5 nominal bolt diameter
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of ergonomic finger flutes around the perimeter
+  coupon_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the test coupon
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut width across flats
+parts:
+- id: m5_hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.knob_od\
+    \ / 2.0).extrude(p.knob_h)\n\n    n = int(p.flute_count)\n    for i in range(n):\n\
+    \        angle_rad = (i + 0.5) * (2.0 * math.pi / n)\n        cx = p.flute_offset\
+    \ * math.cos(angle_rad)\n        cy = p.flute_offset * math.sin(angle_rad)\n \
+    \       flute = (\n            cq.Workplane(\"XY\")\n            .center(cx, cy)\n\
+    \            .circle(p.flute_r)\n            .extrude(p.knob_h)\n        )\n \
+    \       body = body.cut(flute)\n\n    body = (\n        body.faces(\"<Z\")\n \
+    \       .workplane()\n        .circle(p.bolt_clearance_d / 2.0)\n        .cutThruAll()\n\
+    \    )\n\n    af = p.nut_af + p.nut_af_clearance\n    ac = af / math.cos(math.pi\
+    \ / 6.0)\n    pocket_depth = p.nut_h + p.nut_depth_margin\n    body = (\n    \
+    \    body.faces(\">Z\")\n        .workplane()\n        .polygon(6, ac)\n     \
+    \   .cutBlind(-pocket_depth)\n    )\n\n    return body\n"
+  print_orientation: Flat bottom face (-Z) on the build plate (z=0), with the hexagonal
+    nut pocket opening upward (+Z) so the internal pocket floor prints cleanly above
+    the smaller bolt hole without supports.
+  use_orientation: Hand-tightened around the M5 bolt axis (Z axis), with the captured
+    M5 nut seated against the internal pocket floor.
+- id: nut_pocket_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    af = p.nut_af + p.nut_af_clearance\n  \
+    \  ac = af / math.cos(math.pi / 6.0)\n    pocket_depth = p.nut_h + p.nut_depth_margin\n\
+    \    res = (\n        cq.Workplane(\"XY\")\n        .circle(p.coupon_od / 2.0)\n\
+    \        .extrude(p.coupon_h)\n        .faces(\"<Z\")\n        .workplane()\n\
+    \        .circle(p.bolt_clearance_d / 2.0)\n        .cutThruAll()\n        .faces(\"\
+    >Z\")\n        .workplane()\n        .polygon(6, ac)\n        .cutBlind(-pocket_depth)\n\
+    \    )\n    return res\n"
+  print_orientation: Flat bottom face (-Z) on the build plate (z=0), hex pocket opening
+    upward (+Z).
+  use_orientation: Test coupon for hand-pressing the M5 nut into the pocket and verifying
+    retention and bolt passage.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: knob_bolt_nut_joint
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: m5_hand_knob
+    feature: bolt_thru_hole
+    role: clearance
+  - part: m5_hand_knob
+    feature: nut_pocket
+    role: nut_pocket
+  nut: m5_nut
+  external: null
+criteria:
+- id: nut_press_fit_and_recess
+  part: m5_hand_knob
+  feature: nut_pocket
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: 0.05
+  params:
+  - nut_af
+  - nut_af_clearance
+  - nut_h
+  - nut_depth_margin
+  check:
+    method: coupon
+    ref: nut_pocket_coupon
+    description: Press the M5 hex nut into the coupon pocket by hand and invert the
+      piece to verify it stays retained without glue and sits recessed below the top
+      surface.
+- id: nut_far_side_stop
+  part: m5_hand_knob
+  feature: nut_pocket_floor
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - bolt_clearance_d
+  - knob_h
+  - nut_h
+  - nut_depth_margin
+  check:
+    method: coupon
+    ref: nut_pocket_coupon
+    description: Push firmly on the seated M5 nut toward the far side to confirm the
+      pocket floor prevents it from pushing out.
+- id: bolt_shaft_clearance
+  part: m5_hand_knob
+  feature: bolt_thru_hole
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: coupon
+    ref: nut_pocket_coupon
+    description: Pass the M5 bolt through the clearance hole and thread it completely
+      through the captured nut and out the opposite side.
+- id: knob_outer_diameter
+  part: m5_hand_knob
+  feature: fluted_grip_body
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_od
+  - knob_h
+  - flute_count
+  - flute_r
+  - flute_offset
+  check:
+    method: measure
+    ref: null
+    description: Measure the outer diameter across opposite lobes (~30 mm) with calipers.
+manual:
+- n: '1'
+  text: Print the small nut_pocket_coupon first and press the ISO 4032 M5 hex nut
+    into the hexagonal recess by hand. Verify that the nut sits below the top rim,
+    cannot be pushed out the bottom, stays retained when turned upside down, and allows
+    the M5 bolt to thread through and exit the other side.
+  parts:
+  - nut_pocket_coupon
+  hardware:
+  - m5_nut
+  - m5_bolt
+  tool: null
+- n: '2'
+  text: Print the m5_hand_knob flat on the build plate with the bolt through-hole
+    face down (z=0) and the hexagonal nut pocket facing up (+Z). No supports are needed.
+  parts:
+  - m5_hand_knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Align the ISO 4032 M5 hex nut with the hexagonal pocket on the top face of
+    the knob and press it firmly all the way down by hand until it seats against the
+    internal floor, recessed 0.5 mm below the rim.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '4'
+  text: Thread the M5 bolt through the captured nut so the shaft passes through the
+    clearance hole and out the other side of the knob.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_bolt
+  tool: null

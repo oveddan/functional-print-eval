@@ -1,0 +1,174 @@
+task: bearing-wheel
+note: ''
+questions:
+- text: M8 bolt length from under the head to the tip was not measured. The design
+    uses a catalog M8x40 stand-in; the real bolt needs to clear the hanger, wheel,
+    washer and nut.
+  answer: null
+- text: 'Track profile: does the wheel ride on a flat track or in a groove? I assumed
+    a flat tread; a grooved track needs a different rim.'
+  answer: null
+- text: Is your bolt a hex head or a socket head, and how thick is the door hanger
+    bracket it passes through?
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel, 'about 50 mm across'
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel, 'about 16 mm wide'
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured about 22 mm outside; 608 nominal 22.0
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 nominal width; not measured
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bore 8 mm; bolt rides through it
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: M8 shank measured about 8 mm
+  bolt_len:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: User's M8 bolt length not measured. Catalog M8x40 used as stand-in; check
+      it clears bracket + wheel + washer + nut
+  pocket_d:
+    value: 21.8
+    unit: mm
+    kind: design
+    source: design
+    note: 0.2 mm under bearing OD for a press fit in PLA
+  pocket_depth:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: Bearing width plus 0.2 mm
+  bore_clear:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance for the M8 shank through the web
+parts:
+- id: wheel
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    w = cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w)\n\
+    \    pocket = cq.Workplane('XY').circle(p.pocket_d/2).extrude(p.pocket_depth)\n\
+    \    w = w.cut(pocket)\n    w = w.cut(pocket.translate((0, 0, p.wheel_w - p.pocket_depth)))\n\
+    \    hole = cq.Workplane('XY').circle(p.bore_clear/2).extrude(p.wheel_w)\n   \
+    \ w = w.cut(hole)\n    return w"
+  print_orientation: 'Axle vertical: wheel lies flat on the bed, bearing pockets open
+    at top and bottom'
+  use_orientation: Axle horizontal in the door hanger, tread rolling on the track
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 1
+- id: nut
+  ref: ISO 4032 M8
+  qty: 1
+joints: []
+criteria:
+- id: bearing_seat_top
+  part: wheel
+  feature: top bearing pocket, 21.8 mm dia x 7.2 mm deep
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - pocket_d
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Check the pocket diameter with calipers after printing, then confirm
+      the bearing press-fits without play.
+- id: bearing_seat_bottom
+  part: wheel
+  feature: bottom bearing pocket, 21.8 mm dia x 7.2 mm deep
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - pocket_d
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Same check on the second pocket.
+- id: bolt_clearance
+  part: wheel
+  feature: web hole 8.6 mm for the M8 shank
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bore_clear
+  check:
+    method: measure
+    ref: null
+    description: Confirm the bolt slides through the web hole without binding.
+manual:
+- n: '1'
+  text: Print the wheel flat on the bed (axle vertical). Remove supports from the
+    bearing pockets and clean out any stringing.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 skateboard bearing (your own, 22 mm OD, 8 mm bore, 7 mm wide)
+    into each bearing pocket, top and bottom. The fit should be snug; use a vise or
+    clamp. Do not force it in at an angle.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Check that the wheel spins freely on the bearings before installing it.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Slide the M8 bolt through the door hanger, then the wheel (through the bearings
+    and web hole), then the washer, and thread the nut on. Tighten until the wheel
+    spins freely with no side play.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  - nut
+  tool: wrench

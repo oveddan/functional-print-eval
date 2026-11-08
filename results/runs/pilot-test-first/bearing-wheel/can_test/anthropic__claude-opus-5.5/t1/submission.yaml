@@ -1,0 +1,200 @@
+task: bearing-wheel
+note: The rim is flat with 1 mm chamfers because nobody could check the old wheel's
+  profile. If it had a groove that rides on a rail, ask for one to be added. The bracket
+  gap and bolt length weren't measured; the face spacers take up the gap.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 50 mm across'
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 16 mm wide'
+  rim_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  brg_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  brg_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  seat_extra:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: 'coupon: +0.3 pressed in snugly and held; +0.0 would not go in'
+  shoulder_id:
+    value: 19
+    unit: mm
+    kind: design
+    source: design
+    note: bears on outer race only, clears the shield
+  inner_race_od:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 inner ring land ~12 mm
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  face_spacer_t:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: bracket gap unknown; stack as needed
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w)\n\
+    \    w = w.faces('>Z or <Z').edges().chamfer(p.rim_chamfer)\n    seat_d = p.brg_od\
+    \ + p.seat_extra\n    thru = cq.Workplane('XY').circle(p.shoulder_id/2).extrude(p.wheel_w)\n\
+    \    s1 = cq.Workplane('XY').circle(seat_d/2).extrude(p.brg_w)\n    s2 = cq.Workplane('XY').workplane(offset=p.wheel_w\
+    \ - p.brg_w).circle(seat_d/2).extrude(p.brg_w)\n    return w.cut(thru).cut(s1).cut(s2)\n"
+  print_orientation: flat on one face, axis vertical
+  use_orientation: axis horizontal on the bolt
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    L = p.wheel_w - 2*p.brg_w\n    return cq.Workplane('XY').circle(p.inner_race_od/2\
+    \ - 0.5).circle(p.bolt_d/2 + p.bolt_clear/2).extrude(L)\n"
+  print_orientation: flat
+  use_orientation: on the bolt between the two bearings' inner rings
+- id: face_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    r = None\n    for i in range(4):\n        s = cq.Workplane('XY').circle(p.inner_race_od/2\
+    \ - 0.5).circle(p.bolt_d/2 + p.bolt_clear/2).extrude(p.face_spacer_t).translate((i*14,\
+    \ 0, 0))\n        r = s if r is None else r.union(s)\n    return r\n"
+  print_orientation: flat
+  use_orientation: on the bolt between bearing inner ring and bracket; print 4, use
+    as many as the gap needs
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 16.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: face_spacer
+    feature: bore
+    role: clearance
+  - part: inner_spacer
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: door roller bracket
+criteria:
+- id: brg_fit
+  part: wheel
+  feature: bearing seats
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - brg_od
+  - seat_extra
+  check:
+    method: coupon
+    ref: bore_coupon
+    description: +0.3 seat held the bearing firmly
+- id: spin
+  part: inner_spacer
+  feature: length
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - brg_w
+  check:
+    method: none
+    ref: null
+    description: with the nut tight it clamps only the inner rings, so the wheel spins
+      freely
+manual:
+- n: '1'
+  text: Print the wheel flat on one face (3 walls and 30% or more infill so the rim
+    is solid). Also print the inner spacer and the set of 4 face spacers.
+  parts:
+  - wheel
+  - inner_spacer
+  - face_spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one of your 608 bearings into each side of the wheel until it stops
+    on the centre lip. Push only on the bearing's outer ring; a vise or a flat block
+    and a light tap is fine. Before the second bearing goes in, drop the inner spacer
+    into the middle.
+  parts:
+  - wheel
+  - inner_spacer
+  hardware: []
+  tool: vise or flat block
+- n: '3'
+  text: Hold the wheel in the bracket and count how many 1 mm face spacers each side
+    needs to fill the gap without squeezing. Don't put a metal washer against the
+    bearing, because it rubs on the shield.
+  parts:
+  - face_spacer
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'Push the M8 bolt (yours, or an M8x40) through: bracket, face spacer(s), wheel
+    (through both bearings and the inner spacer), face spacer(s), bracket. Then put
+    on the lock nut.'
+  parts:
+  - wheel
+  - face_spacer
+  hardware:
+  - bolt
+  - locknut
+  tool: null
+- n: '5'
+  text: Tighten the nut until it's snug, then check that the wheel spins freely by
+    hand. If it drags, back the nut off a little.
+  parts: []
+  hardware:
+  - locknut
+  tool: 13 mm spanners

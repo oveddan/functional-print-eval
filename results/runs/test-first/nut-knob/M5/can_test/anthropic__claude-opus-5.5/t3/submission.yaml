@@ -1,0 +1,130 @@
+task: nut-knob/M5
+note: The pocket size comes from your test print. I set it to 8.05 mm across the flats,
+  which is between the 8.00 pocket (tight, held) and the 8.10 pocket (snug, held).
+  If it comes out loose, change nut_af to 8.0.
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: about 30 mm across
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8.05
+    unit: mm
+    kind: hardware
+    source: design
+    note: 'pocket across-flats; coupon: 8.00 tight & held, 8.10 snug & held, 8.20
+      loose. 8.05 sits between the two that held'
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  pocket_extra:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits 0.3 below the top face, fully inside
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: smaller than nut, so the nut can't be pushed out the far side
+  scallop_r:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    h = p.knob_h\n    depth = p.nut_h + p.pocket_extra\n\
+    \    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n    for i in range(int(p.scallop_n)):\n\
+    \        a = 2*math.pi*i/p.scallop_n\n        r = p.knob_d/2 + 1.0\n        cut\
+    \ = cq.Workplane('XY').center(r*math.cos(a), r*math.sin(a)).circle(p.scallop_r).extrude(h)\n\
+    \        body = body.cut(cut)\n    body = body.edges('>Z').chamfer(0.8)\n    body\
+    \ = body.edges('<Z').chamfer(0.4)\n    pocket = cq.Workplane('XY').workplane(offset=h-depth).polygon(6,\
+    \ p.nut_af/math.cos(math.radians(30))).extrude(depth+1)\n    lead = cq.Workplane('XY').workplane(offset=h-0.4).polygon(6,\
+    \ (p.nut_af+0.8)/math.cos(math.radians(30))).workplane(offset=0.4).polygon(6,\
+    \ (p.nut_af+0.8)/math.cos(math.radians(30))).loft()\n    hole = cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(h+1)\n\
+    \    return body.cut(pocket).cut(hole).cut(lead)\n"
+  print_orientation: flat solid face (bolt side) on bed, hex pocket opening upward
+  use_orientation: bolt enters through the solid face, threads through the nut and
+    out the pocket side
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_retained
+  part: knob
+  feature: hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_extra
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: 8.00 and 8.10 pockets both held the nut upside down when shaken;
+      8.05 chosen between them
+- id: nut_stop
+  part: knob
+  feature: bolt clearance hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: 5.5 hole passes an M5 bolt but is far smaller than the 8 mm nut,
+      so the floor stops it
+manual:
+- n: '1'
+  text: Print the knob flat face down, pocket up, no supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Line up the M5 nut's flats with the hex pocket and press it in by thumb (or
+    lean on it against the table) until it is down on the floor of the pocket and
+    just below the top face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Feed your M5 bolt in through the hole in the solid face and thread it through
+    the nut so it comes out of the pocket side. Turn the knob by hand to tighten it.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

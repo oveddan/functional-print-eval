@@ -1,0 +1,195 @@
+task: bearing-wheel
+note: A 50 mm flat-tread replacement wheel with two 608 bearing seats. The bearing
+  OD was reported as about 22 mm; the coupon lets you test the fit before printing
+  the full wheel. This assumes the original wheel has a flat running surface and that
+  its existing door bracket/axle can retain the wheel. I couldn't verify the old tread
+  profile or mounting arrangement, so this may not match a grooved track or a nonstandard
+  mount. Print the wheel flat on one circular side, with the axle direction vertical;
+  press one bearing into each face. If the coupon's 21.9 mm seat is too tight or loose,
+  adjust the seat diameter before printing the wheel.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel outside diameter.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel width.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User remeasured one 608 bearing, approximately 22 mm.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal width.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal bore; matches nominal M8 axle.
+  seat_d:
+    value: 21.9
+    unit: mm
+    kind: design
+    source: design
+    note: Initial press-fit seat, 0.1 mm below reported bearing OD; check coupon and
+      adjust if needed.
+  bearing_depth:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: One bearing thickness; two seats leave a 2 mm center web in the 16 mm wheel.
+  axle_clearance_d:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance through printed center web for a nominal M8 bolt.
+  coupon_l:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_w:
+    value: 25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_depth:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_seat_tight:
+    value: 21.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_seat_loose:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_spacing:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    # Wheel axis is Z. Bearing seats open on both faces.\n\
+    \    wheel = cq.Workplane('XY').circle(p.wheel_od / 2).extrude(p.wheel_width)\n\
+    \    axle = cq.Workplane('XY').circle(p.axle_clearance_d / 2).extrude(p.wheel_width)\n\
+    \    wheel = wheel.cut(axle)\n    near_seat = cq.Workplane('XY').circle(p.seat_d\
+    \ / 2).extrude(p.bearing_depth)\n    far_seat = (cq.Workplane('XY').workplane(offset=p.wheel_width\
+    \ - p.bearing_depth)\n                .circle(p.seat_d / 2).extrude(p.bearing_depth))\n\
+    \    wheel = wheel.cut(near_seat).cut(far_seat)\n    return wheel"
+  print_orientation: Lay on either circular face; axle axis is vertical (Z). No supports
+    expected.
+  use_orientation: Install with the wheel axis horizontal on the existing door bracket/bolt;
+    press one 608 bearing into each face.
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    coupon = cq.Workplane('XY').rect(p.coupon_l, p.coupon_w).extrude(p.coupon_t)\n\
+    \    tight = (cq.Workplane('XY').workplane(offset=p.coupon_t - p.coupon_depth)\n\
+    \             .center(-p.coupon_spacing, 0).circle(p.coupon_seat_tight / 2).extrude(p.coupon_depth))\n\
+    \    loose = (cq.Workplane('XY').workplane(offset=p.coupon_t - p.coupon_depth)\n\
+    \             .center(p.coupon_spacing, 0).circle(p.coupon_seat_loose / 2).extrude(p.coupon_depth))\n\
+    \    return coupon.cut(tight).cut(loose)"
+  print_orientation: Lay the rectangular face on the bed, with the shallow bearing
+    pockets facing up.
+  use_orientation: Test each shallow pocket with a bearing; select or adjust the seat
+    size that gives a firm press fit without forcing or cracking.
+hardware: []
+joints: []
+criteria:
+- id: bearing-seat-fit
+  part: bearing_fit_coupon
+  feature: two shallow pockets for the 608 bearing outer ring
+  relation: seats
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - bearing_od
+  - coupon_seat_tight
+  - coupon_seat_loose
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: Print the coupon and press a bearing into each 2 mm-deep test seat.
+      Use the tighter seat only if it installs firmly without excessive force; if
+      neither fits, tune seat_d and reprint the coupon.
+- id: axle-clearance
+  part: roller_wheel
+  feature: through bore for nominal M8 axle
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - axle_clearance_d
+  - bearing_bore
+  check:
+    method: measure
+    ref: null
+    description: Confirm the existing M8 bolt passes through the 608 bearing bores
+      and the printed center web without binding.
+manual:
+- n: '1'
+  text: Print the bearing_fit_coupon first. Test both pockets with one bearing. If
+    neither is a satisfactory firm fit, adjust the seat diameter and reprint the coupon
+    before making the wheel.
+  parts:
+  - bearing_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print roller_wheel flat on one circular face. Remove any brim or elephant-foot
+    material from the bearing-seat edges before assembly.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608 bearing into each face of the wheel, seating them fully. Do
+    not hammer directly on the bearing seals; press on the outer ring.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Fit the wheel onto the existing M8 door axle/bracket and retain it using the
+    door's existing axle hardware. Check that the wheel turns freely and that the
+    bolt or bracket does not clamp the wheel/bearing outer rings. Verify the flat
+    tread runs correctly in the closet-door track before relying on it.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null

@@ -1,0 +1,195 @@
+task: bearing-wheel
+note: ''
+questions: []
+params:
+  note:
+    value: 50
+    unit: mm
+    kind: design
+    source: asked
+    note: user said the old wheel was about 50 mm across
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: design
+    source: asked
+    note: user said the old wheel was about 16 mm wide
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: design
+    source: catalog
+    note: 608ZZ nominal OD
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: catalog
+    note: 608ZZ nominal bore; M8 bolt passes through
+  bearing_width:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: catalog
+    note: 608ZZ nominal width
+  pocket_d:
+    value: 21.9
+    unit: mm
+    kind: design
+    source: design
+    note: 0.1 mm interference press fit for the 22.0 mm bearing OD
+  bolt_len:
+    value: 35
+    unit: mm
+    kind: design
+    source: catalog
+    note: ISO 4762 M8x35; bolt length was not measured, so this is a guess — check
+      the manual
+  nut_h:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: catalog
+    note: ISO 10511 M8 lock nut height
+  washer_od:
+    value: 16
+    unit: mm
+    kind: design
+    source: catalog
+    note: ISO 7089 M8 washer OD
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    w = p.wheel_width\n    depth\
+    \ = p.bearing_width + 0.1\n    body = cq.Workplane(\"XY\").circle(p.wheel_od /\
+    \ 2).extrude(w)\n    # bearing pockets from top and bottom, leaving a 1.8 mm web\
+    \ between them\n    body = body.faces(\">Z\").workplane().circle(p.pocket_d /\
+    \ 2).cutBlind(-depth)\n    body = body.faces(\"<Z\").workplane().circle(p.pocket_d\
+    \ / 2).cutBlind(-depth)\n    return body"
+  print_orientation: bottom face (z=0) flat on the bed
+  use_orientation: bottom face down (z=0)
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    return (cq.Workplane(\"XY\").rect(30,\
+    \ 30).extrude(10)\n            .faces(\">Z\").workplane().circle(p.pocket_d /\
+    \ 2).cutBlind(-5))"
+  print_orientation: bottom face (z=0) flat on the bed
+  use_orientation: bottom face down (z=0)
+hardware:
+- id: bolt_m8x35
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: locknut_m8
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer_m8
+  ref: ISO 7089 M8
+  qty: 2
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: wheel_bolt
+  fastener: bolt_m8x35
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 16.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel
+    feature: bearing bore
+    role: clearance
+  - part: wheel
+    feature: bottom bearing bore
+    role: clearance
+  nut: locknut_m8
+  external: the door bracket the wheel mounts to
+criteria:
+- id: bearing_pocket_fit
+  part: wheel
+  feature: bearing pocket diameter 21.9 mm
+  relation: contains
+  hardware: bearing_608
+  clearance_mm: 0.1
+  params:
+  - pocket_d
+  - bearing_od
+  check:
+    method: coupon
+    ref: null
+    description: Print the 30x30x10 coupon, press a 608ZZ bearing into the 5 mm deep
+      pocket; it should be a firm press fit — not loose, not cracked.
+- id: bolt_clears_wheel
+  part: wheel
+  feature: 8 mm bore through both bearings
+  relation: clears
+  hardware: bolt_m8x35
+  clearance_mm: 0.2
+  params:
+  - bearing_bore
+  - bolt_len
+  check:
+    method: none
+    ref: null
+    description: M8 bolt through the 8 mm bearing bore — the bearings spin on the
+      bolt.
+manual:
+- n: '1'
+  text: Print the wheel and the bearing_fit_coupon in PLA, flat on the bed, 0.2 mm
+    layers.
+  parts:
+  - wheel
+  - bearing_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press a 608ZZ bearing into the coupon's 5 mm deep pocket. It should be a firm
+    press fit — if it slides in loosely, add a small amount of glue or reprint with
+    a tighter pocket; if it cracks the coupon, the pocket is too tight.
+  parts:
+  - bearing_fit_coupon
+  hardware:
+  - bearing_608
+  tool: null
+- n: '3'
+  text: Press both 608ZZ bearings into the wheel, one from each side, until they seat
+    against the 1.8 mm web in the middle.
+  parts:
+  - wheel
+  hardware:
+  - bearing_608
+  tool: null
+- n: '4'
+  text: Slide the M8 bolt through the wheel from the top (door side). Put one washer
+    on the bolt, then the lock nut underneath. Tighten until the bearings are snug
+    — the wheel should spin freely on the bolt, not wobble.
+  parts:
+  - wheel
+  hardware:
+  - bolt_m8x35
+  - locknut_m8
+  - washer_m8
+  tool: null
+- n: '5'
+  text: 'Check the bolt length against your door bracket. The bolt was not measured,
+    so 35 mm is a guess: if it screws into the bracket instead of passing through
+    with a nut, you may need a longer or shorter bolt. If it screws into the bracket,
+    skip the washer and nut.'
+  parts:
+  - wheel
+  hardware:
+  - bolt_m8x35
+  tool: null
+- n: '6'
+  text: Fit the wheel to the door. The wheel face is flat — if your rail is a raised
+    ridge, the wheel may need a groove; check the fit before tightening.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

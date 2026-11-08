@@ -1,0 +1,234 @@
+task: tripod-plate
+note: Rev 2. Only the roof over the bolt recess has changed. It's now a stepped bridge,
+  so each bridged layer has solid edges to land on and doesn't sag into the hole.
+  The clamp fit and recess size are unchanged; both fitted on print 1.
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: 'Width of plate the tripod''s Arca-style clamp takes. Confirmed by print:
+      it fits'
+  plate_t:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  dovetail_chamfer:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: 'Bevel on the top edges. Print 1: fits the clamp'
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_l:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear_d:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  recess_d:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: 'Print 1: head fits'
+  recess_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bottom_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  layer_h:
+    value: 0.2
+    unit: mm
+    kind: world
+    source: asked
+    note: Printer layer height. Each step of the stepped bridge is one layer
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = p.plate_w; t = p.plate_t; c = p.dovetail_chamfer\n\
+    \    body = (cq.Workplane('XZ')\n            .polyline([(-w/2, 0), (w/2, 0), (w/2,\
+    \ t - c), (w/2 - c, t), (-w/2 + c, t), (-w/2, t - c)])\n            .close().extrude(p.plate_l/2,\
+    \ both=True))\n    body = body.edges('<Z').chamfer(p.bottom_chamfer)\n    z0 =\
+    \ p.recess_depth; lh = p.layer_h; s = p.bolt_clear_d\n    recess = cq.Workplane('XY').circle(p.recess_d/2).extrude(z0)\n\
+    \    # stepped bridge: layer 1 = slot spanning the recess (bridges anchor on the\
+    \ recess wall),\n    # layer 2 = square (bridges anchor on layer 1), then the\
+    \ round hole\n    slot = cq.Workplane('XY').workplane(offset=z0).rect(p.recess_d\
+    \ + 1, s).extrude(lh)\n    sq = cq.Workplane('XY').workplane(offset=z0 + lh).rect(s,\
+    \ s).extrude(lh)\n    hole = cq.Workplane('XY').circle(s/2).extrude(t + 1)\n \
+    \   return body.cut(recess).cut(slot).cut(sq).cut(hole)\n"
+  print_orientation: Wide flat underside (with the bolt recess) on the bed; bevels
+    face up
+  use_orientation: 'Same way up: underside in the tripod clamp, camera on top'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w = p.plate_w; t = p.plate_t; c = p.dovetail_chamfer\n\
+    \    body = (cq.Workplane('XZ')\n            .polyline([(-w/2, 0), (w/2, 0), (w/2,\
+    \ t - c), (w/2 - c, t), (-w/2 + c, t), (-w/2, t - c)])\n            .close().extrude(p.coupon_l/2,\
+    \ both=True))\n    body = body.edges('<Z').chamfer(p.bottom_chamfer)\n    z0 =\
+    \ p.recess_depth; lh = p.layer_h; s = p.bolt_clear_d\n    recess = cq.Workplane('XY').circle(p.recess_d/2).extrude(z0)\n\
+    \    slot = cq.Workplane('XY').workplane(offset=z0).rect(p.recess_d + 1, s).extrude(lh)\n\
+    \    sq = cq.Workplane('XY').workplane(offset=z0 + lh).rect(s, s).extrude(lh)\n\
+    \    hole = cq.Workplane('XY').circle(s/2).extrude(t + 1)\n    return body.cut(recess).cut(slot).cut(sq).cut(hole)\n"
+  print_orientation: Underside on the bed, same as the plate
+  use_orientation: Check the roof over the recess and the bolt
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: underside recess ceiling
+    role: head_seat
+  - part: plate
+    feature: centre clearance hole
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: clean_roof
+  part: fit_coupon
+  feature: stepped bridge over the recess
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - layer_h
+  - bolt_clear_d
+  - recess_depth
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Looking up into the recess, the roof should be flat lines with a
+      clean slot, then a square, then a round hole. The bolt should go through without
+      forcing it or trimming
+- id: clamp_fit
+  part: plate
+  feature: 38 mm dovetail
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - dovetail_chamfer
+  check:
+    method: none
+    ref: null
+    description: Already confirmed on print 1 and unchanged
+- id: thread_reach
+  part: plate
+  feature: bolt protrusion
+  relation: engages
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - plate_t
+  - recess_depth
+  - bolt_len
+  check:
+    method: measure
+    ref: null
+    description: About 5 mm of thread sticks out. The camera should pull down snug
+      before the bolt bottoms out
+manual:
+- n: '1'
+  text: 'Print fit_coupon at 0.2 mm layers, flat side down, no supports. Keep the
+    layer height at exactly 0.2 mm: the roof over the recess is built in one-layer
+    steps.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Look up into the recess. The roof should be clean, straight lines with a slot,
+    a square and then the round hole, with no loops. Push the bolt through. It should
+    pass freely. If a few strands remain, they'll clear with a gentle push of the
+    bolt.
+  parts:
+  - fit_coupon
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Print the plate with the same settings, using 100% infill or 6 walls.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Push the bolt up through the plate from the underside. Turn the head with
+    your fingertips in the recess to screw it into the camera until it's snug. If
+    the bolt stops before the camera is tight, tell me and I'll make the plate thicker.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: 'Loosen the tripod knob, drop the plate in from above and tighten firmly.
+    Keep a hand on the camera until you''re sure it''s held. It''s PLA: keep it out
+    of hot cars and don''t put sideways loads on it.'
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null

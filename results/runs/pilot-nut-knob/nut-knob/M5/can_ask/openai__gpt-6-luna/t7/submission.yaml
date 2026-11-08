@@ -1,0 +1,197 @@
+task: nut-knob/M5
+note: One-piece hand knob, approximately 30 mm across. The M5 nut is pressed into
+  a recessed, close-fitting hex pocket from the top; it remains below the knob's top
+  surface. The pocket floor is closed except for a 5.6 mm axial passage, so the nut
+  cannot pass through the far side and an M5 bolt can pass through the nut and exit
+  the bottom. The pocket uses a small interference fit to retain the nut; if your
+  printer makes the fit too tight, stop rather than force the nut and adjust the pocket_af
+  parameter upward slightly.
+questions: []
+params:
+  body_radius:
+    value: 12.5
+    unit: mm
+    kind: design
+    source: design
+    note: Central cylindrical body radius; the grip bumps bring the maximum diameter
+      to 30 mm.
+  body_height:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_radius:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_center_radius:
+    value: 12.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut across flats.
+  nut_height:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut height.
+  pocket_af:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across flats; nominal 0.1 mm total interference against the catalog
+      nut AF.
+  pocket_recess:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Nut top is recessed this far below the knob top when seated.
+  mouth_af:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: Slightly enlarged entrance section to ease starting the nut.
+  mouth_depth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_passage_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance passage for an M5 bolt through the closed pocket floor.
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    # A round core with eight fused peripheral\
+    \ grip bumps.\n    part = cq.Workplane('XY').circle(p.body_radius).extrude(p.body_height)\n\
+    \    for i in range(int(p.grip_count)):\n        a = 2.0 * math.pi * i / p.grip_count\n\
+    \        x = p.grip_center_radius * math.cos(a)\n        y = p.grip_center_radius\
+    \ * math.sin(a)\n        bump = cq.Workplane('XY').center(x, y).circle(p.grip_radius).extrude(p.body_height)\n\
+    \        part = part.union(bump)\n\n    pocket_depth = p.nut_height + p.pocket_recess\n\
+    \    floor_z = p.body_height - pocket_depth\n\n    # Hexagonal nut well, open\
+    \ at the top. CadQuery polygon diameter is\n    # corner-to-corner, so convert\
+    \ across-flats dimensions to that diameter.\n    hex_d = p.pocket_af / math.cos(math.pi\
+    \ / 6.0)\n    hex_cut = (cq.Workplane('XY').workplane(offset=floor_z)\n      \
+    \         .polygon(6, hex_d).extrude(pocket_depth + 0.02))\n    part = part.cut(hex_cut)\n\
+    \n    # Short, wider entrance eases alignment of the nut while leaving the\n \
+    \   # lower pocket close-fitting for retention.\n    mouth_d = p.mouth_af / math.cos(math.pi\
+    \ / 6.0)\n    mouth_z = p.body_height - p.mouth_depth\n    mouth_cut = (cq.Workplane('XY').workplane(offset=mouth_z)\n\
+    \                 .polygon(6, mouth_d).extrude(p.mouth_depth + 0.02))\n    part\
+    \ = part.cut(mouth_cut)\n\n    # Axial bolt passage through the pocket floor to\
+    \ the opposite face.\n    bore = cq.Workplane('XY').circle(p.bolt_passage_d /\
+    \ 2.0).extrude(floor_z + 0.02)\n    part = part.cut(bore)\n    return part"
+  print_orientation: Print with the flat circular bottom face on the bed (z=0), knob
+    axis vertical. The nut pocket opens upward; no supports are needed.
+  use_orientation: Nut pocket faces the direction from which the nut is pressed in.
+    The M5 bolt passes axially through the nut and exits the opposite, flat bottom
+    face.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: nut_in_knob
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 11.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: 7.9 mm AF recessed hex nut pocket with closed floor
+    role: nut_pocket
+  nut: m5_nut
+  external: null
+criteria:
+- id: nut_pocket_fit
+  part: knob
+  feature: Close-fitting hex pocket retains the ISO 4032 M5 nut when inverted
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - pocket_af
+  - nut_height
+  - pocket_recess
+  check:
+    method: measure
+    ref: null
+    description: Press the nut in by hand until seated. Confirm it is recessed below
+      the top and stays in place when the knob is turned upside down.
+- id: bolt_passage
+  part: knob
+  feature: 5.6 mm through-passage from the nut pocket floor to the opposite face
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.3
+  params:
+  - bolt_passage_d
+  check:
+    method: measure
+    ref: null
+    description: Verify the M5 bolt passes through the pocket, threads into the captive
+      nut, and its tip can emerge through the opposite face.
+manual:
+- n: '1'
+  text: Print the knob with its flat bottom on the bed. Remove any brim or strings
+    from the hex pocket and axial passage.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M5 nut with the recessed hex pocket and press it in by hand until
+    it seats against the pocket floor. Do not hammer it; stop if the fit is excessively
+    tight.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Pass the M5 bolt through the nut from the pocket side. It threads into the
+    nut and its end passes through the axial passage and out the flat bottom face.
+  parts:
+  - knob
+  hardware:
+  - m5_bolt
+  - m5_nut
+  tool: null
+- n: '4'
+  text: Turn the knob by its outer grip bumps to tighten or loosen it on the M5 bolt.
+  parts:
+  - knob
+  hardware: []
+  tool: null

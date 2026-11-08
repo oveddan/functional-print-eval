@@ -1,0 +1,291 @@
+task: tripod-plate
+note: Arca-Swiss compatible quick-release camera plate designed for standard 38 mm
+  Arca-Swiss clamp receivers. It utilizes the salvaged metal 1/4"-20 webcam bolt rather
+  than a weak 3D-printed plastic screw, ensuring total safety for your camera. Zero
+  supports or bridging needed when printed.
+questions:
+- text: How hard is it to 3D print the quick release plate?
+  answer: The plate is very easy and quick to 3D print. It is designed to print completely
+    flat on the build plate without any supports or bridging. The 45-degree dovetail
+    bevels print as clean self-supporting overhangs, resulting in a strong, rigid
+    part that locks firmly into your tripod's Arca-Swiss jaws.
+- text: Can I 3D print the part that screws in?
+  answer: Do not 3D print the threaded screw. 3D printed 1/4"-20 plastic threads easily
+    snap along layer lines under the tension of clamping a camera, leaving a broken
+    plastic stud stuck inside your camera's tripod socket. Instead, this design uses
+    your salvaged steel 1/4"-20 webcam mount bolt, which has the identical thread
+    and knurled head, providing 100% metal-on-metal strength and keeping your camera
+    completely safe.
+params:
+  plate_length:
+    value: 45
+    unit: mm
+    kind: design
+    source: design
+    note: Total length of the quick release plate
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Thickness of the salvaged webcam bolt head
+  dovetail_lip_h:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the vertical base lip at the 38 mm dovetail root
+  tripod_clamp_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Width of plate the tripod clamp accepts across jaws (Arca standard)
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Diameter of the salvaged webcam bolt head
+  dovetail_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: design
+    note: Arca-Swiss standard dovetail angle
+  plate_height:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Total thickness of the quick release plate
+  bolt_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Major diameter of 1/4"-20 UNC thread (1/4 in = 6.35 mm)
+  plate_top_width:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Width of the upper section contacting the camera
+  pocket_width:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Width of the counterbore pocket for the 15 mm bolt head
+  coupon_length:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the test coupon along clamp direction
+  slot_travel:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Travel range for fore-aft camera balance adjustment
+  seat_thickness:
+    value: 4.8
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of plate floor under bolt head; leaves 5.2 mm thread stickout
+  dovetail_bevel_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the 45-degree dovetail angled slope
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Shank length under the head of the salvaged webcam bolt
+  shank_clearance_w:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Width of slot through-hole for 1/4"-20 bolt clearance
+parts:
+- id: arca_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    L = p.plate_length\n    H\
+    \ = p.plate_height\n    w_base = p.tripod_clamp_width\n    lip_h = p.dovetail_lip_h\n\
+    \    bevel_h = p.dovetail_bevel_h\n    w_top = p.plate_top_width\n\n    z_lip\
+    \ = H - lip_h\n    z_bevel = H - lip_h - bevel_h\n\n    # Profile in XZ: z=0 is\
+    \ on the build plate (flat camera-contact face),\n    # z=H is the wide bottom\
+    \ face that sits in the tripod clamp.\n    pts = [\n        (-w_top / 2.0, 0.0),\n\
+    \        (w_top / 2.0, 0.0),\n        (w_top / 2.0, z_bevel),\n        (w_base\
+    \ / 2.0, z_lip),\n        (w_base / 2.0, H - 0.5),\n        (w_base / 2.0 - 0.5,\
+    \ H),\n        (-w_base / 2.0 + 0.5, H),\n        (-w_base / 2.0, H - 0.5),\n\
+    \        (-w_base / 2.0, z_lip),\n        (-w_top / 2.0, z_bevel),\n    ]\n\n\
+    \    base = (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n        .close()\n\
+    \        .extrude(L / 2.0, both=True)\n    )\n\n    # Through slot for the 1/4\"\
+    -20 bolt shank\n    slot_l = p.slot_travel + p.shank_clearance_w\n    shank_slot\
+    \ = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n       \
+    \ .rect(p.shank_clearance_w, slot_l)\n        .extrude(H + 2.0)\n    )\n    plate\
+    \ = base.cut(shank_slot)\n\n    # Counterbore pocket for the 15 mm bolt head\n\
+    \    pocket_l = p.slot_travel + p.pocket_width\n    pocket_depth = H - p.seat_thickness\
+    \ + 1.0\n    pocket = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=p.seat_thickness)\n\
+    \        .rect(p.pocket_width, pocket_l)\n        .extrude(pocket_depth)\n   \
+    \ )\n    plate = plate.cut(pocket)\n\n    return plate\n"
+  print_orientation: Camera-contact face at z=0 flat on the build plate
+  use_orientation: Mounted with z=0 face facing up against camera base, and z=10 face
+    facing down into tripod clamp
+- id: dovetail_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    L = p.coupon_length\n   \
+    \ H = p.plate_height\n    w_base = p.tripod_clamp_width\n    lip_h = p.dovetail_lip_h\n\
+    \    bevel_h = p.dovetail_bevel_h\n    w_top = p.plate_top_width\n\n    z_lip\
+    \ = H - lip_h\n    z_bevel = H - lip_h - bevel_h\n\n    pts = [\n        (-w_top\
+    \ / 2.0, 0.0),\n        (w_top / 2.0, 0.0),\n        (w_top / 2.0, z_bevel),\n\
+    \        (w_base / 2.0, z_lip),\n        (w_base / 2.0, H - 0.5),\n        (w_base\
+    \ / 2.0 - 0.5, H),\n        (-w_base / 2.0 + 0.5, H),\n        (-w_base / 2.0,\
+    \ H - 0.5),\n        (-w_base / 2.0, z_lip),\n        (-w_top / 2.0, z_bevel),\n\
+    \    ]\n\n    base = (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n\
+    \        .close()\n        .extrude(L / 2.0, both=True)\n    )\n\n    # Central\
+    \ clearance hole for bolt shank\n    hole = (\n        cq.Workplane(\"XY\")\n\
+    \        .workplane(offset=-1.0)\n        .circle(p.shank_clearance_w / 2.0)\n\
+    \        .extrude(H + 2.0)\n    )\n    coupon = base.cut(hole)\n\n    # Central\
+    \ counterbore pocket for bolt head\n    pocket_depth = H - p.seat_thickness +\
+    \ 1.0\n    pocket = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=p.seat_thickness)\n\
+    \        .circle(p.pocket_width / 2.0)\n        .extrude(pocket_depth)\n    )\n\
+    \    coupon = coupon.cut(pocket)\n\n    return coupon\n"
+  print_orientation: Camera-contact face at z=0 flat on the build plate
+  use_orientation: Mounted with z=0 face facing up against camera base, and z=10 face
+    facing down into tripod clamp
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt_joint
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: arca_plate
+    feature: bolt_pocket
+    role: head_seat
+  - part: arca_plate
+    feature: bolt_slot
+    role: clearance
+  nut: null
+  external: camera 1/4"-20 tripod socket
+criteria:
+- id: clamp_engagement
+  part: arca_plate
+  feature: dovetail_base
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - tripod_clamp_width
+  - dovetail_bevel_h
+  - dovetail_lip_h
+  check:
+    method: coupon
+    ref: dovetail_coupon
+    description: Verify the dovetail profile and clamp engagement using the test coupon
+      before printing the full plate.
+- id: bolt_shank_clearance
+  part: arca_plate
+  feature: bolt_slot
+  relation: contains
+  hardware: webcam_bolt
+  clearance_mm: 0.45
+  params:
+  - shank_clearance_w
+  - bolt_thread_d
+  check:
+    method: measure
+    ref: null
+    description: Check that the salvaged 1/4"-20 bolt passes freely through the slot.
+- id: bolt_head_recess
+  part: arca_plate
+  feature: bolt_pocket
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: 0.2
+  params:
+  - plate_height
+  - seat_thickness
+  - bolt_head_h
+  check:
+    method: measure
+    ref: null
+    description: Verify the bolt head sits flat inside the counterbore pocket without
+      protruding past the bottom face.
+- id: camera_support
+  part: arca_plate
+  feature: camera_face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_top_width
+  - plate_length
+  check:
+    method: none
+    ref: null
+    description: Flat top surface seats against the camera base around the 1/4"-20
+      socket.
+manual:
+- n: '1'
+  text: Print the dovetail coupon first (takes ~8 minutes). Slide it into your tripod
+    head clamp and tighten the knob to confirm the 38 mm dovetail width and 45-degree
+    angle clamp securely without wobble.
+  parts:
+  - dovetail_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Insert the salvaged 1/4"-20 webcam bolt into the coupon from the bottom (the
+    wide face). Verify the bolt head drops flush inside the round pocket and test-thread
+    it into your camera socket to confirm 5.2 mm of thread engagement clamps tight
+    without bottoming out.
+  parts:
+  - dovetail_coupon
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '3'
+  text: Print the full quick-release plate (arca_plate). It prints flat with the camera-facing
+    side (z=0) on the build plate. No supports or bridging required.
+  parts:
+  - arca_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Slide the 1/4"-20 webcam bolt into the plate's bottom pocket through the adjustment
+    slot. Hold the plate against the bottom of your camera (flat face against camera)
+    and tighten the bolt into the camera's tripod socket using the bolt's head until
+    snug.
+  parts:
+  - arca_plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '5'
+  text: Loosen your tripod clamp knob, drop the camera with the mounted plate into
+    the clamp jaws from above, adjust fore/aft balance, and tighten the clamp knob
+    firmly.
+  parts:
+  - arca_plate
+  hardware: []
+  tool: null

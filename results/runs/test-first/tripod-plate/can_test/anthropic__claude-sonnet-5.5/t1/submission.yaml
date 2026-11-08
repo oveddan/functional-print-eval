@@ -1,0 +1,275 @@
+task: tripod-plate
+note: 'I designed this as a temporary Arca-style quick-release plate. It is 38 mm
+  wide, with a 45° dovetail on the clamp side. It has a slot for the camera position
+  and a recessed pocket for the head of your salvaged 1/4-20 webcam bolt. I used that
+  bolt as the part that screws in, because a printed 1/4-20 thread in PLA would be
+  weak and strip easily. The plate prints with the camera face down, so it needs no
+  supports. The first test showed the head pocket bridged badly when printed the other
+  way up, so I flipped the part. The clamp''s lip angle, jaw gap and depth, and the
+  camera socket depth, are unmeasured and assumed. Print the dovetail-coupon before
+  the full plate to check the fit. It''s a temporary fix: don''t trust it with an
+  expensive camera until you''ve checked that it holds firmly, and keep a hand on
+  the camera while you test it.'
+questions:
+- text: What are the clamp's lip angle, jaw gap and depth? I couldn't get these measured,
+    so I assumed an Arca-Swiss-style 45° dovetail on a 38 mm plate.
+  answer: null
+- text: How deep is the camera's 1/4-20 socket? The bolt sticks out about 5.3 mm above
+    the plate.
+  answer: null
+- text: How did the dovetail-coupon fit? The first test's report came back empty.
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes
+  fit_clearance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: narrow the plate slightly so it drops in; the clamp knob takes up the slack
+  plate_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: guessed
+    note: overall thickness; clamp depth/lip height could not be measured
+  bevel_h:
+    value: 6
+    unit: mm
+    kind: design
+    source: guessed
+    note: 45 deg dovetail bevel height on the clamp side; tall so the lips catch it
+      at any height. Clamp lip angle not measured, assumed Arca-style 45 deg
+  plate_l:
+    value: 70
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_travel:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: camera fore/aft adjustment along the slot
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  bolt_clear:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter for the bolt slot, printed holes run small
+  head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged bolt head across, about
+  head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged bolt head height, about
+  head_clear:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: extra on head pocket diameter
+  head_h_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: world
+    source: measured
+    note: under head, about
+  socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: camera 1/4-20 socket depth could not be measured; bolt sticks out about
+      5.3 mm above the plate, normal sockets are 5 mm or deeper
+  seg_len:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  w_step:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: width step between fit-coupon segments
+parts:
+- id: camera-plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = p.plate_w - p.fit_clearance\n    T = p.plate_t\n \
+    \   bh = p.bevel_h\n    n = w - 2*bh\n    pts = [(-n/2,0),(n/2,0),(n/2,T-bh),(w/2,T),(-w/2,T),(-n/2,T-bh)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(-p.plate_l).translate((0,-p.plate_l/2,0))\n\
+    \    cb_depth = p.head_h + p.head_h_clear\n    hole = cq.Workplane('XY').slot2D(p.slot_travel\
+    \ + p.bolt_d + p.bolt_clear, p.bolt_d + p.bolt_clear, 90).extrude(T)\n    cb =\
+    \ cq.Workplane('XY').workplane(offset=T-cb_depth).slot2D(p.slot_travel + p.head_d\
+    \ + p.head_clear, p.head_d + p.head_clear, 90).extrude(cb_depth)\n    return body.cut(hole).cut(cb)\n"
+  print_orientation: camera face (flat, no dovetail) on the bed; wide clamp side up
+  use_orientation: camera face up, dovetail edge dropped into the tripod clamp from
+    above
+- id: dovetail-coupon
+  role: coupon
+  material: PLA
+  code: "def seg(w, y0, p):\n    T = p.plate_t\n    bh = p.bevel_h\n    n = w - 2*bh\n\
+    \    pts = [(-n/2,0),(n/2,0),(n/2,T-bh),(w/2,T),(-w/2,T),(-n/2,T-bh)]\n    return\
+    \ cq.Workplane('XZ').polyline(pts).close().extrude(-p.seg_len).translate((0,y0,0))\n\
+    \ndef build(p):\n    r = None\n    base = p.plate_w - p.fit_clearance\n    for\
+    \ i, dw in enumerate([p.w_step, 0, -p.w_step]):\n        s = seg(base + dw, i*p.seg_len,\
+    \ p)\n        r = s if r is None else r.union(s)\n    return r\n"
+  print_orientation: camera face on the bed, wide side up
+  use_orientation: slid or dropped into the tripod clamp to pick the width that fits
+hardware:
+- id: cam-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-bolt-joint
+  fastener: cam-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.7
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: camera-plate
+    feature: head pocket floor (stadium counterbore on clamp side)
+    role: head_seat
+  - part: camera-plate
+    feature: bolt slot through plate
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: c-bolt-slot
+  part: camera-plate
+  feature: bolt slot
+  relation: clears
+  hardware: cam-bolt
+  clearance_mm: 0.55
+  params:
+  - bolt_d
+  - bolt_clear
+  - slot_travel
+  check:
+    method: measure
+    ref: null
+    description: 1/4-20 bolt shank slides freely along the slot
+- id: c-head-pocket
+  part: camera-plate
+  feature: head pocket
+  relation: contains
+  hardware: cam-bolt
+  clearance_mm: 0.75
+  params:
+  - head_d
+  - head_h
+  - head_clear
+  - head_h_clear
+  check:
+    method: measure
+    ref: null
+    description: bolt head sits fully below the clamp face, not proud of it
+- id: c-dovetail
+  part: camera-plate
+  feature: dovetail edges
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - fit_clearance
+  - bevel_h
+  - plate_t
+  check:
+    method: coupon
+    ref: dovetail-coupon
+    description: print the 3-width coupon and see which segment drops into the clamp
+      and is held by the knob
+- id: c-bolt-bite
+  part: camera-plate
+  feature: bolt protrusion above camera face
+  relation: engages
+  hardware: cam-bolt
+  clearance_mm: null
+  params:
+  - bolt_len
+  - head_h
+  - head_h_clear
+  - plate_t
+  - socket_depth
+  check:
+    method: measure
+    ref: null
+    description: bolt sticks out about 5.3 mm above the camera face. It must thread
+      in at least 4 turns and not bottom out before the plate touches the camera.
+manual:
+- n: '1'
+  text: Print the dovetail-coupon first. It takes a few minutes and has three 12 mm
+    segments of slightly different width. Drop it into the tripod clamp and note which
+    segment fits snugly. If none fits, tell me and I'll change the width and bevel.
+  parts:
+  - dovetail-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the camera-plate with the flat camera face on the bed. It needs no supports.
+    4 walls and 25% infill or more will make it stiff enough.
+  parts:
+  - camera-plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop the salvaged 1/4-20 bolt into the clamp-side pocket, which is the wide
+    side with the dovetail. Push the threaded shank up through the slot until the
+    head rests on the pocket floor.
+  parts:
+  - camera-plate
+  hardware:
+  - cam-bolt
+  tool: null
+- n: '4'
+  text: Hold the plate against the camera's tripod socket. Turn the bolt head clockwise
+    to thread it into the camera. Slide the plate along the slot to balance the camera,
+    then tighten by hand. Don't over-tighten, because PLA can crack. If the plate
+    touches the camera before the bolt has threaded in 4 turns, tell me the socket
+    depth.
+  parts:
+  - camera-plate
+  hardware:
+  - cam-bolt
+  tool: null
+- n: '5'
+  text: Loosen the clamp knob fully. Drop the plate's dovetail edges into the clamp
+    from above, then tighten the knob. Check that the camera is held firmly before
+    you let go of it.
+  parts: []
+  hardware: []
+  tool: null

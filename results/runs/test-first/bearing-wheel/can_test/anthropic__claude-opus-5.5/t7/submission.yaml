@@ -1,0 +1,250 @@
+task: bearing-wheel
+note: Bearing seat set to 22.3 mm from the coupon. PLA is fine for a closet door's
+  light load, though it can creep if it gets hot. PETG would last longer if you have
+  it.
+questions:
+- text: Is the track a flat channel or a rounded/V rail? The wheel has a shallow 1.5
+    mm groove, which works on both. Set groove_depth to 0 for a flat rim.
+  answer: null
+- text: How thick is the bracket and what is the gap inside it? M8x35 assumes about
+    2 mm cheeks either side of the 16 mm wheel.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 50 mm across'
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 16 mm wide'
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608, re-measured square across the ring
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_seat_d:
+    value: 22.3
+    unit: mm
+    kind: design
+    source: design
+    note: 'the coupon''s 22.29 seat: press fit that holds upside down. 22.0 would
+      not go in'
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  spacer_hole_d:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: M8 clearance (same as an ISO 7089 M8 washer ID)
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: touches only the 608 inner race (about 12 mm OD), stays clear of the shields
+  outer_spacer_t:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_chamfer:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg underside on the centre lip so it prints without supports
+  groove_depth:
+    value: 1.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: track profile unknown. Shallow groove that rides a rounded rail or a flat
+      one. Set to 0 for a flat rim
+  groove_w:
+    value: 8
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od/2\n    W = p.wheel_w\n    rs = p.bearing_seat_d/2\n\
+    \    bw = p.bearing_w\n    rl = rs - p.lip_chamfer\n    body = cq.Workplane('XY').circle(R).extrude(W)\n\
+    \    if p.groove_depth > 0:\n        Rg = (p.groove_w**2/4 + p.groove_depth**2)/(2*p.groove_depth)\n\
+    \        g = cq.Workplane('XZ').center(R - p.groove_depth + Rg, W/2).circle(Rg).revolve(360,\
+    \ (-(R - p.groove_depth + Rg), -W/2, 0), (-(R - p.groove_depth + Rg), 1 - W/2,\
+    \ 0))\n        body = body.cut(g)\n    # bottom bearing pocket\n    body = body.cut(cq.Workplane('XY').circle(rs).extrude(bw))\n\
+    \    # 45 deg chamfer under centre lip (no supports)\n    cone = cq.Workplane('XZ').polyline([(0,\
+    \ bw), (rs, bw), (rl, bw + p.lip_chamfer), (0, bw + p.lip_chamfer)]).close().revolve(360,\
+    \ (0, 0, 0), (0, 1, 0))\n    body = body.cut(cone)\n    # through bore of lip\n\
+    \    body = body.cut(cq.Workplane('XY').circle(rl).extrude(W))\n    # top bearing\
+    \ pocket\n    body = body.cut(cq.Workplane('XY').workplane(offset=W - bw).circle(rs).extrude(bw))\n\
+    \    return body\n"
+  print_orientation: flat face on bed, axle axis vertical (z)
+  use_orientation: axle horizontal, groove running on the door track
+- id: spacer_center
+  role: final
+  material: PLA
+  code: "def build(p):\n    t = p.wheel_w - 2*p.bearing_w\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_hole_d/2).extrude(t)\n"
+  print_orientation: flat on bed
+  use_orientation: on the bolt between the two bearings' inner races, inside the wheel
+- id: spacer_outer
+  role: final
+  material: PLA
+  code: "def build(p):\n    a = cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_hole_d/2).extrude(p.outer_spacer_t)\n\
+    \    b = cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_hole_d/2).extrude(p.outer_spacer_t).translate((p.spacer_od\
+    \ + 4, 0, 0))\n    return a.union(b)\n"
+  print_orientation: flat on bed; print 2
+  use_orientation: on the bolt between each bearing's inner race and the bracket
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 1
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -4.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer_outer
+    feature: bore
+    role: clearance
+  - part: wheel
+    feature: 608 inner races / lip bore
+    role: clearance
+  - part: spacer_center
+    feature: bore
+    role: clearance
+  - part: spacer_outer
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: door roller bracket (axle hole about 8 mm)
+criteria:
+- id: bearing_press
+  part: wheel
+  feature: bearing pockets
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_seat_d
+  - bearing_od
+  - bearing_w
+  check:
+    method: coupon
+    ref: bore_coupon
+    description: 22.29 seat held the bearing upside down without being loose
+- id: od_match
+  part: wheel
+  feature: rim
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - groove_depth
+  - groove_w
+  check:
+    method: measure
+    ref: null
+    description: 'Before fitting, hold the new wheel against the track: the groove
+      should sit on the rail, and the door height should match the old wheel''s'
+- id: inner_race_clamp
+  part: spacer_center
+  feature: thickness
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: With the nut tight, the wheel should still spin freely. If it drags,
+      the spacer is too thin
+manual:
+- n: '1'
+  text: Print the wheel flat, with no supports. Print spacer_center, and spacer_outer
+    (it prints as a pair).
+  parts:
+  - wheel
+  - spacer_center
+  - spacer_outer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing squarely into the top pocket until it bottoms on the
+    centre lip. Use a vise or a flat block, and push on the OUTER ring only.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: vise or flat block
+- n: '3'
+  text: Flip the wheel. Drop spacer_center into the bore so it rests on the first
+    bearing's inner race. Then press the second bearing into the other pocket until
+    its outer ring meets the chamfered lip.
+  parts:
+  - wheel
+  - spacer_center
+  hardware:
+  - bearing
+  tool: null
+- n: '4'
+  text: Push the M8x35 bolt through the first bracket hole, a spacer_outer, the wheel,
+    the second spacer_outer, and then the second bracket hole (or out the far side
+    if the bracket is a single plate). Add the washer and the lock nut.
+  parts:
+  - spacer_outer
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  - locknut
+  tool: 6 mm hex key, 13 mm spanner
+- n: '5'
+  text: Tighten the nut until it's snug, then check that the wheel spins freely. The
+    spacers clamp only the inner races, so it should keep spinning even when tight.
+    If the bolt runs out of thread before the nut is fully on, use your own M8 bolt
+    or a longer one.
+  parts: []
+  hardware:
+  - locknut
+  tool: null

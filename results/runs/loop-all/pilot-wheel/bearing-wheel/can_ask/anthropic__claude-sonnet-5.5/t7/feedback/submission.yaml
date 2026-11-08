@@ -1,0 +1,293 @@
+task: bearing-wheel
+note: Revision 2. The bearing seat is unchanged (22.09 mm passed on both the wheel
+  and the coupon). The fix is a 0.4 mm skin across the web bore above the bottom pocket.
+  The earlier open 10 mm hole in the 22 mm bridge printed as loose loops and partly
+  closed. Bolt length, rail profile and bracket gap are still unmeasured.
+questions:
+- text: What is the length of your M8 bolt under the head? I assumed M8x50 as a placeholder.
+    You need about 20 mm for the wheel stack, plus the bracket thickness, plus the
+    nut.
+  answer: null
+- text: What is the rail profile (flat, rounded or V)? I couldn't get this measured,
+    so the tread is flat with 1 mm chamfers.
+  answer: null
+- text: What is the gap between the bracket arms? I couldn't get this measured. The
+    stack is about 17 mm of wheel and bearings plus 2 washers (about 20.2 mm total).
+    If the gap is tighter, drop the washers or add spacers.
+  answer: null
+- text: How did the spacer come out? If it's hard to say, check that the M8 bolt slides
+    through it and that it measures 3 mm long.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 nominal 22.000; user measured about 22
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ nominal width, not measured
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M8 shank about 8 mm
+  pocket_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: '22.09 mm seat tested: snug, holds upside down, so unchanged'
+  pocket_depth:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: less than bearing width, so each bearing sticks out 0.5 mm and the washer
+      touches only the inner race
+  web_bore:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: hole through the centre web, clear of the bolt and the spacer
+  membrane_t:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: thin skin that closes the web bore over the bottom pocket, so the 22 mm
+      bridge prints cleanly. The first print's open 10 mm hole in that bridge came
+      out as loose loops and the hole partly closed. The skin gets punched out after
+      printing.
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: under the inner-race shoulder (~12.5 mm)
+  spacer_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: spacer bore = bolt_d + this
+  tread_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: edge chamfer on the tread; rail profile unknown
+  coupon_od:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = p.wheel_w\n    d = p.pocket_depth\n    wheel = cq.Workplane('XY').circle(p.wheel_od/2).extrude(w)\n\
+    \    wheel = wheel.edges().chamfer(p.tread_chamfer)\n    pd = p.bearing_od + p.pocket_clear\n\
+    \    bot = cq.Workplane('XY').circle(pd/2).extrude(d)\n    top = cq.Workplane('XY').workplane(offset=w-d).circle(pd/2).extrude(d)\n\
+    \    z0 = d + p.membrane_t\n    bore = cq.Workplane('XY').workplane(offset=z0).circle(p.web_bore/2).extrude(w\
+    \ - z0)\n    return wheel.cut(bot).cut(top).cut(bore)\n"
+  print_orientation: One flat face on the bed, axis vertical. The 3 mm web over the
+    bottom pocket bridges 22 mm. A 0.4 mm skin closes the bore there, so the bridge
+    prints as a full sheet.
+  use_orientation: Axis horizontal, rolling on the rail, on the bolt between the hanger
+    arms
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    L = p.wheel_w - 2*p.pocket_depth\n    return (cq.Workplane('XY').circle(p.spacer_od/2).circle((p.bolt_d+p.spacer_clear)/2).extrude(L))\n"
+  print_orientation: Flat on the bed (axis vertical)
+  use_orientation: Sits in the wheel's centre web between the two bearings' inner
+    races, on the bolt
+- id: bearing-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    pd = p.bearing_od + p.pocket_clear\n    disc = cq.Workplane('XY').circle(p.coupon_od/2).extrude(p.coupon_t)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=p.coupon_t-p.coupon_depth).circle(pd/2).extrude(p.coupon_depth)\n\
+    \    bore = cq.Workplane('XY').circle(p.web_bore/2).extrude(p.coupon_t)\n    return\
+    \ disc.cut(pocket).cut(bore)\n"
+  print_orientation: Flat on the bed, pocket facing up
+  use_orientation: Test print only, to check the bearing press fit
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: web bore
+    role: clearance
+  - part: spacer
+    feature: spacer bore
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets (both faces)
+  relation: contains
+  hardware: null
+  clearance_mm: 0.1
+  params:
+  - bearing_od
+  - pocket_clear
+  - pocket_depth
+  check:
+    method: coupon
+    ref: bearing-coupon
+    description: 'The coupon test passed with a 22.09 mm seat: a snug fit that holds
+      upside down.'
+- id: c2
+  part: wheel
+  feature: centre web bore
+  relation: clears
+  hardware: null
+  clearance_mm: 1.0
+  params:
+  - web_bore
+  - bolt_d
+  - membrane_t
+  check:
+    method: measure
+    ref: null
+    description: After the thin skin is punched out, the spacer and bolt must turn
+      freely in the 10 mm bore.
+- id: c3
+  part: spacer
+  feature: spacer bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - spacer_clear
+  check:
+    method: measure
+    ref: null
+    description: The M8 bolt slides through the spacer bore.
+- id: c4
+  part: spacer
+  feature: spacer length
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Spacer length equals the web thickness (3 mm). It holds the two inner
+      races apart, so the bolt clamps the inner races and the wheel spins on the outer
+      races.
+manual:
+- n: '1'
+  text: Print the wheel and the spacer in black PLA, with the wheel's flat face down.
+    Use 4 walls and 30% or more infill, and no supports. The wheel's bottom pocket
+    will have a thin closed skin across its ceiling. That's intended.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Punch out the thin skin (0.4 mm) in the centre of the wheel. Push a screwdriver
+    or the bolt through from the top pocket side, and clean up the edge with a knife.
+    You should end up with a clean 10 mm hole through the web.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Press one bearing into each face of the wheel until it stops against the centre
+    web. Press on the outer ring only, using a flat board or a vise. Each bearing
+    should stick out about 0.5 mm.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '4'
+  text: Drop the spacer into the wheel's centre bore. It sits between the two bearings'
+    inner rings.
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '5'
+  text: Put an M8 washer on the bolt, then slide the bolt through the bearings and
+    spacer. Put the second washer on the other side. The washers must touch only the
+    bearings' inner rings, not the wheel body.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - bolt
+  - washer
+  - bearing
+  tool: null
+- n: '6'
+  text: Fit the assembly into the door hanger bracket, pass the bolt through the bracket
+    holes and tighten the lock nut. The wheel should spin freely with no rubbing on
+    the bracket. Don't over-tighten the nut.
+  parts: []
+  hardware:
+  - bolt
+  - locknut
+  tool: null

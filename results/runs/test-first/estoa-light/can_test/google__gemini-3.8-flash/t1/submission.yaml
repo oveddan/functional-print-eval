@@ -1,0 +1,579 @@
+task: estoa-light
+note: Round wall-mount base enclosure for Adafruit 255-LED DotStar disc with internal
+  ESP32 perfboard mounting and external USB-C access.
+questions: []
+params:
+  perfboard_hole_edge_dist:
+    value: 2.1
+    unit: mm
+    kind: world
+    source: measured
+    note: Distance from hole centre to nearest board edges (0.9 + 2.4/2)
+  perfboard_standoff_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of perfboard standoffs above floor for solder joint clearance
+  wall_screw_shank_d:
+    value: 4.2
+    unit: mm
+    kind: world
+    source: measured
+    note: 'Shank diameter of #8 wall screws'
+  perfboard_width:
+    value: 50
+    unit: mm
+    kind: world
+    source: measured
+    note: Width of perfboard along short side
+  perfboard_hole_d:
+    value: 2.4
+    unit: mm
+    kind: world
+    source: measured
+    note: Diameter of perfboard corner holes
+  perfboard_standoff_hole_d:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: Pilot hole diameter for M2 self-tapping screw
+  insert_length:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Length of M3x4x5 heat-set insert
+  disk_hole_pitch:
+    value: 33.5
+    unit: mm
+    kind: world
+    source: measured
+    note: Centre-to-centre pitch of the two mounting holes near the disc centre (30.2
+      mm inner edge to edge + 3.3 mm hole diameter)
+  screw_disk_length:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal length of disc mounting screws
+  esp32_usb_center_x_offset:
+    value: 7.335
+    unit: mm
+    kind: world
+    source: measured
+    note: Offset of USB-C port centre from perfboard centreline
+  box_height:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height of the round box enclosure
+  screw_disk_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Diameter of disc mounting screws
+  perfboard_length:
+    value: 70
+    unit: mm
+    kind: world
+    source: measured
+    note: Length of perfboard along long side
+  insert_od:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Outer diameter of M3x4x5 heat-set insert
+  esp32_usb_height:
+    value: 14.14
+    unit: mm
+    kind: world
+    source: measured
+    note: Height of USB-C port centre above perfboard top face
+  keyhole_entry_d:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: 'Diameter of keyhole entry hole to clear #8 screw head (9mm max)'
+  floor_thickness:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the rear wall resting against the wall
+  perfboard_standoff_od:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of perfboard standoffs
+  keyhole_slot_w:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: 'Width of keyhole slot to engage #8 screw shank (4.2mm)'
+  screw_perfboard_length:
+    value: 6
+    unit: mm
+    kind: world
+    source: catalog
+    note: Length of perfboard self-tapping screws
+  disk_od:
+    value: 241.6
+    unit: mm
+    kind: world
+    source: measured
+    note: Outer diameter of the Adafruit 255 DotStar LED disc (102.54 + 30.2 + 3.3*2
+      + 102.24)
+  esp32_usb_width:
+    value: 10.67
+    unit: mm
+    kind: world
+    source: measured
+    note: Width of ESP32 USB-C receptacle
+  insert_hole_d:
+    value: 4.3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Hole diameter for M3x4x5 heat-set insert
+  wall_thickness:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Outer cylindrical wall thickness
+  keyhole_slot_len:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Vertical slide length of keyhole slot
+  wall_screw_head_d:
+    value: 9
+    unit: mm
+    kind: world
+    source: measured
+    note: 'Maximum head diameter of #8 wall screws'
+  keyhole_pitch:
+    value: 100
+    unit: mm
+    kind: design
+    source: design
+    note: Horizontal spacing between the two wall mounting keyhole slots
+  screw_perfboard_d:
+    value: 2
+    unit: mm
+    kind: world
+    source: catalog
+    note: Diameter of perfboard self-tapping screws
+  disk_hole_d:
+    value: 3.3
+    unit: mm
+    kind: world
+    source: measured
+    note: Diameter of the two mounting holes near the disc centre
+parts:
+- id: box
+  role: final
+  material: PLA
+  code: "def build(p):\n    outer_r = p.disk_od / 2.0\n    inner_r = outer_r - p.wall_thickness\n\
+    \    box_h = p.box_height\n    floor_t = p.floor_thickness\n\n    # Base floor\
+    \ disc\n    base = cq.Workplane(\"XY\").circle(outer_r).extrude(floor_t)\n\n \
+    \   # Outer cylindrical rim\n    rim = (\n        cq.Workplane(\"XY\")\n     \
+    \   .workplane(offset=floor_t)\n        .circle(outer_r)\n        .circle(inner_r)\n\
+    \        .extrude(box_h - floor_t)\n    )\n    res = base.union(rim)\n\n    #\
+    \ Central bridge for M3 heat-set inserts supporting the LED disc\n    bridge_l\
+    \ = p.disk_hole_pitch + 16.0\n    bridge_w = 14.0\n    bridge = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=floor_t)\n        .slot2D(bridge_l, bridge_w)\n\
+    \        .extrude(box_h - floor_t)\n    )\n    res = res.union(bridge)\n\n   \
+    \ # Standoffs for perfboard mounting\n    perf_cx = -p.esp32_usb_center_x_offset\n\
+    \    perf_cy = -75.0\n    dx = p.perfboard_width / 2.0 - p.perfboard_hole_edge_dist\n\
+    \    dy = p.perfboard_length / 2.0 - p.perfboard_hole_edge_dist\n\n    standoff_pts\
+    \ = [\n        (perf_cx - dx, perf_cy - dy),\n        (perf_cx + dx, perf_cy -\
+    \ dy),\n        (perf_cx - dx, perf_cy + dy),\n        (perf_cx + dx, perf_cy\
+    \ + dy),\n    ]\n\n    for sx, sy in standoff_pts:\n        so = (\n         \
+    \   cq.Workplane(\"XY\")\n            .workplane(offset=floor_t)\n           \
+    \ .transformed(offset=cq.Vector(sx, sy, 0))\n            .circle(p.perfboard_standoff_od\
+    \ / 2.0)\n            .extrude(p.perfboard_standoff_h)\n        )\n        res\
+    \ = res.union(so)\n\n    # Enclosure shroud for bottom USB-C port access channel\n\
+    \    usb_pocket_w = 18.0\n    usb_pocket_wall = 2.4\n    usb_shroud_w = usb_pocket_w\
+    \ + 2.0 * usb_pocket_wall\n    usb_y_inner = perf_cy - p.perfboard_length / 2.0\
+    \ + 3.0\n    usb_shroud_len = outer_r + usb_y_inner  # length to reach outer wall\n\
+    \    usb_shroud_cy = -outer_r + usb_shroud_len / 2.0\n\n    usb_shroud = (\n \
+    \       cq.Workplane(\"XY\")\n        .workplane(offset=floor_t)\n        .transformed(offset=cq.Vector(0,\
+    \ usb_shroud_cy, 0))\n        .rect(usb_shroud_w, usb_shroud_len)\n        .extrude(box_h\
+    \ - floor_t)\n    )\n    res = res.union(usb_shroud)\n\n    # Protective shroud\
+    \ walls around wall-hanging keyholes\n    kx_offset = p.keyhole_pitch / 2.0\n\
+    \    ky_center = 45.0\n    shroud_h = 10.0\n    for kx in [-kx_offset, kx_offset]:\n\
+    \        kshroud = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=floor_t)\n\
+    \            .transformed(offset=cq.Vector(kx, ky_center, 0))\n            .rect(18.0,\
+    \ 22.0)\n            .extrude(shroud_h)\n        )\n        res = res.union(kshroud)\n\
+    \n    # Cut insert holes at the centre bridge\n    for hx in [-p.disk_hole_pitch\
+    \ / 2.0, p.disk_hole_pitch / 2.0]:\n        # Heat-set insert cavity\n       \
+    \ res = (\n            res.faces(\">Z\")\n            .workplane()\n         \
+    \   .transformed(offset=cq.Vector(hx, 0, 0))\n            .circle(p.insert_hole_d\
+    \ / 2.0)\n            .cutBlind(- (p.insert_length + 2.0))\n        )\n      \
+    \  # Screw tip relief hole\n        res = (\n            res.faces(\">Z\")\n \
+    \           .workplane()\n            .transformed(offset=cq.Vector(hx, 0, 0))\n\
+    \            .circle((p.screw_disk_d + 0.4) / 2.0)\n            .cutBlind(- (p.screw_disk_length\
+    \ + 2.0))\n        )\n\n    # Cut pilot holes in perfboard standoffs\n    for\
+    \ sx, sy in standoff_pts:\n        res = (\n            res.faces(\">Z\")\n  \
+    \          .workplane()\n            .transformed(offset=cq.Vector(sx, sy, 0))\n\
+    \            .circle(p.perfboard_standoff_hole_d / 2.0)\n            .cutBlind(-p.perfboard_standoff_h)\n\
+    \        )\n\n    # Cut keyhole slots through the back wall at (+/-50, 45)\n \
+    \   for kx in [-kx_offset, kx_offset]:\n        # Entry circle for 9mm head\n\
+    \        entry = (\n            cq.Workplane(\"XY\")\n            .transformed(offset=cq.Vector(kx,\
+    \ 40.0, -1.0))\n            .circle(p.keyhole_entry_d / 2.0)\n            .extrude(floor_t\
+    \ + 2.0)\n        )\n        res = res.cut(entry)\n        # Vertical slot for\
+    \ 4.2mm shank\n        slot = (\n            cq.Workplane(\"XY\")\n          \
+    \  .transformed(offset=cq.Vector(kx, 45.0, -1.0))\n            .slot2D(p.keyhole_slot_len,\
+    \ p.keyhole_slot_w, 90.0)\n            .extrude(floor_t + 2.0)\n        )\n  \
+    \      res = res.cut(slot)\n        # Pocket inside shroud to clear screw head\
+    \ above floor\n        kpocket = (\n            cq.Workplane(\"XY\")\n       \
+    \     .workplane(offset=floor_t)\n            .transformed(offset=cq.Vector(kx,\
+    \ ky_center, 0))\n            .rect(13.2, 17.2)\n            .extrude(shroud_h\
+    \ + 1.0)\n        )\n        res = res.cut(kpocket)\n\n    # Cut USB-C channel\
+    \ through bottom shroud and outer rim\n    usb_cutout = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=floor_t)\n        .transformed(offset=cq.Vector(0,\
+    \ usb_shroud_cy, 0))\n        .rect(usb_pocket_w, usb_shroud_len + 4.0)\n    \
+    \    .extrude(box_h - floor_t + 1.0)\n    )\n    res = res.cut(usb_cutout)\n\n\
+    \    return res\n"
+  print_orientation: Back face flat on print bed (z = 0 is the bed)
+  use_orientation: Back face flat against wall (z = 0), +y points vertically up against
+    gravity, +z points away from wall into room
+hardware:
+- id: screw_disk
+  ref: ISO 4762 M3x8
+  qty: 2
+- id: insert_disk
+  ref: insert M3x4x5
+  qty: 2
+- id: screw_perfboard
+  ref: own:m2x6-self-tapping
+  qty: 4
+- id: led_disk
+  ref: own:led-disk
+  qty: 1
+- id: perfboard
+  ref: own:perfboard
+  qty: 1
+- id: esp32
+  ref: own:esp32
+  qty: 1
+joints:
+- id: joint_disk_screw_left
+  fastener: screw_disk
+  axis_origin:
+  - -16.75
+  - 0.0
+  - 28.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: disk_left_insert
+    role: insert
+  nut: null
+  external: null
+- id: joint_disk_screw_right
+  fastener: screw_disk
+  axis_origin:
+  - 16.75
+  - 0.0
+  - 28.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: disk_right_insert
+    role: insert
+  nut: null
+  external: null
+- id: joint_perfboard_screw_1
+  fastener: screw_perfboard
+  axis_origin:
+  - -30.235
+  - -107.9
+  - 7.4
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: standoff_1
+    role: thread
+  nut: null
+  external: null
+- id: joint_perfboard_screw_2
+  fastener: screw_perfboard
+  axis_origin:
+  - 15.565
+  - -107.9
+  - 7.4
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: standoff_2
+    role: thread
+  nut: null
+  external: null
+- id: joint_perfboard_screw_3
+  fastener: screw_perfboard
+  axis_origin:
+  - -30.235
+  - -42.1
+  - 7.4
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: standoff_3
+    role: thread
+  nut: null
+  external: null
+- id: joint_perfboard_screw_4
+  fastener: screw_perfboard
+  axis_origin:
+  - 15.565
+  - -42.1
+  - 7.4
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: standoff_4
+    role: thread
+  nut: null
+  external: null
+criteria:
+- id: crit_disk_inserts
+  part: box
+  feature: center_insert_holes
+  relation: contains
+  hardware: insert_disk
+  clearance_mm: 0.1
+  params:
+  - insert_hole_d
+  - disk_hole_pitch
+  check:
+    method: measure
+    ref: null
+    description: Check heat-set insert holes hold M3x4x5 inserts firmly flush with
+      the top surface
+- id: crit_perfboard_standoffs
+  part: box
+  feature: perfboard_standoffs
+  relation: engages
+  hardware: screw_perfboard
+  clearance_mm: 0.2
+  params:
+  - perfboard_standoff_hole_d
+  - perfboard_standoff_od
+  check:
+    method: measure
+    ref: null
+    description: Check M2 pilot holes thread and grip M2x6 self-tapping screws without
+      splitting standoffs
+- id: crit_wall_keyholes
+  part: box
+  feature: wall_keyhole_slots
+  relation: clears
+  hardware: null
+  clearance_mm: 0.8
+  params:
+  - keyhole_entry_d
+  - keyhole_slot_w
+  - keyhole_pitch
+  check:
+    method: measure
+    ref: null
+    description: 'Ensure #8 round-head screws (9mm head, 4.2mm shank) enter keyhole
+      and slide securely into slot'
+- id: crit_usb_access
+  part: box
+  feature: usb_cable_cutout
+  relation: clears
+  hardware: null
+  clearance_mm: 1.5
+  params:
+  - box_height
+  - floor_thickness
+  check:
+    method: measure
+    ref: null
+    description: Verify standard USB-C cable overmold clears the cutout pocket to
+      plug fully into ESP32 port
+manual:
+- n: '1'
+  text: Using a soldering iron set to ~220-240°C, heat-set the two M3x4x5 inserts
+    into the two centre boss holes on the front of the box until they sit flush with
+    the top surface. Allow them to cool completely.
+  parts:
+  - box
+  hardware:
+  - insert_disk
+  tool: Soldering iron
+- n: '2'
+  text: Mount the perfboard onto the four standoffs inside the box with the ESP32
+    USB-C port facing the bottom cutout (6 o'clock). Fasten with the four M2x6 self-tapping
+    screws into the standoff pilot holes.
+  parts:
+  - box
+  hardware:
+  - screw_perfboard
+  tool: Small Phillips or flathead screwdriver
+- n: '3'
+  text: Connect the four wires from the perfboard to the LED disc's input connector.
+    Rest the LED disc on the box's outer rim and centre bridge, aligning its two central
+    3.3mm holes with the heat-set inserts. Fasten with two ISO 4762 M3x8 socket head
+    cap screws.
+  parts:
+  - box
+  hardware:
+  - screw_disk
+  tool: 2.5mm hex key
+- n: '4'
+  text: 'Install two #8 round-head screws with wall anchors horizontally spaced 100
+    mm apart on the wall, leaving the screw heads protruding approximately 3.5 to
+    4 mm. Hang the box flat against the wall by pushing the keyholes over the screw
+    heads and sliding the box down 10 mm.'
+  parts:
+  - box
+  hardware: []
+  tool: Level and drill/screwdriver
+- n: '5'
+  text: Plug your USB-C power charger cable through the bottom port opening directly
+    into the ESP32's USB-C port.
+  parts:
+  - box
+  hardware: []
+  tool: null
+assembly:
+  parts:
+  - origin:
+    - 0.0
+    - 0.0
+    - 0.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    part: box
+  items:
+  - origin:
+    - 0.0
+    - 0.0
+    - 28.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: led_disk
+  - origin:
+    - -7.335
+    - -75.0
+    - 9.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: perfboard
+  - origin:
+    - 0.0
+    - -105.7
+    - 23.14
+    x_axis:
+    - 0.0
+    - -1.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: esp32
+  screws:
+  - item: screw_disk
+    head:
+    - -16.75
+    - 0.0
+    - 29.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: screw_disk
+    head:
+    - 16.75
+    - 0.0
+    - 29.6
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: screw_perfboard
+    head:
+    - -30.235
+    - -107.9
+    - 9.0
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: screw_perfboard
+    head:
+    - 15.565
+    - -107.9
+    - 9.0
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: screw_perfboard
+    head:
+    - -30.235
+    - -42.1
+    - 9.0
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: screw_perfboard
+    head:
+    - 15.565
+    - -42.1
+    - 9.0
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0

@@ -1,0 +1,303 @@
+task: nut-knob/M3
+note: 'Unchanged fit geometry: no usable fit results were available, so there is no
+  evidence for tightening or loosening the pockets. The final assembly is one printed
+  knob plus one press-in M3 nut; the fit strip is only a test print. Test hand insertion
+  and upside-down retention before selecting the final throat size.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M3 major diameter.
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  seat_z:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Nut-support shoulder height.
+  bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance.
+  pocket_af_clearance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_throat_af:
+    value: 5.45
+    unit: mm
+    kind: design
+    source: design
+    note: Opposing rib-tip spacing; use the successful coupon value.
+  rib_radius:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_leadin_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_af_extra:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_cut_radius:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_center_radius:
+    value: 11.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_throat_tight:
+    value: 5.35
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_throat_medium:
+    value: 5.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_throat_loose:
+    value: 5.55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pitch:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pad_d:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_link_w:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    def hexpts(af):\n        r=af/math.sqrt(3)\n\
+    \        return [(r*math.cos(math.radians(30+60*i)),r*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n\
+    \    for i in range(int(p.grip_count)):\n        a=2*math.pi*i/p.grip_count\n\
+    \        cutter=cq.Workplane('XY').center(p.grip_cut_center_radius*math.cos(a),p.grip_cut_center_radius*math.sin(a)).circle(p.grip_cut_radius).extrude(p.knob_h)\n\
+    \        body=body.cut(cutter)\n    body=body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(p.knob_h))\n\
+    \    af=p.nut_af+p.pocket_af_clearance\n    cavity=cq.Workplane('XY',origin=(0,0,p.seat_z)).polyline(hexpts(af)).close().extrude(p.knob_h-p.seat_z)\n\
+    \    mouth=cq.Workplane('XY',origin=(0,0,p.knob_h-p.entry_h)).polyline(hexpts(af)).close().workplane(offset=p.entry_h).polyline(hexpts(af+p.entry_af_extra)).close().loft()\n\
+    \    body=body.cut(cavity).cut(mouth)\n    for i in range(6):\n        a=math.radians(60*i)\n\
+    \        rc=p.rib_throat_af/2+p.rib_radius\n        x,y=rc*math.cos(a),rc*math.sin(a)\n\
+    \        stem_h=p.knob_h-p.seat_z-p.rib_leadin_h\n        rib=cq.Workplane('XY',origin=(x,y,p.seat_z)).circle(p.rib_radius).extrude(stem_h)\n\
+    \        tip=cq.Solid.makeCone(p.rib_radius,0,p.rib_leadin_h,cq.Vector(x,y,p.seat_z+stem_h),cq.Vector(0,0,1))\n\
+    \        body=body.union(rib).union(tip)\n    return body"
+  print_orientation: Closed flat face on the bed at z=0; hex pocket upward. No supports.
+  use_orientation: Nut presses into the open pocket and seats on the internal shoulder.
+    Bolt passes along Z through the nut and opposite round opening.
+- id: fit_strip
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    def hexpts(af):\n        r=af/math.sqrt(3)\n\
+    \        return [(r*math.cos(math.radians(30+60*i)),r*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    strip=cq.Workplane('XY').box(2*p.coupon_pitch,p.coupon_link_w,p.seat_z,centered=(True,True,False))\n\
+    \    throats=[p.coupon_throat_tight,p.coupon_throat_medium,p.coupon_throat_loose]\n\
+    \    af=p.nut_af+p.pocket_af_clearance\n    for k,throat in enumerate(throats):\n\
+    \        cx=(k-1)*p.coupon_pitch\n        pad=cq.Workplane('XY',origin=(cx,0,0)).circle(p.coupon_pad_d/2).extrude(p.knob_h)\n\
+    \        strip=strip.union(pad)\n        hole=cq.Workplane('XY',origin=(cx,0,0)).circle((p.bolt_d+p.bolt_clearance)/2).extrude(p.knob_h)\n\
+    \        pocket=cq.Workplane('XY',origin=(cx,0,p.seat_z)).polyline(hexpts(af)).close().extrude(p.knob_h-p.seat_z)\n\
+    \        mouth=cq.Workplane('XY',origin=(cx,0,p.knob_h-p.entry_h)).polyline(hexpts(af)).close().workplane(offset=p.entry_h).polyline(hexpts(af+p.entry_af_extra)).close().loft()\n\
+    \        strip=strip.cut(hole).cut(pocket).cut(mouth)\n        for i in range(6):\n\
+    \            a=math.radians(60*i)\n            rc=throat/2+p.rib_radius\n    \
+    \        x,y=cx+rc*math.cos(a),rc*math.sin(a)\n            stem_h=p.knob_h-p.seat_z-p.rib_leadin_h\n\
+    \            rib=cq.Workplane('XY',origin=(x,y,p.seat_z)).circle(p.rib_radius).extrude(stem_h)\n\
+    \            tip=cq.Solid.makeCone(p.rib_radius,0,p.rib_leadin_h,cq.Vector(x,y,p.seat_z+stem_h),cq.Vector(0,0,1))\n\
+    \            strip=strip.union(rib).union(tip)\n    return strip"
+  print_orientation: Flat underside on the bed at z=0; pockets upward. No supports.
+  use_orientation: 'Negative-X pocket: 5.35 mm throat; center: 5.45 mm; positive-X:
+    5.55 mm. Track orientation in the slicer.'
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: hand_press_retention
+  part: knob
+  feature: Six crush ribs in hex pocket
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - rib_throat_af
+  - rib_radius
+  - rib_leadin_h
+  check:
+    method: coupon
+    ref: fit_strip
+    description: Select the loosest throat that allows full seating with firm thumb
+      pressure, without cracking, and retains the nut when inverted and lightly tapped.
+      Set rib_throat_af to that value. If none works, adjust coupon throats in 0.05
+      mm steps and retest.
+- id: buried_nut
+  part: knob
+  feature: Nut recess above shoulder
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - seat_z
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Check seated nut is below the rim; nominal recess 0.6 mm.
+- id: far_side_stop
+  part: knob
+  feature: Solid shoulder surrounding the small round opening
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - seat_z
+  - bolt_d
+  - bolt_clearance
+  - nut_af
+  check:
+    method: coupon
+    ref: fit_strip
+    description: Nut rests on shoulder and cannot pass through the opposite round
+      hole.
+- id: bolt_passage
+  part: knob
+  feature: Axial round through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: coupon
+    ref: fit_strip
+    description: Thread intended M3 bolt through seated nut by hand; verify it emerges
+      freely through the opposite face.
+manual:
+- n: '1'
+  text: Print fit_strip in PLA at 0.2 mm layers, 4 walls, 5 top/bottom layers and
+    40% infill, with no supports. Use these same settings for knob. Keep track of
+    negative-X and positive-X ends in the slicer.
+  parts:
+  - fit_strip
+  hardware: []
+  tool: null
+- n: '2'
+  text: Let the strip cool. Start with the 5.55 mm throat, then try 5.45 and 5.35
+    if needed. Align nut flats and thumb-press straight down onto the shoulder. Reject
+    fits requiring tools, hammering or bolt torque, and any cracked pocket.
+  parts:
+  - fit_strip
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Choose the loosest fit that retains the nut upside down with light tapping.
+    Verify the nut is below the rim and your intended M3 bolt passes through it and
+    out the opposite hole. Recover the nut by removing the bolt, then gently pushing
+    through the opposite hole with a blunt pin smaller than the hole. If none passes,
+    change coupon throat values in 0.05 mm steps and reprint the test.
+  parts:
+  - fit_strip
+  hardware:
+  - m3_nut
+  tool: Optional blunt pin smaller than the through-hole
+- n: '4'
+  text: Set rib_throat_af to the successful coupon throat. Print knob with closed
+    flat face on the bed and pocket upward, using the test settings. Let cool fully.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: Align the M3 nut and press it fully onto the shoulder by hand. Check it lies
+    below the rim and stays in when inverted. Thread your intended M3 bolt through
+    and verify free passage out the other face.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '6'
+  text: Turn the knob to move the captive nut along the bolt, or hold it to stop the
+    nut turning. This design grips the nut, not the bolt head. Use light hand torque
+    only; no pliers or heat. Check retention after repeated use, since PLA crush ribs
+    can wear.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null

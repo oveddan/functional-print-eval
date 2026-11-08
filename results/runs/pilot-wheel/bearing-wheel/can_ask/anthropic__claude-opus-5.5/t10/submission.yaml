@@ -1,0 +1,263 @@
+task: bearing-wheel
+note: Wheel is 50 mm across and 16 mm wide, with two pressed-in 608 bearings, a 2
+  mm lip in the middle and a 2 mm printed spacer between the inner rings. I didn't
+  know the track shape or the bracket size, so I used a shallow 45-degree groove and
+  loose washers. Black PLA can soften in a very hot room, but it's fine for a closet
+  door.
+questions:
+- text: 'What shape is the track: a raised rail, a groove or flat? If the wheel wanders,
+    the groove can be changed to match it.'
+  answer: null
+- text: How wide is the gap between the bracket sides? It decides whether the washers
+    fit and how long the bolt needs to be.
+  answer: null
+params:
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 'Re-measured flat between the jaws: about 22 (608 nominal 22.000)'
+  bearing_w:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal width
+  bearing_inner_race_od:
+    value: 12.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: approximate 608 inner race shoulder
+  bolt_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: shank measured about 8
+  wheel_od:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 across
+  wheel_w:
+    value: 16.0
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 wide; equals 2 bearings + 2 mm lip
+  bore_d:
+    value: 22.15
+    unit: mm
+    kind: design
+    source: design
+    note: press fit for the 608 OD in PLA; choose from the coupon
+  lip_id:
+    value: 19.0
+    unit: mm
+    kind: design
+    source: design
+    note: centre lip only touches the bearing outer races
+  groove_depth:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: track shape unknown; a shallow 45-degree groove centres on a ridge rail
+      and still rolls on its lands on a flat track
+  groove_bottom_w:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: also removes elephant foot at the bore entry
+  spacer_od:
+    value: 11.0
+    unit: mm
+    kind: design
+    source: design
+    note: below inner race shoulder so it only touches the inner races
+  spacer_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for M8
+  coupon_t:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_step:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od/2\n    W = p.wheel_w\n    body = cq.Workplane('XY').circle(R).extrude(W)\n\
+    \    gd = p.groove_depth\n    gb = p.groove_bottom_w/2\n    pts = [(R-gd, W/2-gb),\
+    \ (R-gd, W/2+gb), (R+1, W/2+gb+gd+1), (R+1, W/2-gb-gd-1)]\n    groove = cq.Workplane('XZ').polyline(pts).close().revolve(360,\
+    \ (0,0,0), (0,1,0))\n    body = body.cut(groove)\n    body = body.cut(cq.Workplane('XY').circle(p.bore_d/2).extrude(p.bearing_w))\n\
+    \    body = body.cut(cq.Workplane('XY').workplane(offset=W-p.bearing_w).circle(p.bore_d/2).extrude(p.bearing_w))\n\
+    \    body = body.cut(cq.Workplane('XY').circle(p.lip_id/2).extrude(W))\n    body\
+    \ = body.faces('<Z').chamfer(p.edge_chamfer)\n    body = body.faces('>Z').chamfer(p.edge_chamfer)\n\
+    \    return body\n"
+  print_orientation: flat face on the bed, axle vertical (z is the axle)
+  use_orientation: axle horizontal, groove on the track
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    t = p.wheel_w - 2*p.bearing_w\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_id/2).extrude(t)\n"
+  print_orientation: flat on the bed
+  use_orientation: on the bolt between the two bearings' inner races
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    s = p.coupon_step\n    plate = cq.Workplane('XY').box(3*(p.bearing_od+8),\
+    \ p.bearing_od+8, p.coupon_t, centered=(True, True, False))\n    pitch = p.bearing_od\
+    \ + 8\n    for i, d in enumerate([p.bore_d - s, p.bore_d, p.bore_d + s]):\n  \
+    \      plate = plate.cut(cq.Workplane('XY').center((i-1)*pitch, 0).circle(d/2).extrude(p.coupon_t))\n\
+    \    for i in range(3):\n        plate = plate.cut(cq.Workplane('XY').workplane(offset=p.coupon_t-0.6).center((i-1)*pitch,\
+    \ p.bearing_od/2+2.5).rect(1+i*1.5, 1.2).extrude(0.6))\n    return plate\n"
+  print_orientation: flat on the bed
+  use_orientation: held in the hand to test-press a bearing
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: bearing bores (via bearing inner races)
+    role: clearance
+  - part: spacer
+    feature: bore
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: bearing_press
+  part: wheel
+  feature: bearing bores
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bore_d
+  - bearing_od
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Pick the hole a bearing presses into firmly by thumb or in a vise,
+      not loose and not cracking the ring; set bore_d to it
+- id: spacer_len
+  part: spacer
+  feature: length
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: Spacer is 2 mm; bolted up, the wheel still spins freely
+- id: bracket_fit
+  part: wheel
+  feature: overall width with washers
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: 16 mm wheel + two 1.6 mm washers = 19.2 mm must fit between the bracket
+      sides; leave washers out if it's tight
+manual:
+- n: '1'
+  text: Print fit_coupon first (about 10 minutes). The three holes are 22.0, 22.15
+    and 22.3 mm, marked by 1, 2 and 3 slots of increasing width. Press a bearing into
+    each. Pick the one that holds the bearing firmly without needing to be hammered.
+    If that isn't the middle hole, change bore_d to match it.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Print the wheel lying flat with 4 walls and 40% infill, and the spacer. Don''t
+    use supports: the lip in the middle only overhangs 1.5 mm.'
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the first bearing into one side of the wheel until it rests on the centre
+    lip. Press against the bearing's outer ring with a socket or a flat piece of wood
+    in a vise. Don't press on the shield.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Turn the wheel over. Drop the spacer into the middle so it sits on the first
+    bearing's inner ring. Then press in the second bearing the same way.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '5'
+  text: Put the wheel in the door bracket with one washer on each side between the
+    bearing and the bracket. Push the M8 bolt through and put on the lock nut. The
+    bolt needs to be about 8 mm longer than the bracket is wide. If 30 mm is too short,
+    use a longer one or your own M8 bolt. Tighten until it's snug. The spacer takes
+    the clamping force, so the wheel should still spin freely.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - bolt
+  - nut
+  - washer
+  tool: 6 mm hex key, 13 mm spanner
+- n: '6'
+  text: Hang the door and slide it. If the track is a raised rail, the groove will
+    ride on it. If it's flat, the wheel runs on the two flat strips either side of
+    the groove.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

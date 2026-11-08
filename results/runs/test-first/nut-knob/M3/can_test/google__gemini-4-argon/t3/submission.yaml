@@ -1,0 +1,208 @@
+task: nut-knob/M3
+note: One-piece 20 mm fluted M3 hand knob. The 5.70 mm across-flats hex pocket (0.20
+  mm clearance over nominal 5.5 mm ISO 4032 M3 nut) was verified via test print coupon_570
+  to press in by hand and stay retained when inverted. The 3.2 mm deep pocket fully
+  encloses the 2.4 mm nut against a 4.8 mm thick internal floor with a 3.4 mm through-hole
+  so the nut cannot push out the far side while the M3 bolt passes through.
+questions: []
+params:
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the hand knob
+  bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for M3 bolt through-hole
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut width across flats
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger-grip flutes around the perimeter
+  flute_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each finger-grip flute cutout
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height/thickness
+  pocket_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the hexagonal nut pocket from top face so the 2.4 mm nut sits fully
+      inside
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of M3 bolt
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of the hand knob (~20 mm requested)
+  flute_offset_r:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from center to flute cutout centers
+  wall_below_nut:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: Floor thickness below nut pocket in test coupon
+  coupon_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of fit-test coupon
+  nut_pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: measured
+    note: Across-flats clearance verified by coupon_570 test print (5.70 mm pocket)
+      for snug hand press-fit retention
+parts:
+- id: m3_hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    af = p.nut_af + p.nut_pocket_clear\n  \
+    \  ac = af / math.cos(math.pi / 6)\n    bolt_hole_d = p.bolt_d + p.bolt_clearance\n\
+    \n    flute_pts = [\n        (\n            p.flute_offset_r * math.cos(2 * math.pi\
+    \ * i / p.flute_count),\n            p.flute_offset_r * math.sin(2 * math.pi *\
+    \ i / p.flute_count),\n        )\n        for i in range(int(p.flute_count))\n\
+    \    ]\n\n    res = (\n        cq.Workplane(\"XY\")\n        .circle(p.knob_od\
+    \ / 2)\n        .extrude(p.knob_h)\n        .faces(\">Z\")\n        .workplane()\n\
+    \        .pushPoints(flute_pts)\n        .circle(p.flute_r)\n        .cutThruAll()\n\
+    \        .faces(\">Z\")\n        .workplane()\n        .polygon(6, ac)\n     \
+    \   .cutBlind(-p.pocket_depth)\n        .faces(\"<Z\")\n        .workplane()\n\
+    \        .circle(bolt_hole_d / 2)\n        .cutThruAll()\n    )\n    return res\n"
+  print_orientation: Flat bottom face on print bed (z = 0), hex nut pocket opening
+    on top (+Z) face; prints with zero overhangs or bridges.
+  use_orientation: Bolt passes along the Z axis through the captured nut and out the
+    far side.
+- id: coupon_570
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    h_total = p.wall_below_nut + p.pocket_depth\n\
+    \    af = p.nut_af + p.nut_pocket_clear\n    ac = af / math.cos(math.pi / 6)\n\
+    \    bolt_hole_d = p.bolt_d + p.bolt_clearance\n    return (\n        cq.Workplane(\"\
+    XY\")\n        .circle(p.coupon_od / 2)\n        .extrude(h_total)\n        .faces(\"\
+    >Z\")\n        .workplane()\n        .polygon(6, ac)\n        .cutBlind(-p.pocket_depth)\n\
+    \        .faces(\"<Z\")\n        .workplane()\n        .circle(bolt_hole_d / 2)\n\
+    \        .cutThruAll()\n    )\n"
+  print_orientation: Flat bottom on bed (z = 0), hex pocket opening on +Z face
+  use_orientation: Test coupon for verifying M3 hex nut press-fit retention
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: knob_bolt_joint
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: m3_hand_knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  - part: m3_hand_knob
+    feature: bolt_thru_hole
+    role: clearance
+  nut: m3_nut
+  external: null
+criteria:
+- id: nut_press_fit
+  part: m3_hand_knob
+  feature: hex_nut_pocket
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: 0.2
+  params:
+  - nut_af
+  - nut_pocket_clear
+  check:
+    method: coupon
+    ref: coupon_570
+    description: Press the M3 hex nut into the 5.70 mm across-flats pocket by hand
+      and verify it stays retained when inverted and shaken.
+- id: nut_enclosed_depth
+  part: m3_hand_knob
+  feature: hex_nut_pocket
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: 0.8
+  params:
+  - nut_h
+  - pocket_depth
+  - knob_h
+  check:
+    method: measure
+    ref: null
+    description: Verify the 2.4 mm thick M3 nut sits fully recessed inside the 3.2
+      mm deep pocket and rests on the internal floor so it cannot push through the
+      far side.
+- id: bolt_clearance_hole
+  part: m3_hand_knob
+  feature: bolt_thru_hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: none
+    ref: null
+    description: Verify the M3 bolt passes freely through the 3.4 mm central clearance
+      hole and out the far side.
+manual:
+- n: '1'
+  text: Press the M3 hex nut (ISO 4032 M3) by hand into the hexagonal pocket on the
+    top face of the printed knob until it seats firmly against the internal floor.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '2'
+  text: Thread your M3 bolt through the captured nut and out the far side of the knob,
+    or thread the knob onto the protruding M3 bolt to tighten by hand.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_bolt
+  tool: null

@@ -1,0 +1,259 @@
+task: nut-knob/M5
+note: Resubmitted unchanged. The user could not report how the first print fitted,
+  and could not measure the nut or the pockets, so the nut retention is still unverified.
+  It rests on the catalog nut size (8.0 mm across flats) and a lip 0.2 mm tighter
+  than the nut. The coupon has three pockets with lip interference of 0.1, 0.2 and
+  0.3 mm. Please check by hand whether the nut clicks in and stays in when the coupon
+  is upside down, then tell me which pocket worked.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 major diameter
+  knob_d:
+    value: 30
+    unit: mm
+    kind: world
+    source: asked
+    note: user asked about 30 mm across
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: pocket af = nut af + this
+  lip_interf:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'snap lip hex af = nut af - this; the retention. Not yet confirmed by a
+      fit test: the user could not report how the first print fitted'
+  lip_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: 4 layers
+  lead_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg lead-in chamfer at entrance
+  depth_slack:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: extra pocket depth above nut
+  hole_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt hole = bolt_d + this
+  grip_n:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_d:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: scallop diameter
+  grip_depth:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: scallop depth into rim
+  coupon_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: lip interference step between coupon pockets
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    k = 2/math.sqrt(3)\n    R = p.knob_d/2\n\
+    \    body = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n    body = body.faces('>Z').edges().chamfer(1.0)\n\
+    \    for i in range(int(p.grip_n)):\n        a = 2*math.pi*i/p.grip_n\n      \
+    \  r = R + p.grip_d/2 - p.grip_depth\n        c = cq.Workplane('XY').center(r*math.cos(a),\
+    \ r*math.sin(a)).circle(p.grip_d/2).extrude(p.knob_h)\n        body = body.cut(c)\n\
+    \    lip_af = p.nut_af - p.lip_interf\n    z0 = p.lead_h + p.lip_h\n    lead =\
+    \ (cq.Workplane('XY').polygon(6, (lip_af+2*p.lead_h)*k)\n            .workplane(offset=p.lead_h).polygon(6,\
+    \ lip_af*k).loft(combine=True))\n    lip = cq.Workplane('XY').workplane(offset=p.lead_h-0.01).polygon(6,\
+    \ lip_af*k).extrude(p.lip_h+0.02)\n    pocket = (cq.Workplane('XY').workplane(offset=z0)\n\
+    \              .polygon(6, (p.nut_af+p.pocket_clear)*k).extrude(p.nut_h+p.depth_slack))\n\
+    \    hole = cq.Workplane('XY').circle((p.bolt_d+p.hole_clear)/2).extrude(p.knob_h)\n\
+    \    return body.cut(lead).cut(lip).cut(pocket).cut(hole)\n"
+  print_orientation: nut-entry face (the open hex side) flat on the bed, z=0; ceiling
+    and bolt hole on top
+  use_orientation: Nut-entry face toward the clamped surface; bolt comes up through
+    the nut and out the top hole
+- id: nut_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    k = 2/math.sqrt(3)\n    z0 = p.lead_h + p.lip_h\n\
+    \    H = z0 + p.nut_h + p.depth_slack + 2.0\n    blk = cq.Workplane('XY').box(54,\
+    \ 20, H, centered=(True, True, False))\n    for j, x in enumerate((-18, 0, 18)):\n\
+    \        interf = p.lip_interf + (j-1)*p.coupon_step\n        lip_af = p.nut_af\
+    \ - interf\n        lead = (cq.Workplane('XY').center(x,0).polygon(6, (lip_af+2*p.lead_h)*k)\n\
+    \                .workplane(offset=p.lead_h).polygon(6, lip_af*k).loft(combine=True))\n\
+    \        lip = cq.Workplane('XY').workplane(offset=p.lead_h-0.01).center(x,0).polygon(6,\
+    \ lip_af*k).extrude(p.lip_h+0.02)\n        pocket = (cq.Workplane('XY').workplane(offset=z0).center(x,0)\n\
+    \                  .polygon(6, (p.nut_af+p.pocket_clear)*k).extrude(p.nut_h+p.depth_slack))\n\
+    \        hole = cq.Workplane('XY').center(x,0).circle((p.bolt_d+p.hole_clear)/2).extrude(H)\n\
+    \        blk = blk.cut(lead).cut(lip).cut(pocket).cut(hole)\n    return blk\n"
+  print_orientation: entry face down on bed
+  use_orientation: test only
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: j1
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -20.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: c1
+  part: knob
+  feature: nut_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.1
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clear
+  - depth_slack
+  check:
+    method: coupon
+    ref: nut_coupon
+    description: Nut sits fully inside the pocket, below the entry face, with its
+      top against the ceiling
+- id: c2
+  part: knob
+  feature: snap_lip
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - lip_interf
+  - lip_h
+  check:
+    method: coupon
+    ref: nut_coupon
+    description: Nut presses past the lip by hand and does not fall out when the knob
+      is turned upside down; pick the coupon pocket that does this and set lip_interf
+      accordingly
+- id: c3
+  part: knob
+  feature: bolt_hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - hole_clear
+  check:
+    method: coupon
+    ref: nut_coupon
+    description: M5 bolt passes freely through the top hole
+- id: c4
+  part: knob
+  feature: ceiling
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - bolt_d
+  - hole_clear
+  check:
+    method: measure
+    ref: null
+    description: Top hole (5.5 mm) is smaller than the nut so it cannot be pushed
+      out through the far side
+manual:
+- n: '1'
+  text: Print the nut_coupon first (entry face down, 0.2 mm layers, PLA). Press an
+    M5 nut into each of the three pockets with your thumb. Pick the pocket where the
+    nut clicks in firmly and stays in when the coupon is turned upside down and shaken.
+    If none holds, raise lip_interf; if it needs tools to push in, lower it.
+  parts:
+  - nut_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the knob with the open hex entry face on the bed. No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M5 nut flat into the hex entry on the underside of the knob with
+    your thumb until it clicks past the lip and bottoms against the ceiling. Keep
+    the nut flat.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread the M5 bolt into the nut from the entry side. The bolt end comes out
+    of the hole on top. Turn the knob by hand to tighten. Choose a bolt long enough
+    to pass the nut and hole (about 12 mm of knob plus your clamped thickness).
+  parts:
+  - knob
+  hardware:
+  - bolt
+  tool: null

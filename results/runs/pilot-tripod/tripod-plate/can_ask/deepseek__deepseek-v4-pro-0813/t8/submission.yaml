@@ -1,0 +1,231 @@
+task: tripod-plate
+note: Temporary tripod quick-release plate for a 38 mm clamp, using the salvaged 1/4-20
+  webcam bolt as the screw so the threads are metal. A fully printed 1/4-20 screw
+  would be weak at 0.2 mm layers, so it is deliberately not printed; the bolt's knob
+  captures in a recess in the plate. Hand-tighten only, and don't carry the camera
+  by the tripod.
+questions:
+- text: Does the tripod's clamp have a spring-loaded safety pin, and if so where is
+    it? (The fit coupon will reveal an interference; a small groove can be added to
+    clear it.)
+  answer: null
+- text: What is the exact dovetail angle / rail height of the clamp? (Assumed 45 degrees,
+    verified by the coupon.)
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Width of plate the tripod clamp takes
+  plate_l:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: Plate length along the clamp direction
+  plate_t:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Chosen so the 10 mm bolt leaves ~5 mm of thread proud of the top
+  dove_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: Standard Arca-Swiss style dovetail angle; verified by the coupon
+  screw_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter (0.250 in)
+  screw_hole_clearance:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance on the screw hole
+  knob_seat_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance on the knob recess
+  bolt_thread_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Salvaged webcam-mount bolt, length under the head
+  bolt_head_dia:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Salvaged webcam-mount bolt, knob across
+  knob_seat_depth:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Shallow locator recess for the bolt's knob
+  coupon_l:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the fit-test coupon
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    tan = math.tan(math.radians(p.dove_angle))\n\
+    \    bw = p.plate_w - 2 * p.plate_t * tan\n    hole_d = p.screw_major_d + p.screw_hole_clearance\n\
+    \    seat_d = p.bolt_head_dia + p.knob_seat_clearance\n    pts = [\n        (-p.plate_w\
+    \ / 2.0, 0.0),\n        (p.plate_w / 2.0, 0.0),\n        (bw / 2.0, p.plate_t),\n\
+    \        (-bw / 2.0, p.plate_t),\n    ]\n    wp = cq.Workplane(\"XZ\").polyline(pts).close().extrude(p.plate_l)\n\
+    \    wp = wp.faces(\"<Z\").workplane(centerOption=\"CenterOfBoundBox\").hole(hole_d)\n\
+    \    wp = wp.faces(\">Z\").workplane(centerOption=\"CenterOfBoundBox\").hole(seat_d,\
+    \ p.knob_seat_depth)\n    return wp\n"
+  print_orientation: Wide 38 mm camera face flat on the bed (z = 0 in its own frame).
+    The two dovetail chamfers taper inward as it prints, so no supports are needed.
+  use_orientation: Wide 38 mm face goes against the bottom of the camera; the narrow
+    face with the round knob recess points down toward/into the tripod clamp.
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    tan = math.tan(math.radians(p.dove_angle))\n\
+    \    bw = p.plate_w - 2 * p.plate_t * tan\n    pts = [\n        (-p.plate_w /\
+    \ 2.0, 0.0),\n        (p.plate_w / 2.0, 0.0),\n        (bw / 2.0, p.plate_t),\n\
+    \        (-bw / 2.0, p.plate_t),\n    ]\n    return cq.Workplane(\"XZ\").polyline(pts).close().extrude(p.coupon_l)\n"
+  print_orientation: Wide 38 mm face flat on the bed (z = 0 in its own frame). No
+    supports needed.
+  use_orientation: Slide it into the tripod's clamp along its length to check the
+    dovetail fit; it is not used in the final assembly.
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt_joint
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - 25.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: round knob recess
+    role: head_seat
+  - part: plate
+    feature: central screw hole
+    role: clearance
+  nut: null
+  external: camera tripod socket (1/4-20)
+criteria:
+- id: coupon_fit
+  part: coupon
+  feature: dovetail cross-section
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - dove_angle
+  - plate_t
+  check:
+    method: coupon
+    ref: coupon
+    description: Print first and confirm it slides into and locks in the tripod's
+      clamp before printing the full plate.
+- id: screw_hole_clear
+  part: plate
+  feature: central screw hole
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - screw_major_d
+  - screw_hole_clearance
+  check:
+    method: none
+    ref: null
+    description: The 1/4-20 thread must pass freely through the central hole.
+- id: knob_recess_seat
+  part: plate
+  feature: round knob recess
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - bolt_head_dia
+  - knob_seat_clearance
+  - knob_seat_depth
+  check:
+    method: measure
+    ref: null
+    description: The 15 mm knob should drop into the recess with a small amount of
+      clearance.
+- id: camera_thread_engagement
+  part: plate
+  feature: protruding 1/4-20 thread
+  relation: engages
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - bolt_thread_len
+  - plate_t
+  - knob_seat_depth
+  check:
+    method: measure
+    ref: null
+    description: About 5 mm of thread should stand proud of the camera face to reach
+      the camera's socket.
+manual:
+- n: '1'
+  text: 'Print the fit-test coupon first. Slide it into the tripod''s clamp along
+    its length: it should drop in and lock with roughly the same feel as the original
+    plate. If it is too wide, too tall, or sloppy, stop and re-check the measurements
+    before printing the full plate.'
+  parts:
+  - coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the plate with the wide camera face flat on the bed.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the knob of the salvaged webcam-mount bolt into the round recess on the
+    narrow side of the plate, so the 1/4-20 thread pokes out through the wide camera
+    face.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '4'
+  text: Slide the plate into the tripod's clamp and lock the clamp.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Screw the camera onto the protruding 1/4-20 thread by hand until the camera
+    base is snug against the plate. Do not over-tighten, and do not lift or carry
+    the setup by the camera.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null

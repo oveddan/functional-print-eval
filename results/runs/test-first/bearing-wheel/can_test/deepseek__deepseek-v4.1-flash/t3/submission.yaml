@@ -1,0 +1,485 @@
+task: bearing-wheel
+note: 'A 50 x 16 mm wheel with a hub that swallows both 608s, one pressed into each
+  face, seated on an internal shoulder and left 0.4 mm recessed so nothing rubs the
+  rotating outer ring. The key number is the bearing pocket: your coupon proved a
+  printed 21.7 or 21.9 bore will not accept a 608 at all, while 22.1 goes in with
+  a snug press and holds upside down - so the wheel uses 22.1. A printed spacer ring
+  fills the 1.2 mm between the two inner races, so the axle clamp (and any washer)
+  loads the inner rings only and the wheel still spins free. The axle is specced as
+  an ISO 4762 M8x50 because your salvaged bolt has no catalog entry: its 22 mm of
+  plain shank puts the whole 16 mm wheel ahead of the thread, whereas a fully threaded
+  bolt will feel sloppy through the bearings. Printed flat, axle vertical, no supports
+  anywhere; the internal shoulder is the only overhang and it came out clean in the
+  coupon. Tread is a plain flat cylinder because the old wheel''s profile could not
+  be measured - if the original had a groove or flanges, say so and I will re-cut
+  the tread.'
+questions:
+- text: What is the gap between the bracket plates the axle passes through - was the
+    old 16 mm wheel a snug side-to-side fit, or was there noticeable play?
+  answer: null
+- text: Was the old wheel's tread a plain flat cylinder, or did it have a groove or
+    raised flanges to run on a rail?
+  answer: null
+- text: Was the broken wheel carrying the weight of a top-hung door (running in a
+    track above), or rolling on the floor under a bottom-rolling door?
+  answer: null
+- text: How long is the salvaged M8 bolt, and is its whole length threaded? A fully
+    threaded bolt works but feels looser through the bearings.
+  answer: null
+params:
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bore; the M8 axle passes through here
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 outer diameter (22.000 nominal); owner measured 'about 22'
+  bearing_recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: pocket_depth minus bearing_w; how far the bearing face sits below the wheel
+      face
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 width; owner measured 'about 7'
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 'owner: salvaged axle bolt shank is ''about 8 mm across'' -> M8'
+  bolt_head_d:
+    value: 13
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8 head diameter; small enough to enter the Ø22.1 pocket and press
+      the inner ring
+  bolt_len:
+    value: 50
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8x50 - grip needed is bracket + washer + 16 wheel + washer + bracket
+      + nut
+  bolt_thread_len:
+    value: 28
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M8 thread length b; thread starts 22 mm from the head, so the wheel must
+      be mounted within the first 21 mm
+  pocket_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'bearing pocket bore. From the coupon: 21.7 and 21.9 would not accept the
+      bearing, 22.1 did (snug, held upside down)'
+  pocket_depth:
+    value: 7.4
+    unit: mm
+    kind: design
+    source: design
+    note: pocket depth from each face; bearing is 7 wide so it ends 0.4 below the
+      face
+  shoulder_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg lead-in on the internal shoulder, aids printing and pressing
+  spacer_id:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: spacer bore for the M8 axle
+  spacer_od:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: spacer outer diameter - presses on the inner rings only (OD ~12)
+  spacer_th:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: matches web_t so the axle clamp closes on the spacer, not on the wheel
+  tread_chamfer:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg break on the tread edges
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 plain washer OD; clears the rotating outer ring
+  washer_t:
+    value: 1
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 thickness
+  web_hole_d:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: central bore between the pockets; clears the bearing inner rings (OD ~12)
+      so the axle clamp never loads the wheel
+  web_t:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: material between the two pockets = wheel_w - 2 x pocket_depth
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 50 mm across'
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 16 mm wide'
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\n\ndef build(p):\n    # Roller wheel for two 608\
+    \ bearings. Half-section (radius, z), revolved about\n    # Z. Modelled in its\
+    \ print orientation: z = 0 is the bed, axle vertical.\n    od = p.wheel_od\n \
+    \   w = p.wheel_w\n    rp = p.pocket_d / 2.0        # bearing pocket bore\n  \
+    \  rh = p.web_hole_d / 2.0      # central web bore\n    d = p.pocket_depth   \
+    \        # pocket depth from each face\n    c = p.shoulder_chamfer\n    tc = p.tread_chamfer\n\
+    \n    pts = [\n        (rh + c, d),              # pocket 1 shoulder\n       \
+    \ (rh, d + c),              # 45 deg lead-in\n        (rh, w - d - c),       \
+    \   # web bore\n        (rh + c, w - d),          # 45 deg lead-in\n        (rp,\
+    \ w - d),              # pocket 2 shoulder\n        (rp, w),                 \
+    \ # pocket 2 wall\n        (od / 2.0 - tc, w),       # top face\n        (od /\
+    \ 2.0, w - tc),       # top edge chamfer\n        (od / 2.0, tc),           #\
+    \ tread\n        (od / 2.0 - tc, 0.0),     # bottom edge chamfer\n        (rp,\
+    \ 0.0),                # bottom face\n        (rp, d),                  # pocket\
+    \ 1 wall\n    ]\n    return (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n\
+    \        .close()\n        .revolve(360.0, (0.0, 0.0, 0.0), (0.0, 0.0, 1.0))\n\
+    \    )\n"
+  print_orientation: lying flat - either face on the bed, axle vertical, z = 0 on
+    the bed. No supports; the only internal overhang is the bearing shoulder at the
+    bottom pocket.
+  use_orientation: axle horizontal, between the door bracket's plates, with a 608
+    pressed into each face
+- id: spacer
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\n\ndef build(p):\n    # Ring that fills the gap between\
+    \ the two bearing inner races, so the axle\n    # clamp passes through the inner\
+    \ rings and never squeezes the wheel.\n    return (\n        cq.Workplane(\"XY\"\
+    )\n        .circle(p.spacer_od / 2.0)\n        .extrude(p.spacer_th)\n       \
+    \ .cut(\n            cq.Workplane(\"XY\")\n            .circle(p.spacer_id / 2.0)\n\
+    \            .extrude(p.spacer_th)\n        )\n    )\n"
+  print_orientation: flat on the bed, axis vertical
+  use_orientation: loose in the wheel's central bore, between the two inner bearing
+    rings
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\n\ndef build(p):\n    # Plate with three bearing\
+    \ pockets differing only in bore, printed with the\n    # pockets opening onto\
+    \ the bed so the internal shoulder is reproduced\n    # exactly as in the wheel.\
+    \ Dot marks on the top face: 1 = smallest.\n    th = p.pocket_depth + p.web_t\n\
+    \    plate = cq.Workplane(\"XY\").box(76.0, 26.0, th, centered=(True, True, False))\n\
+    \    for i, (off, dots) in enumerate(zip((-0.2, 0.0, 0.2), (1, 2, 3))):\n    \
+    \    x = -24.0 + 24.0 * i\n        plate = plate.cut(\n            cq.Workplane(\"\
+    XY\")\n            .center(x, 0)\n            .circle((p.pocket_d + off) / 2.0)\n\
+    \            .extrude(p.pocket_depth)\n        )\n        plate = plate.cut(\n\
+    \            cq.Workplane(\"XY\").center(x, 0).circle(p.web_hole_d / 2.0).extrude(th)\n\
+    \        )\n        for k in range(dots):\n            plate = plate.cut(\n  \
+    \              cq.Workplane(\"XY\")\n                .workplane(offset=th)\n \
+    \               .center(x + (k - (dots - 1) / 2.0) * 2.5, -9.0)\n            \
+    \    .circle(0.75)\n                .extrude(-0.6)\n            )\n    return\
+    \ plate\n"
+  print_orientation: flat, pockets opening downwards onto the bed (z = 0 is the bed);
+    dot marks on the top face
+  use_orientation: test piece only, not part of the finished assembly
+hardware:
+- id: h-bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: h-brg
+  ref: 608ZZ
+  qty: 2
+- id: h-wash
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: j-axle
+  fastener: h-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -0.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: bearing pockets + Ø17 web bore (the axle runs straight through)
+    role: clearance
+  - part: wheel
+    feature: bearing inner-ring face, recessed 0.4 below the wheel face
+    role: head_seat
+  - part: wheel
+    feature: 0.4 deep x Ø16 recess over the inner ring
+    role: washer
+  - part: spacer
+    feature: Ø8.6 bore
+    role: clearance
+  nut: null
+  external: the door bracket's own M8 nut (or its threaded axle hole) - reused from
+    the door, not supplied
+criteria:
+- id: c-pocket
+  part: wheel
+  feature: two bearing pockets, Ø22.1 x 7.4 deep
+  relation: engages
+  hardware: h-brg
+  clearance_mm: -0.1
+  params:
+  - pocket_d
+  - bearing_od
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'coupon: printed 21.7 and 21.9 bores would not accept a 608; the
+      22.1 bore took it with a snug press and held it upside down. The wheel uses
+      that same 22.1 bore, so it is a press fit.'
+- id: c-shoulder
+  part: wheel
+  feature: internal shoulder at the pocket floor (Ø22.1 down to the Ø17 web bore)
+  relation: seats
+  hardware: h-brg
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - bearing_recess
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: same shoulder geometry was in the coupon and came out clean (the
+      22.1 seat took the bearing home). In the wheel, the bearing must bottom out
+      square on the shoulder and finish 0.4 mm below the wheel face.
+- id: c-web
+  part: wheel
+  feature: Ø17 central web bore between the pockets
+  relation: clears
+  hardware: h-brg
+  clearance_mm: 2.5
+  params:
+  - web_hole_d
+  check:
+    method: none
+    ref: null
+    description: clears the bearing inner rings (OD ~12 mm) so no axle clamp load
+      ever passes into the wheel through the web.
+- id: c-spacer-bore
+  part: spacer
+  feature: Ø8.6 bore
+  relation: clears
+  hardware: h-bolt
+  clearance_mm: 0.6
+  params:
+  - spacer_id
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: slide the axle bolt through the printed spacer - it should drop in
+      freely.
+- id: c-spacer-th
+  part: wheel
+  feature: web thickness between the pockets (wheel_w - 2 x pocket_depth = 1.2)
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - pocket_depth
+  - spacer_th
+  check:
+    method: template
+    ref: null
+    description: with both bearings home, the spacer must just fill the gap between
+      the two inner rings. If it visibly holds them apart, sand it thinner; if it
+      rattles slightly, that is fine.
+- id: c-recess
+  part: wheel
+  feature: 0.4 mm bearing recess at each face
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_recess
+  - washer_t
+  check:
+    method: none
+    ref: null
+    description: the rotating outer ring finishes 0.4 mm inside the wheel face, so
+      a bracket arm or washer cannot rub on it; the stationary inner ring stands proud
+      by the same 0.4 mm and is what the M8 washer lands on.
+- id: c-shaft
+  part: wheel
+  feature: 48 mm of plain (unthreaded) bearing seat required either side of the head
+  relation: clears
+  hardware: h-bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_len
+  - bolt_thread_len
+  - wheel_w
+  - washer_t
+  check:
+    method: measure
+    ref: null
+    description: 'measure the salvaged axle: the 16 mm wheel plus washer plus bracket
+      plate must all sit on the plain shank, clear of the thread. On an ISO 4762 M8x50
+      the thread starts 22 mm from the head, so the wheel must be mounted within the
+      first 21 mm.'
+- id: c-width
+  part: wheel
+  feature: 16 mm overall width at the tread
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: 'measure the gap between the bracket plates the axle passes through:
+      the wheel needs 16 mm plus about 0.5 mm of clearance, and about 1.5 mm extra
+      per side if you shim with washers.'
+manual:
+- n: '1'
+  text: 'Your test plate already settled the one number that mattered: a printed 21.7
+    or 21.9 mm bore refuses a 608, while 22.1 mm takes it with a snug press and holds
+    it upside down. The wheel below uses 22.1 mm pockets with the same shoulder as
+    the coupon.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the wheel and the spacer in PLA, 0.2 mm layers, no supports. The wheel
+    is already modelled lying flat - either face on the bed, axle vertical - and the
+    spacer prints flat beside it.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608 into a wheel pocket. Go in square, with a vise or a clamp and
+    flat jaws - never a hammer, and never heat the part. It stops hard on the internal
+    shoulder, leaving the bearing face 0.4 mm below the wheel face. If it will not
+    start, warm the wheel in your hands and try again, or kiss the pocket wall with
+    400 grit. If it will not stay, put one turn of thin tape around the outer ring
+    only, clear of the seal.
+  parts: []
+  hardware:
+  - h-brg
+  tool: vise or clamp
+- n: '4'
+  text: 'Turn the wheel over so the loaded pocket faces down. Check the bearing sits
+    square: sight across the wheel face and look for an even 0.4 mm step all the way
+    round.'
+  parts:
+  - wheel
+  hardware:
+  - h-brg
+  tool: null
+- n: '5'
+  text: Drop the printed spacer into the open pocket. It rests on the first bearing's
+    inner ring and can rattle sideways - it only has to touch the two inner rings,
+    not the bore wall.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '6'
+  text: 'Press the second 608 into the remaining pocket until it stops on its shoulder.
+    Hold both inner rings together and spin the wheel: it must turn freely and silently,
+    with no rock between the two bearings.'
+  parts:
+  - wheel
+  hardware:
+  - h-brg
+  tool: null
+- n: '7'
+  text: Slide the axle through the bearing bores and the spacer. Reuse the salvaged
+    M8 bolt from the door if it is long enough; otherwise an ISO 4762 M8x50 socket
+    head screw. The wheel and its washer must sit on the PLAIN shank, clear of the
+    thread - a threaded portion inside the bearings reads as a sloppy, lumpy fit.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - h-bolt
+  tool: calipers
+- n: '8'
+  text: 'If the bolt head would otherwise sit on the wheel itself, put an ISO 7089
+    M8 washer on first: it bridges the 0.4 mm recess and presses only the bearing''s
+    inner ring, which is the part that has to stay still. One washer under the head,
+    and a second under the nut if there is room.'
+  parts:
+  - wheel
+  hardware:
+  - h-wash
+  - h-bolt
+  tool: null
+- n: '9'
+  text: 'Refit the wheel into the door bracket exactly as the old one came out, with
+    the original nut (or threaded hole). Tighten only until snug. Then spin the wheel:
+    if it drags, the clamp has landed on the inner rings and is preloading them -
+    back the nut off a quarter turn, or add a washer so the clamp lands on the bracket
+    instead.'
+  parts:
+  - wheel
+  hardware:
+  - h-bolt
+  tool: spanner to suit the nut
+- n: '10'
+  text: 'Side play: the wheel is 16 mm wide. If it rattles side to side in the bracket,
+    slide a plain washer onto the axle on each side of the wheel as a shim, keeping
+    them clear of the tread. If the wheel will not fit the gap at all, measure the
+    gap and tell me - a narrower wheel is a ten-minute reprint.'
+  parts:
+  - wheel
+  hardware: []
+  tool: calipers
+- n: '11'
+  text: Hang the door and run it along the track several times. The wheel should roll,
+    not skid. Wipe the tread clean if the track is gritty.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

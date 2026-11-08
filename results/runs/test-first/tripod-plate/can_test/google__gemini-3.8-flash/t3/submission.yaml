@@ -1,0 +1,225 @@
+task: tripod-plate
+note: Universal Arca-Swiss compatible 38 mm quick-release plate designed for drop-in
+  tripod clamps. Utilizes the metal 1/4"-20 salvaged webcam bolt for safe and reliable
+  camera mounting without risking layer-line failure from a 3D printed screw.
+questions:
+- text: How hard would it be to 3D print it, both the flat part and the part that
+    screws in? Just as a temporary thing until I find the real one. I know it's metal
+    normally.
+  answer: The flat plate is straightforward to 3D print in PLA with zero supports.
+    However, 3D printing the 1/4"-20 threaded bolt is not recommended because FDM
+    plastic screws easily snap along their layer lines under tension, which could
+    drop the camera. Instead, we use your salvaged metal 1/4"-20 webcam mount bolt,
+    which provides genuine metal strength and fits flush inside the plate's counterbore.
+params:
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam mount bolt head diameter
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam mount bolt head height
+  dovetail_height:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: height of dovetail bevel
+  plate_height:
+    value: 9.5
+    unit: mm
+    kind: design
+    source: design
+    note: overall thickness of quick release plate
+  clamp_plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of tripod clamp slot
+  counterbore_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: depth of counterbore for bolt head
+  plate_length:
+    value: 45
+    unit: mm
+    kind: design
+    source: design
+    note: length of quick release plate
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4"-20 thread major diameter
+  counterbore_d:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: diameter of recess for bolt head
+  bolt_hole_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole diameter for 1/4"-20 screw
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam mount bolt length under head
+  dovetail_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: design
+    note: standard dovetail bevel angle
+parts:
+- id: tripod_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    w_max = p.clamp_plate_width\n\
+    \    h_tot = p.plate_height\n    h_slope = p.dovetail_height\n    w_min = w_max\
+    \ - 2.0 * h_slope\n    l_tot = p.plate_length\n\n    # Cross-section in X-Z plane:\n\
+    \    # z = 0 is the camera contact face (printed on the bed)\n    # z = h_tot\
+    \ is the tripod-facing bottom surface\n    pts = [\n        (-w_max / 2.0, 0),\n\
+    \        (w_max / 2.0, 0),\n        (w_min / 2.0, h_slope),\n        (w_min /\
+    \ 2.0, h_tot - h_slope),\n        (w_max / 2.0, h_tot),\n        (-w_max / 2.0,\
+    \ h_tot),\n        (-w_min / 2.0, h_tot - h_slope),\n        (-w_min / 2.0, h_slope),\n\
+    \    ]\n\n    plate = (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n\
+    \        .close()\n        .extrude(l_tot)\n        .translate((0, -l_tot / 2.0,\
+    \ 0))\n    )\n\n    # Through clearance hole for 1/4\"-20 bolt\n    plate = (\n\
+    \        plate.faces(\"<Z\")\n        .workplane()\n        .circle(p.bolt_hole_d\
+    \ / 2.0)\n        .cutThruAll()\n    )\n\n    # Counterbore recess for bolt head\
+    \ on tripod face (z = h_tot)\n    plate = (\n        plate.faces(\">Z\")\n   \
+    \     .workplane()\n        .circle(p.counterbore_d / 2.0)\n        .cutBlind(-p.counterbore_depth)\n\
+    \    )\n\n    return plate\n"
+  print_orientation: z = 0 on print bed (flat camera face)
+  use_orientation: z = 0 contacts camera base, z = 9.5 rests toward tripod clamp floor
+hardware:
+- id: salvaged_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt_joint
+  fastener: salvaged_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 9.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: tripod_plate
+    feature: counterbore
+    role: head_seat
+  - part: tripod_plate
+    feature: bolt_hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c_bolt_clearance
+  part: tripod_plate
+  feature: bolt_hole
+  relation: clears
+  hardware: salvaged_bolt
+  clearance_mm: 0.45
+  params:
+  - bolt_d
+  - bolt_hole_d
+  check:
+    method: measure
+    ref: null
+    description: Ensure 1/4"-20 bolt passes smoothly through center hole
+- id: c_bolt_counterbore
+  part: tripod_plate
+  feature: counterbore
+  relation: seats
+  hardware: salvaged_bolt
+  clearance_mm: 1.5
+  params:
+  - bolt_head_d
+  - counterbore_d
+  - bolt_head_h
+  - counterbore_depth
+  check:
+    method: measure
+    ref: null
+    description: Ensure webcam bolt head fits fully within counterbore without protruding
+- id: c_clamp_engagement
+  part: tripod_plate
+  feature: dovetail
+  relation: engages
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - clamp_plate_width
+  - dovetail_height
+  - dovetail_angle
+  check:
+    method: measure
+    ref: null
+    description: Verify plate drops smoothly into clamp and clamps tight with knob
+- id: c_camera_support
+  part: tripod_plate
+  feature: camera_face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_length
+  - clamp_plate_width
+  check:
+    method: none
+    ref: null
+    description: Camera base sits flat and stable against top face
+manual:
+- n: '1'
+  text: 3D print tripod_plate with the camera-facing surface on the build bed (z =
+    0). No supports are required. Print with 100% infill or at least 5 walls/perimeters
+    for strength and rigidity.
+  parts:
+  - tripod_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Insert the salvaged 1/4"-20 webcam mount bolt into the counterbore recess
+    on the bottom (tripod-facing) side of the tripod_plate so that its threaded shaft
+    extends through the flat camera face.
+  parts:
+  - tripod_plate
+  hardware:
+  - salvaged_bolt
+  tool: null
+- n: '3'
+  text: Align the plate's flat face with the bottom of your camera. Thread the protruding
+    1/4"-20 bolt into the camera's tripod socket. Tighten firmly by hand (or using
+    a coin/screwdriver if slotted) until the plate is held tight and square against
+    the camera body.
+  parts:
+  - tripod_plate
+  hardware:
+  - salvaged_bolt
+  tool: null
+- n: '4'
+  text: Unscrew the tripod head's clamp knob until the jaws open wide enough. Drop
+    the plate into the clamp from above and tighten the clamp knob securely. Confirm
+    the angled lips clamp firmly onto the plate's dovetail before letting go of the
+    camera.
+  parts:
+  - tripod_plate
+  hardware: []
+  tool: null

@@ -1,0 +1,480 @@
+task: bearing-wheel
+note: "REVISION 2. Two changes from what you printed.\n\n1) WHEEL FILE FIXED. The\
+  \ first wheel used CadQuery edge selectors and a chamfer operation, and the result\
+  \ wouldn't load. It is now built only from solid primitives (cones and a cylinder,\
+  \ fused, then the bore cut out) — no selectors, no chamfer calls, no workplane-origin\
+  \ tricks. The geometry is identical: 50 mm tread, 16 mm wide, 2 mm broken rim edges,\
+  \ central bore with a 1 mm lead-in at each mouth so a full 14 mm of bearing seat\
+  \ is left. Nothing else about the part changed. The collar and coupon code is untouched,\
+  \ since both of those printed for you.\n\n2) BEARING SEAT RE-RANGED. Your coupon\
+  \ result was decisive: 21.59, 21.69, 21.79, 21.89 and 21.99 mm seats all refused\
+  \ the bearing. So the whole first range was on the tight side of the bearing OD,\
+  \ not straddling it. The new coupon runs 22.00 to 22.25 mm in 0.05 mm steps, which\
+  \ puts the likely sweet spot in the middle of it. The wheel's default seat is moved\
+  \ from 21.9 to 22.10 mm.\n\nHOW TO PICK THE SEAT (this is the one number that matters)\n\
+  Press a 608ZZ into each new hole by hand:\n - The one you want: needs a firm push,\
+  \ or a light tap with a soft mallet and a block of wood, and then it stays put.\n\
+  \ - Too tight: you cannot get it in without a bench vise. Skip it — an over-tight\
+  \ PLA pocket cracks or swells the wheel.\n - Too loose: it drops in and falls straight\
+  \ back out. Skip it too.\nPut the diameter of the winner into bearing_seat_d before\
+  \ printing the wheel. If two holes both feel right, take the larger. If the bearing\
+  \ ends up slightly loose and you have no better hole, a smear of medium thread-lock\
+  \ or superglue on the outer race will hold it — a press fit only has to stop the\
+  \ outer ring creeping, because the bolt clamp goes through the inner rings.\n\n\
+  STILL ASSUMED, because you couldn't measure them: flat tread (no groove) and a bracket\
+  \ that clamps the bearing inner rings, with the wheel + its two collars 18 mm wide\
+  \ overall (wheel alone 16 mm). If the bracket gap is under 18 mm, print the collars\
+  \ with collar_t = 1.0 instead of 2.0."
+questions:
+- text: From the new coupon, which hole diameter takes the bearing with a firm push
+    (and which are too tight / too loose)?
+  answer: null
+- text: Is the old wheel's tread flat, or grooved/flanged, and does the door track
+    have a raised rail or a channel?
+  answer: null
+- text: Does the axle bolt pass through the outside of a single flat bracket plate,
+    or between two plates of a fork, and what is that gap or thickness?
+  answer: null
+params:
+  axle_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M8 nominal shank/thread diameter; this is the shaft the 608 bore rides on.
+  axle_len:
+    value: 40.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8x40 chosen to span wheel + 2 collars + a two-plate bracket +
+      washer + lock nut (grip ~34 mm). M8x35 works for a single thin plate.
+  bearing_seat_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: guessed
+    note: Printed bore diameter. Was 21.9, but the first coupon proved 21.6-22.0 all
+      too tight for a 22.00 bearing. Now 22.10; REPLACE with the hole from the new
+      coupon that pushes in firmly.
+  bore_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Lead-in at each bore mouth. 2 x 1 mm leaves exactly the 14 mm the two bearings
+      need.
+  brg_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ bore.
+  brg_inner_ring_od:
+    value: 11.0
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: 608 inner-ring OD, from pitch dia ~15 minus ball dia ~4. Used to keep the
+      collar OD below it so the clamp load never reaches the shield.
+  brg_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ outside diameter (22.000 -0.008). Nominal used rather than the pinched-jaw
+      field reading.
+  brg_w:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ width; two of them = 14 mm of the 16 mm bore.
+  collar_id:
+    value: 8.2
+    unit: mm
+    kind: design
+    source: design
+    note: 0.2 mm clearance on the M8 shank.
+  collar_od:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: Only just under the guessed 11 mm inner-ring OD, so the collar bears on
+      the inner ring and misses the shield (r 5.25 vs 5.5).
+  collar_t:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: 1 mm to fill the bearing recess plus 1 mm proud. Set to 1.0 if the bracket
+      gap is under 18 mm.
+  coupon_d0:
+    value: 22.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'Smallest test hole. RANGE MOVED UP: the first coupon (21.6-22.0) was entirely
+      too tight.'
+  coupon_len:
+    value: 150.0
+    unit: mm
+    kind: design
+    source: design
+    note: Six holes at 24 mm spacing, 15 mm end margins.
+  coupon_mark:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: Corner notch marking the small-hole end of the coupon.
+  coupon_n:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: Number of test holes.
+  coupon_spacing:
+    value: 24.0
+    unit: mm
+    kind: design
+    source: design
+    note: Centre spacing of the test holes.
+  coupon_step:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: '0.05 mm steps now, because the useful window is narrow: 22.00, 22.05, 22.10,
+      22.15, 22.20, 22.25.'
+  coupon_t:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: Enough grip length to feel the press fit.
+  coupon_w:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: Leaves 4 mm of wall around the largest test hole.
+  nut_h:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M8 nylon-insert lock nut height (af 13).
+  rim_chamfer:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: Break on the tread edges so the rim doesn't catch the track.
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 plain washer, for the nut side only.
+  wheel_od:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel 'about 50 mm across'; tread diameter. Kept so door height and
+      track contact stay the same.
+  wheel_w:
+    value: 16.0
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel 'about 16 mm wide' along the axle.
+parts:
+- id: wheel
+  role: final
+  material: PLA (high-speed, black)
+  code: "import cadquery as cq\n\ndef build(p):\n    ro  = p.wheel_od / 2.0\n    w\
+    \   = p.wheel_w\n    rb  = p.bearing_seat_d / 2.0\n    ch  = p.rim_chamfer\n \
+    \   bch = p.bore_chamfer\n\n    # Outer body: rim broken top and bottom, axis\
+    \ along Z, z = 0 .. w.\n    # Built from solid primitives only - no edge selectors,\
+    \ no chamfer ops.\n    body = cq.Solid.makeCone(ro - ch, ro, ch, cq.Vector(0,\
+    \ 0, 0))\n    body = body.fuse(cq.Solid.makeCylinder(ro, w - 2 * ch, cq.Vector(0,\
+    \ 0, ch)))\n    body = body.fuse(cq.Solid.makeCone(ro, ro - ch, ch, cq.Vector(0,\
+    \ 0, w - ch)))\n\n    # Bore cutter: lead-in cone, straight press seat, lead-in\
+    \ cone.\n    cut = cq.Solid.makeCone(rb + bch, rb, bch, cq.Vector(0, 0, 0))\n\
+    \    cut = cut.fuse(cq.Solid.makeCylinder(rb, w - 2 * bch, cq.Vector(0, 0, bch)))\n\
+    \    cut = cut.fuse(cq.Solid.makeCone(rb, rb + bch, bch, cq.Vector(0, 0, w - bch)))\n\
+    \n    return body.cut(cut)"
+  print_orientation: 'Exactly as modelled: the flat annular face at z=0 on the bed,
+    wheel axis vertical. No supports needed; the 45 deg bore and rim chamfers are
+    self-supporting.'
+  use_orientation: Axis horizontal. The M8 bolt goes through the two bearings in the
+    central bore and through the door bracket; the tread rolls on the track.
+- id: collar
+  role: final
+  material: PLA (high-speed, black)
+  code: "import cadquery as cq\n\ndef build(p):\n    ro = p.collar_od / 2.0\n    ri\
+    \ = p.collar_id / 2.0\n    t  = p.collar_t\n    body = cq.Workplane(\"XY\").circle(ro).extrude(t)\n\
+    \    body = body.cut(\n        cq.Workplane(\"XY\", origin=(0, 0, -1)).circle(ri).extrude(t\
+    \ + 2)\n    )\n    return body"
+  print_orientation: 'Exactly as modelled: flat face on the bed, axis vertical. A
+    2 mm ring, no supports. Print two.'
+  use_orientation: 'One each side of the wheel: sits in the bearing recess, flat against
+    the bearing inner ring, standing 1 mm proud of the wheel face so the wheel face
+    never rubs the bracket.'
+- id: coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "import cadquery as cq\n\ndef build(p):\n    L, W, T = p.coupon_len, p.coupon_w,\
+    \ p.coupon_t\n    n  = int(p.coupon_n)\n    sp = p.coupon_spacing\n    body =\
+    \ cq.Workplane(\"XY\").box(L, W, T, centered=(True, True, False))\n    for i in\
+    \ range(n):\n        x = -sp * (n - 1) / 2.0 + i * sp\n        d = p.coupon_d0\
+    \ + i * p.coupon_step\n        body = body.cut(\n            cq.Workplane(\"XY\"\
+    , origin=(x, 0, -1)).circle(d / 2.0).extrude(T + 2)\n        )\n    # corner notch\
+    \ marks the small-hole end\n    notch = (cq.Workplane(\"XY\", origin=(-L / 2.0,\
+    \ W / 2.0, -1))\n             .polyline([(0, 0), (p.coupon_mark, 0), (0, -p.coupon_mark)]).close()\n\
+    \             .extrude(T + 2))\n    body = body.cut(notch)\n    return body"
+  print_orientation: 'Exactly as modelled: flat plate on the bed, test holes vertical
+    so they print round like the wheel bore.'
+  use_orientation: Bench test only. Press one 608ZZ into each of the six test holes;
+    the hole that needs a firm push sets bearing_seat_d.
+hardware:
+- id: axle_bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: brg608
+  ref: 608ZZ
+  qty: 2
+- id: lock_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 1
+joints:
+- id: J_axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -1.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: central bearing bore, through - the bolt runs inside the two 608 inner
+      rings
+    role: clearance
+  - part: collar
+    feature: 8.2 mm bore
+    role: clearance
+  - part: collar
+    feature: 8.2 mm bore (second collar, far side of the wheel)
+    role: clearance
+  nut: lock_nut
+  external: 'The door bracket''s axle hole: the M8 bolt passes through it and the
+    bracket is clamped between collar B and the washer. Ream the hole to 8.5 mm if
+    it is under 8.2 mm.'
+criteria:
+- id: c_bearing_fit
+  part: wheel
+  feature: bearing_bore
+  relation: contains
+  hardware: brg608
+  clearance_mm: null
+  params:
+  - bearing_seat_d
+  - brg_od
+  check:
+    method: coupon
+    ref: coupon
+    description: Press one 608ZZ into each of the six coupon holes (22.00 to 22.25
+      mm in 0.05 mm steps). Take the one that needs a firm push or a light tap and
+      stays put; reject any needing a vise and any that falls straight out. Put that
+      diameter into bearing_seat_d. The 22.10 default is a guess until this is done.
+- id: c_collar_clear
+  part: collar
+  feature: 8.2 mm bore
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: 0.2
+  params:
+  - collar_id
+  - axle_d
+  check:
+    method: none
+    ref: null
+    description: Nominal 0.2 mm annular clearance on the M8 shank.
+- id: c_collar_inner_ring
+  part: collar
+  feature: outer rim face
+  relation: seats
+  hardware: brg608
+  clearance_mm: null
+  params:
+  - collar_od
+  - brg_inner_ring_od
+  check:
+    method: none
+    ref: null
+    description: Collar OD 10.5 mm sits inside the ~11 mm inner-ring OD, so the bolt-head
+      and nut load goes into the stationary inner ring and never drags the shield
+      or outer ring. An M8 washer (16 mm OD) would rub the shields, which is why these
+      collars exist.
+- id: c_tread_od
+  part: wheel
+  feature: tread
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  check:
+    method: measure
+    ref: null
+    description: 'Measure the printed tread across its widest point: should be 50
+      mm to match the old wheel and keep the door at the same height on the track.'
+- id: c_frame_clearance
+  part: collar
+  feature: outer face (1 mm proud of the wheel face)
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - collar_t
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: Wheel + 2 collars = 18 mm. Measure the bracket gap; if under 18 mm,
+      set collar_t to 1.0 so the assembly is 16 mm and accept a little side play.
+- id: c_bearings_butt
+  part: wheel
+  feature: bearing_bore depth vs the two 7 mm bearings
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - brg_w
+  check:
+    method: template
+    ref: wheel
+    description: Press the first bearing in until it sits about 1 mm below its face,
+      then press the second in from the other face until it butts against it - you
+      should feel it stop. Both then sit ~1 mm recessed and their inner rings meet
+      at mid-width, which is what lets the bolt clamp the inner rings without preloading
+      the balls.
+manual:
+- n: '1'
+  text: Print the press-fit coupon flat, as modelled. It is a 150 x 30 x 6 mm bar,
+    six vertical holes running 22.00, 22.05, 22.10, 22.15, 22.20, 22.25 mm from the
+    end with the corner notch.
+  parts:
+  - coupon
+  hardware: []
+  tool: printer
+- n: '2'
+  text: Press one 608ZZ bearing into each coupon hole by hand. Keep the hole that
+    takes a firm push or a light tap with a soft mallet and then holds - that is your
+    real bearing seat. Reject any that needs a bench vise (too tight, will crack or
+    swell the wheel) and any that drops straight through (too loose).
+  parts:
+  - coupon
+  hardware:
+  - brg608
+  tool: soft mallet
+- n: '3'
+  text: Put the winning diameter into bearing_seat_d in the wheel code, replacing
+    the 22.10 default. If two holes feel right, use the larger.
+  parts:
+  - coupon
+  hardware: []
+  tool: null
+- n: '4'
+  text: Print the wheel flat, exactly as modelled - one face on the bed, wheel axis
+    vertical. Solid 50 mm disc, 16 mm wide, central bore with a lead-in at each mouth.
+    No supports.
+  parts:
+  - wheel
+  hardware: []
+  tool: printer
+- n: '5'
+  text: Print two collars flat.
+  parts:
+  - collar
+  hardware: []
+  tool: printer
+- n: '6'
+  text: Press the first 608ZZ into the wheel bore from one face until it sits about
+    1 mm below that face (roughly a fingernail of clearance). Then press the second
+    in from the other face until it butts against the first - you should feel it stop.
+    Each bearing now sits ~1 mm recessed and their two inner rings meet at mid-width.
+    If a bearing is too tight for a firm push, sand the bore lightly; if it is loose,
+    a smear of medium thread-lock on the outer race will hold it.
+  parts:
+  - wheel
+  hardware:
+  - brg608
+  tool: soft mallet
+- n: '7'
+  text: Drop a collar into the recess at each face, flat against the bearing, so it
+    rests on the bearing inner ring and stands 1 mm proud of the wheel face.
+  parts:
+  - collar
+  - wheel
+  hardware: []
+  tool: null
+- n: '8'
+  text: Push the M8 bolt through collar, bearing, bearing, collar, so the bolt head
+    ends up flat against the outer collar.
+  parts:
+  - collar
+  - wheel
+  hardware:
+  - axle_bolt
+  tool: null
+- n: '9'
+  text: Pass the bolt through the door bracket's axle hole. If the hole is under 8.2
+    mm, ream it to 8.5 mm first. The wheel faces should end up about 1 mm clear of
+    the bracket on each side.
+  parts:
+  - collar
+  - wheel
+  hardware:
+  - axle_bolt
+  tool: drill
+- n: '10'
+  text: Fit the M8 washer and the M8 nylon-insert lock nut on the far side of the
+    bracket. Tighten until snug, then back the nut off about a quarter turn - the
+    clamp must reach the bearing inner rings only. If the bracket gap is under 18
+    mm and the parts will not close up, stop and reprint the collars with collar_t
+    = 1.0.
+  parts: []
+  hardware:
+  - lock_nut
+  - washer
+  tool: 13 mm spanner
+- n: '11'
+  text: Spin the wheel by hand. It should turn freely and smoothly on the bearings,
+    with no rock and no rubbing on the bracket. Stiff means the inner rings are being
+    pinched - loosen the nut. Wobbling side to side means the collars are too thick
+    for the bracket gap.
+  parts:
+  - collar
+  - wheel
+  hardware:
+  - lock_nut
+  tool: null
+- n: '12'
+  text: Refit the door on its track and roll it along. The wheel should run true.
+    If it wanders sideways, the original wheel was probably grooved rather than flat
+    and a V-groove needs adding to the tread.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

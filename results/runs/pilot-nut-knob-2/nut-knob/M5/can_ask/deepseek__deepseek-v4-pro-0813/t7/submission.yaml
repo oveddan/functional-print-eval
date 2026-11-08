@@ -1,0 +1,317 @@
+task: nut-knob/M5
+note: Hand knob (~30 mm) that captures a pressed-in ISO 4032 M5 nut. The nut goes
+  into a blind hex pocket from one face; six rounded crush ribs provide the hand press-fit
+  and retention. The opposite face has only a 5.5 mm hole, so the nut seats on an
+  internal floor and cannot be pushed through. The M5 bolt enters from the nut side,
+  threads into the nut, and its tip emerges through the far side. A coupon is included
+  to verify the press-fit before printing the knob.
+questions: []
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats (nominal; user's actual nut could not be measured)
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 major diameter (ISO 4762 M5 size table)
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: User asked for about 30 mm across
+  knob_h:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: Grip height
+  floor_t:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: Wall between the nut seat and the far side; the bolt tip passes through
+      it
+  pocket_depth:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.3 so the nut sits fully inside
+  fit_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket across-flats = nut_af + this, before crush ribs
+  rib_protrusion:
+    value: 0.26
+    unit: mm
+    kind: design
+    source: design
+    note: Each of the 6 crush ribs protrudes this much into the pocket; effective
+      opening = nut_af - 0.22
+  rib_radius:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each rounded crush-rib profile
+  bolt_hole_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: M5 close-clearance bore through the far-side floor
+  grip_n:
+    value: 16
+    unit: count
+    kind: design
+    source: design
+    note: Number of grip facets on the knurled rim
+  grip_fillet:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Radius on the vertical grip edges
+  lead_h:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the lead-in flare at the pocket mouth
+  lead_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Extra radial opening of the lead-in flare
+  coupon_l:
+    value: 70.0
+    unit: mm
+    kind: design
+    source: design
+    note: Fit-test plate length
+  coupon_w:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: Fit-test plate width
+  coupon_t:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: Fit-test plate thickness
+  coupon_spacing:
+    value: 13.0
+    unit: mm
+    kind: design
+    source: design
+    note: Centre-to-centre spacing of the five test pockets
+parts:
+- id: m5_hand_knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\n\ndef _pocket_sketch(p, protrusion):\n\
+    \    apo = (p.nut_af + p.fit_clearance) / 2.0\n    R = apo / math.cos(math.radians(30.0))\n\
+    \    pts = []\n    for i in range(6):\n        a = math.radians(60.0 * i)\n  \
+    \      pts.append((R * math.cos(a), R * math.sin(a)))\n    sk = cq.Sketch().polygon(pts)\n\
+    \    rib_r = p.rib_radius\n    rib_c = rib_r - protrusion\n    for i in range(6):\n\
+    \        a = math.radians(30.0 + 60.0 * i)\n        cx = (apo + rib_c) * math.cos(a)\n\
+    \        cy = (apo + rib_c) * math.sin(a)\n        sk = sk.circle(cx, cy, rib_r,\
+    \ mode='s')\n    return sk\n\n\ndef build(p):\n    apo = (p.nut_af + p.fit_clearance)\
+    \ / 2.0\n\n    body = (cq.Workplane(\"XY\")\n            .polygon(p.grip_n, p.knob_d)\n\
+    \            .extrude(p.knob_h))\n    body = body.edges(\"|Z\").fillet(p.grip_fillet)\n\
+    \n    # M5 clearance bore through the far-side floor\n    body = body.cut(\n \
+    \       cq.Workplane(\"XY\")\n        .circle(p.bolt_hole_d / 2.0)\n        .extrude(p.floor_t)\n\
+    \    )\n\n    # Blind nut pocket from the nut-side face down to the floor\n  \
+    \  pocket_solid = (cq.Workplane(\"XY\")\n                    .placeSketch(_pocket_sketch(p,\
+    \ p.rib_protrusion))\n                    .extrude(p.pocket_depth)\n         \
+    \           .val()\n                    .translate((0.0, 0.0, p.floor_t)))\n \
+    \   body = body.cut(pocket_solid)\n\n    # Lead-in flare at the pocket mouth so\
+    \ the nut starts by hand\n    flare = cq.Solid.makeCone(\n        apo, apo + p.lead_extra,\
+    \ p.lead_h\n    ).translate((0.0, 0.0, p.knob_h - p.lead_h))\n    body = body.cut(flare)\n\
+    \n    return body"
+  print_orientation: Far-side face (the small 5.5 mm bolt hole) on the bed; the nut
+    pocket opens upward
+  use_orientation: Nut pocket faces the incoming bolt; the small far-side hole is
+    where the bolt tip emerges
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\n\ndef _pocket_sketch(p, protrusion):\n\
+    \    apo = (p.nut_af + p.fit_clearance) / 2.0\n    R = apo / math.cos(math.radians(30.0))\n\
+    \    pts = []\n    for i in range(6):\n        a = math.radians(60.0 * i)\n  \
+    \      pts.append((R * math.cos(a), R * math.sin(a)))\n    sk = cq.Sketch().polygon(pts)\n\
+    \    rib_r = p.rib_radius\n    rib_c = rib_r - protrusion\n    for i in range(6):\n\
+    \        a = math.radians(30.0 + 60.0 * i)\n        cx = (apo + rib_c) * math.cos(a)\n\
+    \        cy = (apo + rib_c) * math.sin(a)\n        sk = sk.circle(cx, cy, rib_r,\
+    \ mode='s')\n    return sk\n\n\ndef build(p):\n    test_pr = [0.16, 0.21, 0.26,\
+    \ 0.31, 0.36]\n\n    base = cq.Workplane(\"XY\").box(p.coupon_l, p.coupon_w, p.coupon_t)\n\
+    \n    for idx, pr in enumerate(test_pr):\n        x = (idx - (len(test_pr) - 1)\
+    \ / 2.0) * p.coupon_spacing\n        pocket_solid = (cq.Workplane(\"XY\")\n  \
+    \                      .placeSketch(_pocket_sketch(p, pr))\n                 \
+    \       .extrude(p.pocket_depth)\n                        .val()\n           \
+    \             .translate((x, 0.0, p.coupon_t - p.pocket_depth)))\n        base\
+    \ = base.cut(pocket_solid)\n\n    return base"
+  print_orientation: Flat bottom face on the bed; the five test pockets face up
+  use_orientation: Test pockets face up while pressing the nut in
+hardware:
+- id: nut_m5
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_bolt
+  ref: ISO 4762 M5x20
+  qty: 1
+joints:
+- id: bolt_in_nut
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 15.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: m5_hand_knob
+    feature: clearance_bore
+    role: clearance
+  - part: m5_hand_knob
+    feature: nut_pocket
+    role: nut_pocket
+  nut: nut_m5
+  external: null
+criteria:
+- id: nut_captured
+  part: m5_hand_knob
+  feature: nut_pocket
+  relation: contains
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - nut_af
+  - fit_clearance
+  - rib_protrusion
+  - rib_radius
+  - pocket_depth
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Press the M5 nut into each of the five coupon pockets, left to right
+      (left is loosest). Pocket 3 (middle) matches the knob's fit. The nut must go
+      in by hand and stay in when the plate is held pocket-down and shaken.
+- id: nut_seats_on_floor
+  part: m5_hand_knob
+  feature: pocket_floor
+  relation: seats
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - nut_af
+  - bolt_hole_d
+  - pocket_depth
+  - floor_t
+  check:
+    method: measure
+    ref: null
+    description: 'After pressing the nut in, push it toward the far side: it must
+      seat against the internal floor and not pass through the 5.5 mm hole.'
+- id: bolt_clearance
+  part: m5_hand_knob
+  feature: clearance_bore
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - bolt_hole_d
+  - floor_t
+  check:
+    method: measure
+    ref: null
+    description: The M5 bolt tip should pass freely through the far-side bore and
+      emerge through the small hole.
+- id: bolt_engages_nut
+  part: m5_hand_knob
+  feature: nut_pocket
+  relation: engages
+  hardware: m5_bolt
+  clearance_mm: null
+  params:
+  - bolt_d
+  - nut_af
+  - pocket_depth
+  - floor_t
+  check:
+    method: measure
+    ref: null
+    description: Threading the bolt in from the nut side must engage the captured
+      M5 nut and allow the knob to tighten by hand.
+manual:
+- n: '1'
+  text: Print the fit-test plate (fit_coupon) first, flat side down, in PLA at 0.2
+    mm layer height.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the ISO 4032 M5 nut by hand into each of the five pockets, left to right
+    (left is loosest, right is tightest). The nut should go in with firm thumb pressure
+    and stay in when the plate is held pocket-down and shaken. Pocket 3 (the middle
+    pocket) is the fit the knob uses. If pocket 3 feels right, continue to step 3.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut_m5
+  tool: null
+- n: '3'
+  text: Print the hand knob (m5_hand_knob).
+  parts:
+  - m5_hand_knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press the nut into the hex pocket on the nut side (the face with the big hex
+    opening), chamfered nut face first, until it seats on the floor inside. If it
+    is too tight to start by hand, lightly sand each of the six crush ribs in the
+    pocket with a small file or fine sandpaper and retry.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - nut_m5
+  tool: small file or sandpaper
+- n: '5'
+  text: Check that the nut sits fully inside, stays in when the knob is held nut-side-down
+    and shaken, and cannot be pushed out through the far side (the small hole).
+  parts:
+  - m5_hand_knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '6'
+  text: Thread your M5 bolt into the nut side; the tip emerges through the small hole
+    on the far side. Grip the knurled rim and turn to tighten or loosen the bolt by
+    hand.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_bolt
+  tool: null

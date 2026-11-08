@@ -1,0 +1,331 @@
+task: tripod-plate
+note: 'Answer to the original question: the flat part is easy and worth printing;
+  the screw is not - I did not print a 1/4-20 stud because printed threads that size
+  are weak and the camera sockets are shallow, so the salvaged webcam bolt does that
+  job (it is the same 1/4-20 thread as a real tripod screw). Whole thing is one printed
+  plate plus a spare 1 mm shim, no supports, no other hardware. Two things to know:
+  (1) the plate is printed upside down so the bolt pocket opens upward - the first
+  test piece failed because I had that pocket opening downward and its roof had nothing
+  to print on; (2) the jaw taper angle (38 deg) is the one thing nobody could measure,
+  so if step 8 says it will not grip, that value is what needs changing and it is
+  a 15-minute reprint. If the camera will not sit flat, the bolt is bottoming out
+  - use the shim.'
+questions: []
+params:
+  plate_w_base:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate your friend's tripod clamp takes (knob-tightened jaws with
+      angled lips)
+  dovetail_angle:
+    value: 38
+    unit: deg
+    kind: world
+    source: guessed
+    note: angle of the jaw lips from vertical. This was the one dimension nobody could
+      measure, so I used the Arca-Swiss figure. It is the design's main uncertainty
+      - see criterion c3 and step 8
+  plate_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: thickness chosen so the bolt's 10 mm of thread leaves the right amount exposed
+      above the camera-side face
+  plate_l:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: length along the clamp; short enough to drop into any jaw length
+  bolt_hole_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: 'clearance hole: 1/4 in = 6.35 nominal plus 0.45'
+  cb_dia:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: head pocket, deliberately generous against the approximate 15 mm head reading
+      so it cannot bind
+  cb_d:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: 0.3 mm deeper than the head, so the head ends just inside the wide face
+      and that face stays flat on the clamp
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam-mount bolt, across the head (approximate reading)
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam-mount bolt, head thickness
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam-mount bolt, thread length under the head - 'about 10 mm';
+      the shim covers it being a little longer
+  camera_socket_depth:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: typical 1/4-20 socket depth on a small camera; this could not be measured
+  stick_out:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: thread left exposed above the camera-side face = cb_d + bolt_len - plate_t;
+      must stay under the socket depth or the camera will not seat flat
+  shim_t:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: spacer ring thickness; each shim takes 1 mm off stick_out
+  shim_od:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: fits inside the 18 mm pocket
+  shim_id:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: wider than the 6.8 mm hole, so it never blocks the thread
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    W = p.plate_w_base\n\
+    \    T = p.plate_t\n    L = p.plate_l\n    a = p.dovetail_angle\n    Wt = W -\
+    \ 2.0 * T * math.tan(math.radians(a))\n    prof = [(-Wt / 2.0, 0.0), (Wt / 2.0,\
+    \ 0.0), (W / 2.0, T), (-W / 2.0, T)]\n    plate = (cq.Workplane(\"XY\").polyline(prof).close().extrude(L)\n\
+    \             .rotate((0, 0, 0), (1, 0, 0), 90)\n             .translate((0, L\
+    \ / 2.0, 0)))\n    thru = cq.Workplane(\"XY\").circle(p.bolt_hole_d / 2.0).extrude(T)\n\
+    \    cb = (cq.Workplane(\"XY\").circle(p.cb_dia / 2.0).extrude(p.cb_d)\n     \
+    \     .translate((0, 0, T - p.cb_d)))\n    return plate.cut(thru).cut(cb)"
+  print_orientation: 'Printed upside down: the narrow camera-side face (22.4 mm, z=0)
+    on the bed, the 38 mm face at the top. The bolt pocket then opens upward, so its
+    seat is a flat floor the printer lays down cleanly (this is what went wrong on
+    the first test piece). The tapered clamp flanks lean outward as they rise - a
+    38 deg overhang, no supports needed. 22 x 40 mm footprint on the bed.'
+  use_orientation: 'Flipped over from the print: the wide 38 mm face sits down in
+    the tripod clamp, the narrow 22.4 mm face is up with the camera resting on it.
+    The bolt goes up from underneath, its head down inside the pocket, thread pointing
+    up into the camera.'
+- id: shim
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    outer = cq.Workplane(\"XY\").circle(p.shim_od\
+    \ / 2.0).extrude(p.shim_t)\n    inner = cq.Workplane(\"XY\").circle(p.shim_id\
+    \ / 2.0).extrude(p.shim_t + 2.0)\n    return outer.cut(inner)"
+  print_orientation: flat on the bed, a plain annulus - no overhang anywhere
+  use_orientation: dropped into the plate's bolt pocket, under the bolt head, only
+    if the bolt is longer than 10 mm and bottoms out in the camera
+hardware:
+- id: fb
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: j_bolt
+  fastener: fb
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.7
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: 18 mm x 5.3 mm head pocket
+    role: head_seat
+  - part: plate
+    feature: 6.8 mm through hole
+    role: clearance
+  nut: null
+  external: the camera's 1/4-20 tripod socket, which the exposed thread screws into
+criteria:
+- id: c1
+  part: plate
+  feature: 6.8 mm through hole
+  relation: clears
+  hardware: fb
+  clearance_mm: 0.45
+  params:
+  - bolt_hole_d
+  - bolt_head_d
+  check:
+    method: coupon
+    ref: boltfit
+    description: 'the printed bolt-fit block: the bolt pushes through the 6.8 mm hole
+      without forcing'
+- id: c2
+  part: plate
+  feature: 18 mm x 5.3 mm head pocket
+  relation: contains
+  hardware: fb
+  clearance_mm: 3.0
+  params:
+  - cb_dia
+  - cb_d
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: coupon
+    ref: boltfit
+    description: the head drops fully into the pocket and stops just inside the wide
+      face
+- id: c3
+  part: plate
+  feature: tapered flanks (dovetail)
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - dovetail_angle
+  - plate_w_base
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: 'drop the printed plate into the clamp and tighten the knob: the
+      lips must catch the flanks and the plate must not rock or slide. This is the
+      design''s one real uncertainty - if it will not grip, the taper angle needs
+      changing'
+- id: c4
+  part: plate
+  feature: thread exposed above the camera-side face
+  relation: engages
+  hardware: fb
+  clearance_mm: null
+  params:
+  - stick_out
+  - camera_socket_depth
+  - bolt_len
+  - cb_d
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: 'thread the camera on: it must seat flat on the narrow face with
+      no gap. A gap means the bolt is bottoming out - add the shim'
+- id: c5
+  part: plate
+  feature: wide 38 mm face
+  relation: seats
+  hardware: fb
+  clearance_mm: 0.3
+  params:
+  - cb_d
+  - bolt_head_h
+  check:
+    method: coupon
+    ref: boltfit
+    description: with the bolt in place the wide face stays flat, so the plate can
+      sit down on the clamp's bed without being propped up on the bolt head
+manual:
+- n: '1'
+  text: 'Print plate. It prints upside down on purpose: the narrow 22 mm camera-side
+    face lies on the bed and the bolt pocket opens upward. No supports, no brim. 0.2
+    mm layers are fine. (You already test-printed exactly this shape.)'
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Optional but cheap: print shim too - a 1 mm ring, done in a minute. It is
+    only insurance if your bolt turns out to be longer than the 10 mm I measured.'
+  parts:
+  - shim
+  hardware: []
+  tool: null
+- n: '3'
+  text: Look at the top of the plate before you use it. The pocket must be a clean
+    flat floor with the 6.8 mm hole open through the middle, and the wide face must
+    be flat. If the hole is blocked or the floor is rough, stop and tell me - do not
+    force the bolt in.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Push the salvaged webcam bolt UP through the plate from the wide side, so
+    its head drops into the pocket and only the thread pokes out of the narrow face.
+    The head should finish just inside the wide face, leaving that face flat.
+  parts:
+  - plate
+  hardware:
+  - fb
+  tool: null
+- n: '5'
+  text: 'Only if needed: if the camera bottoms out before it touches the plate, drop
+    the shim ring into the pocket first and the bolt head on top of it. Each shim
+    pulls the thread 1 mm back.'
+  parts:
+  - shim
+  hardware:
+  - fb
+  tool: null
+- n: '6'
+  text: Hand-thread the camera onto the exposed thread. Hand-tight is enough. Check
+    the camera's base sits flat on the plate's narrow face - no gap and no rocking.
+    The camera is tightened by turning it while you hold the plate, before it goes
+    near the tripod.
+  parts:
+  - plate
+  hardware:
+  - fb
+  tool: null
+- n: '7'
+  text: Loosen the clamp's knob, drop the plate in with the wide 38 mm face DOWN and
+    the camera already on top, then tighten the knob.
+  parts:
+  - plate
+  hardware: []
+  tool: tripod clamp knob
+- n: '8'
+  text: 'Check it holds: try to rock and twist the plate. The tapered flanks should
+    be caught under the jaw lips and it should feel solid. If it rocks or slides,
+    loosen, reseat, tighten again. If it still will not hold, stop and tell me - that
+    means the jaw angle is not 38 deg and I need to change the taper.'
+  parts:
+  - plate
+  hardware: []
+  tool: tripod clamp knob
+- n: '9'
+  text: 'To remove: loosen the knob, lift the whole plate-and-camera out, then unscrew
+    the camera.'
+  parts:
+  - plate
+  hardware:
+  - fb
+  tool: null
+- n: '10'
+  text: 'Using it: hand-tight only, and treat it as temporary. In PLA the only thing
+    stopping the camera spinning is friction between the camera''s base and the plate,
+    so it is fine for a compact camera held still, but do not hang a long lens off
+    it and do not carry the tripod around by the camera.'
+  parts:
+  - plate
+  hardware: []
+  tool: null

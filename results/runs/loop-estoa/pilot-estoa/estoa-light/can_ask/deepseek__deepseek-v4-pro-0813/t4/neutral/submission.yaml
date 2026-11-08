@@ -1,0 +1,397 @@
+task: estoa-light
+note: 'Box (back housing) for a wall-mounted Adafruit DotStar 255-LED disc. Disc screws
+  onto a front flange with two M3x8 screws through its measured 33.5-mm-pitch mounting
+  holes; perfboard+ESP32 mount inside on four printed standoffs (person''s own M2x6
+  self-tapping screws); two keyhole slots hang it on wall screws (cut all the way
+  through the back wall); a slot in the side wall reaches the ESP32''s USB-C port.
+  Front/top frosted cover comes later. Open question: which side the USB port faces
+  was never measured (the tool only returned the perfboard size), so the slot is placed
+  on the top wall and made generous, and is flagged as a question to confirm before
+  printing.'
+questions: []
+params:
+  disc_od:
+    value: 242.0
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  disc_hole_d:
+    value: 3.3
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  disc_hole_pitch:
+    value: 33.5
+    unit: mm
+    kind: world
+    source: measured
+    note: 30.2 nearest-edge + 3.3 = 33.5 centres
+  disc_hole_angle:
+    value: 0.0
+    unit: deg
+    kind: world
+    source: asked
+    note: angle of the hole-pair line from +x; 0 = holes on the x-axis (3/9 o'clock,
+      wires at 12)
+  disc_thickness:
+    value: 1.6
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  perf_l:
+    value: 70.0
+    unit: mm
+    kind: world
+    source: measured
+    note: long side (+y)
+  perf_w:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: measured
+    note: short side (+x)
+  perf_t:
+    value: 1.6
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  perf_hole_d:
+    value: 2.4
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  perf_hole_inset:
+    value: 2.1
+    unit: mm
+    kind: world
+    source: measured
+    note: hole centre 0.9 + 1.2 from edge
+  esp32_h:
+    value: 16.0
+    unit: mm
+    kind: world
+    source: measured
+    note: top of ESP32 above perfboard top
+  usb_recep_bottom:
+    value: 12.54
+    unit: mm
+    kind: world
+    source: measured
+    note: USB-C receptacle bottom above perfboard top face
+  usb_recep_w:
+    value: 10.67
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  usb_recep_h:
+    value: 3.2
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  connector_standoff:
+    value: 8.0
+    unit: mm
+    kind: world
+    source: unknown
+    note: disc input connector + wire slack clearance
+  box_wall_t:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  perf_top_z:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: height of perfboard top face above box inner back wall; stands ESP32+port
+      clear of back wall and leaves room for wire slack
+  disc_clearance:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  keyhole_id_top:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  keyhole_slot_l:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  wall_screw_pitch:
+    value: 160.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  usb_slot_w:
+    value: 18.0
+    unit: mm
+    kind: design
+    source: design
+    note: generous width so the slot accommodates sideways error
+  box_void_depth:
+    value: 32.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: box
+  role: final
+  material: PLA (matte white)
+  code: "def build(p):\n    import math\n    R = p['disc_od']/2.0 + p['disc_clearance']\n\
+    \    wall = p['box_wall_t']\n    depth = p['box_void_depth'] + wall\n    # outer\
+    \ round shell\n    box = cq.Workplane('XY').circle(R).extrude(depth)\n    # hollow\
+    \ from the front, leaving the back wall\n    box = box.faces('>Z').workplane().circle(R\
+    \ - wall).cutBlind(-depth + wall)\n    # front flange with disc mounting holes,\
+    \ honoring hole-pair angle\n    flange_t = 2.5\n    half = p['disc_hole_pitch']\
+    \ / 2.0\n    ang = math.radians(p['disc_hole_angle'])\n    x1, y1 = half*math.cos(ang),\
+    \ half*math.sin(ang)\n    rad = p['disc_hole_d']/2.0 + 0.4\n    flange = cq.Workplane('XY').circle(R).extrude(flange_t)\n\
+    \    flange = (flange.faces('>Z').workplane()\n              .pushPoints([(x1,\
+    \ y1), (-x1, -y1)]).hole(rad*2))\n    box = box.union(flange)\n    # perfboard\
+    \ standoffs at its four corner-hole centres\n    inset = p['perf_hole_inset']\n\
+    \    l, w = p['perf_l'], p['perf_w']\n    cx, cy = l/2.0 - inset, w/2.0 - inset\n\
+    \    pts = [(cx, cy), (-cx, cy), (-cx, -cy), (cx, -cy)]\n    sh = p['perf_top_z']\
+    \ - p['perf_t']  # pilot column from back wall to perfboard underside\n    box\
+    \ = (box.faces('<Z').workplane().pushPoints(pts)\n           .circle(p['perf_hole_d']/2.0\
+    \ + 1.0).extrude(sh))\n    box = (box.faces('<Z').workplane().pushPoints(pts).hole(1.6,\
+    \ sh))\n    # keyhole slots cut all the way through the back wall\n    box = (box.faces('>Z').workplane()\n\
+    \           .pushPoints([(p['wall_screw_pitch']/2.0, 0), (-p['wall_screw_pitch']/2.0,\
+    \ 0)])\n           .slot2D(p['keyhole_slot_l'], p['keyhole_id_top'], 0)\n    \
+    \       .cutBlind(-wall))\n    # USB-C slot in the top side wall, aligned to the\
+    \ port height in box coords\n    zc = wall + p['perf_top_z'] + p['usb_recep_bottom']\
+    \ + p['usb_recep_h']/2.0\n    box = (box.faces('>Y').workplane().center(0, zc)\n\
+    \           .slot2D(p['usb_slot_w'], p['usb_recep_h'] + 4.0, 0)\n           .cutBlind(-wall))\n\
+    \    return box"
+  print_orientation: back wall (-z face) flat on the bed, void and flange facing up
+  use_orientation: back wall against the wall; +z out toward the disc; +y up
+hardware:
+- id: disc_screw
+  ref: ISO 4762 M3x8
+  qty: 2
+- id: led_disk
+  ref: own:led-disk
+  qty: 1
+- id: pboard
+  ref: own:perfboard
+  qty: 1
+- id: esp32
+  ref: own:esp32
+  qty: 1
+joints:
+- id: disc_mount_1
+  fastener: disc_screw
+  axis_origin:
+  - 16.75
+  - 0.0
+  - 2.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: front flange M3 hole at +x
+    role: clearance
+  - part: box
+    feature: front flange M3 hole at +x
+    role: head_seat
+  nut: null
+  external: null
+- id: disc_mount_2
+  fastener: disc_screw
+  axis_origin:
+  - -16.75
+  - 0.0
+  - 2.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: box
+    feature: front flange M3 hole at -x
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: disc_seats
+  part: box
+  feature: front flange M3 holes
+  relation: seats
+  hardware: disc_screw
+  clearance_mm: 0.4
+  params:
+  - disc_hole_pitch
+  - disc_hole_d
+  - disc_hole_angle
+  check:
+    method: coupon
+    ref: disc_hole_coupon
+    description: Print a thin plate with two M3 holes at the measured pitch; dry-fit
+      the disc to confirm screws pass and the disc sits flush.
+- id: perf_seats
+  part: box
+  feature: standoffs
+  relation: supports
+  hardware: pboard
+  clearance_mm: 0.0
+  params:
+  - perf_hole_inset
+  - perf_l
+  - perf_w
+  - perf_top_z
+  check:
+    method: measure
+    ref: null
+    description: Confirm the four standoffs line up with the perfboard corner holes
+      before printing the full box.
+- id: usb_reach
+  part: box
+  feature: USB-C slot
+  relation: clears
+  hardware: esp32
+  clearance_mm: 0.0
+  params:
+  - usb_recep_bottom
+  - usb_recep_h
+  - perf_top_z
+  - box_wall_t
+  check:
+    method: measure
+    ref: null
+    description: Confirm the USB port faces the wall with the slot and the plug height
+      lines up.
+manual:
+- n: '1'
+  text: Print the box (back wall flat on the bed).
+  parts:
+  - box
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Test the disc mount: place the disc on the front flange; its two holes should
+    line up with the box''s M3 holes.'
+  parts:
+  - box
+  hardware:
+  - disc_screw
+  tool: null
+- n: '3'
+  text: Press four of your own M2x6 self-tapping screws up through the perfboard's
+    corner holes into the printed standoff pilots, ESP32 facing forward.
+  parts:
+  - box
+  hardware: []
+  tool: null
+- n: '4'
+  text: Route the four wires from the perfboard to the disc's input connector at 12
+    o'clock, tucking slack into the void.
+  parts:
+  - box
+  hardware: []
+  tool: null
+- n: '5'
+  text: Screw the disc onto the front flange with two M3x8 screws through the disc's
+    holes.
+  parts:
+  - box
+  hardware:
+  - disc_screw
+  tool: null
+- n: '6'
+  text: Before closing up, confirm the USB port faces the slotted wall and a plug
+    reaches it; then hang the box on two wall screws via the keyhole slots.
+  parts:
+  - box
+  hardware: []
+  tool: null
+assembly:
+  parts:
+  - origin:
+    - 0.0
+    - 0.0
+    - 0.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    part: box
+  items:
+  - origin:
+    - 0.0
+    - 0.0
+    - 2.5
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: led_disk
+  - origin:
+    - 0.0
+    - 0.0
+    - -32.0
+    x_axis:
+    - 1.0
+    - 0.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: pboard
+  - origin:
+    - 0.0
+    - 0.0
+    - -20.0
+    x_axis:
+    - 0.0
+    - 1.0
+    - 0.0
+    z_axis:
+    - 0.0
+    - 0.0
+    - 1.0
+    item: esp32
+  screws:
+  - item: disc_screw
+    head:
+    - 16.75
+    - 0.0
+    - 2.5
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0
+  - item: disc_screw
+    head:
+    - -16.75
+    - 0.0
+    - 2.5
+    direction:
+    - 0.0
+    - 0.0
+    - -1.0

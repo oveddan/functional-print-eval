@@ -1,0 +1,289 @@
+task: nut-knob/M3
+note: Resubmitted unchanged. Your reply gave no fit results, and you couldn't measure
+  the nut, so I had nothing to base a change on. The nut dimensions are catalog values.
+  The knob is 20 mm across and 9 mm tall. The nut is held by a thin lip at the pocket
+  mouth, and the far wall is solid except for the 3.4 mm bolt hole. The coupon has
+  three lip tightnesses (0.2, 0.3 and 0.4 mm), so the nut fit can be checked before
+  you print the knob again.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 height
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt shank
+  bolt_hole_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance for the bolt through-hole
+  knob_d:
+    value: 20
+    unit: mm
+    kind: world
+    source: asked
+    note: about 20 mm across
+  knob_h:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: added to nut across-flats for the hex pocket; snug, hand press fit
+  pocket_depth_extra:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: pocket depth beyond nut height
+  lip_t:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: thickness of retaining lip at the pocket mouth (4 layers)
+  lip_interf:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: lip hex across-flats is nut_af minus this; nut snaps past it. Tune with
+      the coupon
+  lead_c:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in chamfer size on the lip
+  edge_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: grip scallops
+  scallop_d:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: lip interference step between the three coupon pockets
+  coupon_floor:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pitch:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef hexd(af):\n    return af / math.cos(math.radians(30))\n\n\
+    def build(p):\n    H = p.knob_h\n    R = p.knob_d / 2.0\n    body = cq.Workplane('XY').circle(R).extrude(H).edges().chamfer(p.edge_chamfer)\n\
+    \    # grip scallops\n    for i in range(int(p.scallop_n)):\n        a = 2 * math.pi\
+    \ * i / p.scallop_n\n        rc = R + p.scallop_d / 2.0 - p.scallop_depth\n  \
+    \      cut = (cq.Workplane('XY').center(rc * math.cos(a), rc * math.sin(a))\n\
+    \               .circle(p.scallop_d / 2.0).extrude(H))\n        body = body.cut(cut)\n\
+    \    # bolt through hole\n    body = body.cut(cq.Workplane('XY').circle((p.bolt_d\
+    \ + p.bolt_hole_clear) / 2.0).extrude(H))\n    # nut pocket (opens at z=H)\n \
+    \   depth = p.nut_h + p.pocket_depth_extra\n    z0 = H - p.lip_t - depth\n   \
+    \ pocket = (cq.Workplane('XY').workplane(offset=z0)\n              .polygon(6,\
+    \ hexd(p.nut_af + p.pocket_clear)).extrude(depth + 0.01))\n    body = body.cut(pocket)\n\
+    \    # retaining lip opening (smaller hex) with lead-in\n    lip_af = p.nut_af\
+    \ - p.lip_interf\n    lip = (cq.Workplane('XY').workplane(offset=z0 + depth -\
+    \ 0.01)\n           .polygon(6, hexd(lip_af)).extrude(p.lip_t + 0.02 - p.lead_c))\n\
+    \    body = body.cut(lip)\n    lead = (cq.Workplane('XY').workplane(offset=H -\
+    \ p.lead_c)\n            .polygon(6, hexd(lip_af)).workplane(offset=p.lead_c +\
+    \ 0.01)\n            .polygon(6, hexd(lip_af + 2 * p.lead_c)).loft())\n    body\
+    \ = body.cut(lead)\n    return body\n"
+  print_orientation: Flat top face (the face the bolt tip pokes out of) on the bed;
+    nut pocket opens upward. z=0 is the bed.
+  use_orientation: 'Flipped over: pocket/nut side facing the work surface, flat grip
+    face up.'
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef hexd(af):\n    return af / math.cos(math.radians(30))\n\n\
+    def build(p):\n    depth = p.nut_h + p.pocket_depth_extra\n    T = p.coupon_floor\
+    \ + depth + p.lip_t\n    W = p.coupon_pitch\n    plate = cq.Workplane('XY').box(W\
+    \ * 3, W, T, centered=(True, True, False))\n    for k in (-1, 0, 1):\n       \
+    \ x = k * W\n        interf = p.lip_interf + k * p.coupon_step\n        plate\
+    \ = plate.cut(cq.Workplane('XY').center(x, 0).circle((p.bolt_d + p.bolt_hole_clear)\
+    \ / 2.0).extrude(T))\n        plate = plate.cut(cq.Workplane('XY').workplane(offset=p.coupon_floor).center(x,\
+    \ 0)\n                          .polygon(6, hexd(p.nut_af + p.pocket_clear)).extrude(depth\
+    \ + 0.01))\n        lip_af = p.nut_af - interf\n        plate = plate.cut(cq.Workplane('XY').workplane(offset=p.coupon_floor\
+    \ + depth - 0.01).center(x, 0)\n                          .polygon(6, hexd(lip_af)).extrude(p.lip_t\
+    \ + 0.02 - p.lead_c))\n        lead = (cq.Workplane('XY').workplane(offset=T -\
+    \ p.lead_c).center(x, 0)\n                .polygon(6, hexd(lip_af)).workplane(offset=p.lead_c\
+    \ + 0.01)\n                .polygon(6, hexd(lip_af + 2 * p.lead_c)).loft())\n\
+    \        plate = plate.cut(lead)\n    return plate\n"
+  print_orientation: Floor on the bed, pockets open upward.
+  use_orientation: Test only.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: bolt_through_knob
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 20.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.1
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clear
+  - pocket_depth_extra
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Nut presses fully into the pocket by hand, sitting entirely below
+      the knob face.
+- id: c2
+  part: knob
+  feature: mouth lip
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - lip_interf
+  - lip_t
+  - nut_af
+  - lead_c
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Nut snaps past the lip and stays in with the coupon held upside down
+      and shaken; pick the pocket (middle = design value) that does this without cracking.
+- id: c3
+  part: knob
+  feature: bolt through hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_hole_clear
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: M3 bolt passes freely through the hole and nut.
+- id: c4
+  part: knob
+  feature: closed far wall
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - lip_t
+  - nut_h
+  - pocket_depth_extra
+  check:
+    method: measure
+    ref: null
+    description: Far wall is solid except the 3.4 mm hole, so the nut cannot be pushed
+      out through the far side.
+manual:
+- n: '1'
+  text: Print the nut-fit coupon (3 pockets, lip tightness different in each) flat
+    with pockets facing up. Press an M3 nut into each pocket with your thumb, hex
+    flats aligned. Choose the pocket where the nut clicks in firmly and does not fall
+    out when the coupon is turned upside down and shaken. If the middle one works,
+    go on. If not, change lip_interf (bigger = tighter) and reprint.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the knob with the flat grip face on the bed (nut pocket facing up).
+    No supports. Black PLA, 0.2 mm layers, at least 4 walls.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop an M3 nut into the pocket, aligned to the hex, then press it flat against
+    a hard table until it clicks past the lip and sits fully inside. Do not use glue.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread the bolt (from the pocket side) into the nut and tighten the knob by
+    hand. The bolt tip may come out of the far side through the 3.4 mm hole. Turn
+    the knob upside down to check that the nut stays in.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null

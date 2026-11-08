@@ -1,0 +1,143 @@
+task: nut-knob/M3
+note: ''
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Knob outside diameter
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Overall knob height
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height
+  pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Extra room in the hex pocket above the nut across flats and height
+  lip_af:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: Entrance hex opening, 0.2 mm under nut across flats, so the nut snaps past
+      it and is retained
+  lip_t:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the retaining lip under the nut
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt major diameter
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole through the top floor for the bolt tip
+parts:
+- id: knob
+  role: final
+  material: PLA high-speed black
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2).extrude(p.knob_h).edges('>Z').fillet(1.0)\n    s3 = math.sqrt(3)\n    lip_d\
+    \ = p.lip_af * 2 / s3\n    pocket_d = (p.nut_af + p.pocket_clear) * 2 / s3\n \
+    \   pocket_h = p.nut_h + p.pocket_clear\n    # entrance lip: narrow hex opening\
+    \ through the bottom lip\n    lip_cut = cq.Workplane('XY').workplane(offset=-1).polygon(6,\
+    \ lip_d).extrude(p.lip_t + 1)\n    # nut pocket above the lip\n    pocket_cut\
+    \ = cq.Workplane('XY').workplane(offset=p.lip_t).polygon(6, pocket_d).extrude(pocket_h)\n\
+    \    # bolt clearance through the top floor\n    bolt_cut = cq.Workplane('XY').workplane(offset=-1).circle(p.bolt_clear_d\
+    \ / 2).extrude(p.knob_h + 2)\n    return body.cut(lip_cut).cut(pocket_cut).cut(bolt_cut)\n"
+  print_orientation: bottom face (nut entrance, lip side) flat on the bed, knob upright
+  use_orientation: upright, nut pocket underneath, bolt enters from below and its
+    tip exits through the top floor
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket with retaining lip
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - nut_af
+  - nut_h
+  - lip_af
+  - pocket_clear
+  check:
+    method: measure
+    ref: null
+    description: Hand-press an M3 ISO 4032 nut into the pocket; it must stay in when
+      the knob is inverted and not fall out
+- id: bolt_hole
+  part: knob
+  feature: bolt clearance hole through top floor
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes freely through the 3.4 mm hole
+manual:
+- n: '1'
+  text: Print the knob with its flat bottom face on the bed. No supports are needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Check that the nut fits the pocket opening: the M3 hex nut should press into
+    the pocket from the bottom by hand. It should snap past the retaining lip and
+    sit flat against the pocket ceiling. If it is too tight, ream the lip gently with
+    a 5.5 mm drill bit by hand.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down to confirm the nut stays captured. It should not
+    drop out through the lip. It cannot pass the top floor because the bolt hole is
+    smaller than the nut.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: 'To use: thread the M3 bolt up through the workpiece and into the nut from
+    below, then tighten by turning the knob. The bolt tip exits through the top floor
+    hole.'
+  parts: []
+  hardware: []
+  tool: null

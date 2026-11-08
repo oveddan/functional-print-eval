@@ -1,0 +1,206 @@
+task: bearing-wheel
+note: The rim is flat with 1 mm chamfers because the track profile and old wheel groove
+  couldn't be measured. If the track has a raised ridge, the wheel needs a groove;
+  tell me and I'll add one. The width is 15.6 mm (2x7 bearing + 1.6 web) so the bearing
+  spacing matches an M8 washer.
+questions:
+- text: Does the track have a raised ridge or a flat surface? The old wheel's rim
+    shape (flat vs grooved) decides whether the rim needs a groove.
+  answer: null
+- text: What is the gap between the bracket plates, so the bolt length and outer washers
+    can be confirmed?
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 50 mm across'
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: re-measured across the outer ring; matches 608 nominal
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 nominal 7
+  press_clear:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: the fit coupon gave no result; 0.15 is a typical PLA press fit. Adjust it
+      with fit_coupon
+  web_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: equals ISO 7089 M8 washer t, so the spacer washer between the inner races
+      matches the outer-race spacing (no axial preload)
+  lip_id:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: the shoulder touches only the outer races (608 inner race OD about 12, so
+      the M8 washer OD 16 fits inside)
+  rim_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  mouth_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in, and it absorbs elephant foot
+  ring_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  ring_wall:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    d = p.bearing_od + p.press_clear\n    W = 2*p.bearing_w\
+    \ + p.web_t\n    body = cq.Workplane('XY').circle(p.wheel_od/2).extrude(W).edges('%CIRCLE').chamfer(p.rim_chamfer)\n\
+    \    p1 = cq.Workplane('XY').circle(d/2).extrude(p.bearing_w)\n    p2 = cq.Workplane('XY').workplane(offset=W-p.bearing_w).circle(d/2).extrude(p.bearing_w)\n\
+    \    hole = cq.Workplane('XY').circle(p.lip_id/2).extrude(W)\n    body = body.cut(p1).cut(p2).cut(hole)\n\
+    \    c1 = cq.Solid.makeCone(d/2+p.mouth_chamfer, d/2, p.mouth_chamfer, cq.Vector(0,0,0),\
+    \ cq.Vector(0,0,1))\n    c2 = cq.Solid.makeCone(d/2+p.mouth_chamfer, d/2, p.mouth_chamfer,\
+    \ cq.Vector(0,0,W), cq.Vector(0,0,-1))\n    body = body.cut(cq.Workplane('XY').add(c1)).cut(cq.Workplane('XY').add(c2))\n\
+    \    return body"
+  print_orientation: flat on one face, axis vertical (either face; they're symmetric)
+  use_orientation: axis horizontal on the M8 bolt through the door bracket
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    res = None\n    for i, c in enumerate([0.05, 0.15, 0.25]):\n\
+    \        d = p.bearing_od + c\n        od = d + 2*p.ring_wall\n        r = cq.Workplane('XY').circle(od/2).circle(d/2).extrude(p.ring_h).translate((i*(od+4),\
+    \ 0, 0))\n        for k in range(i+1):\n            r = r.cut(cq.Workplane('XY').box(1,\
+    \ 1.2, 1.2).translate((i*(od+4)+k*2-2, od/2-0.4, p.ring_h-0.6)))\n        res\
+    \ = r if res is None else res.union(r)\n    return res"
+  print_orientation: flat, ring axis vertical
+  use_orientation: press a 608 into each ring by hand
+hardware:
+- id: axle
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 3
+joints:
+- id: axle_joint
+  fastener: axle
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -6.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: bearing bores / web hole (bolt passes through the 608 inner races)
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: bearing_fit
+  part: wheel
+  feature: bearing pockets
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - press_clear
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: the bearing presses in firmly by hand or with a vise and doesn't
+      fall out
+- id: width_fit
+  part: wheel
+  feature: overall width 15.6 plus outer washers
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_w
+  - web_t
+  check:
+    method: measure
+    ref: null
+    description: the wheel plus the two outer washers fits between the bracket plates
+- id: od
+  part: wheel
+  feature: rim
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  check:
+    method: measure
+    ref: null
+    description: about 50 mm across, the same as the old wheel
+manual:
+- n: '1'
+  text: 'Optional but recommended: print fit_coupon. Press a 608 into each ring. Rings
+    with 1, 2 and 3 notches are 22.05, 22.15 and 22.25 mm. Pick the ring where the
+    bearing goes in firmly without cracking it. If that''s not the 2-notch ring, change
+    press_clear to match before printing the wheel.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the wheel flat on a face with no supports, using 4+ walls and 40%+ infill
+    so it's strong.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608 bearing into each side until it bottoms on the centre lip. Push
+    only on the outer ring (use a vise or a socket the same size as the outer ring).
+    Before pressing in the second bearing, drop one M8 washer into the centre so it
+    sits between the two inner rings.
+  parts:
+  - wheel
+  hardware:
+  - washer
+  tool: vise or bench press
+- n: '4'
+  text: Put the wheel in the bracket with one M8 washer on each side, between the
+    bearing and the bracket. Push the M8x35 screw through, then thread on the lock
+    nut and tighten until snug. Check that the wheel still spins freely. If 35 mm
+    is too short or too long for your bracket, use the nearest M8 length.
+  parts:
+  - wheel
+  hardware:
+  - axle
+  - washer
+  - locknut
+  tool: 6 mm hex key, 13 mm spanner

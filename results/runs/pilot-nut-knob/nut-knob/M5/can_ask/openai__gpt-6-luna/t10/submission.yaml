@@ -1,0 +1,213 @@
+task: nut-knob/M5
+note: 'A single-piece, 30 mm scalloped hand knob with a recessed M5 hex-nut socket
+  and a continuous axial clearance bore. The nut seats against a solid floor around
+  the bore; the bore is large enough for an M5 bolt shank to pass through the nut
+  and exit the opposite face. The nominal socket is intentionally 0.2 mm smaller across
+  flats than the catalog nut; PLA/printer variation affects press-fit strength, so
+  print and test the small coupon first. If needed, change `nut_socket_af` in both
+  parts in 0.1 mm steps: larger is easier to press in, smaller is tighter. The nut
+  is inserted through the recessed face.'
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut nominal across-flats dimension.
+  nut_height:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut nominal height.
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal bolt shank diameter.
+  outer_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Requested approximate maximum knob diameter.
+  knob_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_socket_af:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal press-fit hex across flats, 0.2 mm below the nut's nominal AF.
+  socket_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Leaves the nut top recessed about 0.3 mm when seated on the floor.
+  socket_leadin_af:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Shallow entry relief to help start the nut; the deeper socket provides retention.
+  leadin_depth:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clearance_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Through-bore for an M5 bolt shank.
+  grip_notch_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_notch_r:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_notch_offset:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Notch cutter centre is this distance outside the nominal circular rim.
+  coupon_w:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA high-speed, black
+  code: "def build(p):\n    import math\n    # Circular body with six shallow edge\
+    \ scallops for finger grip.\n    body = cq.Workplane('XY').circle(p.outer_d /\
+    \ 2).extrude(p.knob_t)\n    r = p.outer_d / 2 + p.grip_notch_offset\n    for i\
+    \ in range(p.grip_notch_count):\n        a = 2 * math.pi * i / p.grip_notch_count\n\
+    \        cutter = (cq.Workplane('XY').center(r * math.cos(a), r * math.sin(a))\n\
+    \                  .circle(p.grip_notch_r).extrude(p.knob_t + 0.2).translate((0,\
+    \ 0, -0.1)))\n        body = body.cut(cutter)\n    def hex_points(af):\n     \
+    \   cr = af / math.sqrt(3.0)\n        return [(cr * math.cos(math.radians(30 +\
+    \ 60 * i)),\n                 cr * math.sin(math.radians(30 + 60 * i))) for i\
+    \ in range(6)]\n    # Deep press-fit socket, open at the top face.\n    socket\
+    \ = (cq.Workplane('XY').polyline(hex_points(p.nut_socket_af)).close()\n      \
+    \        .extrude(p.socket_depth + 0.1)\n              .translate((0, 0, p.knob_t\
+    \ - p.socket_depth)))\n    body = body.cut(socket)\n    # Short, wider hex lead-in\
+    \ at the mouth; socket walls below remain undersized.\n    lead = (cq.Workplane('XY').polyline(hex_points(p.socket_leadin_af)).close()\n\
+    \            .extrude(p.leadin_depth + 0.1)\n            .translate((0, 0, p.knob_t\
+    \ - p.leadin_depth)))\n    body = body.cut(lead)\n    bore = cq.Workplane('XY').circle(p.bolt_clearance_d\
+    \ / 2).extrude(p.knob_t + 0.2).translate((0, 0, -0.1))\n    return body.cut(bore)"
+  print_orientation: Print with the flat circular face at z=0 on the bed; the recessed
+    nut socket faces upward. No supports are needed.
+  use_orientation: Insert the M5 nut into the recessed hex socket from the top; pass
+    the M5 bolt axially through the nut and the 5.5 mm bore to the opposite face.
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA high-speed, black
+  code: "def build(p):\n    import math\n    block = cq.Workplane('XY').rect(p.coupon_w,\
+    \ p.coupon_w).extrude(p.coupon_t)\n    def hex_points(af):\n        cr = af /\
+    \ math.sqrt(3.0)\n        return [(cr * math.cos(math.radians(30 + 60 * i)),\n\
+    \                 cr * math.sin(math.radians(30 + 60 * i))) for i in range(6)]\n\
+    \    socket = (cq.Workplane('XY').polyline(hex_points(p.nut_socket_af)).close()\n\
+    \              .extrude(p.socket_depth + 0.1)\n              .translate((0, 0,\
+    \ p.coupon_t - p.socket_depth)))\n    block = block.cut(socket)\n    lead = (cq.Workplane('XY').polyline(hex_points(p.socket_leadin_af)).close()\n\
+    \            .extrude(p.leadin_depth + 0.1)\n            .translate((0, 0, p.coupon_t\
+    \ - p.leadin_depth)))\n    block = block.cut(lead)\n    bore = cq.Workplane('XY').circle(p.bolt_clearance_d\
+    \ / 2).extrude(p.coupon_t + 0.2).translate((0, 0, -0.1))\n    return block.cut(bore)"
+  print_orientation: Print with the flat square face at z=0 on the bed; socket faces
+    upward.
+  use_orientation: Use to check the nut's press-fit before printing the full knob.
+hardware:
+- id: m5_hex_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: hand_knob
+  feature: Undersized hex socket retains the inserted M5 nut
+  relation: seats
+  hardware: m5_hex_nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - nut_socket_af
+  - socket_depth
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Press the nut into the coupon by hand. It should seat fully and remain
+      captured when the coupon is turned upside down. Adjust nut_socket_af in 0.1
+      mm steps if needed before printing the knob.
+- id: bolt_passage
+  part: hand_knob
+  feature: Axial through-bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Verify a listed M5 bolt shank slides through the bore and through
+      the nut without interference.
+manual:
+- n: '1'
+  text: Print the nut_fit_coupon first, socket facing up. Press the ISO 4032 M5 nut
+    into its hex pocket until it sits against the floor; it should remain in place
+    when inverted. If fit is unsuitable, adjust nut_socket_af in 0.1 mm increments
+    and reprint the coupon before printing the knob.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - m5_hex_nut
+  tool: null
+- n: '2'
+  text: Print the hand_knob with the nut socket facing up. No support material is
+    needed.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M5 nut into the socket until it bottoms out. Its upper face will
+    be recessed below the knob surface. The socket's solid floor prevents the nut
+    being pushed out through the far side.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_hex_nut
+  tool: null
+- n: '4'
+  text: Pass the M5 bolt through the nut and the aligned 5.5 mm through-bore so its
+    shank emerges from the opposite face. Turn the knob to tighten it on the bolt.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_hex_nut
+  tool: null

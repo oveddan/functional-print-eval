@@ -1,0 +1,285 @@
+task: bearing-wheel
+note: The 50 mm x 16 mm replacement roller wheel houses two stacked 608ZZ bearings
+  (2 x 7.0 mm = 14.0 mm) in a 22.1 mm press-fit bore verified via test print, backed
+  by a 2.0 mm bottom lip (18.5 mm ID) that supports the outer race while printing
+  flat without supports. Two M8 inner-race spacers (10.8 mm OD) prevent the mounting
+  bracket or M8 washers from rubbing the bearing shields or wheel faces when tightened.
+questions:
+- text: What are the exact outer diameter, width, and rim profile of the old roller
+    wheel?
+  answer: I can't measure that. Use your best judgment.
+- text: What is the inside clearance of the closet door bracket and the shape of the
+    track?
+  answer: I can't measure that. Use your best judgment.
+- text: What is the shank diameter and length of the M8 bolt?
+  answer: 'bolt across: about 8 mm (the shank)'
+params:
+  lip_h:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Height of bottom retaining lip supporting bearing outer race (wheel_w -
+      2 * bearing_w)
+  spacer_od:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of inner-race spacers (contacts only 608ZZ inner race)
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Width of the old closet door roller wheel (~16 mm)
+  spacer_lip_h:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of inner-race spacer on the 2.0 mm lip side (reaches through lip
+      and stands 0.5 mm proud)
+  lip_id:
+    value: 18.5
+    unit: mm
+    kind: design
+    source: design
+    note: Inner diameter of bottom retaining lip (supports outer race, clears shield
+      and inner race)
+  spacer_open_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of inner-race spacer on the flush bearing side (stands 1.0 mm
+      proud of wheel face)
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured M8 bolt shank diameter
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ bearing nominal bore diameter
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ bearing nominal width
+  bearing_fit_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: Press-fit pocket diameter for 608ZZ bearings, verified by test coupon (22.09
+      mm measured seat)
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Outer diameter of the old closet door roller wheel (~50 mm)
+  bolt_clearance_d:
+    value: 8.3
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance bore diameter for M8 bolt shank in inner-race spacers
+  rim_chamfer:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree chamfer on top and bottom outer rim edges for smooth rolling and
+      support-free printing
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ bearing nominal outer diameter
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    pocket_depth = 2.0 * p.bearing_w\n    part = (\n     \
+    \   cq.Workplane(\"XY\")\n        .circle(p.wheel_od / 2.0)\n        .extrude(p.wheel_w)\n\
+    \        .edges(\"%CIRCLE\")\n        .chamfer(p.rim_chamfer)\n        .faces(\"\
+    <Z\")\n        .workplane()\n        .hole(p.lip_id)\n        .faces(\">Z\")\n\
+    \        .workplane()\n        .cboreHole(p.lip_id, p.bearing_fit_d, pocket_depth)\n\
+    \    )\n    return part\n"
+  print_orientation: Flat with the retaining-lip face on the print bed (z = 0) and
+    the bearing pocket opening upward (z = 16 mm)
+  use_orientation: Vertical rolling orientation with the M8 axle bolt horizontal through
+    the two 608ZZ bearings
+- id: spacer_lip_side
+  role: final
+  material: PLA
+  code: "def build(p):\n    part = (\n        cq.Workplane(\"XY\")\n        .circle(p.spacer_od\
+    \ / 2.0)\n        .circle(p.bolt_clearance_d / 2.0)\n        .extrude(p.spacer_lip_h)\n\
+    \    )\n    return part\n"
+  print_orientation: Flat face on the print bed (z = 0)
+  use_orientation: Coaxial on the M8 bolt inside the 18.5 mm lip opening, seated against
+    the inner race of the bottom 608ZZ bearing
+- id: spacer_open_side
+  role: final
+  material: PLA
+  code: "def build(p):\n    part = (\n        cq.Workplane(\"XY\")\n        .circle(p.spacer_od\
+    \ / 2.0)\n        .circle(p.bolt_clearance_d / 2.0)\n        .extrude(p.spacer_open_h)\n\
+    \    )\n    return part\n"
+  print_orientation: Flat face on the print bed (z = 0)
+  use_orientation: Coaxial on the M8 bolt against the inner race of the flush top
+    608ZZ bearing
+- id: bearing_pocket_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    h = p.lip_h + p.bearing_w\n    part = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(p.bearing_fit_d / 2.0 + 3.0)\n        .extrude(h)\n   \
+    \     .faces(\"<Z\")\n        .workplane()\n        .hole(p.lip_id)\n        .faces(\"\
+    >Z\")\n        .workplane()\n        .cboreHole(p.lip_id, p.bearing_fit_d, p.bearing_w)\n\
+    \    )\n    return part\n"
+  print_orientation: Flat with the lip face on the print bed (z = 0)
+  use_orientation: Test ring for checking 608ZZ bearing press-fit into the 22.1 mm
+    pocket
+hardware:
+- id: bearing_608zz
+  ref: 608ZZ
+  qty: 2
+- id: m8_bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: m8_washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: m8_locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle_joint
+  fastener: m8_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -2.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer_lip_side
+    feature: bolt_bore
+    role: clearance
+  - part: wheel
+    feature: outer_race_lip
+    role: clearance
+  - part: spacer_open_side
+    feature: bolt_bore
+    role: clearance
+  nut: m8_locknut
+  external: null
+criteria:
+- id: crit_bearing_press_fit
+  part: wheel
+  feature: bearing_bore
+  relation: seats
+  hardware: bearing_608zz
+  clearance_mm: 0.05
+  params:
+  - bearing_od
+  - bearing_w
+  - bearing_fit_d
+  check:
+    method: coupon
+    ref: bearing_pocket_coupon
+    description: Press-fit pocket holds two 608ZZ bearings snugly without falling
+      out upside down, verified with bearing_pocket_coupon.
+- id: crit_lip_clears_shield
+  part: wheel
+  feature: outer_race_lip
+  relation: supports
+  hardware: bearing_608zz
+  clearance_mm: 1.75
+  params:
+  - bearing_od
+  - lip_id
+  - lip_h
+  check:
+    method: coupon
+    ref: bearing_pocket_coupon
+    description: Bottom retaining lip supports the 608ZZ outer race while clearing
+      the bearing dust shield and inner race.
+- id: crit_spacer_bolt_clearance
+  part: spacer_lip_side
+  feature: bolt_bore
+  relation: clears
+  hardware: m8_bolt
+  clearance_mm: 0.15
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  - spacer_od
+  - spacer_lip_h
+  - spacer_open_h
+  check:
+    method: measure
+    ref: null
+    description: Inner-race spacers slide over the 8 mm M8 bolt shank and contact
+      only the 608ZZ inner races so the wheel spins freely when clamped.
+- id: crit_wheel_envelope
+  part: wheel
+  feature: outer_rim
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_w
+  - rim_chamfer
+  check:
+    method: none
+    ref: null
+    description: Wheel outer diameter and width match the original 50 mm x 16 mm roller
+      dimensions.
+manual:
+- n: '1'
+  text: Print the wheel and both inner-race spacers flat on the build plate (z = 0
+    on the bed) in PLA with no supports.
+  parts:
+  - wheel
+  - spacer_lip_side
+  - spacer_open_side
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the first 608ZZ bearing into the open 22.1 mm bore on the top face of
+    the wheel until it seats firmly against the 2.0 mm bottom retaining lip. Press
+    the second 608ZZ bearing in directly on top of the first until it sits flush with
+    the top face of the wheel.
+  parts:
+  - wheel
+  hardware:
+  - bearing_608zz
+  tool: null
+- n: '3'
+  text: Slide an M8 washer (if desired), the taller 2.5 mm inner-race spacer (spacer_lip_side,
+    on the recessed lip side of the wheel), the wheel with both 608ZZ bearings, and
+    the shorter 1.0 mm inner-race spacer (spacer_open_side, on the flush bearing side)
+    onto your M8 bolt. Mount the assembly into the closet door bracket and secure
+    with the M8 nut; the spacers clamp only the steel bearing inner races so the wheel
+    spins freely without binding.
+  parts:
+  - wheel
+  - spacer_lip_side
+  - spacer_open_side
+  hardware:
+  - m8_bolt
+  - m8_washer
+  - m8_locknut
+  - bearing_608zz
+  tool: 6 mm hex key and 13 mm wrench

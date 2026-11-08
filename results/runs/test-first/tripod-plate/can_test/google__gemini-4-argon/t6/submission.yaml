@@ -1,0 +1,252 @@
+task: tripod-plate
+note: 'We strongly advise against 3D printing the 1/4"-20 camera screw itself in PLA:
+  a printed 1/4"-20 stud is only ~4.9 mm at its minor diameter and can easily shear
+  off along layer lines inside your camera''s tripod socket. Instead, this design
+  uses your salvaged metal 1/4"-20 webcam-mount-bolt seated in a recessed underside
+  pocket. The 5.5 mm web thickness leaves ~4.5 mm of metal thread protruding above
+  the plate (matching standard camera socket depth) while recessing the 5 mm tall
+  bolt head 0.5 mm inside the underside of the plate so it clears the tripod clamp
+  floor.'
+questions: []
+params:
+  plate_h:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Total height/thickness of the quick-release plate
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured width of the tripod clamp plate recess (38 mm Arca-Swiss style
+      dovetail)
+  head_pocket_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the bolt head pocket from the clamp-facing bottom surface, leaving
+      a 5.5 mm web so 4.5 mm of the 10 mm bolt protrudes
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured head diameter of the salvaged webcam-mount-bolt
+  bevel_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Height (and horizontal inset per side) of the 45-degree dovetail bevels
+  plate_l:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: Length of the quick-release plate along the clamp jaws
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured head height of the salvaged webcam-mount-bolt
+  base_v_h:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Vertical lip height at the 38 mm widest part of the dovetail base
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured shaft length under the head of the salvaged webcam-mount-bolt
+  head_pocket_d:
+    value: 16.8
+    unit: mm
+    kind: design
+    source: design
+    note: Width of the underside pocket clearing the 15 mm bolt head
+  pocket_slot_l:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Overall length of the stadium-shaped underside recess along Y for finger/coin
+      access to turn the bolt head
+  bolt_clear_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for the 1/4-20 bolt shaft
+  corner_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Vertical corner fillet radius so the plate drops smoothly into the clamp
+      jaws
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal major diameter of the 1/4-20 thread on the webcam-mount-bolt
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = p.plate_w\n    l = p.plate_l\n    h = p.plate_h\n\
+    \    bv = p.base_v_h\n    bh = p.bevel_h\n    top_w = w - 2.0 * bh\n    stem_h\
+    \ = h - bv - bh\n\n    # Model in print orientation:\n    # z = 0 is the flat\
+    \ camera-facing surface on the print bed.\n    # z = h is the bottom surface of\
+    \ the plate that sits in the tripod clamp.\n    # This places the bolt head pocket\
+    \ on the top (>Z) during printing so there is no bridge roof over the hole,\n\
+    \    # and the 45-degree dovetail bevels print cleanly without supports.\n   \
+    \ pts = [\n        (-top_w / 2.0, 0.0),\n        (top_w / 2.0, 0.0),\n       \
+    \ (top_w / 2.0, stem_h),\n        (w / 2.0, stem_h + bh),\n        (w / 2.0, h),\n\
+    \        (-w / 2.0, h),\n        (-w / 2.0, stem_h + bh),\n        (-top_w / 2.0,\
+    \ stem_h),\n    ]\n\n    body = (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n\
+    \        .close()\n        .extrude(l)\n        .translate((0.0, l / 2.0, 0.0))\n\
+    \        .edges(\"|Z\")\n        .fillet(p.corner_r)\n    )\n\n    # Stadium-shaped\
+    \ counterbore pocket on >Z (underside of plate in use)\n    # Allows the 15 mm\
+    \ bolt head to sit recessed by 0.5 mm while giving finger/coin access along Y\n\
+    \    body = (\n        body.faces(\">Z\")\n        .workplane()\n        .slot2D(p.pocket_slot_l,\
+    \ p.head_pocket_d, 90.0)\n        .cutBlind(-p.head_pocket_depth)\n    )\n\n \
+    \   # Center clearance through-hole for the 1/4-20 bolt shaft\n    body = (\n\
+    \        body.faces(\"<Z\")\n        .workplane()\n        .hole(p.bolt_clear_d)\n\
+    \    )\n\n    return body\n"
+  print_orientation: Camera-facing surface on the bed (z = 0) so the bolt head pocket
+    opens upward (+Z) with no bridging over the hole, and the 45-degree dovetail bevels
+    print upward cleanly without supports.
+  use_orientation: Flipped 180 degrees so the 38 mm dovetail base (z = plate_h in
+    print frame) sits at the bottom inside the tripod clamp jaws and the flat face
+    (z = 0 in print frame) supports the bottom of the camera.
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_mount_joint
+  fastener: webcam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: qr_plate
+    feature: bolt_head_pocket
+    role: head_seat
+  - part: qr_plate
+    feature: bolt_shaft_hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: clamp_dovetail_fit
+  part: qr_plate
+  feature: dovetail_rails
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - bevel_h
+  - base_v_h
+  - plate_h
+  check:
+    method: measure
+    ref: tripod clamp jaws
+    description: Drop the printed plate into the open tripod clamp jaws and tighten
+      the clamp knob to verify the 38 mm 45-degree dovetail seats firmly.
+- id: bolt_shaft_clearance
+  part: qr_plate
+  feature: bolt_shaft_hole
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.45
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: measure
+    ref: webcam_bolt
+    description: Push the salvaged 1/4-20 webcam bolt through the center hole to verify
+      smooth slip clearance.
+- id: bolt_head_recess
+  part: qr_plate
+  feature: bolt_head_pocket
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: 0.5
+  params:
+  - head_pocket_d
+  - head_pocket_depth
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: measure
+    ref: webcam_bolt
+    description: Verify the 15 mm x 5 mm bolt head sits inside the 5.5 mm deep underside
+      pocket with ~0.5 mm clearance below the bottom face of the plate.
+- id: camera_thread_engagement
+  part: qr_plate
+  feature: camera_mounting_face
+  relation: supports
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - plate_h
+  - head_pocket_depth
+  - bolt_len
+  check:
+    method: measure
+    ref: camera 1/4-20 socket
+    description: Verify that ~4.5 mm of the 10 mm bolt shaft protrudes past the camera-facing
+      surface to thread into the camera's 1/4-20 socket.
+manual:
+- n: '1'
+  text: 'Print the quick-release plate (qr_plate) in PLA with its narrower camera-facing
+    flat surface on the print bed (z = 0). No supports are needed: the 45-degree dovetail
+    bevels print cleanly and the bolt pocket opens upward.'
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Flip the printed plate over into its use orientation (wider 38 mm dovetail
+    base at the bottom, narrower flat face at the top) and insert the salvaged 1/4"-20
+    webcam mount bolt (webcam_bolt) from the underside pocket through the center hole
+    so ~4.5 mm of thread sticks out the top face.
+  parts:
+  - qr_plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '3'
+  text: Thread the protruding 1/4"-20 bolt into the socket on the bottom of your camera,
+    spinning the plate and then snugging the bolt head via the underside finger-access
+    slot until the plate sits flat and firm against the camera base.
+  parts:
+  - qr_plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '4'
+  text: Loosen the knob on the tripod clamp, drop the 38 mm dovetail plate into the
+    jaws from above, and tighten the clamp knob firmly against the angled dovetail
+    sides.
+  parts:
+  - qr_plate
+  hardware:
+  - webcam_bolt
+  tool: null

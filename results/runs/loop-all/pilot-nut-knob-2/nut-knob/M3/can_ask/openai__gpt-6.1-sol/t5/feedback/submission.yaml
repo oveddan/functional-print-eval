@@ -1,0 +1,364 @@
+task: nut-knob/M3
+note: 'Unchanged geometry: there was no usable fit result to justify changing tolerances.
+  The relaxed retaining-catch opening is 5.10 mm across opposing flat locations; the
+  hex socket is 5.80 mm across flats. Finished assembly is one printed knob plus one
+  ISO 4032 M3 nut. The coupon is only a preliminary test. Nominal hardware dimensions
+  are used; successful hand insertion and retention must be confirmed on the coupon.'
+questions:
+- text: Actual nut across-flats width and thickness?
+  answer: Unable to measure; use best judgment.
+- text: Did the first prints accept and retain the nut?
+  answer: No usable fit result supplied for either print.
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_height:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_pitch:
+    value: 0.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_z:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Nut seating plane above the bed.
+  hex_af_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Total across-flats clearance, not per side; socket AF is 5.80 mm.
+  bolt_d_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Total diametral clearance.
+  spring_base_z:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spring_width:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spring_thickness:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spring_gap:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  relief_overlap:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  catch_interference:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radial overlap with a nominal nut flat. Twice the tip radius is 5.10 mm,
+      not the hex socket size.
+  catch_axial_clearance:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  catch_land_h:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  catch_ramp_h:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_cut_r:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_offset:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Scallop centres lie this distance outside the knob's nominal radius.
+  coupon_d:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    af = p.nut_af + p.hex_af_clearance\n\
+    \    flat = af / 2\n    outer = flat + p.spring_thickness\n    tip = p.nut_af\
+    \ / 2 - p.catch_interference\n    lip_z = p.floor_z + p.nut_height + p.catch_axial_clearance\n\
+    \    top_z = lip_z + p.catch_land_h + p.catch_ramp_h\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n\
+    \    for i in range(int(p.grip_count)):\n        a = 2*math.pi*i/p.grip_count\n\
+    \        r = p.knob_d/2 + p.grip_cut_offset\n        cut = cq.Workplane('XY').center(r*math.cos(a),r*math.sin(a)).circle(p.grip_cut_r).extrude(p.knob_h)\n\
+    \        body = body.cut(cut)\n    pocket = cq.Workplane('XY').workplane(offset=p.floor_z).polygon(6,2*af/math.sqrt(3)).extrude(p.knob_h-p.floor_z)\n\
+    \    body = body.cut(pocket)\n    body = body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_d_clearance)/2).extrude(p.knob_h))\n\
+    \    inner = flat-p.relief_overlap\n    relief_outer = outer+p.spring_gap\n  \
+    \  relief = cq.Workplane('XY').workplane(offset=p.spring_base_z).center(0,(inner+relief_outer)/2).rect(p.spring_width+2*p.spring_gap,relief_outer-inner).extrude(p.knob_h-p.spring_base_z)\n\
+    \    profile = [(flat,p.spring_base_z),(outer,p.spring_base_z),(outer,top_z),(flat,top_z),(tip,lip_z+p.catch_land_h),(tip,lip_z),(flat,lip_z)]\n\
+    \    finger = cq.Workplane('YZ').polyline(profile).close().extrude(p.spring_width).translate((-p.spring_width/2,0,0))\n\
+    \    for a in (0,120,240):\n        body = body.cut(relief.rotate((0,0,0),(0,0,1),a))\n\
+    \    for a in (0,120,240):\n        body = body.union(finger.rotate((0,0,0),(0,0,1),a))\n\
+    \    return body.clean()\n"
+  print_orientation: Broad flat underside on bed at z=0; hex opening and spring ramps
+    upward. No supports.
+  use_orientation: Nut enters the top opening along -Z, seats at z=floor_z, and is
+    retained below the three catches. Bolt passes along the central Z axis.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import math\n    af = p.nut_af + p.hex_af_clearance\n\
+    \    flat = af/2\n    outer = flat+p.spring_thickness\n    tip = p.nut_af/2-p.catch_interference\n\
+    \    lip_z = p.floor_z+p.nut_height+p.catch_axial_clearance\n    top_z = lip_z+p.catch_land_h+p.catch_ramp_h\n\
+    \    body = cq.Workplane('XY').circle(p.coupon_d/2).extrude(p.knob_h)\n    body\
+    \ = body.cut(cq.Workplane('XY').workplane(offset=p.floor_z).polygon(6,2*af/math.sqrt(3)).extrude(p.knob_h-p.floor_z))\n\
+    \    body = body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_d_clearance)/2).extrude(p.knob_h))\n\
+    \    inner = flat-p.relief_overlap\n    relief_outer = outer+p.spring_gap\n  \
+    \  relief = cq.Workplane('XY').workplane(offset=p.spring_base_z).center(0,(inner+relief_outer)/2).rect(p.spring_width+2*p.spring_gap,relief_outer-inner).extrude(p.knob_h-p.spring_base_z)\n\
+    \    profile = [(flat,p.spring_base_z),(outer,p.spring_base_z),(outer,top_z),(flat,top_z),(tip,lip_z+p.catch_land_h),(tip,lip_z),(flat,lip_z)]\n\
+    \    finger = cq.Workplane('YZ').polyline(profile).close().extrude(p.spring_width).translate((-p.spring_width/2,0,0))\n\
+    \    for a in (0,120,240):\n        body = body.cut(relief.rotate((0,0,0),(0,0,1),a))\n\
+    \    for a in (0,120,240):\n        body = body.union(finger.rotate((0,0,0),(0,0,1),a))\n\
+    \    return body.clean()\n"
+  print_orientation: Flat underside on bed at z=0, opening upward. Same settings as
+    the final knob; no supports.
+  use_orientation: Test nut seating, hand insertion and retention exactly as on the
+    final knob.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: hand_insertion
+  part: knob
+  feature: Hex socket and three ramped spring catches
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_height
+  - hex_af_clearance
+  - spring_width
+  - spring_thickness
+  - spring_gap
+  - spring_base_z
+  - catch_interference
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Align nut flats and press fully home with a thumb. It must seat without
+      tools, cracks, or spring whitening. Springs must return inward after insertion.
+- id: upside_down_retention
+  part: knob
+  feature: Three catch undersides above seated nut
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - catch_interference
+  - catch_axial_clearance
+  - catch_land_h
+  - floor_z
+  - nut_height
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Invert and gently tap the coupon's side. Nut must stay captive; slight
+      axial play is acceptable. Verify that catches overlap the top of the nut.
+- id: fully_recessed
+  part: knob
+  feature: Nut seating plane below top rim
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_z
+  - nut_height
+  - knob_h
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut must sit flat and entirely below the top rim.
+- id: bottom_stop
+  part: knob
+  feature: Solid seating shoulder surrounding central bore
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_z
+  - bolt_d
+  - bolt_d_clearance
+  - nut_af
+  - spring_base_z
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Press the seated nut with a thumb; it must not pass through the underside.
+      Do not jack against the floor using a bolt.
+- id: bolt_passage
+  part: knob
+  feature: Central clearance bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - bolt_d_clearance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Hand-thread your M3 bolt through the seated nut; verify its tip emerges
+      freely through the opposite face without contacting plastic.
+- id: torque_transfer
+  part: knob
+  feature: Hex walls, especially the three uninterrupted flats
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - hex_af_clearance
+  - nut_height
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: With the nut threaded onto your bolt, apply light finger torque.
+      Nut must turn with the coupon, not spin within the socket.
+manual:
+- n: '1'
+  text: Print fit_coupon first using PLA, the supplied orientation, a 0.4 mm nozzle,
+    0.2 mm layers, four walls, and 100% infill. Use normal or reduced outer-wall speed
+    for the small springs. Disable supports and keep brim material out of the spring
+    slots.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Allow it to cool and remove loose strings from the socket and spring slots.
+    Align the nut flats with the hex socket and thumb-press it straight down until
+    seated beneath the catches. Do not hammer, heat, or draw it into place using a
+    bolt. The 5.10 mm retaining opening is intentionally smaller than the nut; the
+    spring ramps must deflect during insertion.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Check that the nut is flat and fully recessed, springs have returned inward,
+    and the nut stays captive when inverted and gently tapped. Hand-thread your M3
+    bolt through the nut and out the opposite face. Check that light finger torque
+    turns the nut with the coupon rather than spinning it in the socket. Do not proceed
+    if any check fails.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: If the hex walls bind, increase hex_af_clearance by 0.1 mm. If only the catches
+    make insertion too stiff, decrease catch_interference by 0.05 mm. If the nut falls
+    out after the springs return, increase catch_interference by 0.05 mm. Reprint
+    and repeat all checks after any change. Discard cracked or whitened samples; do
+    not force assembly.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Print knob using the validated parameters and identical settings. The coupon
+    is not part of the final assembly. If your only nut is in the coupon, carefully
+    flex the catches outward to retrieve it without damaging the nut.
+  parts:
+  - knob
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '6'
+  text: After cooling and clearing strings, press the nut into knob by hand. Repeat
+    the retention and bolt-passage checks. Finished assembly is one printed piece
+    with one captive nut, without glue or additional retaining hardware.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '7'
+  text: Thread onto your M3 bolt by hand and use finger tightening only. The socket
+    walls carry torque; the floor supports load toward the underside. Spring catches
+    provide handling retention, not structural restraint against axial pull toward
+    the opening. Avoid heat, high clamp loads and pliers. Stop use if springs crack
+    or the nut spins.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

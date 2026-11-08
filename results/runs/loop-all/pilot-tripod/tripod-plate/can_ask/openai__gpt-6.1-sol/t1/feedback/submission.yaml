@@ -1,0 +1,196 @@
+task: tripod-plate
+note: 'Revised bolt-fit coupon: pocket now opens upward, eliminating the failed bridge
+  roof. This is ONLY a bench gauge, not a camera mounting plate. No usable clamp plate
+  or printed screw is supplied because the clamp dimensions and camera socket depth
+  remain unknown. Use the existing metal webcam bolt for fit testing only.'
+questions:
+- text: Clamp gaps at lip tips and floor with knob at the same position; floor-to-lip
+    height; usable jaw length; pins, steps or end stops?
+  answer: null
+- text: Camera socket usable depth, camera model and total camera/lens weight?
+  answer: null
+- text: Does the revised coupon freely accept the bolt head and shank, and is the
+    head accessible for tightening?
+  answer: null
+params:
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 major diameter.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate maximum head width supplied previously; verify fit.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate head height supplied previously.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length; not approved camera insertion depth.
+  bore_diametral_clearance:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_diametral_clearance:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_depth_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_width:
+    value: 26
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_height:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  minimum_floor:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: bolt_head_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    depth = p.bolt_head_h + p.head_depth_clearance\n    floor\
+    \ = p.coupon_height - depth\n    if floor < p.minimum_floor:\n        raise ValueError('Increase\
+    \ coupon height to preserve minimum floor thickness')\n    body = cq.Workplane('XY').box(p.coupon_width,p.coupon_width,p.coupon_height,centered=(True,True,False))\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=floor).circle((p.bolt_head_d+p.head_diametral_clearance)/2).extrude(depth)\n\
+    \    bore = cq.Workplane('XY').circle((p.bolt_d+p.bore_diametral_clearance)/2).extrude(p.coupon_height)\n\
+    \    return body.cut(pocket).cut(bore)"
+  print_orientation: Flat annular underside at z=0 on bed. Large head pocket opens
+    UPWARD at z=coupon_height. Small central bore is vertical. No roof, bridging,
+    supports or rotation required.
+  use_orientation: 'Bench-only gauge: bolt inserts downward from the large upward-facing
+    pocket, shank through the small hole. Lift gauge off bed/surface to allow shank
+    to protrude. Never attach this coupon to a camera or tripod.'
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: print_quality
+  part: bolt_head_coupon
+  feature: Open pocket floor and vertical central bore
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - coupon_height
+  - bolt_head_h
+  - head_depth_clearance
+  - bolt_d
+  - bore_diametral_clearance
+  check:
+    method: coupon
+    ref: bolt_head_coupon
+    description: Pocket is open at top, floor is continuous around the central hole,
+      and no loose loops block the bore. Inspect before inserting bolt.
+- id: head_fit
+  part: bolt_head_coupon
+  feature: Upward-facing head pocket
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_diametral_clearance
+  - head_depth_clearance
+  check:
+    method: coupon
+    ref: bolt_head_coupon
+    description: Head drops into pocket without force and seats flat on floor. Check
+      grip/tool access. Report noncircular head shape or rocking.
+- id: shank_fit
+  part: bolt_head_coupon
+  feature: Central through bore
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: 0.225
+  params:
+  - bolt_d
+  - bore_diametral_clearance
+  check:
+    method: coupon
+    ref: bolt_head_coupon
+    description: Shank and any unthreaded shoulder slide freely. Do not screw the
+      bolt into plastic or force it through.
+manual:
+- n: '1'
+  text: 'Discard the failed coupon. Import this revised model and retain its supplied
+    orientation: large pocket facing UP, flat underside on bed. Check slicer preview:
+    no layers should close over the large pocket.'
+  parts:
+  - bolt_head_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print in PLA at 0.2 mm layer height, 5 walls and 100% infill. Disable supports.
+    The revised geometry requires no bridging over the pocket. Let the print cool
+    and inspect its floor and bore before testing.
+  parts:
+  - bolt_head_coupon
+  hardware: []
+  tool: null
+- n: '3'
+  text: Away from the camera, hold the gauge above the bench so the shank has room
+    below it. Insert camera_bolt downward through the upward-facing large pocket.
+    Check free shank passage, flat head seating and tightening access. Do not force
+    or thread it into plastic.
+  parts:
+  - bolt_head_coupon
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '4'
+  text: Report whether the head fits, whether the shank passes freely and whether
+    you can grip or tool the head. If fit fails, report the interference and remeasure
+    the bolt. This gauge does not test camera attachment or clamp retention.
+  parts:
+  - bolt_head_coupon
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '5'
+  text: Before a mounting plate can be designed, obtain clamp lip-tip and floor gaps
+    at the same knob position, lip height, usable length and any stops/pins. Also
+    obtain camera socket depth gently with a nonmetal probe and camera/lens model
+    or weight. Do not insert the approximately 10 mm bolt directly into the camera;
+    it could bottom out.
+  parts: []
+  hardware: []
+  tool: null
+- n: '6'
+  text: Do not attach a camera to this coupon or use a printed PLA screw. Use the
+    correct replacement plate until a specifically fitted plate and safe metal-bolt
+    engagement have been verified.
+  parts: []
+  hardware: []
+  tool: null

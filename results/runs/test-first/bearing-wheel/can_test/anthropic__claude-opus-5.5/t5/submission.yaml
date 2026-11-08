@@ -1,0 +1,200 @@
+task: bearing-wheel
+note: Rolling surface is flat with 1 mm chamfers because the old profile couldn't
+  be measured. If the track has a ridge, it needs a grooved version. Bolt length was
+  chosen without knowing the bracket thickness.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal width
+  bearing_seat_d:
+    value: 22.3
+    unit: mm
+    kind: design
+    source: design
+    note: 'coupon: 22.29 seat goes in by hand, not loose, holds upside down; 21.99
+      won''t go in'
+  lip_id:
+    value: 18.3
+    unit: mm
+    kind: design
+    source: design
+    note: touches only the bearing outer ring (608 outer ring inner edge ~19), clears
+      the inner race
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_clear_d:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: fits on the 608 inner race (~12 mm) only
+  side_spacer_t:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    W=p.wheel_w; lip=W-2*p.bearing_w\n    w=cq.Workplane('XY').circle(p.wheel_od/2).extrude(W).edges().chamfer(p.edge_chamfer)\n\
+    \    # bottom bearing pocket\n    w=w.cut(cq.Workplane('XY').circle(p.bearing_seat_d/2).extrude(p.bearing_w))\n\
+    \    # top bearing pocket\n    w=w.cut(cq.Workplane('XY').workplane(offset=W-p.bearing_w).circle(p.bearing_seat_d/2).extrude(p.bearing_w))\n\
+    \    # central lip: 45 deg cone underneath so it prints without supports, flat\
+    \ top seat\n    z0=p.bearing_w; r0=p.bearing_seat_d/2; r1=p.lip_id/2\n    cone=cq.Solid.makeCone(r0,r1,lip,pnt=cq.Vector(0,0,z0))\n\
+    \    w=w.cut(cq.Workplane('XY').add(cone))\n    w=w.cut(cq.Workplane('XY').circle(r1).extrude(W))\n\
+    \    # lead-in chamfers on pocket mouths (also beats elephant foot)\n    for z,d\
+    \ in [(0,1),(W,-1)]:\n        lc=cq.Solid.makeCone(r0+0.5,r0,0.5,pnt=cq.Vector(0,0,z),dir=cq.Vector(0,0,d))\n\
+    \        w=w.cut(cq.Workplane('XY').add(lc))\n    return w"
+  print_orientation: flat on one face, axis vertical
+  use_orientation: axis horizontal, on the bolt in the door bracket
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    t=p.wheel_w-2*p.bearing_w\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.bolt_clear_d/2).extrude(t)"
+  print_orientation: flat
+  use_orientation: on the bolt between the two bearings' inner races
+- id: side_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.bolt_clear_d/2).extrude(p.side_spacer_t)"
+  print_orientation: flat
+  use_orientation: optional, on the bolt between bracket and each bearing inner race
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -6.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: bore through both bearings
+    role: clearance
+  - part: inner_spacer
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: press
+  part: wheel
+  feature: bearing pockets
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_seat_d
+  - bearing_od
+  check:
+    method: coupon
+    ref: bore_coupon 22.29 ring
+    description: 608 pushes in, is not loose, holds upside down
+- id: spin
+  part: inner_spacer
+  feature: faces
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  check:
+    method: none
+    ref: null
+    description: with the nut tight, the wheel still spins freely
+manual:
+- n: '1'
+  text: Print the wheel flat on either face, no supports, 4 walls and 40% infill for
+    strength. Print the inner spacer and the two side spacers too.
+  parts:
+  - wheel
+  - inner_spacer
+  - side_spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into the side that printed on top (flat ledge inside)
+    until it stops on the ledge. Flip the wheel, drop the inner spacer into the middle
+    so it sits on that bearing's inner ring, then press the second bearing in until
+    it's flush with the face. A vise or a book pressed flat works. Push only on the
+    outer ring of the bearing.
+  parts:
+  - wheel
+  - inner_spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Put a washer on the bolt and push the bolt through one side of the bracket.
+    If there's room, add a side spacer, then the wheel, then the other side spacer.
+    If the gap is only about 16 mm, leave the side spacers out. Push the bolt through
+    the other side of the bracket.
+  parts:
+  - wheel
+  - side_spacer
+  hardware:
+  - bolt
+  - washer
+  tool: null
+- n: '4'
+  text: Put on the second washer and the lock nut. Tighten until it's snug, then spin
+    the wheel. It should turn freely and not wobble. If it drags, back the nut off
+    a little.
+  parts: []
+  hardware:
+  - washer
+  - locknut
+  tool: 6 mm hex key + 13 mm spanner

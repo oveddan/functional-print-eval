@@ -1,0 +1,140 @@
+task: nut-knob/M5
+note: ''
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  hole_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt clearance, smaller than nut AF so nut can't pass
+  fit:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: measured
+    note: pocket AF = 8.1 was snug and retained the nut upside down in coupon test
+  depth_extra:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  n_scallops:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_d:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    k = 2.0 / (3 ** 0.5)\n    depth = p.nut_h\
+    \ + p.depth_extra\n    body = cq.Workplane('XY').circle(p.knob_d / 2).extrude(p.knob_h)\n\
+    \    body = body.faces('>Z').edges().chamfer(1.0)\n    r = p.knob_d / 2 + p.scallop_d\
+    \ * 0.15\n    for i in range(int(p.n_scallops)):\n        a = 2 * math.pi * (i\
+    \ + 0.5) / p.n_scallops\n        cut = (cq.Workplane('XY').center(r * math.cos(a),\
+    \ r * math.sin(a))\n               .circle(p.scallop_d / 2).extrude(p.knob_h))\n\
+    \        body = body.cut(cut)\n    pocket = cq.Workplane('XY').polygon(6, (p.nut_af\
+    \ + p.fit) * k).extrude(depth)\n    hole = cq.Workplane('XY').circle(p.hole_d\
+    \ / 2).extrude(p.knob_h)\n    return body.cut(pocket).cut(hole)"
+  print_orientation: nut-pocket face down on the bed (pocket opens to the bed; its
+    hex ceiling bridges only ~9 mm)
+  use_orientation: pocket face toward the work, bolt end entering the pocket
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - fit
+  - depth_extra
+  check:
+    method: coupon
+    ref: nutfit
+    description: 8.1 mm AF pocket pressed in by hand and retained the nut when inverted
+      and shaken
+- id: c2
+  part: knob
+  feature: bolt through hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: 5.5 mm hole passes M5 bolt but is smaller than nut AF so the nut
+      cannot exit the far side
+manual:
+- n: '1'
+  text: Print the knob with the hex-pocket face on the bed, no supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M5 hex nut flat into the hex pocket by hand until it bottoms out
+    against the pocket ceiling. Press it on a flat surface if tight.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Pass the M5 bolt through the work, then screw the knob (pocket side first)
+    onto the bolt tip and tighten by hand. The bolt tip emerges through the hole in
+    the top of the knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

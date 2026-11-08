@@ -1,0 +1,367 @@
+task: tripod-plate
+note: 'Short answer: yes, this is very printable — but print only the plate. The salvaged
+  webcam bolt IS the screw; a printed PLA 1/4-20 screw threaded into a metal camera
+  socket will strip out. The bolt you have (15 mm head, 5 mm head height, 10 mm of
+  thread) works out to about 5.2 mm of engagement in the camera socket, which is plenty.
+
+
+  The plate is an Arca-type drop-in plate: 37.6 mm across the top so it drops into
+  the 38 mm clamp with 0.4 mm clearance, sides tapered 25 deg, 10 mm thick, 45 mm
+  long. Prints flat on its bottom face, no supports; the only bridge is the 6.5 mm
+  annulus over the bolt hole.
+
+
+  THE ONE UNKNOWN: the angle of the clamp''s jaw lips. I could not measure it (the
+  tripod head is the friend''s, and the coupon you printed didn''t give a usable answer).
+  I have assumed 25 deg from vertical. The coupon tests 15 / 25 / 35 deg — if the
+  25 deg plate ever rocks in the clamp, or won''t drop in, tell me which coupon block
+  seats firmly and I will change the single parameter ''dovetail_angle'' and re-issue.
+
+
+  Also note the plate is PLA, so treat it as temporary: don''t overtighten the bolt
+  and don''t leave a heavy lens hanging on it.'
+questions:
+- text: Which coupon block (left 15 deg / middle 25 deg / right 35 deg) sits all the
+    way down and holds firm in the clamp without rocking? That is the real jaw angle,
+    and it is the only number in the design I had to guess.
+  answer: null
+- text: How deep is the 1/4-20 socket in the bottom of your camera? The salvaged bolt
+    reaches 5.2 mm past the plate's top face, so if your socket is shallower than
+    that the bolt will bottom out before the camera clamps down.
+  answer: null
+- text: What shape is the salvaged bolt's head - round knurled, hex, or slotted? The
+    20 mm recess clears any of them, but if it is hex I should also tell you the spanner
+    size.
+  answer: null
+params:
+  clamp_plate_width:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: measured
+    note: the width of plate the friend's tripod clamp takes
+  side_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: total side clearance so the plate drops in without binding
+  plate_top_w:
+    value: 37.6
+    unit: mm
+    kind: design
+    source: design
+    note: clamp_plate_width - side_clearance
+  dovetail_angle:
+    value: 25.0
+    unit: deg
+    kind: world
+    source: guessed
+    note: angle of the clamp's angled jaw lips from vertical. NOT measured. The single
+      number to change if the plate rocks; coupon tests 15/25/35
+  plate_t:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: dovetail height and overall plate thickness, typical for an Arca plate
+  plate_len:
+    value: 45.0
+    unit: mm
+    kind: design
+    source: design
+    note: length along the clamp slot
+  bolt_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 = 0.25 in major diameter
+  bolt_hole_d:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for the 1/4-20 bolt
+  bolt_head_d:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam-mount bolt head, across
+  bolt_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_thread_len:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: thread length under the head
+  cbore_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: head recess, 2.5 mm radial clearance around the head so it can be turned
+      by hand or with a spanner from underneath
+  cbore_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_head_h + 0.2, so the head finishes just below the plate's bottom face
+      and the plate sits flat on the clamp floor
+  camera_socket_depth:
+    value: 6.4
+    unit: mm
+    kind: world
+    source: guessed
+    note: typical depth of a 1/4-20 camera socket; not measured. If your camera's
+      socket is shallower than 5.2 mm the bolt will bottom out
+  thread_engagement:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: cbore_depth + bolt_thread_len - plate_t = 5.2 + 10 - 10; must be less than
+      camera_socket_depth
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    top_w = p.plate_top_w\n\
+    \    t = p.plate_t\n    L = p.plate_len\n    ang = math.radians(p.dovetail_angle)\n\
+    \    bot_w = top_w - 2.0 * t * math.tan(ang)\n\n    # dovetail cross-section,\
+    \ swept along X\n    prof = cq.Workplane(\"YZ\").polyline([\n        (-bot_w /\
+    \ 2.0, 0.0),\n        (bot_w / 2.0, 0.0),\n        (top_w / 2.0, t),\n       \
+    \ (-top_w / 2.0, t),\n    ]).close()\n    plate = prof.extrude(L).translate((-L\
+    \ / 2.0, 0.0, 0.0))\n\n    # 1/4-20 clearance hole straight through\n    through\
+    \ = (cq.Workplane(\"XY\")\n               .circle(p.bolt_hole_d / 2.0)\n     \
+    \          .extrude(t + 2.0)\n               .translate((0.0, 0.0, -1.0)))\n\n\
+    \    # recess for the salvaged bolt head, opening downward\n    cbore = (cq.Workplane(\"\
+    XY\")\n             .circle(p.cbore_d / 2.0)\n             .extrude(p.cbore_depth\
+    \ + 0.5)\n             .translate((0.0, 0.0, -0.5)))\n\n    return plate.cut(through).cut(cbore)\n"
+  print_orientation: bottom (narrow) face on the bed, z = 0; plate length runs along
+    X. Tapered sides lean outward at 25 deg from vertical (65 deg from the bed) -
+    well within a 0.4 mm nozzle's overhang limit. The only bridge is the annular ceiling
+    of the bolt-head recess, a 6.5 mm span.
+  use_orientation: 'as printed: bottom face down onto the clamp floor, top face up
+    to the camera. Drop it into the clamp from above, tighten the knob.'
+- id: coupon_lip_angle
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\n# (label, tan of angle from vertical) - left to\
+    \ right 15, 25, 35 deg\nANGLES = [(15.0, 0.26795), (25.0, 0.46631), (35.0, 0.70021)]\n\
+    \ndef build(p):\n    top_w = p.plate_top_w\n    h = p.plate_t\n    seg_l = 18.0\n\
+    \    gap = 6.0\n\n    solids = []\n    x0 = 0.0\n    for tan_a in [a[1] for a\
+    \ in ANGLES]:\n        bot_w = top_w - 2.0 * h * tan_a\n        prof = cq.Workplane(\"\
+    YZ\").polyline([\n            (-bot_w / 2.0, 0.0),\n            (bot_w / 2.0,\
+    \ 0.0),\n            (top_w / 2.0, h),\n            (-top_w / 2.0, h),\n     \
+    \   ]).close()\n        solids.append(prof.extrude(seg_l).translate((x0, 0.0,\
+    \ 0.0)))\n        x0 += seg_l + gap\n\n    total = x0 - gap\n    out = solids[0]\n\
+    \    for s in solids[1:]:\n        out = out.union(s)\n    bridge = cq.Workplane(\"\
+    XY\").box(total, 6.0, 3.0).translate((total / 2.0, 0.0, h + 1.5))\n    return\
+    \ out.union(bridge)\n"
+  print_orientation: narrow (bottom) face on the bed; the strip runs left-to-right
+    along X. Trapezoid sides overhang outward 15-35 deg from vertical - all printable.
+    The 6 mm bridge between blocks spans the gaps.
+  use_orientation: same as printed. Left to right the blocks are 15, 25 and 35 degrees.
+    Drop each one into the clamp on its own and tighten the knob; the one that sits
+    all the way down and holds firm is your jaw angle. The middle block matches the
+    plate as drawn.
+hardware:
+- id: bolt1
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: j_bolt
+  fastener: bolt1
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: counterbore_floor
+    role: head_seat
+  - part: plate
+    feature: bolt_hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c_drop_in
+  part: plate
+  feature: dovetail_sides
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_top_w
+  - dovetail_angle
+  - clamp_plate_width
+  check:
+    method: coupon
+    ref: coupon_lip_angle
+    description: the tapered sides must match the clamp's jaw lips. Print the coupon,
+      drop each block into the clamp and tighten the knob; the block that sits fully
+      down and holds firm gives the real angle. If 25 deg rocks, change dovetail_angle
+      to 15 or 35 and reprint.
+- id: c_top_width
+  part: plate
+  feature: top_face
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - plate_top_w
+  - clamp_plate_width
+  check:
+    method: measure
+    ref: calipers on the printed plate's top face
+    description: top face 37.6 mm against a 38 mm clamp opening - 0.2 mm per side
+- id: c_cbore_clear
+  part: plate
+  feature: counterbore
+  relation: clears
+  hardware: null
+  clearance_mm: 2.5
+  params:
+  - cbore_d
+  - bolt_head_d
+  check:
+    method: measure
+    ref: calipers across the 20 mm recess
+    description: 20 mm recess around a 15 mm bolt head, so the head can be turned
+      from underneath
+- id: c_cbore_seat
+  part: plate
+  feature: counterbore_floor
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - cbore_depth
+  - bolt_head_h
+  check:
+    method: measure
+    ref: drop the bolt in, check it does not protrude below the plate
+    description: 5.2 mm deep recess for a 5.0 mm head - head finishes 0.2 mm inside
+      the plate so the plate sits flat on the clamp floor
+- id: c_hole_clear
+  part: plate
+  feature: bolt_hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.275
+  params:
+  - bolt_hole_d
+  - bolt_thread_d
+  check:
+    method: measure
+    ref: slide the salvaged bolt through the printed hole
+    description: 6.9 mm hole for a 6.35 mm thread
+- id: c_engage
+  part: plate
+  feature: bolt_hole
+  relation: engages
+  hardware: bolt1
+  clearance_mm: null
+  params:
+  - bolt_thread_len
+  - cbore_depth
+  - plate_t
+  - camera_socket_depth
+  check:
+    method: measure
+    ref: screw the bolt into the camera and count the turns
+    description: the bolt reaches 5.2 mm past the plate's top face into the camera
+      socket. Needs the camera socket to be deeper than 5.2 mm.
+- id: c_camera_support
+  part: plate
+  feature: top_face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_top_w
+  - plate_len
+  check:
+    method: none
+    ref: null
+    description: the camera's flat base lands on the 37.6 x 45 mm top face
+manual:
+- n: '1'
+  text: Print the coupon first (coupon_lip_angle). PLA, 0.2 mm layers, no supports,
+    flat on its bottom face. It takes about 10 minutes and saves a wasted plate.
+  parts:
+  - coupon_lip_angle
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Loosen the tripod clamp knob until the jaws are wide open. Drop the coupon
+    in, one block at a time: left block = 15 deg, middle = 25 deg, right = 35 deg.
+    Tighten the knob on each. The block that settles all the way down and holds firm
+    without rocking is your jaw angle. If it is NOT the middle one, stop and tell
+    me - I will re-issue the plate with that angle.'
+  parts:
+  - coupon_lip_angle
+  hardware: []
+  tool: null
+- n: '3'
+  text: Print the plate (plate). PLA, 0.2 mm layers, NO supports, bottom face on the
+    bed, 45 mm length running left to right. It should take about 25 minutes.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Check the plate drops into the open clamp without binding, and that the knob
+    grips it when tightened. Do this before the camera goes on, so nothing can fall.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Turn the plate over. Drop the salvaged 1/4-20 webcam bolt up through it from
+    underneath, head first, so the head sits down in the 20 mm recess.
+  parts:
+  - plate
+  hardware:
+  - bolt1
+  tool: null
+- n: '6'
+  text: Hold the camera upside down and thread the bolt into its 1/4-20 tripod socket.
+    Turn the bolt head from underneath with your fingers (or a spanner if it is a
+    hex head) until the camera's base sits flat and firm on the plate's top face.
+    Do not overtighten - it is PLA.
+  parts:
+  - plate
+  hardware:
+  - bolt1
+  tool: fingers, or a spanner if the bolt head is hex
+- n: '7'
+  text: Open the clamp, drop the plate in with the camera on top, and tighten the
+    knob until it stops moving. Give the camera a gentle wiggle - it should feel solid.
+    If it rocks or slides, tell me which coupon block fitted and I will change dovetail_angle.
+  parts:
+  - plate
+  hardware:
+  - bolt1
+  tool: null
+- n: '8'
+  text: 'Treat it as temporary: no heavy lenses, no long exposures with a strap hanging
+    off it, and keep the bolt snug rather than cranked. The real metal plate is still
+    worth finding.'
+  parts:
+  - plate
+  hardware: []
+  tool: null

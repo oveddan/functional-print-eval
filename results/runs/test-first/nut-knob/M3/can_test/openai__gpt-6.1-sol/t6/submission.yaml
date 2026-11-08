@@ -1,0 +1,218 @@
+task: nut-knob/M3
+note: 'One-piece, approximately 20 mm PLA hand knob with a recessed ISO 4032 M3 nut,
+  hex anti-rotation pocket, and bolt through-hole. Best-judgment pocket size: hand
+  insertion and upside-down retention remain UNVERIFIED. The 5.35 and 5.45 mm coupons
+  rejected the nut; results for 5.55 and 5.65 mm were unavailable. Do not assume retention
+  until the assembly check passes. Intended for light finger tightening, not tool-applied
+  torque.'
+questions:
+- text: Actual nut dimensions and fit results for larger coupons?
+  answer: User could not measure; requested best judgment. Larger-coupon fit results
+    unavailable.
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal thickness.
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 nominal major diameter; mating bolt supplied by user.
+  pocket_allowance:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: Resulting pocket AF 5.55 mm. Provisional; retention not confirmed.
+  nut_recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Nut top below knob top when fully seated.
+  floor:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Continuous floor beneath nut except for bolt passage.
+  bore_allowance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: 3.5 mm bolt through-hole.
+  diameter:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_depth:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_af_growth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_radius:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_radius:
+    value: 11.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    h = p.floor + p.nut_h + p.nut_recess\n\
+    \    af = p.nut_af + p.pocket_allowance\n    body = cq.Workplane('XY').circle(p.diameter/2).extrude(h)\n\
+    \    for i in range(int(p.scallop_count)):\n        a = 2*math.pi*i/p.scallop_count\n\
+    \        x = p.scallop_center_radius*math.cos(a)\n        y = p.scallop_center_radius*math.sin(a)\n\
+    \        cutter = cq.Workplane('XY').center(x,y).circle(p.scallop_radius).extrude(h)\n\
+    \        body = body.cut(cutter)\n    pocket = cq.Workplane('XY').workplane(offset=p.floor).polygon(6,af/math.cos(math.pi/6)).extrude(h-p.floor+1)\n\
+    \    lead = (cq.Workplane('XY').workplane(offset=h-p.lead_depth)\n           \
+    \ .polygon(6,af/math.cos(math.pi/6))\n            .workplane(offset=p.lead_depth)\n\
+    \            .polygon(6,(af+p.lead_af_growth)/math.cos(math.pi/6)).loft())\n \
+    \   bore = cq.Workplane('XY').circle((p.bolt_d+p.bore_allowance)/2).extrude(h+1)\n\
+    \    return body.cut(pocket).cut(lead).cut(bore)"
+  print_orientation: Flat closed-floor face on bed at z=0; hex socket opens upward.
+    No supports.
+  use_orientation: Bolt follows Z axis. For tightening against a workpiece, put the
+    flat floor face toward the workpiece, with the recessed nut face outward.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: hand_press_retention
+  part: hand_knob
+  feature: 5.55 mm AF hex pocket with entry lead-in
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_allowance
+  - lead_depth
+  - lead_af_growth
+  check:
+    method: measure
+    ref: null
+    description: UNVERIFIED. Nut must seat using fingers only, then remain seated
+      with the opening downward during gentle shaking. If either check fails, this
+      fit is unsuitable and the pocket allowance needs revision.
+- id: nut_recessed
+  part: hand_knob
+  feature: Pocket depth 2.8 mm
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  - floor
+  check:
+    method: measure
+    ref: null
+    description: Confirm nut bottom is seated on floor and top lies below top face.
+- id: retaining_floor
+  part: hand_knob
+  feature: 2 mm solid floor surrounding 3.5 mm through-hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor
+  - bolt_d
+  - bore_allowance
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Inspect floor for defects. The bolt hole is smaller than the nut,
+      preventing the nut passing through the far side under normal hand loads.
+- id: bolt_passage
+  part: hand_knob
+  feature: Axial 3.5 mm through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bore_allowance
+  check:
+    method: measure
+    ref: null
+    description: Check that your M3 bolt passes freely through the printed floor and
+      threads smoothly through the seated nut.
+manual:
+- n: '1'
+  text: Print hand_knob flat-floor down, socket up, using the 0.4 mm nozzle and 0.2
+    mm layers. Use 4 walls and 100% infill; disable supports. Use the same PLA and
+    settings as the fit coupons.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: Bambu Lab X1C
+- n: '2'
+  text: Remove any brim or loose strings. Align the M3 nut with the hex socket and
+    press straight down with fingers until it seats on the internal floor. It should
+    finish about 0.4 mm below the top. Do not hammer it or draw it in using a bolt;
+    hand insertion is a required check.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: 'Invert the knob over a tray and gently shake it. The nut must stay seated.
+    If it falls out, the retention requirement is not met. If it will not seat by
+    hand, the insertion requirement is not met. Do not glue it or use this version
+    as a retained-nut knob in either case. Revise pocket_allowance in small steps
+    (about 0.05 mm) and reprint: smaller for a loose fit, larger for a tight fit.
+    The current 5.55 mm pocket is unverified.'
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Using your mating M3 bolt, check that the threads start easily and the bolt
+    emerges through the floor hole. In use, place the floor face against the workpiece,
+    nut opening facing outward, then turn the scalloped knob by hand. The bolt must
+    be restrained from rotating by your existing assembly. Use light finger torque
+    only; stop if the nut spins, the knob cracks, or the fit loosens.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null

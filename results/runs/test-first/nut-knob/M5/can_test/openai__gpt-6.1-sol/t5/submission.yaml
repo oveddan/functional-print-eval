@@ -1,0 +1,205 @@
+task: nut-knob/M5
+note: One-piece, approximately 30 mm hand knob with a recessed, captive M5 hex nut
+  and a through-hole. The pocket has a solid bottom shoulder, preventing the nut from
+  passing through the opposite side. Retention uses a light interference fit. Actual
+  nut dimensions and coupon results were unavailable, so hand insertion and upside-down
+  retention are not yet verified; check these before use. No glue, supports, or additional
+  retaining parts.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across flats; actual nut could not be measured.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M5 bolt diameter; bolt length depends on your application.
+  pocket_af:
+    value: 7.95
+    unit: mm
+    kind: design
+    source: design
+    note: Selected light interference fit, 0.05 mm below nominal nut AF. Coupon fit
+      feedback unavailable; not a verified fit.
+  pocket_depth:
+    value: 5.1
+    unit: mm
+    kind: design
+    source: design
+    note: Recesses a nominal 4.7 mm nut by 0.4 mm when fully seated.
+  floor_t:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: Solid shoulder beneath nut, except for bolt clearance hole.
+  lead_in:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree pocket entry chamfer.
+  bolt_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral allowance; through-hole diameter 5.6 mm.
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "def build(p):\n    import math\n    h=p.floor_t+p.pocket_depth\n    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \    for i in range(int(p.scallop_count)):\n        a=2*math.pi*i/p.scallop_count\n\
+    \        x=p.scallop_center_r*math.cos(a)\n        y=p.scallop_center_r*math.sin(a)\n\
+    \        cutter=cq.Workplane('XY').center(x,y).circle(p.scallop_r).extrude(h)\n\
+    \        body=body.cut(cutter)\n    hex_d=p.pocket_af/math.cos(math.pi/6)\n  \
+    \  pocket=cq.Workplane('XY').workplane(offset=p.floor_t).polygon(6,hex_d).extrude(p.pocket_depth)\n\
+    \    lead=cq.Workplane('XY').workplane(offset=h-p.lead_in).polygon(6,hex_d).workplane(offset=p.lead_in).polygon(6,(p.pocket_af+2*p.lead_in)/math.cos(math.pi/6)).loft()\n\
+    \    hole=cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(h)\n\
+    \    return body.cut(pocket).cut(lead).cut(hole)"
+  print_orientation: Flat underside at z=0 on the bed; hexagonal pocket opens upward.
+    Print as modeled, no supports.
+  use_orientation: Nut inserts from the top. Bolt can enter from either side; the
+    small circular opening is the shoulder side.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: hand_press_retention
+  part: knob
+  feature: Hexagonal pocket flats
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - lead_in
+  check:
+    method: measure
+    ref: null
+    description: With the print cooled, nut must seat using firm thumb pressure only
+      and remain seated when inverted and lightly shaken. Fit has not been verified.
+      Reject or revise the pocket size if either check fails.
+- id: fully_recessed
+  part: knob
+  feature: Pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Nut must sit entirely below the top surface, nominally by 0.4 mm.
+- id: nut_stop
+  part: knob
+  feature: Solid shoulder around circular through-hole
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - bolt_d
+  - bolt_clearance
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Verify nut bottoms against the shoulder and cannot pass through the
+      5.6 mm circular hole.
+- id: bolt_passage
+  part: knob
+  feature: Axial through-hole aligned with nut thread
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: measure
+    ref: null
+    description: An M5 bolt must pass through the circular opening and thread into
+      the nut by hand without binding on the plastic.
+manual:
+- n: '1'
+  text: Print knob in the specified orientation at 0.2 mm layer height with a 0.4
+    mm nozzle. Use 4 walls, 5 top and bottom layers, and 40% infill. No supports.
+    Let the part cool before removing it.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove any loose strings from the pocket and through-hole. Align the nut flats
+    with the pocket and press it down squarely using your thumbs, until it contacts
+    the shoulder. Its top should be about 0.4 mm below the knob surface. Do not hammer
+    it, heat it, or use the bolt to pull an excessively tight nut into place.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Invert the knob over a tray and lightly shake it. The nut must remain seated.
+    This fit is unverified because measurements and coupon feedback were unavailable.
+    If too tight to insert by hand, increase pocket_af by 0.05 mm and reprint; if
+    it falls out, decrease pocket_af by 0.05 mm and reprint. Repeat the check; do
+    not use glue.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread your M5 bolt through the nut and out the opposite opening. Choose a
+    bolt long enough for your application. Tighten only by hand; the hex pocket transfers
+    knob torque to the nut. For clamping, place the flat, small-hole side toward the
+    clamped item so the nut bears on its internal shoulder. Recheck retention occasionally;
+    PLA press fits can relax with time or heat.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

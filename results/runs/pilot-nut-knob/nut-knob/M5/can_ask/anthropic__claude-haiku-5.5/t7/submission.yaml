@@ -1,0 +1,177 @@
+task: nut-knob/M5
+note: ''
+questions:
+- text: How long is the bolt you'll use, and how thick is the mount it passes through?
+    The knob is 18 mm tall, which only matters if the bolt needs to stick out past
+    the top.
+  answer: null
+- text: Does the nut snap in and stay when you invert the knob? If it is loose or
+    won't go in, I can adjust lip_af (7.2 mm) or nut_pocket_af (7.7 mm).
+  answer: null
+params:
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Knob outer diameter, as requested
+  knob_h:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: Knob height; gives a grippable knob with the nut pocket low inside it
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  nut_pocket_af:
+    value: 7.7
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across flats, 0.3 mm under the nut so it press-fits and is held
+      against rotation
+  lip_af:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom retaining lip opening across flats, 0.8 mm under the nut. The nut
+      snaps past it by flexing the PLA; the nut cannot drop out through it
+  lip_t:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the bottom retaining lip
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance bore for the M5 bolt through the top, smaller than the nut so
+      the nut cannot be pushed out the far side
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 bolt major diameter
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    r = p.knob_od / 2.0\n    body = cq.Workplane(\"\
+    XY\").circle(r).extrude(p.knob_h)\n    body = body.faces(\">Z\").edges().fillet(1.5)\n\
+    \    def hexd(af):\n        return af / math.cos(math.radians(30))\n    # nut\
+    \ pocket, sits on top of the bottom lip, height = nut height\n    pocket = (cq.Workplane(\"\
+    XY\").workplane(offset=p.lip_t)\n              .polygon(6, hexd(p.nut_pocket_af)).extrude(p.nut_h))\n\
+    \    # bottom retaining lip opening, smaller than the nut\n    lip_open = cq.Workplane(\"\
+    XY\").polygon(6, hexd(p.lip_af)).extrude(p.lip_t)\n    # bolt bore through the\
+    \ top\n    bore = cq.Workplane(\"XY\").circle(p.bolt_clear_d / 2.0).extrude(p.knob_h)\n\
+    \    body = body.cut(pocket).cut(lip_open).cut(bore)\n    return body\n"
+  print_orientation: bottom face on bed (z=0 is the knob's bottom face, nut opening
+    down)
+  use_orientation: bottom face down, bolt entering from below and the tip exiting
+    the top
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket (7.7 mm af, 4.7 mm deep, above the 1.0 mm lip)
+  relation: contains
+  hardware: nut
+  clearance_mm: -0.3
+  params:
+  - nut_pocket_af
+  - nut_h
+  - nut_af
+  - lip_t
+  check:
+    method: measure
+    ref: null
+    description: Press-fit the nut into the pocket by hand; confirm it does not fall
+      out when the knob is inverted and cannot be pushed out through the top.
+- id: bolt_bore
+  part: knob
+  feature: 5.5 mm bolt bore through the top
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Check that an M5 bolt passes freely through the bore and the nut
+      threads.
+- id: retain_lip
+  part: knob
+  feature: bottom retaining lip, 7.2 mm af opening
+  relation: contains
+  hardware: nut
+  clearance_mm: -0.4
+  params:
+  - lip_af
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Confirm the nut does not drop out through the lip opening when the
+      knob is inverted, and that it can still be pressed in by hand.
+manual:
+- n: '1'
+  text: Print the knob with its flat bottom face on the bed. The nut opening faces
+    down.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check the hex opening on the bottom face. It should take the nut's bottom
+    corner but not pass it without pressure.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Line up the ISO 4032 M5 nut with the bottom hex opening (flats matching) and
+    press it up with your thumb until it clicks past the lip and sits flat inside
+    the pocket.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Turn the knob over and shake it gently to confirm the nut stays in. If it
+    is loose, the lip is too large; if it will not enter, press harder or ream the
+    pocket slightly with a 8 mm drill bit by hand.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the M5 bolt up through the mount and into the knob. Turn the knob to
+    tighten. The nut is held in the knob, so it turns with the knob against the bolt.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

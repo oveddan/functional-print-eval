@@ -1,0 +1,211 @@
+task: nut-knob/M5
+note: 'One-piece, six-lobed captive-nut knob, 30 mm maximum diameter and 8 mm tall.
+  Uses the 8.10 mm hex pocket validated by fit_C: hand insertion, snug retention,
+  and passed inversion/shaking. This acts as a hand-tightened nut on an M5 bolt; it
+  does not capture the bolt head. Print with the same filament and fit-related slicer
+  settings as the successful coupon.'
+questions:
+- text: Which tested pocket allows hand insertion and retains the nut upside down?
+  answer: 8.10 mm (fit_C) inserts more easily, feels snug, and retained the nut when
+    inverted and shaken. 8.00 mm also retained it but was tighter.
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across flats.
+  nut_height:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal thread diameter.
+  pocket_allowance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Total across-flats allowance; validated by fit_C.
+  floor:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  recess:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Nut top below knob top when fully seated.
+  hole_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral allowance; finished through-hole is 5.6 mm.
+  entry_height:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_expansion:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats enlargement at the mouth of the lead-in.
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  core_d:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_radius:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "def build(p):\n    import math\n    h=p.floor+p.nut_height+p.recess\n   \
+    \ af=p.nut_af+p.pocket_allowance\n    body=cq.Workplane('XY').circle(p.core_d/2).extrude(h)\n\
+    \    r=p.knob_d/2-p.lobe_radius\n    for i in range(int(p.lobe_count)):\n    \
+    \    a=2*math.pi*i/p.lobe_count\n        lobe=cq.Workplane('XY').center(r*math.cos(a),r*math.sin(a)).circle(p.lobe_radius).extrude(h)\n\
+    \        body=body.union(lobe)\n    pocket=cq.Workplane('XY').workplane(offset=p.floor).polygon(6,af/math.cos(math.pi/6)).extrude(h-p.floor+1)\n\
+    \    entry=cq.Workplane('XY').workplane(offset=h-p.entry_height).polygon(6,af/math.cos(math.pi/6)).workplane(offset=p.entry_height).polygon(6,(af+p.entry_expansion)/math.cos(math.pi/6)).loft()\n\
+    \    hole=cq.Workplane('XY').circle((p.bolt_d+p.hole_clearance)/2).extrude(h)\n\
+    \    return body.cut(pocket).cut(entry).cut(hole)"
+  print_orientation: Broad flat bottom at z=0 on the bed; hex pocket opens upward.
+    No supports.
+  use_orientation: Bolt enters through the small circular hole in the retaining floor.
+    For clamping, put the flat floor face against the work and the hex opening outward.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: hand_fit_retention
+  part: knob
+  feature: 8.10 mm across-flats hex pocket
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_allowance
+  - entry_height
+  - entry_expansion
+  check:
+    method: coupon
+    ref: fit_C
+    description: User reported easy snug insertion and retention when inverted and
+      shaken. Repeat that check on the finished knob.
+- id: fully_recessed
+  part: knob
+  feature: Pocket floor and depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_height
+  - floor
+  - recess
+  check:
+    method: measure
+    ref: null
+    description: Fully seat the nut; its top should be approximately 0.5 mm below
+      the knob top.
+- id: retaining_floor
+  part: knob
+  feature: Solid 2.8 mm floor surrounding the 5.6 mm through-hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor
+  - bolt_d
+  - hole_clearance
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The through-hole is smaller than the nut across flats, preventing
+      the nut from passing through the floor.
+- id: bolt_passage
+  part: knob
+  feature: Coaxial circular through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - hole_clearance
+  check:
+    method: measure
+    ref: null
+    description: Check that your M5 bolt passes through the circular hole and threads
+      into the seated nut by hand without binding.
+manual:
+- n: '1'
+  text: Print knob with the broad flat bottom on the bed and hex opening upward. Use
+    the same 0.4 mm nozzle, 0.2 mm layers, filament, and XY/hole compensation as fit_C.
+    Use 4 walls, 5 top/bottom layers, and 30% infill. Supports off.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove any brim or loose strands without sanding or enlarging the hex pocket.
+    Align the M5 nut with the hex opening and press it straight in by hand until it
+    contacts the floor. Its top should sit about 0.5 mm below the opening. Do not
+    hammer it in.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down over a tray and shake gently. Confirm the nut stays
+    in. If this final print is loose or cannot be seated by hand, do not glue or force
+    it; check that print settings match the successful fit_C coupon.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Feed your M5 bolt through the small circular hole and thread it through the
+    nut; the bolt can emerge through the open hex side. For clamping, place the flat
+    floor face against the work and turn the knob by hand. Use an appropriate bolt
+    length for your assembly. Do not apply tool-assisted torque or use this PLA knob
+    for safety-critical loads or hot environments.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

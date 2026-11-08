@@ -12,6 +12,7 @@ from typing import NamedTuple
 
 from shapely.ops import unary_union
 
+from pbe.graders import assumed
 from pbe.graders.checks import Verdict
 from pbe.graders.nuts import MAX_DRILL_OUT, sentence_saying_to_clear_it
 from pbe.graders.sections import clear_width, holes, section
@@ -253,7 +254,13 @@ def bolt_hole(sub, built, bolt, too_tight, printed, head_stopped, head_passes):
     wide_end = _wide_end(widths)
     if recess.depth >= MIN_RECESS and wide_end is not None and recess.end != wide_end:
         return False, "the head's recess opens on the narrow face: the head is on the camera's side, or the dovetail is upside down"
-    if clear < printed - TOL or clear > head_stopped:
+    if clear < printed - TOL:
+        close = assumed.nearest(clear, [(too_tight, False), (printed, True)])
+        if close:
+            return close[1], (f"{clear:.2f} mm clear at its tightest: the bolt {'passes' if close[1] else 'jams'} "
+                              f"({assumed.note(close[0])}){drilled}")
+        return None, f"{clear:.2f} mm clear at its tightest: no print has measured that{drilled}"
+    if clear > head_stopped:
         return None, f"{clear:.2f} mm clear at its tightest: no print has measured that{drilled}"
     return True, f"{clear:.2f} mm clear at its tightest{drilled}"
 
@@ -274,8 +281,12 @@ def head_recess(sub, built, bolt, bolt_across, too_tight, fits, head_height):
     if width <= too_tight:
         return False, f"recess {width:.2f} mm across: the {too_tight} mm one was too tight for this head"
     if width < fits - TOL:
-        return None, f"recess {width:.2f} mm across: between {too_tight}, too tight, and {fits}, which fit"
-    if depth < head_height - STEP / 2 - TOL:  # depth is read in whole layers
+        close = assumed.nearest(width, [(too_tight, False), (fits, True)])
+        if close is None:
+            return None, f"recess {width:.2f} mm across: between {too_tight}, too tight, and {fits}, which fit"
+        if not close[1]:
+            return False, f"recess {width:.2f} mm across: too tight for this head ({assumed.note(close[0])})"
+    if depth < head_height - STEP / 2 - TOL - assumed.ASSUMED_WITHIN:  # depth is read in whole layers
         return None, f"recess {depth:.1f} mm deep: only {head_height} mm has been printed"
     return True, f"recess {width:.2f} mm across and {depth:.1f} mm deep"
 

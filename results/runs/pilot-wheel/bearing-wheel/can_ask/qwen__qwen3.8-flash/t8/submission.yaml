@@ -1,0 +1,414 @@
+task: bearing-wheel
+note: 'One printed part plus a throw-away fit coupon. A 50 x 15.4 mm disc with a single
+  straight 21.75 mm through-bore; two 608 outer races press in from either side and
+  meet back-to-back, which removes the thin centre web (and the crushing risk) that
+  a 16 mm double-608 wheel otherwise forces on you, removes all bridging, and puts
+  every bore diameter in the XY plane where a 0.4 mm nozzle is accurate. The wheel''s
+  faces stand ~0.7 mm proud of the bearing faces, so bracket cheeks and the nut can
+  only ever load the PLA rim, never a race - the wheel cannot bind when clamped. The
+  M8 bolt is load-bearing only in the bearings'' 8 mm inner bores; it never touches
+  plastic. Thrust collars are included for the single-tab case because no listed steel
+  washer (max OD 16) is big enough to sit outside the 21.75 mm bore. Two numbers I
+  could not measure are isolated as single params to re-print around: wheel_width
+  (bracket slot) and press_fit (bore interference, chosen on the coupon). Assumption
+  to watch: a flat chamfered tread, since the rail was unmeasurable.'
+questions:
+- text: 'Bracket: is the wheel between two plates (a fork) or hanging outside a single
+    tab on the end of the bolt? The design covers both (steps 8A / 8B), but it tells
+    me whether to make the collars standard.'
+  answer: null
+- text: Bracket slot width, inside face to inside face, in mm - with a ruler is fine.
+    Right now wheel_width is 15.4 (a guess from the old wheel being ~16 mm).
+  answer: null
+- text: 'Tread profile: was the old wheel''s rim flat, rounded, or grooved like a
+    pulley to sit over a rail ridge? I have printed it flat with 1.5 mm chamfers,
+    which is safe on a flat rail and rolls over an edge, but a groove may track better.'
+  answer: null
+- text: 'Bolt: how long is it, and where does the smooth shank end? The shank needs
+    to cover both bearings (14 mm) plus the bracket plate, so ~30 mm or longer is
+    what I assumed.'
+  answer: null
+- text: How heavy is the door and how many rollers does it have? For an ordinary bi-fold/sliding
+    wardrobe leaf PLA is fine; a heavy mirrored door would want me to widen the tread
+    and up the infill.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: design
+    source: asked
+    note: You said the old one was 'about 50 mm across'. Keep it the same or the door
+      hangs at the wrong height.
+  wheel_width:
+    value: 15.4
+    unit: mm
+    kind: design
+    source: guessed
+    note: BRACKET SLOT WIDTH UNKOWN - I could not measure it. Old wheel was ~16 mm.
+      Two 7 mm bearings = 14 mm minimum. 15.4 gives ~0.6 mm side float in a 16 mm
+      slot and leaves each bearing face 0.7 mm below the wheel face. Set to (measured
+      gap - 0.6).
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 skateboard bearing OD, 22.000 -0.008. The 21.22 caliper reading in the
+      setup notes was taken at an angle and reads low.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Inner race bore; the M8 bolt goes through here, not through the plastic.
+  inner_race_od:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: Typical 608 inner-ring OD, not in the catalog. Only matters as the free
+      space inside the bore - ours is 21.75 so it clears with room to spare.
+  press_fit:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: 'DIAMETRAL interference: bore = bearing_od - press_fit = 21.75. TUNE THIS
+      FROM THE COUPON before blaming the wheel.'
+  tread_chamfer:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg edge break both sides. Rail profile unknown; a chamfered flat tread
+      rolls over a rail edge without digging in and without wandering.
+  bolt_dia:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: You measured the shank at about 8 mm.
+  washer_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: 'Must be well over bearing_od: a steel M8 washer (OD 16) is SMALLER than
+      the bearing pocket and would fall straight into the bore. This printed collar
+      is the only thrust face big enough to land on the wheel''s solid rim.'
+  washer_bore:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_dia + 0.6 clearance
+  washer_t:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    W  = p.wheel_width\n    R  = p.wheel_od / 2.0\n    c \
+    \ = p.tread_chamfer\n    rb = (p.bearing_od - p.press_fit) / 2.0\n    # Plain\
+    \ disc, printed standing on one face so the bore is a vertical (XY-\n    # accurate)\
+    \ cylinder: no bridging, no supports, no thin centre web.\n    w = cq.Workplane(\"\
+    XY\").circle(R).extrude(W)\n    # Break both tread edges 1.5 x 45 deg\n    w =\
+    \ w.edges(\"<Z\").chamfer(c)\n    w = w.edges(\">Z\").chamfer(c)\n    # Single\
+    \ straight through-bore: the two 608s press in from opposite faces\n    # and\
+    \ meet back-to-back in the middle, leaving each bearing face ~0.7 mm\n    # below\
+    \ the wheel face so no clamp load can ever reach a race.\n    w = w.faces(\">Z\"\
+    ).workplane().circle(rb).cutThruAll()\n    return w"
+  print_orientation: Standing on one flat face, wheel axis vertical (+Z). Bed = z0,
+    one of the wheel faces. Bore is a full-height vertical cylinder, tread is the
+    outer wall - no supports, no bridging.
+  use_orientation: 'As printed: the part''s +Z axis is the wheel''s spin axis, which
+    becomes the horizontal M8 bolt axis on the door. Rotate 90 deg about X to put
+    the bolt axis horizontal.'
+- id: bearing_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    t = p.coupon_t\n    # Four through-bores, same geometry\
+    \ as the wheel's bore, stepped in\n    # diametral interference from tight (left)\
+    \ to slip fit (right).\n    offs = [0.40, p.press_fit, 0.10, 0.0]\n    xs = [-36.0,\
+    \ -12.0, 12.0, 36.0]\n    w = cq.Workplane(\"XY\").rect(96.0, 34.0).extrude(t)\n\
+    \    for x, o in zip(xs, offs):\n        w = (w.faces(\">Z\").workplane(centerPatch=True,\
+    \ cutRecessed=False)\n               .center(x, 0).hole(p.bearing_od - o))\n \
+    \   return w"
+  print_orientation: Flat on the bed, 5 mm tall, holes vertical. Print it on the same
+    plate as, and just before, the wheel - same nozzle, same temperature, same flow,
+    or the fit will not transfer.
+  use_orientation: 'Not fitted to the door. Disposable fit test only: bore 1 (left)
+    = 0.40 interference, bore 2 = the wheel''s own size (press_fit), bore 3 = 0.10,
+    bore 4 (right) = slip fit.'
+- id: thrust_collar
+  role: final
+  material: PLA
+  code: "def build(p):\n    t  = p.washer_t\n    ro = p.washer_od / 2.0\n    ri =\
+    \ p.washer_bore / 2.0\n    w = cq.Workplane(\"XY\").circle(ro).extrude(t)\n  \
+    \  w = w.faces(\">Z\").workplane().circle(ri).cutThruAll()\n    w = w.edges(\"\
+    >Z\").chamfer(0.4)\n    w = w.edges(\"<Z\").chamfer(0.4)\n    return w"
+  print_orientation: Flat on the bed, 2.5 mm tall, bore vertical. Print two (or four)
+    at once - they take a couple of minutes.
+  use_orientation: Slide over the M8 bolt, one each side of the wheel, inside the
+    bracket. Its 30 mm face lands on the wheel's solid rim outside the 21.75 bore,
+    so a cheek or a nut can never squeeze a bearing.
+hardware:
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+- id: m8_bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: m8_nut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: m8_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: thrust_collar
+    feature: bore
+    role: clearance
+  - part: wheel
+    feature: bearing_bore
+    role: clearance
+  - part: thrust_collar
+    feature: bore
+    role: clearance
+  nut: m8_nut
+  external: 'sliding-door bracket: the bolt passes through the bracket''s 8.5 mm hole
+    and the two bearings'' 8 mm inner bores. The plastic bore of the wheel is never
+    loaded.'
+criteria:
+- id: bore_grips_outer_race
+  part: wheel
+  feature: bearing_bore
+  relation: engages
+  hardware: bearing_608
+  clearance_mm: -0.25
+  params:
+  - bearing_od
+  - press_fit
+  check:
+    method: coupon
+    ref: bearing_coupon
+    description: 'On the coupon, the bore in the WHEEL''s size (bore 2) must need
+      firm hand/vise pressure to start a bearing and must not let the bearing be pushed
+      out with a thumb. Anything else: change press_fit and reprint - the coupon prints
+      in 5 min, the wheel does not.'
+- id: bearings_recessed_in_faces
+  part: wheel
+  feature: wheel_face
+  relation: clears
+  hardware: bearing_608
+  clearance_mm: 0.7
+  params:
+  - wheel_width
+  - bearing_width
+  check:
+    method: measure
+    ref: null
+    description: 'With both bearings seated back-to-back, look at the wheel edge-on:
+      the bearing faces must sit BELOW the wheel''s outer faces (about 0.7 mm), so
+      a bracket cheek or the nut lands on PLA and cannot preload the bearing.'
+- id: bolt_passes_inner_bores
+  part: wheel
+  feature: bearing_bore
+  relation: clears
+  hardware: m8_bolt
+  clearance_mm: null
+  params:
+  - bearing_bore
+  - bolt_dia
+  check:
+    method: measure
+    ref: null
+    description: 'The M8 shank (about 7.9-8.0) goes through both 8 mm bearing inner
+      bores. The wheel must still slide onto the bolt: the smooth shank has to cover
+      at least the 14 mm of bearings plus the bracket plate, so 30 mm or longer. Run
+      a nut through the thread first to clean it, and oil it.'
+- id: collar_lands_on_solid_rim
+  part: thrust_collar
+  feature: face
+  relation: supports
+  hardware: m8_nut
+  clearance_mm: null
+  params:
+  - washer_od
+  - bearing_od
+  - press_fit
+  - wheel_od
+  check:
+    method: measure
+    ref: null
+    description: Collar OD 30 must overlap the wheel's solid rim outside the bore
+      (r 10.9 to 25) and stay clear of the bearing faces; and 30 mm must be smaller
+      than the flat area on the bracket cheek. If the bracket has no room for 30 mm
+      collars, rely on the side float instead and do not fit them.
+- id: collar_bore_clears_bolt
+  part: thrust_collar
+  feature: bore
+  relation: clears
+  hardware: m8_bolt
+  clearance_mm: 0.6
+  params:
+  - washer_bore
+  - bolt_dia
+  check:
+    method: measure
+    ref: null
+    description: Collar slides freely on the bolt; it must never turn with the wheel.
+- id: tread_matches_old_wheel
+  part: wheel
+  feature: tread
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - tread_chamfer
+  check:
+    method: measure
+    ref: null
+    description: 'Before loading the door: check the new wheel puts the door at the
+      same height as the old one (50 mm dia) and that the tread sits fully on the
+      rail, not riding an edge, and does not rub the sides of the track.'
+manual:
+- n: '1'
+  text: Print the coupon first, flat on the bed, 0.2 mm layers, 4 perimeters, 25%
+    gyroid infill. It is 5 mm tall and takes a few minutes. Do it on the same day
+    and with the same spool you will use for the wheel - bearing seats are fussy about
+    flow.
+  parts:
+  - bearing_coupon
+  hardware: []
+  tool: printer
+- n: '2'
+  text: Press a 608 into each coupon bore from the left (tightest, 0.40 mm interference)
+    to the right (slip fit). You are looking for the bore where the bearing needs
+    real hand pressure or a push on the bench, and cannot be pressed back out with
+    your thumb. Bore 2 (21.75) is the size the wheel is printed at.
+  parts:
+  - bearing_coupon
+  hardware:
+  - bearing_608
+  tool: hands / a big socket
+- n: '3'
+  text: Set press_fit to match the bore that gripped, then print the wheel standing
+    on one face (axis vertical, no supports, 0.2 mm layers, 4 perimeters, 25-30% infill).
+    If bore 1 was the only one that held, print press_fit = 0.4. If only the slip-fit
+    bore would take a bearing by hand, print press_fit = 0.1 and glue the bearings
+    in at step 6.
+  parts:
+  - wheel
+  hardware: []
+  tool: printer
+- n: '4'
+  text: Print 2-4 thrust collars the same way (flat, 2.5 mm tall). Skip them for now
+    - you only fit them at step 8 if your bracket squeezes the wheel.
+  parts:
+  - thrust_collar
+  hardware: []
+  tool: null
+- n: '5'
+  text: 'Clean the bore: run a knife or a piece of 120 paper round the inside of the
+    printed bore to knock off any lip or blob, then wipe it out. Do not enlarge it.'
+  parts:
+  - wheel
+  hardware: []
+  tool: craft knife / 120 paper
+- n: '6'
+  text: Press the bearings in, one from each side, with the wheel standing on a flat
+    board. Push on the OUTER race only - a 22 mm-ish socket, a large washer, or a
+    bolt with a nut and washers, so the load is at the outside edge of the race and
+    never on the shield or the inner ring. Press them until they meet back-to-back
+    in the middle of the bore; both faces should end up about 0.7 mm below the wheel's
+    faces. If you need glue, put a thin ring of epoxy or a couple of drops of CA on
+    the bore wall first, then position the bearing before it sets.
+  parts:
+  - wheel
+  hardware:
+  - bearing_608
+  tool: socket or large washer + bench vise / hand press
+- n: '7'
+  text: 'Spin check off the door: hold the wheel, spin a bearing''s inner ring with
+    your finger - it should run smooth and quiet, no grinding or catching. If it grinds,
+    the bearing got pressed in on the wrong race and it is scrap; press a new one
+    in.'
+  parts:
+  - wheel
+  hardware:
+  - bearing_608
+  tool: null
+- n: '8'
+  text: 'Look at the bracket and pick your fit-up. (A) The wheel sits BETWEEN two
+    plates: clean the M8 bolt''s thread by running a nut through it, oil the shank,
+    pass the bolt through one plate, through both bearings and out the far plate,
+    and tighten the nut until the plates just clamp shut. The wheel should still have
+    a fraction of side-float and free spin - because its faces stand proud of the
+    bearings, the plates can squeeze as hard as they like without touching a bearing.
+    (B) The wheel hangs outside a single plate on the bolt end: slide one thrust collar
+    over the bolt against the plate, then the wheel, then the second collar, then
+    the nut. The collars stand clear of the bearings, so snug the nut on a collar
+    and the wheel stays free. Back the nut off a sixteenth of a turn until there is
+    the least side play that still lets it spin cleanly.'
+  parts:
+  - wheel
+  - thrust_collar
+  hardware:
+  - m8_bolt
+  - m8_nut
+  tool: spanner / hex key
+- n: '9'
+  text: 'Hang the door and check three things: the door sits at the same height as
+    before, the wheel rolls without a flat shuffle (PLA tread will skid if the bearing
+    is bound), and the tread sits on the rail rather than on its edge. Then load it,
+    open and close it ten times, and feel for a scrape.'
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '10'
+  text: If the wheel wobbles side to side more than about 1 mm, reprint it with wheel_width
+    raised toward the measured bracket gap minus 0.2 mm. If the tread wanders off
+    the rail, tell me what the rail looks like (flat, or a ridge it sits in) and I
+    will put a matching crown or groove in the tread.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '11'
+  text: Re-check the nut after a month, and glance at the tread for a flat spot or
+    a bite mark - PLA creeps and cold-flows under a standing door, which is normal
+    for this repair and just means it is time to print another for a few grams of
+    filament.
+  parts:
+  - wheel
+  hardware:
+  - m8_nut
+  tool: spanner

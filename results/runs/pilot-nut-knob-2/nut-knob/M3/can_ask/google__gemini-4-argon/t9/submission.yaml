@@ -1,0 +1,195 @@
+task: nut-knob/M3
+note: Single-piece 20 mm fluted hand knob for an M3 bolt with a blind-floored press-fit
+  ISO 4032 M3 hex nut pocket and full through-hole for the bolt shaft.
+questions: []
+params:
+  bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for M3 bolt shaft through-hole
+  flute_depth:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radial depth of each grip flute into the outer rim
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger-grip flutes around the knob perimeter
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut width across flats
+  nut_pocket_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the hex nut pocket (> 2.4 mm nut height so the nut sits fully inside)
+  nut_press_clearance:
+    value: 0.06
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats allowance for a snug hand press-fit in PLA without glue
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height of the hand knob
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut thickness
+  flute_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each cylindrical grip flute cutout
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M3 nominal thread diameter
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of the hand knob (~20 mm requested)
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    knob_r = p.knob_od / 2.0\n    hole_r =\
+    \ (p.bolt_d + p.bolt_clearance) / 2.0\n    pocket_af = p.nut_af + p.nut_press_clearance\n\
+    \    pocket_circum_d = pocket_af * 2.0 / math.sqrt(3.0)\n    floor_z = p.knob_h\
+    \ - p.nut_pocket_depth\n\n    # Main cylindrical body on z = 0..knob_h\n    body\
+    \ = cq.Workplane(\"XY\").circle(knob_r).extrude(p.knob_h)\n\n    # Finger-grip\
+    \ flutes around the perimeter, offset by half-pitch so X/Y extrema stay at knob_od\n\
+    \    flute_center_r = knob_r + p.flute_r - p.flute_depth\n    flute_pts = [\n\
+    \        (\n            flute_center_r * math.cos(math.radians((i + 0.5) * 360.0\
+    \ / p.flute_count)),\n            flute_center_r * math.sin(math.radians((i +\
+    \ 0.5) * 360.0 / p.flute_count)),\n        )\n        for i in range(int(p.flute_count))\n\
+    \    ]\n    flutes = (\n        cq.Workplane(\"XY\")\n        .pushPoints(flute_pts)\n\
+    \        .circle(p.flute_r)\n        .extrude(p.knob_h)\n    )\n    body = body.cut(flutes)\n\
+    \n    # Through-hole for the M3 bolt shaft\n    bolt_hole = cq.Workplane(\"XY\"\
+    ).circle(hole_r).extrude(p.knob_h)\n    body = body.cut(bolt_hole)\n\n    # Recessed\
+    \ hex pocket from z = floor_z to z = knob_h\n    nut_pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=floor_z)\n        .polygon(6, pocket_circum_d)\n\
+    \        .extrude(p.nut_pocket_depth)\n    )\n    body = body.cut(nut_pocket)\n\
+    \n    return body\n"
+  print_orientation: Bottom face (bolt exit/entry side) flat on the print bed at z
+    = 0, with the hex nut pocket opening upward at z = knob_h so no supports or bridges
+    are needed.
+  use_orientation: Coaxial with the M3 bolt; the captured M3 hex nut sits inside the
+    pocket against the internal floor while the bolt threads through the nut and passes
+    through both sides of the knob.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: knob_m3_joint
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bolt_clearance_hole
+    role: clearance
+  - part: knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  nut: m3_nut
+  external: null
+criteria:
+- id: nut_press_fit_and_retention
+  part: knob
+  feature: hex_nut_pocket
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: 0.06
+  params:
+  - nut_af
+  - nut_h
+  - nut_press_clearance
+  - nut_pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Press the ISO 4032 M3 hex nut into the pocket by hand, confirm it
+      sits fully recessed below the top face, and turn the knob upside down to verify
+      retention without glue.
+- id: nut_bottom_stop
+  part: knob
+  feature: nut_pocket_floor
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: 0.0
+  params:
+  - knob_h
+  - nut_pocket_depth
+  - bolt_d
+  - bolt_clearance
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: Verify the M3 nut stops against the internal floor and cannot be
+      pushed out through the bottom face.
+- id: bolt_shaft_clearance
+  part: knob
+  feature: bolt_clearance_hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: measure
+    ref: null
+    description: Thread an M3 bolt through the nut and verify the shaft passes freely
+      through the clearance hole and out the other side.
+manual:
+- n: '1'
+  text: Print the knob flat on the build plate (bottom face on z = 0, hex pocket facing
+    up). Align the ISO 4032 M3 hex nut with the hexagonal pocket on the top face and
+    press it firmly all the way down by hand until it seats against the internal floor
+    below the rim.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '2'
+  text: Thread the M3 bolt into the captured nut and through the clearance hole so
+    it passes out the far side, using the fluted outer rim to tighten by hand.
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  - m3_nut
+  tool: null

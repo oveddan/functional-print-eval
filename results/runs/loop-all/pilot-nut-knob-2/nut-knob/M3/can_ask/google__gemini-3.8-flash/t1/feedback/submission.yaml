@@ -1,0 +1,196 @@
+task: nut-knob/M3
+note: 20 mm ergonomic fluted hand knob for an M3 bolt with adjusted 5.60 mm hex pocket
+  for hand press-fit retention of an ISO 4032 M3 nut without glue.
+questions: []
+params:
+  knob_height:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob
+  nut_pocket_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of nut pocket; nut is recessed 0.8 mm inside the knob
+  flute_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of cylindrical finger flutes
+  lead_in_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth and radial clearance of pocket entry lead-in recess
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut nominal thickness
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut width across flats
+  chamfer_size:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Comfort chamfer on top and bottom outer rims
+  flute_offset:
+    value: 10.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance of flute centers from knob axis
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt nominal major diameter
+  bolt_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for M3 bolt through-shaft
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the knob across lobes
+  nut_pocket_af:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket width across flats increased to 5.60 mm (+0.1 mm over nominal nut)
+      to compensate for FDM perimeter shrinkage and achieve a hand press-fit
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip flutes around perimeter
+parts:
+- id: m3_hand_knob
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    r = p.knob_od /\
+    \ 2.0\n    h = p.knob_height\n\n    # 1. Base cylinder with comfort chamfers on\
+    \ top and bottom circular rims\n    knob = cq.Workplane(\"XY\").circle(r).extrude(h)\n\
+    \    knob = knob.edges(\"<Z or >Z\").chamfer(p.chamfer_size)\n\n    # 2. Cut 6\
+    \ ergonomic finger grip flutes around perimeter\n    pts = []\n    n_flutes =\
+    \ int(p.flute_count)\n    for i in range(n_flutes):\n        ang = i * (2.0 *\
+    \ math.pi / n_flutes)\n        pts.append((p.flute_offset * math.cos(ang), p.flute_offset\
+    \ * math.sin(ang)))\n\n    flutes = (\n        cq.Workplane(\"XY\")\n        .pushPoints(pts)\n\
+    \        .circle(p.flute_r)\n        .extrude(h + 2.0)\n        .translate((0,\
+    \ 0, -1.0))\n    )\n    knob = knob.cut(flutes)\n\n    # 3. Cut central M3 through-hole\
+    \ for bolt clearance\n    bolt_hole = (\n        cq.Workplane(\"XY\")\n      \
+    \  .circle(p.bolt_hole_d / 2.0)\n        .extrude(h + 2.0)\n        .translate((0,\
+    \ 0, -1.0))\n    )\n    knob = knob.cut(bolt_hole)\n\n    # 4. Cut hexagonal nut\
+    \ pocket from top face\n    hex_d = p.nut_pocket_af / math.cos(math.radians(30))\n\
+    \    pocket_z = h - p.nut_pocket_depth\n    nut_pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .polygon(6, hex_d)\n        .extrude(p.nut_pocket_depth + 1.0)\n\
+    \        .translate((0, 0, pocket_z))\n    )\n    knob = knob.cut(nut_pocket)\n\
+    \n    # 5. Cut lead-in recess at pocket entrance for easy alignment\n    if p.lead_in_chamfer\
+    \ > 0:\n        lead_in_r = (hex_d / 2.0) + p.lead_in_chamfer\n        lead_in_z\
+    \ = h - p.lead_in_chamfer\n        lead_in = (\n            cq.Workplane(\"XY\"\
+    )\n            .circle(lead_in_r)\n            .extrude(p.lead_in_chamfer + 1.0)\n\
+    \            .translate((0, 0, lead_in_z))\n        )\n        knob = knob.cut(lead_in)\n\
+    \n    return knob\n"
+  print_orientation: Flat bottom face on bed (z = 0), nut pocket facing upward.
+  use_orientation: Knob axis aligned with bolt axis (Z), fluted rim gripped by hand.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_retention
+  part: m3_hand_knob
+  feature: nut_pocket
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: 0.1
+  params:
+  - nut_pocket_af
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Check that the M3 hex nut presses into the pocket by hand and stays
+      retained when turned upside down without glue.
+- id: nut_shoulder_stop
+  part: m3_hand_knob
+  feature: nut_shoulder
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_pocket_depth
+  - knob_height
+  - bolt_hole_d
+  check:
+    method: measure
+    ref: null
+    description: Verify internal shoulder retains the nut and prevents it from being
+      pushed out through the far side.
+- id: bolt_clearance
+  part: m3_hand_knob
+  feature: bolt_hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Verify M3 bolt passes freely through the through-hole and out the
+      other side.
+manual:
+- n: '1'
+  text: 3D print the knob with its flat bottom face on the build plate (z = 0) and
+    the nut pocket facing upward. No supports or brims are required.
+  parts:
+  - m3_hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Place the ISO 4032 M3 hex nut into the circular lead-in recess on the top
+    face of the knob and align the nut's flats with the hexagonal pocket.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Press the nut firmly into the pocket using thumb pressure (or by inverting
+    and pressing down against a flat desktop) until it seats fully against the internal
+    shoulder. The nut sits recessed 0.8 mm inside the knob and remains in place when
+    turned upside down without glue.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '4'
+  text: Thread your M3 bolt through the nut. The bolt passes completely through the
+    nut and exits through the central clearance hole on the far side of the knob.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_nut
+  tool: null

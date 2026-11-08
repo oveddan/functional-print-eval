@@ -1,0 +1,210 @@
+task: bearing-wheel
+note: A replacement sliding-door roller wheel that runs on two 608ZZ bearings pressed
+  into a central pocket, spinning on an M8 bolt axle. Bearings are press-fit 7 mm
+  deep each side so their inner faces meet in the middle; the bolt head + nylock nut
+  clamp the inner races together while the outer races (and wheel) are free to spin
+  on the balls. Two 1 mm retaining lips stop the bearings walking out. The rim is
+  flat/square (typical flat rail) with chamfered corners; if your track has a ridge,
+  the OD and groove need adjusting. Press-fit tolerance is verified with the coupon
+  first.
+questions:
+- text: Does your track rail have a raised ridge the wheel's groove rides on, or is
+    it a flat rail? I made the rim flat; if it has a ridge I can add a matching groove
+    around the rim.
+  answer: null
+params:
+  wheel_od:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: asked
+    note: User's estimate of the old wheel's outside diameter (~50 mm)
+  wheel_width:
+    value: 16.0
+    unit: mm
+    kind: world
+    source: asked
+    note: User's estimate of the old wheel's overall width (~16 mm)
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing OD nominally 22.0 mm (measured 21.22 flagged suspect; nominal
+      used)
+  bearing_width:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing width, nominal 7.0 mm
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing bore, nominal 8.0 mm
+  m8_shank_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M8 bolt shank diameter
+  bearing_pocket_dia:
+    value: 21.95
+    unit: mm
+    kind: design
+    source: design
+    note: Light press fit (~0.05 mm interference) for the bearing OD; verify with
+      coupon and nudge +/-0.05 if needed
+  lip_id:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'Retaining lip inner diameter: holds the 22 mm outer race, clears the inner
+      race and the 8 mm bolt'
+  lip_axial:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Axial depth of each retaining lip
+  rim_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Corner chamfer on rim and lip edges for clean bridging
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    r = p.wheel_od / 2.0\n    w =\
+    \ p.wheel_width\n    bore = p.bearing_pocket_dia\n    lip = p.lip_axial\n    lid\
+    \ = p.lip_id\n\n    body = cq.Workplane(\"XY\").circle(r).extrude(w)\n    body\
+    \ = body.faces(\">Z\").workplane().hole(bore)\n\n    ring = (cq.Workplane(\"XY\"\
+    )\n            .circle(bore / 2.0)\n            .circle(lid / 2.0)\n         \
+    \   .extrude(lip))\n\n    body = body.union(ring)\n    body = body.union(ring.translate((0,\
+    \ 0, w - lip)))\n\n    body = body.faces(\"+Z\").edges().chamfer(p.rim_chamfer)\n\
+    \    body = body.faces(\"-Z\").edges().chamfer(p.rim_chamfer)\n    return body\n"
+  print_orientation: Flat face down on the bed (wheel axis vertical, z = 0 is the
+    bottom face)
+  use_orientation: Wheel axis horizontal, rolling on the rim, face toward the bracket
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    r = 15.0\n    h = 8.0\n    body\
+    \ = cq.Workplane(\"XY\").circle(r).extrude(h)\n    body = body.faces(\">Z\").workplane().hole(p.bearing_pocket_dia)\n\
+    \    return body\n"
+  print_orientation: Flat face down on the bed
+  use_orientation: Ring lying flat; press a bearing into the bore
+hardware:
+- id: h_bolt
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: h_washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: h_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: h_bearing
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: j_axle
+  fastener: h_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: roller_wheel
+    feature: through bore (21.95 mm pocket + 20 mm lip)
+    role: clearance
+  - part: roller_wheel
+    feature: washer face (bottom)
+    role: washer
+  - part: roller_wheel
+    feature: washer face (top)
+    role: washer
+  nut: h_nut
+  external: null
+criteria:
+- id: c_bearing_fit
+  part: roller_wheel
+  feature: bearing pocket
+  relation: engages
+  hardware: h_bearing
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: Press a 608ZZ into the fit coupon. Firm press fit that still lets
+      the race turn; if it drops in or won't seat, adjust bearing_pocket_dia +/-0.05
+      mm.
+- id: c_bolt_clearance
+  part: roller_wheel
+  feature: retaining lip + bore
+  relation: clears
+  hardware: h_bolt
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: Lip ID 20 mm and pocket 21.95 mm clear the 8 mm M8 bolt shank; bolt
+      slides through on assembly.
+- id: c_track
+  part: roller_wheel
+  feature: rim
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: none
+    ref: null
+    description: Flat square rim made as a best guess since the track couldn't be
+      measured; verify it tracks before loading the door.
+manual:
+- n: '1'
+  text: Print the fit_coupon and press one 608ZZ bearing into its bore. It should
+    seat with firm hand pressure. If it drops in loose or won't start, reprint the
+    wheel with bearing_pocket_dia nudged by +/-0.05 mm and retest.
+  parts:
+  - fit_coupon
+  hardware:
+  - h_bearing
+  tool: null
+- n: '2'
+  text: Print the roller_wheel flat face down.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one bearing into each side of the wheel until the two bearings' inner
+    faces meet in the middle (each bearing sits 7 mm deep).
+  parts:
+  - roller_wheel
+  hardware:
+  - h_bearing
+  tool: null
+- n: '4'
+  text: Slide the M8 bolt through the wheel, add one washer, thread the nylock nut
+    on, then the second washer at the head side. Hand-tighten so the wheel spins freely
+    without wobble.
+  parts:
+  - roller_wheel
+  hardware:
+  - h_bolt
+  - h_washer
+  - h_nut
+  tool: null
