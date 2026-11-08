@@ -1,0 +1,397 @@
+task: servo-mount
+note: 'Plate has a rectangular opening for the servo case (0.25 mm clearance per side).
+  The case hangs through it, shaft up, and the tabs rest flat on the plate top. The
+  ribs are on the top of the tabs, so they don''t get in the way. The tab holes (4.58
+  mm) are too small for M5, so I used M3 screws, washers and heat-set inserts instead
+  of M4 nuts. A nut pocket would have left only about 0.4 mm of wall against the servo
+  opening. The screw spacing across the tab (10 mm) is a guess, so print the coupon
+  before the full plate. Not modelled: a wire notch, and how the plate fixes to the
+  base.'
+questions:
+- text: What is the centre-to-centre spacing of the two holes on one tab? I assumed
+    10 mm, the usual MG996R value, because it wasn't measured.
+  answer: null
+- text: Which way should the servo's cable exit face? The opening has no wire notch,
+    so the cable runs below the plate.
+  answer: null
+params:
+  servo_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: case end to end, without tabs
+  servo_wid:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: case side to side
+  servo_height:
+    value: 40.4
+    unit: mm
+    kind: world
+    source: measured
+    note: case top to bottom
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: U-slot width in each tab
+  hole_gap_inner:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge of one tab hole to inside edge of the other tab's hole; screw
+      centres are this + tab_hole_d apart
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  tab_to_top:
+    value: 5.66
+    unit: mm
+    kind: world
+    source: measured
+    note: measured 5.63 to 5.69, mid value
+  rib_w:
+    value: 1.51
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  rib_h:
+    value: 1.8
+    unit: mm
+    kind: world
+    source: measured
+    note: rib is on the tab's top face, so it does not touch the plate
+  rib_pos:
+    value: 8.31
+    unit: mm
+    kind: world
+    source: measured
+    note: ambiguous reference; not used. Design assumes the rib is midway between
+      the two holes
+  hole_pitch:
+    value: 10
+    unit: mm
+    kind: world
+    source: guessed
+    note: centre-to-centre of the two holes on one tab. Not measured (the user didn't
+      have it). 10 mm is the usual MG996R value. Check with the coupon
+  fit_clear:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: clearance per side between servo case and pocket
+  insert_hole_d:
+    value: 4.3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: heat-set insert M3x4x5 hole_d
+  insert_len:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  insert_hole_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: blind hole, insert 4 mm plus room for the screw tip
+  screw_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 screw
+  washer_od:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M3
+  washer_t:
+    value: 0.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  plate_t:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_len:
+    value: 62
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_w:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  corner_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    T = p.plate_t\n    plate = cq.Workplane('XY').box(p.plate_len,\
+    \ p.plate_w, T, centered=(True, True, False)).edges('|Z').fillet(p.corner_r)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=-1).rect(p.servo_len + 2*p.fit_clear,\
+    \ p.servo_wid + 2*p.fit_clear).extrude(T + 2)\n    plate = plate.cut(pocket)\n\
+    \    hx = (p.hole_gap_inner + p.tab_hole_d) / 2.0\n    pts = [(sx*hx, sy*p.hole_pitch/2.0)\
+    \ for sx in (-1, 1) for sy in (-1, 1)]\n    holes = cq.Workplane('XY').workplane(offset=T\
+    \ - p.insert_hole_depth).pushPoints(pts).circle(p.insert_hole_d/2.0).extrude(p.insert_hole_depth\
+    \ + 1)\n    return plate.cut(holes)\n"
+  print_orientation: flat, underside on the bed, insert holes facing up
+  use_orientation: flat, servo drops in from above with shaft up
+- id: fit-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    T = p.plate_t\n    x0 = p.plate_len/2.0 - 9.5\n    c =\
+    \ cq.Workplane('XY').box(19, p.plate_w, T, centered=(True, True, False)).translate((x0,\
+    \ 0, 0))\n    pocket = cq.Workplane('XY').workplane(offset=-1).rect(p.servo_len\
+    \ + 2*p.fit_clear, p.servo_wid + 2*p.fit_clear).extrude(T + 2)\n    c = c.cut(pocket)\n\
+    \    hx = (p.hole_gap_inner + p.tab_hole_d) / 2.0\n    pts = [(hx, sy*p.hole_pitch/2.0)\
+    \ for sy in (-1, 1)]\n    holes = cq.Workplane('XY').workplane(offset=T - p.insert_hole_depth).pushPoints(pts).circle(p.insert_hole_d/2.0).extrude(p.insert_hole_depth\
+    \ + 1)\n    return c.cut(holes)\n"
+  print_orientation: flat, underside on the bed
+  use_orientation: flat; test the servo tab on it
+hardware:
+- id: screw
+  ref: ISO 4762 M3x8
+  qty: 4
+- id: washer
+  ref: ISO 7089 M3
+  qty: 4
+- id: insert
+  ref: insert M3x4x5
+  qty: 4
+joints:
+- id: j-ne
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - 5.0
+  - 9.78
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: insert_hole_ne
+    role: insert
+  - part: plate
+    feature: insert_hole_ne
+    role: thread
+  nut: null
+  external: MG996R mounting tab (U slot, washer on top)
+- id: j-nw
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - 5.0
+  - 9.78
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: insert_hole_nw
+    role: insert
+  - part: plate
+    feature: insert_hole_nw
+    role: thread
+  nut: null
+  external: MG996R mounting tab (U slot, washer on top)
+- id: j-se
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - -5.0
+  - 9.78
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: insert_hole_se
+    role: insert
+  - part: plate
+    feature: insert_hole_se
+    role: thread
+  nut: null
+  external: MG996R mounting tab (U slot, washer on top)
+- id: j-sw
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - -5.0
+  - 9.78
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: insert_hole_sw
+    role: insert
+  - part: plate
+    feature: insert_hole_sw
+    role: thread
+  nut: null
+  external: MG996R mounting tab (U slot, washer on top)
+criteria:
+- id: c-pocket
+  part: plate
+  feature: servo_pocket
+  relation: contains
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - servo_len
+  - servo_wid
+  - fit_clear
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Servo case end sits in the coupon pocket with a small even gap, no
+      rocking.
+- id: c-insert
+  part: plate
+  feature: insert_hole
+  relation: seats
+  hardware: insert
+  clearance_mm: null
+  params:
+  - insert_hole_d
+  - insert_hole_depth
+  - insert_len
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Heat-set an insert in a coupon hole; it should go in flush and hold.
+- id: c-holes
+  part: plate
+  feature: insert_hole_pattern
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - hole_gap_inner
+  - tab_hole_d
+  - hole_pitch
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Set the servo tab on the coupon; the insert holes must show in the
+      middle of the tab's U slots, one each side of the rib.
+- id: c-tab-seat
+  part: plate
+  feature: top_face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - tab_t
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: Both tab undersides rest flat on the plate top face; the servo does
+      not rock.
+- id: c-rib
+  part: plate
+  feature: insert_hole_pattern
+  relation: clears
+  hardware: washer
+  clearance_mm: null
+  params:
+  - rib_w
+  - rib_h
+  - washer_od
+  check:
+    method: measure
+    ref: null
+    description: The M3 washers (7 mm) should not touch the 1.5 mm rib between the
+      holes.
+- id: c-screw
+  part: plate
+  feature: insert_hole
+  relation: engages
+  hardware: screw
+  clearance_mm: null
+  params:
+  - screw_d
+  - insert_len
+  check:
+    method: none
+    ref: null
+    description: M3x8 plus washer, tab and insert gives about 5 mm in the 4 mm insert,
+      and the screw tip clears the hole bottom.
+manual:
+- n: '1'
+  text: Print the fit-coupon first (flat, 0.2 mm layers, 3 walls). Press the servo's
+    tab onto it. The servo end should drop into the pocket with no rocking, and the
+    two round holes should line up with the middle of the tab's two U slots.
+  parts:
+  - fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: If the holes don't line up, tell me the real distance between the two holes
+    on one tab and I'll adjust the plate. I guessed 10 mm because I couldn't get it
+    measured. Otherwise print the plate flat, with the insert holes facing up.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Heat-set the four M3 inserts into the round holes in the plate's top face.
+    Use a soldering iron at about 200-220 C, push each one in straight until it is
+    flush with the surface, and let it cool.
+  parts:
+  - plate
+  hardware:
+  - insert
+  tool: soldering iron
+- n: '4'
+  text: Lower the servo into the rectangular opening with the shaft pointing up. The
+    two tabs rest flat on the plate top. Slide it so each tab's U slots sit over the
+    insert holes.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Put an M3 washer over each insert hole on the tab. Drive in an M3x8 screw
+    through each washer and U slot into the insert. Tighten all four evenly in a cross
+    pattern until snug. Don't overtighten, because the PLA and tab can crush.
+  parts:
+  - plate
+  hardware:
+  - screw
+  - washer
+  tool: 2.5 mm hex key

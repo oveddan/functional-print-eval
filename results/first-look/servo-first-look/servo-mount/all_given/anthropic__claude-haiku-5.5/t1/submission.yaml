@@ -1,0 +1,202 @@
+task: servo-mount
+note: The plate holds the MG996R by its mounting tabs, body hanging below and shaft
+  up. The hole pattern uses your measured 44.61 mm inside-edge gap. The spacing between
+  the two holes on a single tab was not measured, so 10 mm is a placeholder that must
+  be verified before printing. The rib on each tab sits between the washer and tab
+  face, so clamping is through the rib crests; check for residual rock after tightening.
+questions:
+- text: Measure the centre-to-centre distance between the two mounting holes on one
+    servo tab. The plate uses 10 mm as a placeholder; if your servo's spacing differs,
+    the holes will not line up.
+  answer: null
+- text: Does the servo's body sit fully through the 40.98 x 20.22 mm opening without
+    binding?
+  answer: null
+params:
+  body_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case length, end to end, excluding tabs
+  body_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case width
+  body_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: total clearance added to the body opening (0.2 per side)
+  hole_gap:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge to inside edge between the holes on the two tabs; hole centre
+      spacing = hole_gap + tab_hole_d
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  tab_hole_sep:
+    value: 10
+    unit: mm
+    kind: world
+    source: guessed
+    note: 'GUESS: centre-to-centre spacing of the two holes on one tab. Not measured.
+      Must be verified before printing.'
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  tab_top_to_case:
+    value: 5.66
+    unit: mm
+    kind: world
+    source: measured
+    note: average of 5.63 and 5.69
+  rib_h:
+    value: 1.8
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  clear_d:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: M4 clearance hole in plate
+  nut_af:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M4 across flats
+  nut_h:
+    value: 3.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_depth:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: nut pocket depth from plate bottom
+  plate_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_len:
+    value: 62
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_w:
+    value: 26
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    L = p.plate_len\n    W = p.plate_w\n  \
+    \  T = p.plate_t\n    plate = cq.Workplane('XY').box(L, W, T, centered=(True,\
+    \ True, False))\n    ol = p.body_len + p.body_clear\n    ow = p.body_w + p.body_clear\n\
+    \    opening = cq.Workplane('XY').box(ol, ow, T + 2, centered=(True, True, False)).translate((0,\
+    \ 0, -1))\n    plate = plate.cut(opening)\n    hx = (p.hole_gap + p.tab_hole_d)\
+    \ / 2.0\n    hy = p.tab_hole_sep / 2.0\n    d_circ = p.nut_af / math.cos(math.radians(30))\n\
+    \    for sx in (-1, 1):\n        for sy in (-1, 1):\n            x = sx * hx\n\
+    \            y = sy * hy\n            hole = cq.Workplane('XY').circle(p.clear_d\
+    \ / 2.0).extrude(T + 2).translate((x, y, -1))\n            pocket = (cq.Workplane('XY').polygon(6,\
+    \ d_circ).extrude(p.nut_depth + 1)\n                      .rotate((0, 0, 0), (0,\
+    \ 0, 1), 30).translate((x, y, -1)))\n            plate = plate.cut(hole).cut(pocket)\n\
+    \    return plate\n"
+  print_orientation: bottom face on bed (z=0 at plate underside)
+  use_orientation: horizontal, servo body hanging down through the opening, tabs resting
+    on top face
+hardware:
+- id: screw
+  ref: ISO 4762 M4x10
+  qty: 4
+- id: nut
+  ref: ISO 4032 M4
+  qty: 4
+- id: washer
+  ref: ISO 7089 M4
+  qty: 4
+joints:
+- id: j1
+  fastener: screw
+  axis_origin:
+  - 24.6
+  - 5.0
+  - 9.88
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: clearance
+    role: clearance
+  - part: plate
+    feature: nut_pocket
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria: []
+manual:
+- n: '1'
+  text: Print the plate flat, bottom face on the bed, PLA. Before printing the full
+    part, check the tab hole spacing (see questions).
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one ISO 4032 M4 nut into each of the four hex pockets from the underside
+    of the plate. Flats should sit flat in the pocket.
+  parts:
+  - plate
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Lower the servo through the central opening from above, shaft pointing up.
+    The mounting tabs should rest on the top face of the plate.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Place an ISO 7089 M4 washer over each tab hole. The washer will bear on the
+    tab's rib.
+  parts: []
+  hardware:
+  - washer
+  tool: null
+- n: '5'
+  text: Drive an ISO 4762 M4x10 screw down through each washer and tab hole into its
+    nut. Tighten evenly, alternating between the screws, until the tabs are firmly
+    clamped with no rocking.
+  parts:
+  - plate
+  hardware:
+  - screw
+  tool: null

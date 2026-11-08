@@ -1,0 +1,71 @@
+task: servo-mount
+note: >-
+  Reference solution. The servo hangs under the plate with its shaft up through the cutout, its tabs'
+  top faces against the plate's underside. A channel under each tab makes room for the rib between
+  the tab's holes, and M3 screws go down through the plate and the tab slots into nuts under the tabs.
+params:
+  body_l:     {value: 40.58, kind: hardware, source: measured, note: the case end to end}
+  body_w:     {value: 19.82, kind: hardware, source: measured, note: the case side to side}
+  clearance:  {value: 0.25, kind: design, source: measured, note: a side; this servo seated at 0.25 on this printer}
+  pitch:      {value: 49.19, kind: hardware, source: measured, note: centres of the end-to-end holes, inside edges 44.61 plus a hole 4.58}
+  pair:       {value: 10, kind: hardware, source: datasheet, note: the two holes on one tab, not measured}
+  rib_w:      {value: 1.51, kind: hardware, source: measured, note: the rib between each tab's holes}
+  rib_h:      {value: 1.8, kind: hardware, source: measured, note: how far the rib stands up from the tab}
+  channel_w:  {value: 2.1, kind: design, source: design, note: the rib's width and over 0.25 a side}
+  channel_h:  {value: 2.2, kind: design, source: design, note: the rib's height and two layers}
+  screw_hole: {value: 3.4, kind: design, source: design, note: M3 clearance}
+  plate_l:    {value: 72, kind: design, source: design}
+  plate_w:    {value: 36, kind: design, source: design}
+  plate_t:    {value: 4, kind: design, source: design, note: the case still rises above it, 5.69 over the tab}
+parts:
+  - id: plate
+    role: final
+    material: PLA
+    print_orientation: Underside, with the rib channels, on the bed; no supports. The channels are open grooves at the bed.
+    use_orientation: Channels down. The servo comes up from underneath, shaft first, until its tabs meet the plate.
+    code: |
+      def build(p):
+          plate = cq.Workplane("XY").rect(p.plate_l, p.plate_w).extrude(p.plate_t)
+          opening = cq.Workplane("XY").rect(p.body_l + 2 * p.clearance, p.body_w + 2 * p.clearance).extrude(p.plate_t)
+          plate = plate.cut(opening)
+          for side in (-1, 1):
+              # room for the rib, from the cutout out past the tab's holes
+              start = p.body_l / 2
+              end = p.pitch / 2 + 4.58 / 2 + 1
+              channel = (cq.Workplane("XY").center(side * (start + end) / 2, 0)
+                         .rect(end - start, p.channel_w).extrude(p.channel_h))
+              plate = plate.cut(channel)
+              for row in (-1, 1):
+                  hole = cq.Workplane("XY").center(side * p.pitch / 2, row * p.pair / 2).circle(p.screw_hole / 2).extrude(p.plate_t)
+                  plate = plate.cut(hole)
+          return plate
+hardware:
+  - {id: screw, ref: "ISO 4762 M3x10", qty: 4}
+  - {id: nut, ref: "ISO 4032 M3", qty: 4}
+criteria:
+  - id: C1
+    part: plate
+    feature: cutout
+    relation: clears
+    clearance_mm: 0.25
+    params: [body_l, body_w, clearance]
+    check: {method: none, description: This servo seated at 0.25 a side on this printer (test print D).}
+  - id: C2
+    part: plate
+    feature: rib channels
+    relation: clears
+    params: [rib_w, rib_h, channel_w, channel_h]
+    check: {method: none, description: "The rib's size is the person's reading. No relieved plate has been printed."}
+manual:
+  - n: "1"
+    text: Print the plate channel side down with no supports.
+    parts: [plate]
+    hardware: []
+  - n: "2"
+    text: Push the servo up through the cutout from underneath, shaft first, until its tabs sit flat against the plate with each rib in its channel.
+    parts: [plate]
+    hardware: []
+  - n: "3"
+    text: Put a screw down through each of the four holes and the tab slot under it, and tighten a nut on it under the tab.
+    parts: [plate]
+    hardware: [screw, nut]

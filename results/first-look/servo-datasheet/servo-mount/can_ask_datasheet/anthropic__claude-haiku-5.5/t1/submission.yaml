@@ -1,0 +1,256 @@
+task: servo-mount
+note: ''
+questions:
+- text: Each MG996R tab may have two holes in a U-shape, not one. Which hole is the
+    bolt going through? Check this with a test fit before you use the plate.
+  answer: null
+- text: The 49.19 mm hole spacing is derived from the inside-edge measurement (44.61
+    mm + 4.58 mm). Please check it against the actual tab holes.
+  answer: null
+params:
+  body_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case length, end to end, tabs excluded
+  body_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case width
+  body_h:
+    value: 40.4
+    unit: mm
+    kind: world
+    source: measured
+    note: case bottom to top
+  tab_top_to_case_top:
+    value: 5.66
+    unit: mm
+    kind: world
+    source: measured
+    note: shaft-side face of tab to top of case
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: tab thickness
+  rib_h:
+    value: 1.8
+    unit: mm
+    kind: world
+    source: measured
+    note: rib standing above tab top face; bolt head sits on it
+  hole_span:
+    value: 49.19
+    unit: mm
+    kind: world
+    source: measured
+    note: hole centre-to-centre, derived as 44.61 inside-edge spacing + 4.58 hole
+      dia. Tab layout (two holes per tab, U-open) is not fully confirmed; verify with
+      a test fit
+  hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo tab hole diameter
+  clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: pocket clearance around the servo case
+  floor:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: floor thickness under the servo case
+  bolt_clear:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for M4 bolt through the ledge
+  nut_af:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M4 across flats
+  nut_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M4 height
+  washer_t:
+    value: 0.8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M4 thickness
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    hs = p.hole_span\n    L = hs + 11.0\n    W = 30.0\n  \
+    \  F = p.floor\n    tab_under = p.body_h - p.tab_top_to_case_top - p.tab_t\n \
+    \   ledge_z = F + tab_under\n    plate = cq.Workplane('XY').box(L, W, ledge_z,\
+    \ centered=(True, True, False))\n    pl = p.body_len + p.clear\n    pw = p.body_w\
+    \ + p.clear\n    pocket = cq.Workplane('XY').box(pl, pw, tab_under + 2).translate((0,\
+    \ 0, F + (tab_under + 2) / 2))\n    plate = plate.cut(pocket)\n    for x in (-hs\
+    \ / 2, hs / 2):\n        hole = cq.Workplane('XY').circle(p.bolt_clear / 2).extrude(ledge_z\
+    \ + 2).translate((x, 0, -1))\n        plate = plate.cut(hole)\n        d = (p.nut_af\
+    \ + 0.4) / 0.866\n        nut = cq.Workplane('XY').polygon(6, d).extrude(p.nut_h\
+    \ + 1.3).translate((x, 0, -1))\n        plate = plate.cut(nut)\n    cable = cq.Workplane('XY').circle(4).extrude(F\
+    \ + 2).translate((-16, 0, -1))\n    plate = plate.cut(cable)\n    return plate"
+  print_orientation: flat bottom on bed, pocket open upward (z=0 is the bed)
+  use_orientation: upright, servo shaft pointing up, plate bottom down
+hardware:
+- id: screw_m4
+  ref: ISO 4762 M4x45
+  qty: 2
+- id: nut_m4
+  ref: ISO 10511 M4
+  qty: 2
+- id: washer_m4
+  ref: ISO 7089 M4
+  qty: 2
+joints:
+- id: j_tab_front
+  fastener: screw_m4
+  axis_origin:
+  - -24.6
+  - 0.0
+  - 44.3
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: tab ledge at -x end, nut pocket
+    role: nut_pocket
+  nut: nut_m4
+  external: null
+- id: j_tab_back
+  fastener: screw_m4
+  axis_origin:
+  - 24.6
+  - 0.0
+  - 44.3
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: tab ledge at +x end, nut pocket
+    role: nut_pocket
+  nut: nut_m4
+  external: null
+criteria:
+- id: c_tab_ledge
+  part: plate
+  feature: tab ledge top at pocket rim
+  relation: supports
+  hardware: null
+  clearance_mm: 0.0
+  params:
+  - body_h
+  - tab_top_to_case_top
+  - tab_t
+  check:
+    method: measure
+    ref: null
+    description: Confirm the servo tab underside sits on the plate ledge at the designed
+      height (32.46 mm above the case bottom)
+- id: c_bolt_hole
+  part: plate
+  feature: M4 clearance hole at each tab position
+  relation: clears
+  hardware: screw_m4
+  clearance_mm: 0.1
+  params:
+  - hole_span
+  - hole_d
+  - bolt_clear
+  check:
+    method: coupon
+    ref: null
+    description: Test fit an M4 screw through a tab hole and the plate hole before
+      final assembly
+- id: c_nut
+  part: plate
+  feature: hex nut pocket on underside
+  relation: seats
+  hardware: nut_m4
+  clearance_mm: 0.2
+  params:
+  - nut_af
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Confirm the M4 lock nut presses in fully
+- id: c_case
+  part: plate
+  feature: servo pocket
+  relation: contains
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - body_len
+  - body_w
+  - clear
+  check:
+    method: measure
+    ref: null
+    description: Confirm the servo case drops into the pocket with clearance
+manual:
+- n: '1'
+  text: Print the plate with the flat bottom on the bed (pocket open upward). Use
+    0.2 mm layers.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one M4 lock nut (ISO 10511 M4) into each hex pocket from underneath
+    the plate. The pocket is open at the bottom, so the nut sits flush.
+  parts:
+  - plate
+  hardware:
+  - nut_m4
+  tool: null
+- n: '3'
+  text: Lower the MG996R into the pocket with its shaft pointing up and the cable
+    passing down through the round hole in the floor. The tabs should rest on the
+    two ledges at the ends.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: For each end, put an M4 washer on the tab rib, pass an M4x45 socket head screw
+    down through the tab hole and the plate ledge, and thread it into the captured
+    nut. Snug evenly, then tighten both ends until the servo can't move.
+  parts:
+  - plate
+  hardware:
+  - screw_m4
+  - washer_m4
+  - nut_m4
+  tool: 2.5 mm hex key
+- n: '5'
+  text: Check there is no wobble by pushing the servo body. If the tab holes don't
+    line up with the plate holes, stop and report it before drilling anything.
+  parts:
+  - plate
+  hardware: []
+  tool: null

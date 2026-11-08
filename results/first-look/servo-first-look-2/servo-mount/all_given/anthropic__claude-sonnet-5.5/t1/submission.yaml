@@ -1,0 +1,418 @@
+task: servo-mount
+note: The plate sits under the servo tabs. The case hangs through a cutout and the
+  shaft points up. M3 screws with washers go down through the tab holes and slots
+  into nuts held in pockets on the underside. I used M3 instead of M4 so the nut pockets
+  leave about 1 mm of wall next to the cutout. The hole spacing across one tab was
+  not measured, so the slots allow roughly 9.2 to 12.8 mm. The cable exit height was
+  not measured either, so no cable relief is cut. Run the fit-coupon first to check
+  both.
+questions:
+- text: What is the centre-to-centre spacing of the two holes on one tab? The slots
+    cover 9.2 to 12.8 mm, so this only needs checking if the coupon shows a miss.
+  answer: null
+- text: How far below the tab underside does the cable leave the case? The plate is
+    6 mm thick and I haven't cut a relief for the cable.
+  answer: null
+params:
+  body_len:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: servo case end to end, excluding tabs
+  body_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  body_h:
+    value: 40.4
+    unit: mm
+    kind: world
+    source: measured
+    note: not used by the plate geometry; the case hangs below it
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: U-shaped, open to the tab end
+  hole_gap_inner:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge to inside edge across the two tabs; hole centre pitch = this
+      + hole diameter = 49.19
+  tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  tab_top_to_case_top:
+    value: 5.66
+    unit: mm
+    kind: world
+    source: measured
+    note: 5.63 to 5.69, midpoint
+  rib_w:
+    value: 1.51
+    unit: mm
+    kind: world
+    source: measured
+    note: rib on tab top face, so it does not touch a plate under the tabs
+  rib_h:
+    value: 1.8
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  rib_pos:
+    value: 8.31
+    unit: mm
+    kind: world
+    source: measured
+    note: ambiguous; read as hole outer side to rib middle, which gives a hole pitch
+      of about 12.0 across the tab
+  fit_clr:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: per-side clearance around the case in the cutout
+  screw_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M3
+  screw_slot_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance slot width
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_od:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_t:
+    value: 0.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  pocket_clr:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: extra across flats for the nut pocket
+  pocket_depth_extra:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_y_min:
+    value: 4.6
+    unit: mm
+    kind: world
+    source: guessed
+    note: smallest half-pitch between the two holes on one tab. NOT measured. Typical
+      MG996R is about 10 mm pitch
+  slot_y_max:
+    value: 6.4
+    unit: mm
+    kind: world
+    source: guessed
+    note: largest half-pitch. Rib reading suggests about 12 mm pitch, so slots cover
+      9.2 to 12.8 mm
+  plate_t:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_w:
+    value: 36
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_margin:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: material outside each nut pocket
+  cable_exit_below_tab:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: not measured. If the cable leaves less than 6 mm below the tab underside
+      it will touch the plate
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    pitch = p.hole_gap_inner + p.tab_hole_d\n\
+    \    pocket_af = p.nut_af + p.pocket_clr\n    plate_l = pitch + 2*(pocket_af/2\
+    \ + p.edge_margin)\n    t = p.plate_t\n    plate = cq.Workplane('XY').box(plate_l,\
+    \ p.plate_w, t, centered=(True, True, False)).edges('|Z').fillet(3)\n    cut =\
+    \ cq.Workplane('XY').box(p.body_len + 2*p.fit_clr, p.body_w + 2*p.fit_clr, t,\
+    \ centered=(True, True, False))\n    plate = plate.cut(cut)\n    R = pocket_af\
+    \ / math.sqrt(3)\n    pts = [(R*math.cos(math.radians(90+60*k)), R*math.sin(math.radians(90+60*k)))\
+    \ for k in range(6)]\n    depth = p.nut_h + p.pocket_depth_extra\n    ymid = (p.slot_y_min\
+    \ + p.slot_y_max)/2\n    span = p.slot_y_max - p.slot_y_min\n    for sx in (-1,\
+    \ 1):\n        for sy in (-1, 1):\n            x = sx*pitch/2\n            slot\
+    \ = cq.Workplane('XY').center(x, sy*ymid).slot2D(span + p.screw_slot_d, p.screw_slot_d,\
+    \ 90).extrude(t)\n            plate = plate.cut(slot)\n            for yy in (p.slot_y_min,\
+    \ p.slot_y_max):\n                hexp = cq.Workplane('XY').polyline([(x+a, sy*yy+b)\
+    \ for a, b in pts]).close().extrude(depth)\n                plate = plate.cut(hexp)\n\
+    \            bar = cq.Workplane('XY').center(x, sy*ymid).rect(pocket_af, span).extrude(depth)\n\
+    \            plate = plate.cut(bar)\n    return plate"
+  print_orientation: flat, bottom face (nut pockets open) on the bed
+  use_orientation: horizontal; servo hangs down through the cutout with the shaft
+    pointing up, tabs rest on the top face
+- id: fit-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    pitch = p.hole_gap_inner + p.tab_hole_d\n\
+    \    pocket_af = p.nut_af + p.pocket_clr\n    plate_l = pitch + 2*(pocket_af/2\
+    \ + p.edge_margin)\n    t = p.plate_t\n    plate = cq.Workplane('XY').box(plate_l,\
+    \ p.plate_w, t, centered=(True, True, False)).edges('|Z').fillet(3)\n    cut =\
+    \ cq.Workplane('XY').box(p.body_len + 2*p.fit_clr, p.body_w + 2*p.fit_clr, t,\
+    \ centered=(True, True, False))\n    plate = plate.cut(cut)\n    R = pocket_af\
+    \ / math.sqrt(3)\n    pts = [(R*math.cos(math.radians(90+60*k)), R*math.sin(math.radians(90+60*k)))\
+    \ for k in range(6)]\n    depth = p.nut_h + p.pocket_depth_extra\n    ymid = (p.slot_y_min\
+    \ + p.slot_y_max)/2\n    span = p.slot_y_max - p.slot_y_min\n    sx = 1\n    for\
+    \ sy in (-1, 1):\n        x = sx*pitch/2\n        slot = cq.Workplane('XY').center(x,\
+    \ sy*ymid).slot2D(span + p.screw_slot_d, p.screw_slot_d, 90).extrude(t)\n    \
+    \    plate = plate.cut(slot)\n        for yy in (p.slot_y_min, p.slot_y_max):\n\
+    \            hexp = cq.Workplane('XY').polyline([(x+a, sy*yy+b) for a, b in pts]).close().extrude(depth)\n\
+    \            plate = plate.cut(hexp)\n        bar = cq.Workplane('XY').center(x,\
+    \ sy*ymid).rect(pocket_af, span).extrude(depth)\n        plate = plate.cut(bar)\n\
+    \    keep = cq.Workplane('XY').box(plate_l/2 - 12 + 0.0, p.plate_w, t, centered=(False,\
+    \ True, False)).translate((12, 0, 0))\n    return plate.intersect(keep)"
+  print_orientation: flat, bottom face (nut pockets open) on the bed
+  use_orientation: 'test only: lay one servo tab on it, case end in the cutout'
+hardware:
+- id: screw
+  ref: ISO 4762 M3x8
+  qty: 4
+- id: nut
+  ref: ISO 4032 M3
+  qty: 4
+- id: washer
+  ref: ISO 7089 M3
+  qty: 4
+joints:
+- id: j1
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - 5.5
+  - 8.78
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: slot_+x_+y
+    role: clearance
+  - part: plate
+    feature: nut_pocket_+x_+y
+    role: nut_pocket
+  nut: nut
+  external: MG996R mounting tab hole
+- id: j2
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - -5.5
+  - 8.78
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: slot_+x_-y
+    role: clearance
+  - part: plate
+    feature: nut_pocket_+x_-y
+    role: nut_pocket
+  nut: nut
+  external: MG996R mounting tab hole
+- id: j3
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - 5.5
+  - 8.78
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: slot_-x_+y
+    role: clearance
+  - part: plate
+    feature: nut_pocket_-x_+y
+    role: nut_pocket
+  nut: nut
+  external: MG996R mounting tab hole
+- id: j4
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - -5.5
+  - 8.78
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: slot_-x_-y
+    role: clearance
+  - part: plate
+    feature: nut_pocket_-x_-y
+    role: nut_pocket
+  nut: nut
+  external: MG996R mounting tab hole
+criteria:
+- id: c1
+  part: plate
+  feature: servo case cutout
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - body_len
+  - body_w
+  - fit_clr
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Case end drops into the coupon cutout with no force and little play
+- id: c2
+  part: plate
+  feature: screw slots
+  relation: clears
+  hardware: screw
+  clearance_mm: 0.2
+  params:
+  - screw_d
+  - screw_slot_d
+  - slot_y_min
+  - slot_y_max
+  - tab_hole_d
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Tab holes line up with the slots and the screws sit within them
+- id: c3
+  part: plate
+  feature: nut pockets
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clr
+  - pocket_depth_extra
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: M3 nut slides into the pocket and cannot turn
+- id: c4
+  part: plate
+  feature: top face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - tab_t
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: Both tabs lie flat on the top face with no rocking
+manual:
+- n: '1'
+  text: Print the fit-coupon first (about 10 minutes, flat with the pocket side on
+    the bed). Lay one servo tab on it with the case end in the cutout. Check that
+    the two tab holes sit over the slots, that an M3 nut drops into the pocket, and
+    that the case fits the cutout. If the holes miss the slots, stop and tell me the
+    hole spacing on one tab.
+  parts:
+  - fit-coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the plate flat with the nut pockets on the bed. Use 4 or more walls
+    and 40% or more infill.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press an M3 nut into each of the 4 pockets from the underside. The nut can
+    slide along the pocket but cannot turn.
+  parts:
+  - plate
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Lower the servo case, shaft up, through the cutout until the tabs rest on
+    the plate top face. Check which end the cable leaves. If the cable touches the
+    plate, tell me the height of the cable exit below the tab and I will cut a relief
+    for it.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Put an M3 washer on each of the 4 tab holes. Drop an M3x8 screw through each
+    washer, tab hole and plate slot, and start it into the nut below. Slide the nut
+    and screw within the slot until they sit in the tab hole.
+  parts:
+  - plate
+  hardware:
+  - screw
+  - washer
+  - nut
+  tool: 2.5 mm hex key
+- n: '6'
+  text: Tighten the four screws a little at a time, working in a cross pattern, until
+    the servo is firm on the plate. Don't crush the printed plate. The screw tips
+    end up flush with or just above the underside of the plate.
+  parts:
+  - plate
+  hardware:
+  - screw
+  tool: 2.5 mm hex key

@@ -1,0 +1,353 @@
+task: servo-mount
+note: 'The servo drops through a snug cutout (0.2 mm clearance per side) in a 10 mm
+  plate, so the case is held sideways. Four M4x12 screws through the tab slots clamp
+  the tabs onto the top face, into nylon-insert lock nuts trapped underneath so they
+  won''t shake loose. Measured hole pitch along the length: 44.61 + 4.58 = 49.19 mm.
+  The spacing across the two holes on one tab (10 mm) comes from the datasheet, and
+  the coupon checks it. The case hangs about 32.5 mm below the plate (40.4 - 5.66
+  - 2.28), so leave room for it when you design the base. The plate is solid all round
+  the cutout, so you can drill or add fixing holes later.'
+questions:
+- text: Distance between the two holes on one tab (centre to centre) wasn't measured.
+    I used the datasheet's 10 mm. Please confirm it with the coupon.
+  answer: null
+params:
+  servo_body_l:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: MG996R case length, not counting the tabs
+  servo_body_w:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_tab_t:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  tab_hole_d:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: U-slot open to tab end
+  tab_hole_inner_gap:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: inside edge to inside edge across the two tabs; pitch = gap + hole_d = 49.19
+  tab_hole_across:
+    value: 10.0
+    unit: mm
+    kind: world
+    source: datasheet
+    note: MG996R datasheet, centre to centre of the two holes on one tab. Not measured,
+      so the coupon checks it
+  body_fit_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: per side, so the fit is snug and doesn't wobble
+  plate_t:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_l:
+    value: 64.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_w:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  m4_clear_d:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for M4
+  m4_head_d:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  screw_len:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: tip ends 0.28 mm above the plate's underside
+  nut_af:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M4
+  nut_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_pocket_extra:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: servo_plate
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    t = p.plate_t\n    pitch = p.tab_hole_inner_gap\
+    \ + p.tab_hole_d\n    hx = pitch/2.0; hy = p.tab_hole_across/2.0\n    plate =\
+    \ cq.Workplane('XY').box(p.plate_l, p.plate_w, t, centered=(True, True, False))\n\
+    \    cut = cq.Workplane('XY').box(p.servo_body_l + 2*p.body_fit_clear, p.servo_body_w\
+    \ + 2*p.body_fit_clear, t + 2, centered=(True, True, False)).translate((0, 0,\
+    \ -1))\n    plate = plate.cut(cut)\n    pts = [(sx*hx, sy*hy) for sx in (-1, 1)\
+    \ for sy in (-1, 1)]\n    holes = cq.Workplane('XY').pushPoints(pts).circle(p.m4_clear_d/2.0).extrude(t\
+    \ + 2).translate((0, 0, -1))\n    plate = plate.cut(holes)\n    dc = (p.nut_af\
+    \ + p.nut_clear)/math.cos(math.radians(30))\n    depth = p.nut_h + p.nut_pocket_extra\n\
+    \    for (x, y) in pts:\n        hexp = cq.Workplane('XY').polygon(6, dc).extrude(depth\
+    \ + 1).rotate((0, 0, 0), (0, 0, 1), 90).translate((x, y, -1))\n        plate =\
+    \ plate.cut(hexp)\n    return plate\n"
+  print_orientation: Underside (nut-pocket side) on the bed, z=0. Flat, no supports.
+    The only bridges are the 7.3 mm roofs over the nut pockets
+  use_orientation: Same way up as printed. Servo drops in from the top with the shaft
+    pointing up, the tabs rest on the top face, and the case hangs about 32 mm below
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    t = p.coupon_t\n    pitch = p.tab_hole_inner_gap\
+    \ + p.tab_hole_d\n    hx = pitch/2.0; hy = p.tab_hole_across/2.0\n    plate =\
+    \ cq.Workplane('XY').box(p.plate_l, p.plate_w, t, centered=(True, True, False))\n\
+    \    cut = cq.Workplane('XY').box(p.servo_body_l + 2*p.body_fit_clear, p.servo_body_w\
+    \ + 2*p.body_fit_clear, t + 2, centered=(True, True, False)).translate((0, 0,\
+    \ -1))\n    plate = plate.cut(cut)\n    pts = [(sx*hx, sy*hy) for sx in (-1, 1)\
+    \ for sy in (-1, 1)]\n    holes = cq.Workplane('XY').pushPoints(pts).circle(p.m4_clear_d/2.0).extrude(t\
+    \ + 2).translate((0, 0, -1))\n    plate = plate.cut(holes)\n    dc = (p.nut_af\
+    \ + p.nut_clear)/math.cos(math.radians(30))\n    depth = p.nut_h + p.nut_pocket_extra\n\
+    \    for (x, y) in pts:\n        hexp = cq.Workplane('XY').polygon(6, dc).extrude(depth\
+    \ + 1).rotate((0, 0, 0), (0, 0, 1), 90).translate((x, y, -1))\n        plate =\
+    \ plate.cut(hexp)\n    return plate\n"
+  print_orientation: Underside on the bed, same as servo_plate
+  use_orientation: Test fit only
+hardware:
+- id: screw
+  ref: ISO 4762 M4x12
+  qty: 4
+- id: locknut
+  ref: ISO 10511 M4
+  qty: 4
+joints:
+- id: j1
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - 5.0
+  - 12.28
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: clearance hole +x+y
+    role: clearance
+  - part: servo_plate
+    feature: nut pocket +x+y
+    role: nut_pocket
+  nut: locknut
+  external: MG996R mounting tab (head bears on top of tab)
+- id: j2
+  fastener: screw
+  axis_origin:
+  - 24.595
+  - -5.0
+  - 12.28
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: clearance hole +x-y
+    role: clearance
+  - part: servo_plate
+    feature: nut pocket +x-y
+    role: nut_pocket
+  nut: locknut
+  external: MG996R mounting tab
+- id: j3
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - 5.0
+  - 12.28
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: clearance hole -x+y
+    role: clearance
+  - part: servo_plate
+    feature: nut pocket -x+y
+    role: nut_pocket
+  nut: locknut
+  external: MG996R mounting tab
+- id: j4
+  fastener: screw
+  axis_origin:
+  - -24.595
+  - -5.0
+  - 12.28
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: clearance hole -x-y
+    role: clearance
+  - part: servo_plate
+    feature: nut pocket -x-y
+    role: nut_pocket
+  nut: locknut
+  external: MG996R mounting tab
+criteria:
+- id: c1
+  part: servo_plate
+  feature: body cutout
+  relation: contains
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - servo_body_l
+  - servo_body_w
+  - body_fit_clear
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The servo case should slide through with light hand pressure and
+      no rocking
+- id: c2
+  part: servo_plate
+  feature: clearance holes line up with the tab slots
+  relation: clears
+  hardware: screw
+  clearance_mm: null
+  params:
+  - tab_hole_inner_gap
+  - tab_hole_d
+  - tab_hole_across
+  - m4_clear_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: All 4 M4 screws pass straight down through the tab slots and the
+      plate without being forced
+- id: c3
+  part: servo_plate
+  feature: nut pockets
+  relation: seats
+  hardware: locknut
+  clearance_mm: 0.15
+  params:
+  - nut_af
+  - nut_clear
+  - nut_h
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Each lock nut presses in flat and doesn't turn
+- id: c4
+  part: servo_plate
+  feature: screw reaches through the nylon ring of the lock nut
+  relation: engages
+  hardware: screw
+  clearance_mm: null
+  params:
+  - screw_len
+  - plate_t
+  - servo_tab_t
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Once tight, the screw tip should be level with the nut's bottom face
+      or a touch past it, and still below the plate's underside
+manual:
+- n: '1'
+  text: 'Print fit_coupon first: underside down, PLA, no supports. Push the servo
+    down through the rectangular cutout from the top, shaft up. It should go in snug,
+    with no rattle. Check that all four slots in the tabs line up with the four holes.
+    Press an M4 lock nut into each hex pocket on the underside. If everything fits,
+    go to step 2. If not, report back which feature didn''t fit.'
+  parts:
+  - fit_coupon
+  hardware:
+  - locknut
+  tool: null
+- n: '2'
+  text: 'Print servo_plate the same way: underside (the side with the hex pockets)
+    on the bed, no supports. 3-4 walls and about 30% infill keep it stiff.'
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press an M4 nylon-insert lock nut into each of the 4 hex pockets on the underside,
+    nylon ring facing down (away from the screw head). Seat each one fully against
+    the top of its pocket. A screw drawn up from above will finish seating it.
+  parts:
+  - servo_plate
+  hardware:
+  - locknut
+  tool: null
+- n: '4'
+  text: Turn the plate pocket-side down. Feed the servo cable down through the cutout,
+    then lower the servo in from above, shaft up, until the tabs sit flat on the top
+    face of the plate.
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Put an M4x12 socket head screw through each tab slot (no washer, because the
+    9 mm washer could ride up on the tab rib) and thread it into the nut below. Tighten
+    in a cross pattern until the tabs are clamped flat. Stop there, or the plastic
+    tabs will crack.
+  parts:
+  - servo_plate
+  hardware:
+  - screw
+  - locknut
+  tool: 3 mm hex key

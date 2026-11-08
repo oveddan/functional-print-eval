@@ -48,6 +48,10 @@ class TaskFormat(BaseModel):
     model_config = ConfigDict(extra="forbid")
     assembly: bool = False  # the design says where every part and framed item goes in the finished piece
     own_hardware: list[OwnPart] = []
+    hardware_left_out: list[str] = []  # sections of catalog/hardware.yaml the prompt leaves out; the hidden facts carry them
+    datasheet: list[Path] = []  # page images handed over with the request in can_ask_datasheet; relative to the task folder
+    datasheet_line: str = ""  # what the person says as they hand it over
+
 
 
 @dataclass
@@ -114,4 +118,5 @@ def load(task_id) -> Task:
     requirements = [Requirement.model_validate(entry) for entry in yaml.safe_load(read("requirements.yaml")) or []]
     reference = read("reference.yaml") if (folder / "reference.yaml").exists() else None
     task_format = TaskFormat.model_validate(catalog.task_format(task_id))
+    task_format.datasheet = [folder / page for page in task_format.datasheet]
     return Task(task_id, request, facts, requirements, reference, task_format)

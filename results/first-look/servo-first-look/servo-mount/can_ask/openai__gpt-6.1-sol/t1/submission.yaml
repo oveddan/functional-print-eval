@@ -1,0 +1,367 @@
+task: servo-mount
+note: 'Rigid slotted mounting plate for the measured servo, shaft upward. Four M4
+  screws and washers clamp the mounting tabs; transverse plate slots accommodate the
+  unmeasured same-tab hole spacing. Lengthwise screw spacing is inferred from the
+  reported inner-edge gap plus slot width, so the fit coupon is mandatory. No base
+  attachment or stand-off height is specified: the body hangs below the plate. This
+  is not a load-rated robot joint; check tab strength, plate deflection and fastener
+  retention under intended loads.'
+questions:
+- text: Center-to-center spacing of the two slots on one tab?
+  answer: null
+- text: Tab underside to servo bottom, and cable exit location?
+  answer: null
+- text: Actual lengthwise slot-center spacing?
+  answer: Not directly measured. Inferred as 44.61 + 4.58 = 49.19 mm; validate with
+    fit coupon.
+params:
+  body_length:
+    value: 40.58
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  body_width:
+    value: 19.82
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_slot_width:
+    value: 4.58
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  servo_slot_inner_gap:
+    value: 44.61
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported nearest-edge gap between slots at opposite ends, not center spacing.
+  tab_thickness:
+    value: 2.28
+    unit: mm
+    kind: world
+    source: measured
+    note: ''
+  same_tab_pitch:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Slots permit adjustment; coupon must verify four screws and washers fit
+      simultaneously.
+  body_below_tab:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Not needed for open-bottom plate; must measure before designing base.
+  body_clearance_per_side:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_length:
+    value: 76
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_width:
+    value: 48
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_thickness:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_thickness:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_width:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_center_travel:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Each transverse slot allows screw-center y positions from -10 to +10 mm.
+  screw_d:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  screw_length:
+    value: 20
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  screw_head_d:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  screw_head_h:
+    value: 4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_id:
+    value: 4.3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_od:
+    value: 9
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_t:
+    value: 0.8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_af:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 3.2
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+parts:
+- id: servo_plate
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    t = p.plate_thickness\n    a = p.body_length + 2*p.body_clearance_per_side\n\
+    \    b = p.body_width + 2*p.body_clearance_per_side\n    pitch = p.servo_slot_inner_gap\
+    \ + p.servo_slot_width\n    plate = cq.Workplane('XY').rect(p.plate_length, p.plate_width).extrude(t)\n\
+    \    opening = cq.Workplane('XY').rect(a,b).extrude(t)\n    plate = plate.cut(opening)\n\
+    \    for x in (-pitch/2, pitch/2):\n        cut = cq.Workplane('XY').center(x,0).slot2D(p.slot_center_travel+p.slot_width,p.slot_width,90).extrude(t)\n\
+    \        plate = plate.cut(cut)\n    return plate"
+  print_orientation: Broad underside on bed at z=0; all openings vertical. No supports
+    or bridges needed.
+  use_orientation: 'Same orientation: plate top z=8 supports tab undersides, body
+    extends down through central opening, output shaft points +Z. x is servo long
+    axis; y is width.'
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    t = p.coupon_thickness\n    pitch = p.servo_slot_inner_gap\
+    \ + p.servo_slot_width\n    plate = cq.Workplane('XY').rect(p.plate_length,p.plate_width).extrude(t)\n\
+    \    plate = plate.cut(cq.Workplane('XY').rect(p.body_length+2*p.body_clearance_per_side,p.body_width+2*p.body_clearance_per_side).extrude(t))\n\
+    \    for x in (-pitch/2,pitch/2):\n        plate = plate.cut(cq.Workplane('XY').center(x,0).slot2D(p.slot_center_travel+p.slot_width,p.slot_width,90).extrude(t))\n\
+    \    return plate"
+  print_orientation: Broad face on bed, z=0; no supports.
+  use_orientation: 'Fit test only: tabs sit on top with body through opening. Not
+    a structural mounting plate.'
+hardware:
+- id: tab_screws
+  ref: ISO 4762 M4x20
+  qty: 4
+- id: tab_nuts
+  ref: ISO 4032 M4
+  qty: 4
+- id: tab_washers
+  ref: ISO 7089 M4
+  qty: 8
+joints:
+- id: tab_clamps
+  fastener: tab_screws
+  axis_origin:
+  - -24.595
+  - 0.0
+  - 11.08
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: servo_plate
+    feature: 'Four adjustable screw locations: two in each transverse slot at x=±(servo_slot_inner_gap+servo_slot_width)/2.
+      y positions set by servo tab slots; origin records one representative axis at
+      y=0, head bearing plane above tab and top washer.'
+    role: clearance
+  - part: servo_plate
+    feature: Underside at z=0, each nut bears through one loose M4 washer spanning
+      the slot; nut is not captive.
+    role: washer
+  nut: tab_nuts
+  external: Servo mounting tabs are clamped between top washers and plate. Four separate
+    screws, not threads into servo.
+criteria:
+- id: body_passage
+  part: servo_plate
+  feature: Central rectangular opening
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - body_length
+  - body_width
+  - body_clearance_per_side
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Unpowered servo must pass through opening without force or cable
+      pinching; tab undersides must lie flat. Check any case seams or protrusions
+      as well as nominal body.
+- id: four_screw_alignment
+  part: servo_plate
+  feature: Two transverse through-slots
+  relation: clears
+  hardware: tab_screws
+  clearance_mm: 0.25
+  params:
+  - servo_slot_inner_gap
+  - servo_slot_width
+  - slot_width
+  - slot_center_travel
+  - screw_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Fit all four M4 screws simultaneously through servo U-slots and coupon.
+      Each shank must sit fully inside its U-slot root, not hang past tab tips. If
+      inferred x spacing is wrong, stop and remeasure slot centers; do not force alignment.
+- id: washer_support
+  part: servo_plate
+  feature: Tab top washers and underside washers across transverse slots
+  relation: supports
+  hardware: tab_washers
+  clearance_mm: null
+  params:
+  - washer_od
+  - washer_t
+  - slot_width
+  - same_tab_pitch
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: All washers must sit flat without overlapping each other, overhanging
+      a tab tip excessively, or contacting servo case/horn. Top washers must bridge
+      both sides of the 4.58 mm U-slots. Bottom washers must bridge plate slots fully.
+      If not, do not assemble.
+- id: bolt_stack
+  part: servo_plate
+  feature: 8 mm plate, tab, two washers and nut stack
+  relation: engages
+  hardware: tab_screws
+  clearance_mm: null
+  params:
+  - plate_thickness
+  - tab_thickness
+  - washer_t
+  - nut_h
+  - screw_length
+  check:
+    method: measure
+    ref: null
+    description: Nominal stack is 15.08 mm; M4x20 projects about 4.92 mm past nut.
+      Confirm full nut engagement and clearance for screw tips below plate.
+- id: rigidity_check
+  part: servo_plate
+  feature: Flat tab seating and final mounted stiffness
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_thickness
+  - tab_thickness
+  check:
+    method: measure
+    ref: null
+    description: With plate supported rigidly on future base, gently rock servo by
+      hand. No tab slip, screw movement or visible tab flex/cracking is acceptable.
+      Internal shaft/gear backlash cannot be removed by this plate.
+manual:
+- n: '1'
+  text: Print fit_coupon at 0.2 mm layers, flat on bed, without supports. Deburr holes
+    and slots. Disconnect servo power before fitting.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: Slicer and deburring tool
+- n: '2'
+  text: 'Support the coupon at its outer edges with clearance below; do not rest on
+    the servo body. Feed cable and body through opening from above, shaft upward.
+    Tabs must sit flat without force. Test all four screws, with one washer over each
+    tab and another below the coupon. Install nuts only loosely: this coupon is not
+    structural. Verify every fit criterion, especially washer overlap and all four
+    screw positions. If it fails, stop and obtain missing measurements before printing
+    final plate.'
+  parts:
+  - fit_coupon
+  hardware:
+  - tab_screws
+  - tab_nuts
+  - tab_washers
+  tool: null
+- n: '3'
+  text: Print servo_plate flat at 0.2 mm layers, at least 5 perimeters, 6 top and
+    bottom layers and 50% infill. No supports required. Remove burrs without enlarging
+    slots. Transfer servo from coupon to plate and confirm fit again.
+  parts:
+  - servo_plate
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '4'
+  text: At each of four tab holes, insert M4x20 downward through a washer, servo U-slot,
+    then plate slot. Under plate add a washer and M4 nut. Use all four screws. Keep
+    servo body centered in opening and tabs flat. Hold nuts with a wrench and tighten
+    screws evenly in a diagonal sequence, only hand-snug. Do not crush plastic tabs,
+    bow the plate, or use power-driver torque. Check all nuts have full thread engagement.
+  parts:
+  - servo_plate
+  hardware:
+  - tab_screws
+  - tab_nuts
+  - tab_washers
+  tool: 3 mm hex key and 7 mm wrench
+- n: '5'
+  text: Before powered use, design a rigid base attachment supporting this plate near
+    both tab regions. Measure servo depth and allow space for cable bends, nuts and
+    protruding screw tips; no body or cable may bear on the base. This design deliberately
+    has no base fixing holes. Do not operate a robot arm with the plate unsecured.
+  parts:
+  - servo_plate
+  hardware: []
+  tool: null
+- n: '6'
+  text: With plate secured, gently test for rocking before low-speed unloaded servo
+    motion. Recheck clamps after initial use and periodically because PLA and plastic
+    tabs can creep. Avoid heat and unattended load holding. Stop for slip, flex or
+    cracking. This plate addresses case mounting only, not servo gear backlash or
+    suitability for robot-arm loads.
+  parts:
+  - servo_plate
+  hardware:
+  - tab_screws
+  - tab_nuts
+  tool: null
