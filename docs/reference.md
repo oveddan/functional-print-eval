@@ -125,11 +125,11 @@ sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 Then:
 
 ```bash
-git clone https://github.com/oveddan/print-build-eval.git
+git clone https://github.com/oveddan/functional-print-eval.git
 ```
 
 ```bash
-cd print-build-eval && uv sync
+cd functional-print-eval && uv sync
 ```
 
 ### Everything at once
@@ -582,8 +582,8 @@ Estoa has merged, and its trials are in the results above. Servo mount is on an 
 
 | Task | Branch | What it tests | Model trials | Result | Cost |
 |---|---|---|---|---|---|
-| Estoa light | merged in [#23](https://github.com/oveddan/print-build-eval/pull/23), run `pilot-estoa` | A solid enclosure that hangs on the wall for an ESP32 that powers an LED disc | 18 | 0 pass, 14 fail, 3 not graded, 1 with no design | $6.03 |
-| Servo mount | [#47](https://github.com/oveddan/print-build-eval/pull/47), runs `servo-first-look`, `servo-first-look-2`, `servo-datasheet` | A 3D-printed mount for a servo that's going to drive a robotic arm | 29 | 1 pass, 17 fail, 11 not graded | $4.81 |
+| Estoa light | merged in [a04b153](https://github.com/oveddan/functional-print-eval/commit/a04b153), run `pilot-estoa` | A solid enclosure that hangs on the wall for an ESP32 that powers an LED disc | 18 | 0 pass, 14 fail, 3 not graded, 1 with no design | $6.03 |
+| Servo mount | merged in [e7dc82b](https://github.com/oveddan/functional-print-eval/commit/e7dc82b), runs `servo-first-look`, `servo-first-look-2`, `servo-datasheet` | A 3D-printed mount for a servo that's going to drive a robotic arm | 29 | 1 pass, 17 fail, 11 not graded | $4.81 |
 
 ### Estoa light
 

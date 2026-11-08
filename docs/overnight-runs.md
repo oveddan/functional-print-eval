@@ -58,7 +58,7 @@ Local:
 4. Create the worktree/branch: `git worktree add ../overnight -b overnight/2026-10-30` and paste the prompt there.
 
 Cloud:
-5. Make sure the Claude GitHub App is installed on `oveddan/print-build-eval`, or run `/web-setup`. The repo is private and already pushed, `docs/context/` included (Dan 2026-10-30: pushing it all is fine).
+5. Make sure the Claude GitHub App is installed on `oveddan/functional-print-eval`, or run `/web-setup`.
 6. Create a new cloud environment, because a network secret applies to every session in its environment:
    - **Network access:** the default. Package managers and GitHub are covered, and a network secret's host is reachable whatever this is set to.
    - **Network secret:** type Bearer, allowed website `openrouter.ai`, header `Authorization`, prefix `Bearer`, and the capped key as the value. The key stays outside the VM.
