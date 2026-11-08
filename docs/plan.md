@@ -1,6 +1,6 @@
 # Plan
 
-Read this first in a new session, then `docs/scoring.md` (the quality bar and method), `seeds/classes.yaml` (the general failure classes) with the seed files beside it, and the index of Dan's private source notes (`docs/context/INDEX.md`, not in public copies).
+Read this first in a new session, then `docs/scoring.md` (the quality bar and method), `seeds/classes.yaml` (the general failure classes) with the seed files beside it, and the index of Dan's private source notes (in his explorations inbox, `2026-11-08-note-print-build-eval-context-index.md`; not in this repo).
 
 Elsewhere:
 - Concept page (published): https://claude.ai/artifact/6oarQD2uJMVVzDVACoU9Xt

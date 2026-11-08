@@ -5,7 +5,7 @@ Start with `docs/plan.md` (phases, constraints, Dan's open decisions), then `doc
 - Keep `CHANGELOG.md` current: one entry per change that affects results, with the evidence behind it.
 - Never print, echo or commit API keys. Read them from 1Password at run time.
 - Don't copy code from repos with no license (CADEngBench, the BenchCAD 2.0 harness). Reimplement and cite.
-- `docs/context/` is private source material, copied verbatim from Dan's private explorations inbox. Don't edit it, and keep it out of public copies. New pastes from Dan go to the explorations inbox first (global rule), then get copied here if relevant.
+- Dan's private source material (pasted articles, posts, guides, his notes) lives in `~/Source/explorations/inbox/`, not in this repo: the repo is public, and `docs/context/` was removed from it and its history on 2026-11-08. `docs/context/` is git-ignored; never commit it or copy pasted material into the repo. Read a source from the inbox when you need it.
 - Graders should be code wherever possible. Use an LLM judge only where no program can decide, and say so in the report.
 - Every number in the report comes from a run saved under `results/`. Don't make up illustrative numbers outside clearly labeled mockups.
 - No physical work from Dan: never ask for or offer prints, coupon flips, measurements or photos, even as optional or through someone else. He closed this on 2026-10-30. Grade only from `results/predictions/`, `catalog/`, `seeds/` and his session records. Anything those can't decide is "not graded" or a labeled range estimated from recorded prints, reported as a limitation of the eval, never a to-do for him. Never imply a model's design was printed. He can still review text, such as request wording.
