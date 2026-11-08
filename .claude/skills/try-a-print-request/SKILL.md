@@ -12,7 +12,7 @@ The eval's tasks (`tasks/*/`) each come with hidden measurements, task checks an
 1. **Get the request in the person's own words.** Don't rewrite it into a spec; the eval's point is that the model works out the mechanism. Ask them to put every measurement that matters in it: the model can call `measure`, but nobody answers (it hears that it can't be measured), so anything left out is a guess.
 2. **Pick a model**, an OpenRouter id such as `anthropic/claude-sonnet-5.5` or `anthropic/claude-haiku-5.5`.
 3. **Agree a budget and get a yes before spending.** A trial calls a paid API. `--budget` is US dollars for the one trial (default 0.50); no new model call starts once it's spent, so the last call can run over it. In the eval's saved `can_ask` trials the median trial cost under a cent on Haiku 5.5, about $0.08 on Sonnet 5.5 and $0.17 on Opus 5.5; the dearest single trials were $0.57 (Sonnet, Opus) and $1.01 (Gemini 4 Argon). A request of your own may take more turns than those tasks did.
-4. **The API key.** It needs `OPENROUTER_API_KEY`. If it isn't set, the runner reads it from 1Password at run time with `op read` (on Dan's machine). Otherwise read it inline for the one command, as below. Never print, echo, log or commit it, and don't write it to a file.
+4. **An OpenRouter API key.** Every model is called through [OpenRouter](https://openrouter.ai), which bills per call. To get one: make an account at openrouter.ai, add credits, and create a key in its settings. Then set it in the shell that runs the command, with `export OPENROUTER_API_KEY=<your key>` or by putting `OPENROUTER_API_KEY=<your key>` in front of the command. If the variable isn't set, the runner tries the 1Password CLI at the reference in `pbe/runner/llm.py` (`OP_REF`), and otherwise stops with an error that says how to set it. Never print, echo, log or commit the key, and don't write it to a file in the repo.
 
 ## Run
 
@@ -20,7 +20,7 @@ The eval's tasks (`tasks/*/`) each come with hidden measurements, task checks an
 uv run python -m pbe.try_request "I want a hook for my bike helmet that screws under my desk..." --model anthropic/claude-sonnet-5.5 --budget 0.50
 ```
 
-With the key read inline from 1Password (the reference is an example; use the person's own):
+If you keep the key in 1Password, read it inline for the one command (use your own item's reference):
 
 ```bash
 OPENROUTER_API_KEY="$(op read op://<vault>/OpenRouter/credential)" uv run python -m pbe.try_request "..." --model anthropic/claude-haiku-5.5 --budget 0.25

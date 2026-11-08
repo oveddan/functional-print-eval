@@ -1,7 +1,7 @@
 """OpenRouter chat client.
 
-The key is read from 1Password at run time, or from OPENROUTER_API_KEY for anyone
-reproducing the runs with their own key. It is never printed or saved. In a cloud
+The key is read at run time from OPENROUTER_API_KEY or, if that's unset, from the 1Password
+CLI at OP_REF. It is never printed or saved. In a cloud
 session the variable holds a placeholder, and the proxy attaches the real key.
 """
 import http.client
@@ -24,6 +24,11 @@ RETRYABLE = {408, 429, 500, 502, 503, 504}
 AUTOMATIC_CACHE = {"type": "ephemeral"}
 
 
+NO_KEY = ("No OpenRouter API key. Every model is called through OpenRouter, billed per call: make an account at "
+          "https://openrouter.ai, add credits, create a key in its settings, and set it with "
+          "`export OPENROUTER_API_KEY=<your key>`. Never commit it. (No 1Password fallback either: {fallback}.)")
+
+
 class LLMError(RuntimeError):
     pass
 
@@ -32,9 +37,12 @@ class LLMError(RuntimeError):
 def _key():
     if key := os.environ.get("OPENROUTER_API_KEY"):
         return key
-    op_read = subprocess.run(["op", "read", OP_REF], capture_output=True, text=True)
+    try:
+        op_read = subprocess.run(["op", "read", OP_REF], capture_output=True, text=True)
+    except FileNotFoundError:
+        raise LLMError(NO_KEY.format(fallback="the 1Password CLI (`op`) isn't installed")) from None
     if op_read.returncode != 0:
-        raise LLMError(f"no OPENROUTER_API_KEY, and `op read {OP_REF}` failed: {op_read.stderr.strip()}")
+        raise LLMError(NO_KEY.format(fallback=f"`op read {OP_REF}` failed: {op_read.stderr.strip()}"))
     return op_read.stdout.strip()
 
 
