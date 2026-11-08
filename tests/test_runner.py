@@ -34,6 +34,16 @@ def test_part_code_cannot_see_the_api_key(tmp_path, monkeypatch):
     assert built["p"].ok, built["p"].error
 
 
+def test_with_no_key_and_no_1password_cli_the_error_says_how_to_get_a_key(tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setenv("PATH", str(tmp_path))  # no `op` to run
+    llm._key.cache_clear()
+    with pytest.raises(llm.LLMError, match="export OPENROUTER_API_KEY=") as error:
+        llm._key()
+    llm._key.cache_clear()
+    assert "openrouter.ai" in str(error.value) and "isn't installed" in str(error.value)
+
+
 @pytest.mark.skipif(not build.sandbox(), reason="no sandbox here")
 @pytest.mark.parametrize("line", [
     'socket.create_connection(("1.1.1.1", 443), timeout=3)',
