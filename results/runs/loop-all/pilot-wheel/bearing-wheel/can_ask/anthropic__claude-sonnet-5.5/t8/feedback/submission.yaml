@@ -1,0 +1,330 @@
+task: bearing-wheel
+note: 'Change from the first version: the lower bearing pocket''s roof printed badly
+  because it had to bridge the whole 22 mm pocket. The web opening is now a 45 degree
+  cone: a 1.5 mm ledge at 19 mm dia carries the lower bearing, and the cone narrows
+  to a 16 mm dia lip under the upper bearing. The roof needs no bridge. The bearing
+  seat size (22.09 mm, snug) is unchanged. The spacers are unchanged. The bracket
+  gap and track profile were still not measured, so the 1.0 mm end spacers are still
+  a guess and the rim is flat. PLA can creep or crack under a heavy door, so PETG
+  or nylon would be tougher if you have it.'
+questions:
+- text: What is the gap between the bracket arms? It could not be measured. I assumed
+    18 mm and set spacer_t to match.
+  answer: null
+- text: What is the shape of the track the wheel runs on (flat, V or round)? It could
+    not be measured, so the rim is flat with a 1 mm chamfer.
+  answer: null
+- text: How long is the bolt, and does it have a nut? Neither was given. M8x40 is
+    a placeholder.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user measured about 22; matches 608 nominal
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user measured about 7
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: user measured M8 shank about 8
+  fit_clearance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance. The coupon and wheel seats printed 22.09 and were snug,
+      which is right, so this is unchanged.
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter on spacer bores over the bolt
+  web_hole_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: diameter of the small lip at the top of the web opening. It is larger than
+      the inner race (about 12 mm), so only the outer race touches the web.
+  ledge_d:
+    value: 19
+    unit: mm
+    kind: design
+    source: design
+    note: diameter where the cone starts at the bottom pocket's roof. The ring from
+      here out to the pocket wall is the seat for the lower bearing's outer race (shoulder
+      about 19 mm). The cone then slopes at 45 degrees, so the roof prints without
+      a bridge.
+  mid_spacer_od:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: touches inner races only, must be under web_hole_d and over the bearing
+      bore
+  end_spacer_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: touches inner race only
+  spacer_t:
+    value: 1
+    unit: mm
+    kind: world
+    source: guessed
+    note: 'UNKNOWN: bracket gap could not be measured. Gap needed = wheel_w + 2*spacer_t
+      = 18 mm. Change this to (gap - 16)/2.'
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_od:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pocket_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    pocket_d = p.bearing_od + p.fit_clearance\n    w = cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w)\n\
+    \    w = w.edges().chamfer(p.edge_chamfer)\n    bottom = cq.Workplane('XY').circle(pocket_d/2).extrude(p.bearing_w)\n\
+    \    top = cq.Workplane('XY').workplane(offset=p.wheel_w - p.bearing_w).circle(pocket_d/2).extrude(p.bearing_w)\n\
+    \    # web opening: 45 degree cone from the ledge up to a small lip, so the roof\
+    \ of the bottom pocket needs no bridge\n    z0 = p.bearing_w\n    z1 = p.wheel_w\
+    \ - p.bearing_w\n    rl = p.ledge_d/2\n    rh = p.web_hole_d/2\n    zc = z0 +\
+    \ (rl - rh)\n    pts = [(0, z0), (rl, z0), (rh, zc), (rh, z1 + 0.01), (0, z1 +\
+    \ 0.01)]\n    cone = cq.Workplane('XZ').polyline(pts).close().revolve(360, (0,\
+    \ 0, 0), (0, 1, 0))\n    return w.cut(bottom).cut(top).cut(cone)\n"
+  print_orientation: flat on one face, axis vertical
+  use_orientation: axis horizontal, along the bolt, rolling on its rim
+- id: fit-coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    pocket_d = p.bearing_od + p.fit_clearance\n    c = cq.Workplane('XY').circle(p.coupon_od/2).extrude(p.coupon_h)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=p.coupon_h - p.coupon_pocket_depth).circle(pocket_d/2).extrude(p.coupon_pocket_depth)\n\
+    \    hole = cq.Workplane('XY').circle(p.web_hole_d/2).extrude(p.coupon_h)\n  \
+    \  return c.cut(pocket).cut(hole)\n"
+  print_orientation: flat, pocket opening up
+  use_orientation: test only
+- id: end_spacer
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    return (cq.Workplane('XY').circle(p.end_spacer_od/2).circle((p.bolt_d\
+    \ + p.bolt_clear)/2).extrude(p.spacer_t))\n"
+  print_orientation: flat (print 2)
+  use_orientation: on the bolt between each bracket arm and a bearing's inner race
+- id: mid_spacer
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    return (cq.Workplane('XY').circle(p.mid_spacer_od/2).circle((p.bolt_d\
+    \ + p.bolt_clear)/2).extrude(p.wheel_w - 2*p.bearing_w))\n"
+  print_orientation: flat
+  use_orientation: on the bolt between the two bearings' inner races
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: end_spacer
+    feature: bore
+    role: clearance
+  - part: mid_spacer
+    feature: bore
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - fit_clearance
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Press a 608 bearing into the coupon pocket. It should need firm thumb
+      pressure and stay put. Your first print printed 22.09 mm and was snug, which
+      is correct.
+- id: c2
+  part: wheel
+  feature: web opening
+  relation: clears
+  hardware: null
+  clearance_mm: 2.75
+  params:
+  - web_hole_d
+  - mid_spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Mid spacer and the inner races sit in the web opening without touching
+      it.
+- id: c3
+  part: mid_spacer
+  feature: length (wheel_w - 2*bearing_w)
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: Spacer length equals the 2 mm between the inner races, so tightening
+      the bolt clamps them.
+- id: c4
+  part: end_spacer
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt slides through the spacer.
+- id: c5
+  part: end_spacer
+  feature: thickness
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_t
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: Wheel plus two spacers should fit the bracket gap with about 0.5
+      mm of play. The gap was not measured.
+- id: c6
+  part: wheel
+  feature: web opening roof (cone)
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - ledge_d
+  - web_hole_d
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: The roof over the lower bearing pocket now slopes at 45 degrees from
+      a 1.5 mm ledge, so it should print cleanly with no loose loops and the hole
+      should stay open.
+manual:
+- n: '1'
+  text: Your first fit coupon and wheel both gave a 22.09 mm seat that was snug and
+    held a bearing, so the seat size is unchanged. You only need to reprint the wheel,
+    because its web opening has changed. The end spacers and mid spacer are unchanged,
+    so you can reuse the ones you printed if they came out fine.
+  parts:
+  - fit-coupon
+  hardware:
+  - bearing
+  tool: null
+- n: '2'
+  text: Measure the empty gap between your bracket arms. The spacer thickness is (gap
+    - 16 - 0.5) / 2, and I assumed 1.0 mm (an 18 mm gap). If your gap is different,
+    change spacer_t and reprint the end spacers. If the gap is 17 mm or less, the
+    wheel will not fit with spacers and you'd need a narrower wheel.
+  parts:
+  - end_spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Reprint the wheel flat, with the same bed-side face down as before and no
+    supports. The opening in the middle now narrows with a 45 degree cone, so the
+    roof over the lower bearing pocket no longer needs a bridge. Use 4 or more walls
+    and at least 40% infill. Check that the central opening printed clean and open
+    before you go on.
+  parts:
+  - wheel
+  - end_spacer
+  - mid_spacer
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press one bearing into each side of the wheel until it bottoms on its ledge.
+    Use a vise or clamp with a flat block, and press on the outer race only.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '5'
+  text: 'Put the bolt through the bracket arm, then in this order: an end spacer,
+    the wheel and bearing stack with the mid spacer in the centre between the inner
+    races, and the other end spacer. Pass the bolt through the other arm and tighten
+    it. The wheel must spin freely by hand, with the bearings'' inner races clamped
+    and the outer races not touching the bracket.'
+  parts:
+  - end_spacer
+  - mid_spacer
+  - wheel
+  hardware:
+  - bolt
+  - bearing
+  tool: null

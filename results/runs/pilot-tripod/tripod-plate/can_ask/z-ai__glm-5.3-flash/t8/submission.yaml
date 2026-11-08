@@ -1,0 +1,204 @@
+task: tripod-plate
+note: Temporary quick-release plate for a 1/4-20 camera on a 38 mm Arca-style tripod
+  clamp. The plate is printed in PLA (fine for light, temporary use); the bolt that
+  screws into the camera is the salvaged 1/4-20 webcam-mount bolt, not a printed thread.
+  No anti-twist feature like the original plate — keep the clamp tight.
+questions: []
+params:
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged webcam-mount bolt head, 'about 15 mm across'
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged webcam-mount bolt head height, 'about 5 mm'
+  bolt_thread_len:
+    value: 10
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged webcam-mount bolt thread length under the head, 'about 10 mm'
+  cbore_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: bolt head measured about 15 mm across, +1 mm clearance
+  cbore_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: head is about 5 mm tall, +0.5 mm so it sits just below flush
+  clearance_d:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for the 1/4-20 bolt thread (~6.35 mm)
+  dovetail_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: gives a 45 degree dovetail flank on both sides
+  dovetail_narrow_w:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: 38 wide at top minus 2 x 3 mm of 45 degree flank = 32 mm at the bottom face
+  plate_height:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: standard Arca-style plate height; clears the clamp's screw channel
+  plate_length:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: covers the socket and leaves margin; 50 mm long plate
+  plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: asked
+    note: the tripod clamp takes 38 mm wide plates (Arca-Swiss style)
+parts:
+- id: plate
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    L = p.plate_length\n    W = p.plate_width\n    H = p.plate_height\n\
+    \    dov = p.dovetail_depth\n    nw = p.dovetail_narrow_w\n\n    # lower dovetail\
+    \ section: narrower at the bed face, widening at 45 degrees\n    base = (\n  \
+    \      cq.Workplane(\"XY\")\n        .polyline([\n            (-L / 2.0, -nw /\
+    \ 2.0),\n            (L / 2.0, -nw / 2.0),\n            (L / 2.0, W / 2.0),\n\
+    \            (-L / 2.0, W / 2.0),\n        ])\n        .close()\n        .extrude(dov)\n\
+    \    )\n\n    # upper straight-walled section\n    top = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=dov)\n        .box(L, W, H - dov, centered=(True,\
+    \ True, False))\n    )\n    plate = base.union(top)\n\n    # counterbore for the\
+    \ bolt head, from the top face down\n    plate = plate.faces(\">Z\").workplane().hole(p.cbore_d,\
+    \ p.cbore_depth)\n\n    # through hole for the bolt thread\n    plate = plate.faces(\"\
+    >Z\").workplane().hole(p.clearance_d, H)\n\n    return plate"
+  print_orientation: narrow dovetail underside (the z=0 face) on the bed
+  use_orientation: same as printed, dovetail pointing down into the tripod clamp
+hardware:
+- id: webcam-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt_to_camera
+  fastener: webcam-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: counterbore pocket in the top face
+    role: head_seat
+  - part: plate
+    feature: central through hole
+    role: clearance
+  nut: null
+  external: camera tripod socket (1/4-20)
+criteria:
+- id: cbore_fits_head
+  part: plate
+  feature: counterbore pocket in the top face
+  relation: contains
+  hardware: webcam-bolt
+  clearance_mm: 0.5
+  params: []
+  check:
+    method: measure
+    ref: salvaged:webcam-mount-bolt
+    description: counterbore is 16 mm vs 15 mm measured head, depth 5.5 vs 5 mm measured
+- id: hole_clears_thread
+  part: plate
+  feature: central through hole
+  relation: clears
+  hardware: webcam-bolt
+  clearance_mm: 0.5
+  params: []
+  check:
+    method: none
+    ref: null
+    description: 7 mm hole vs ~6.35 mm 1/4-20 thread OD
+- id: dovetail_engages_clamp
+  part: plate
+  feature: dovetail flanks and overall width
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: measure
+    ref: tripod quick-release clamp
+    description: 38 mm width matches the clamp opening the person reported
+- id: thread_engages_socket
+  part: plate
+  feature: camera 1/4-20 tripod socket
+  relation: supports
+  hardware: webcam-bolt
+  clearance_mm: 5.0
+  params: []
+  check:
+    method: measure
+    ref: salvaged:webcam-mount-bolt
+    description: bolt thread ~10 mm; plate eats ~4.5 mm, leaving ~5.5 mm into a ~5-6
+      mm deep socket
+manual:
+- n: '1'
+  text: Print the plate with the narrow dovetail face flat on the bed, no supports
+    (the 45° dovetail flanks print clean without them; the 16 mm bridge over the counterbore
+    is well within your printer's ability).
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the webcam-mount bolt head-down into the plate's counterbore, so the
+    head sits in the pocket and the thread points down through the central hole. It
+    should sit just below flush.
+  parts:
+  - plate
+  hardware:
+  - webcam-bolt
+  tool: null
+- n: '3'
+  text: Hold the plate against the bottom of the camera over the tripod socket and
+    thread the bolt into the socket by hand. Stop as soon as the plate sits snug against
+    the camera bottom — only about 5 mm of thread engages, so do not force it further.
+  parts:
+  - plate
+  hardware:
+  - webcam-bolt
+  tool: null
+- n: '4'
+  text: Slide the plate's dovetail into the tripod's clamp and close the clamp firmly.
+    This plate has no anti-twist lock like the original, so keep the clamp tight and
+    re-check it before shooting.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: 'Remember this is a temporary PLA part: keep it out of hot cars/direct sun,
+    don''t knock the camera while mounted, and replace it with the metal plate when
+    you find it.'
+  parts:
+  - plate
+  hardware: []
+  tool: null

@@ -1,0 +1,263 @@
+task: nut-knob/M5
+note: The knob is 30 mm across and 11 mm tall, with 6 finger scallops. The nut sits
+  in a hex pocket 8.1 mm across flats and 5.0 mm deep, with three vertical crush ribs
+  and a lead-in chamfer. Below it is a 5 mm floor with a 5.5 mm bolt hole. The pocket
+  opens upward when printed, so there are no bridges or overhangs.
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: about 30 mm across, as requested
+  knob_h:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: finger scallops around the rim
+  edge_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole on the closed side. Smaller than the nut's 8 mm across-flats,
+      so the nut can't be pushed through
+  pocket_af:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: hex pocket across flats, 0.1 mm over the nut. Crush ribs do the gripping
+  pocket_recess:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: the nut sits this far below the open face, fully inside the knob
+  lead_in:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer at the pocket mouth, rib-free
+  rib_r:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_protrusion:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: how far each of the 3 vertical crush ribs sticks into the pocket. Set this
+      from the coupon
+  rib_try_1:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_try_2:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_try_3:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    D = p.knob_d; H = p.knob_h\n    body =\
+    \ cq.Workplane('XY').circle(D/2).extrude(H).edges().chamfer(p.edge_chamfer)\n\
+    \    n = int(p.lobe_count)\n    for i in range(n):\n        a = math.radians(360.0/n*i\
+    \ + 180.0/n)\n        rr = D/2 + p.scallop_r*0.4\n        c = cq.Workplane('XY').center(rr*math.cos(a),\
+    \ rr*math.sin(a)).circle(p.scallop_r).extrude(H)\n        body = body.cut(c)\n\
+    \    body = body.cut(cq.Workplane('XY').circle(p.bolt_clear/2).extrude(H))\n \
+    \   depth = p.nut_h + p.pocket_recess\n    k = 1.0/math.cos(math.radians(30))\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=H-depth).polygon(6, p.pocket_af*k).extrude(depth+1)\n\
+    \    body = body.cut(pocket)\n    lead = (cq.Workplane('XY').workplane(offset=H-p.lead_in).polygon(6,\
+    \ p.pocket_af*k)\n            .workplane(offset=p.lead_in+0.01).polygon(6, (p.pocket_af+2*p.lead_in)*k).loft())\n\
+    \    body = body.cut(lead)\n    rib_h = depth - p.lead_in\n    for ang in (30,\
+    \ 150, 270):\n        a = math.radians(ang)\n        dist = p.pocket_af/2 + p.rib_r\
+    \ - p.rib_protrusion\n        rib = (cq.Workplane('XY').workplane(offset=H-depth)\n\
+    \               .center(dist*math.cos(a), dist*math.sin(a)).circle(p.rib_r).extrude(rib_h))\n\
+    \        body = body.union(rib)\n    return body\n"
+  print_orientation: Closed (grip) face on the bed, hex pocket opening facing up.
+    No supports or bridges needed.
+  use_orientation: Closed face toward your hand. The pocket side faces the work, and
+    the bolt comes out through the closed face.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    depth = p.nut_h + p.pocket_recess\n   \
+    \ T = depth + 1.2\n    pitch = 14.0\n    k = 1.0/math.cos(math.radians(30))\n\
+    \    blk = cq.Workplane('XY').box(3*pitch, 14, T, centered=(True, True, False))\n\
+    \    tries = [p.rib_try_1, p.rib_try_2, p.rib_try_3]\n    for j, prot in enumerate(tries):\n\
+    \        x = (j-1)*pitch\n        blk = blk.cut(cq.Workplane('XY').center(x, 0).circle(p.bolt_clear/2).extrude(T))\n\
+    \        blk = blk.cut(cq.Workplane('XY').workplane(offset=T-depth).center(x,\
+    \ 0).polygon(6, p.pocket_af*k).extrude(depth+1))\n        lead = (cq.Workplane('XY').workplane(offset=T-p.lead_in).center(x,\
+    \ 0).polygon(6, p.pocket_af*k)\n                .workplane(offset=p.lead_in+0.01).polygon(6,\
+    \ (p.pocket_af+2*p.lead_in)*k).loft())\n        blk = blk.cut(lead)\n        for\
+    \ ang in (30, 150, 270):\n            a = math.radians(ang)\n            dist\
+    \ = p.pocket_af/2 + p.rib_r - prot\n            rib = (cq.Workplane('XY').workplane(offset=T-depth)\n\
+    \                   .center(x + dist*math.cos(a), dist*math.sin(a)).circle(p.rib_r).extrude(depth\
+    \ - p.lead_in))\n            blk = blk.union(rib)\n        # marker notches: j+1\
+    \ small notches on the edge next to each pocket\n        for m in range(j+1):\n\
+    \            blk = blk.cut(cq.Workplane('XY').center(x - 3 + m*3, -7).rect(1.2,\
+    \ 1.6).extrude(T))\n    return blk\n"
+  print_orientation: Flat face on the bed, pockets facing up
+  use_orientation: 'Test only: press the nut into each pocket'
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: c_press
+  part: knob
+  feature: hex pocket with crush ribs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - rib_protrusion
+  - rib_r
+  - nut_af
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The nut goes in with firm thumb pressure and stays put when the part
+      is turned upside down and shaken
+- id: c_depth
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_recess
+  check:
+    method: measure
+    ref: null
+    description: Once pressed in, the nut sits about 0.3 mm below the face, not proud
+- id: c_stop
+  part: knob
+  feature: pocket floor / 5.5 mm bolt hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The 5.5 mm hole is much smaller than the 8 mm nut, so the floor stops
+      it going through
+- id: c_bolt
+  part: knob
+  feature: bolt clearance hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_clear
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: ''
+manual:
+- n: '1'
+  text: Print fit_coupon first (PLA, 0.2 mm layers, no supports, flat face down).
+    The pockets are marked by 1, 2 and 3 edge notches. They have rib protrusions of
+    0.15, 0.25 and 0.35 mm.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M5 nut into each pocket with your thumb, flat face first, lining
+    up its flats with the pocket. Choose the tightest pocket where the nut still goes
+    fully in by hand and doesn't fall out when you turn the coupon over and shake
+    it. Set rib_protrusion to that pocket's value. The default is 0.25 (2 notches).
+    To get the nut back out, push it out with a screwdriver through the 5.5 mm hole.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Print the knob with the closed, scalloped face on the bed and the hex pocket
+    opening facing up. No supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Line the nut up with the hex pocket and press it in by hand until it bottoms
+    out, about 0.3 mm below the face. If it's stiff, put the knob pocket-up on the
+    table and press the nut down with your thumb or a flat object. Check that it stays
+    in when you turn the knob upside down.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread your M5 bolt into the nut from the pocket side, so it goes through
+    the nut and out through the 5.5 mm hole in the closed face. Turn the knob by hand
+    to tighten.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

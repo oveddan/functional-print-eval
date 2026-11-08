@@ -1,0 +1,279 @@
+task: nut-knob/M3
+note: One-piece printed hand knob (~20 mm across) that captures an ISO 4032 M3 hex
+  nut in a hexagonal pocket. The nut is hand-pressed in from the insertion face and
+  retained by a press fit; a smaller clearance bore on the far side stops it passing
+  through. The user's M3 bolt tips through the nut and out the far-side bore. A small
+  coupon prints first to verify the press fit and bolt clearance on this printer.
+questions: []
+params:
+  knob_dia:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: User asked for about 20 mm across. This is the flat-to-flat width of the
+      gripped 16-sided shape; across the outer corners it is about 20.4 mm.
+  knob_h:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: Height chosen for a comfortable hand grip.
+  facet_count:
+    value: 16
+    unit: count
+    kind: design
+    source: design
+    note: Number of flat grip facets on the outside of the knob.
+  edge_fillet:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Rounding radius on the top and bottom outer rims.
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M3 thread major diameter.
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Running clearance bore for the M3 bolt; smaller than the nut across-flats,
+      so the nut cannot pass through the far side.
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across-flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height.
+  pocket_af:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across-flats = nut_af minus 0.10 mm press-fit interference; verify
+      fit with coupon.
+  pocket_depth:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket depth so the 2.4 mm nut sits fully inside with about 0.6 mm of recess
+      below the rim.
+  coupon_l:
+    value: 40.0
+    unit: mm
+    kind: design
+    source: design
+    note: Fit-test coupon length.
+  coupon_w:
+    value: 15.0
+    unit: mm
+    kind: design
+    source: design
+    note: Fit-test coupon width.
+  coupon_t:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Fit-test coupon thickness, close to the knob's pocket depth.
+  coupon_pitch:
+    value: 11.0
+    unit: mm
+    kind: design
+    source: design
+    note: Spacing between test pockets.
+  coupon_af_lo:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: Smallest trial pocket across-flats (firmest grip; marked with 1 dot).
+  coupon_af_mid:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Design pocket across-flats (marked with 2 dots).
+  coupon_af_hi:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Largest trial pocket across-flats, equal to the nominal nut size (easiest
+      insertion; marked with 3 dots).
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\nknob = (\n    cq.Workplane(\"XY\")\n    .polygon(p.facet_count,\
+    \ p.knob_dia, circumscribed=True)\n    .extrude(p.knob_h)\n)\n\n# Round the outer\
+    \ top and bottom rims before any internal cuts,\n# while the top and bottom faces\
+    \ are still simple single faces.\nknob = knob.faces(\">Z\").edges().fillet(p.edge_fillet)\n\
+    knob = knob.faces(\"<Z\").edges().fillet(p.edge_fillet)\n\n# Through bore for\
+    \ the M3 bolt (clearance, exits through the far side).\nbore = (\n    cq.Workplane(\"\
+    XY\")\n    .circle(p.bolt_clearance_d / 2.0)\n    .extrude(p.knob_h + 2.0)\n \
+    \   .translate((0.0, 0.0, -1.0))\n)\nknob = knob.cut(bore)\n\n# Hex pocket for\
+    \ the nut, cut from the insertion (top) face.\npocket = (\n    cq.Workplane(\"\
+    XY\")\n    .polygon(6, p.pocket_af, circumscribed=True)\n    .extrude(p.pocket_depth\
+    \ + 1.0)\n    .translate((0.0, 0.0, p.knob_h - p.pocket_depth - 0.5))\n)\nknob\
+    \ = knob.cut(pocket)\n\nreturn knob\n"
+  print_orientation: Far-side face (the bolt-exit face, model z=0) lies flat on the
+    bed; the hex nut pocket opens upward. Print with no supports.
+  use_orientation: Insertion (nut-pocket) face points toward the user; the M3 bolt
+    tip enters through the nut pocket, threads through the captured nut, and its tip
+    exits through the far-side clearance bore.
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\n\nplate = cq.Workplane(\"XY\").box(p.coupon_l, p.coupon_w,\
+    \ p.coupon_t)\nplate = plate.edges(\"|Z\").fillet(1.0)\n\nsizes = [p.coupon_af_lo,\
+    \ p.coupon_af_mid, p.coupon_af_hi]\nxs = [-p.coupon_pitch, 0.0, p.coupon_pitch]\n\
+    \nfor x, s in zip(xs, sizes):\n    cutter = (\n        cq.Workplane(\"XY\")\n\
+    \        .polygon(6, s, circumscribed=True)\n        .extrude(p.coupon_t + 2.0)\n\
+    \        .translate((x, 0.0, -1.0))\n    )\n    plate = plate.cut(cutter)\n\n\
+    # Round through-hole to test M3 bolt clearance.\nhole = (\n    cq.Workplane(\"\
+    XY\")\n    .circle(p.bolt_clearance_d / 2.0)\n    .extrude(p.coupon_t + 2.0)\n\
+    \    .translate((p.coupon_l / 2.0 - 2.0, 0.0, -1.0))\n)\nplate = plate.cut(hole)\n\
+    \n# One, two and three small dots under the pockets identify the sizes.\nfor i,\
+    \ x in enumerate(xs):\n    for k in range(i + 1):\n        dx = (k - i / 2.0)\
+    \ * 1.2\n        dot = (\n            cq.Workplane(\"XY\")\n            .circle(0.45)\n\
+    \            .extrude(0.6)\n            .translate((x + dx, -4.5, p.coupon_t -\
+    \ 0.6))\n        )\n        plate = plate.cut(dot)\n\nreturn plate\n"
+  print_orientation: Large 40 x 15 mm face lies flat on the bed; pockets and dot markings
+    face upward. Print with no supports.
+  use_orientation: Press the M3 nut by hand into each hex pocket from the marked face.
+    One, two and three dots identify the 5.30, 5.40 and 5.50 mm pockets (left to right).
+    Slip the M3 bolt through the round hole to check clearance.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: j_knob_bolt
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: hex_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_clearance_bore
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: c_nut_press_fit
+  part: knob
+  feature: hex_pocket
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: The M3 nut must press in by hand and stay put when the knob is turned
+      upside down. Use the coupon's three hex pockets (1 dot = 5.30, 2 dots = 5.40,
+      3 dots = 5.50 mm) to confirm the hand-press behavior; the final part uses 5.40
+      mm.
+- id: c_nut_contained
+  part: knob
+  feature: hex_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  - bolt_clearance_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: Pocket depth (3.0 mm) exceeds nut height (2.4 mm), so the nut sits
+      fully inside; the far-side bore (3.4 mm) is smaller than the nut across-flats
+      (5.5 mm), so the nut cannot be pushed through the far side.
+- id: c_bolt_clearance
+  part: knob
+  feature: bolt_clearance_bore
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_clearance_d
+  - bolt_d
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: The M3 bolt passes freely through the 3.4 mm clearance bore and threads
+      into the captured nut. Test free passage through the coupon's round hole.
+manual:
+- n: '1'
+  text: Print the fit-test coupon (nut_fit_coupon) first, flat on the bed with the
+    pockets facing up. No supports.
+  parts:
+  - nut_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the ISO 4032 M3 nut by hand into each of the three hex pockets (1 dot
+    = 5.30 mm, 2 dots = 5.40 mm, 3 dots = 5.50 mm). A good pocket is a firm hand push
+    and holds the nut when the coupon is turned upside down. The final knob is sized
+    at 5.40 mm (2 dots). Also slip the M3 bolt through the round hole to confirm free
+    clearance.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  - m3_bolt
+  tool: null
+- n: '3'
+  text: Print the knob (knob) flat on the bed with the small bolt-exit face (far side)
+    down and the hex pocket facing up. No supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press the ISO 4032 M3 nut by hand into the knob's hex pocket from the top
+    face, hex-to-hex, until it sits fully inside and slightly below the rim. It should
+    be a firm hand press and stay in when flipped upside down.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the knob onto the protruding M3 bolt already in your fixture (any M3
+    length works; the M3x20 listed in hardware is only a representative). The bolt
+    tip enters through the nut pocket, passes through the captured nut, and comes
+    out the far-side clearance bore. Turn the knob by hand to tighten; no tool needed.
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  tool: null

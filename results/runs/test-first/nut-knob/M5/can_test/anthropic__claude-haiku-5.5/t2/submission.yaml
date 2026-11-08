@@ -1,0 +1,150 @@
+task: nut-knob/M5
+note: Press-fit hex pocket is an estimate (0.2 mm under nut AF). PLA hex pockets vary
+  with printer and first-layer squish, so a small test print of the pocket before
+  the full knob is advisable. The bolt is the user's own M5 bolt, so no bolt length
+  or head size is specified here.
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Knob outer diameter
+  knob_h:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Knob height
+  grip_n:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: Number of grip grooves around the rim
+  grip_r:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each grip groove
+  grip_centre_r:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Radius at which groove centres sit (on the outer rim)
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  pocket_af:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across flats, 0.2 mm under nut AF for press fit. Needs a test
+      print to confirm the fit on this printer
+  pocket_depth:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket depth, slightly more than nut height so nut sits fully inside
+  bolt_clearance_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole through the top wall for an M5 bolt; smaller than the nut
+      across flats so the nut cannot pass through
+parts:
+- id: knob
+  role: final
+  material: PLA high-speed black
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2).extrude(p.knob_h)\n    for i in range(p.grip_n):\n        a = 2 * math.pi\
+    \ * i / p.grip_n\n        x = p.grip_centre_r * math.cos(a)\n        y = p.grip_centre_r\
+    \ * math.sin(a)\n        g = cq.Workplane('XY').center(x, y).circle(p.grip_r).extrude(p.knob_h)\n\
+    \        body = body.cut(g)\n    # hex pocket, open at z=0 (bed side), ceiling\
+    \ at pocket_depth\n    d_circ = p.pocket_af / math.cos(math.radians(30))\n   \
+    \ pocket = cq.Workplane('XY').polygon(6, d_circ).extrude(p.pocket_depth)\n   \
+    \ bore = cq.Workplane('XY').circle(p.bolt_clearance_d / 2).extrude(p.knob_h)\n\
+    \    body = body.cut(pocket).cut(bore)\n    return body\n"
+  print_orientation: Pocket opening face down on the bed (nut opening at z=0); top
+    of knob at z=knob_h
+  use_orientation: Pocket opening facing down, knob top up, nut captured in the hex
+    pocket
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket, press fit
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - pocket_depth
+  - nut_af
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Nut presses into the hex pocket by hand, stays in when knob is inverted,
+      no glue. Pocket is 0.2 mm under nut across flats; confirm fit with a print test.
+- id: bolt_clear
+  part: knob
+  feature: M5 bolt clearance bore through top wall
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Bolt passes freely through the top bore; bore is smaller than nut
+      across flats so the nut cannot exit through the far side.
+manual:
+- n: '1'
+  text: Print the knob with the nut pocket facing down on the bed. No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Clean any stringing from the hex pocket. Start the M5 nut square in the pocket
+    opening and press it up by hand until it sits flush inside, against the top ceiling.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Check the nut stays in when the knob is turned upside down. If it is loose,
+    the pocket is too large for your printer; reprint with a smaller pocket_af.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread the M5 bolt up through the nut from the open pocket side, and out through
+    the top bore. Tighten by turning the knob.
+  parts: []
+  hardware: []
+  tool: null

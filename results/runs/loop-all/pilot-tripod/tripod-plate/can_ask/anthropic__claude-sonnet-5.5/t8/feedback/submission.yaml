@@ -1,0 +1,256 @@
+task: tripod-plate
+note: The clamp fit and the bolt-head recess both worked, so I changed only the bolt
+  hole's roof. The hole's bottom is now closed by a 0.2 mm skin, so the printer bridges
+  a solid layer over the recess instead of loose strands around the hole. After printing
+  you poke the skin out. The plate, the coupon and the other dimensions are unchanged.
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: length along the clamp
+  plate_t:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: plate thickness; the clamp fit was confirmed on the printed part
+  lip_h:
+    value: 3
+    unit: mm
+    kind: world
+    source: measured
+    note: full-width lower part of the edge; the clamp fit was confirmed on the printed
+      part
+  lip_inset:
+    value: 2
+    unit: mm
+    kind: world
+    source: measured
+    note: inward taper of each edge; the clamp fit was confirmed on the printed part
+  pad_h:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: raised pad on top that the camera sits on
+  pad_w:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: pad width
+  slot_travel:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: how far the bolt can slide along the plate
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged webcam bolt head; it fits the recess when printed
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: head height
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: world
+    source: measured
+    note: length under the head
+  thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  hole_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter on the bolt hole
+  head_clear:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter on the head counterbore
+  cb_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: counterbore depth
+  bridge_skin:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: thin closed layer left across the bolt hole just above the counterbore roof,
+      so the printer bridges a solid layer; poked out after printing
+  coupon_l:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: length of the fit-test coupon
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w=p.plate_w; l=p.plate_l; t=p.plate_t\n    pts=[(-w/2,0),(w/2,0),(w/2,p.lip_h),(w/2-p.lip_inset,t),(-w/2+p.lip_inset,t),(-w/2,p.lip_h)]\n\
+    \    body=cq.Workplane('XZ').polyline(pts).close().extrude(l/2,both=True)\n  \
+    \  pad=(cq.Workplane('XY').workplane(offset=t)\n         .slot2D(p.slot_travel+p.pad_w,p.pad_w,90).extrude(p.pad_h))\n\
+    \    body=body.union(pad)\n    hd=p.thread_d+p.hole_clear\n    z0=p.cb_depth+p.bridge_skin\n\
+    \    hole=(cq.Workplane('XY').workplane(offset=z0).slot2D(p.slot_travel+hd,hd,90).extrude(t+p.pad_h-z0))\n\
+    \    cd=p.bolt_head_d+p.head_clear\n    cb=(cq.Workplane('XY').slot2D(p.slot_travel+cd,cd,90).extrude(p.cb_depth))\n\
+    \    return body.cut(hole).cut(cb)\n"
+  print_orientation: flat on the bed, underside down (counterbore side on the bed)
+  use_orientation: Underside down in the clamp, camera sits on the raised pad on top
+- id: edge-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w=p.plate_w; l=p.coupon_l; t=p.plate_t\n    pts=[(-w/2,0),(w/2,0),(w/2,p.lip_h),(w/2-p.lip_inset,t),(-w/2+p.lip_inset,t),(-w/2,p.lip_h)]\n\
+    \    body=cq.Workplane('XZ').polyline(pts).close().extrude(l/2,both=True)\n  \
+    \  hd=p.thread_d+p.hole_clear\n    z0=p.cb_depth+p.bridge_skin\n    hole=cq.Workplane('XY').workplane(offset=z0).circle(hd/2).extrude(t-z0)\n\
+    \    cd=p.bolt_head_d+p.head_clear\n    cb=cq.Workplane('XY').circle(cd/2).extrude(p.cb_depth)\n\
+    \    return body.cut(hole).cut(cb)\n"
+  print_orientation: flat on the bed, underside down
+  use_orientation: 'Test piece: check the bridged roof and the bolt hole'
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt-joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: counterbore
+    role: head_seat
+  - part: plate
+    feature: slot
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c-edge
+  part: plate
+  feature: tapered edge profile
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_t
+  - lip_h
+  - lip_inset
+  check:
+    method: measure
+    ref: null
+    description: Edge profile already fit the tripod clamp in the last print and is
+      unchanged.
+- id: c-head
+  part: plate
+  feature: head counterbore
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_clear
+  - cb_depth
+  check:
+    method: coupon
+    ref: edge-coupon
+    description: The bolt head sits in the counterbore. This fit worked in the last
+      print.
+- id: c-shank
+  part: plate
+  feature: bolt slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - thread_d
+  - hole_clear
+  - bridge_skin
+  - cb_depth
+  check:
+    method: coupon
+    ref: edge-coupon
+    description: After the 0.2 mm skin is poked out, the thread passes freely through
+      the hole, and the roof around it prints cleanly.
+manual:
+- n: '1'
+  text: Print the coupon first if you want to check the roof change. Print flat, underside
+    down, and leave the supports off. The hole has a thin 0.2 mm closed layer at the
+    bottom.
+  parts:
+  - edge-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the plate the same way, flat with the counterbore side down. Use 4 walls
+    and 30% or more infill.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Poke out the thin skin at the bottom of the bolt hole from the counterbore
+    side. Use the bolt thread, a 6 mm drill bit or a craft knife, then clean the edge
+    of the hole.
+  parts:
+  - plate
+  hardware: []
+  tool: craft knife or 6 mm drill bit
+- n: '4'
+  text: Push the webcam bolt up from the underside, so the head sits in the counterbore
+    and the thread comes out through the pad.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Thread the bolt into the camera's 1/4-20 socket and tighten until the camera
+    sits on the pad. Slide the bolt along the slot first if you need to balance the
+    camera.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: Drop the plate into the tripod clamp from above and tighten the knob. Hold
+    the camera by hand to test before you let go. PLA can creep, so don't leave a
+    heavy camera on it for long.
+  parts:
+  - plate
+  hardware: []
+  tool: null

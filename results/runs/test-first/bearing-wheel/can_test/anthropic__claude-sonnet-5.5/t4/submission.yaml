@@ -1,0 +1,210 @@
+task: bearing-wheel
+note: Wheel is 50 mm OD x 16 mm wide, with two 608 bearings pressed in from opposite
+  faces and a 1.6 mm web between them. Seat diameter 22.2 mm comes from the fit coupon.
+  Two thin printed spacers keep the bracket off the wheel body and load only the bearing
+  inner races. Bracket gap and track profile were unknown, so the wheel is a flat
+  tread and needs about 18 mm of gap. If the gap is larger, add M8 washers. If it
+  is smaller, shorten the spacers.
+questions:
+- text: How much room is there between the bracket arms, and how long is your bolt?
+    I couldn't get either measurement, so the bolt length (M8x50) is a placeholder.
+    The wheel plus spacers needs about 18 mm between the arms.
+  answer: null
+- text: Does your track need a groove or flange on the wheel? I made a plain flat
+    tread with chamfered edges.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ nominal width
+  bearing_recess:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: bearing sits this far below wheel face so only the inner race (via spacer)
+      touches the bracket
+  seat_d:
+    value: 22.2
+    unit: mm
+    kind: design
+    source: measured
+    note: 'from fit coupon: 22.19 pressed in and held, 21.99 would not go in; 608
+      OD nominal 22.0'
+  web_hole_d:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: clears the inner race (~12.5 OD) but still backs the outer race
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: user's bolt shank about 8 mm
+  spacer_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_d plus 0.4 clearance
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: less than the ~12.5 mm inner race OD so it only touches the inner race
+  spacer_len:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: bearing_recess + 1.0 mm standoff from the wheel face
+  tread_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    depth = p.bearing_w + p.bearing_recess\n    w = cq.Workplane('XY').circle(p.wheel_od\
+    \ / 2).extrude(p.wheel_w)\n    w = w.faces('>Z or <Z').edges().chamfer(p.tread_chamfer)\n\
+    \    # bottom seat (open on the bed side)\n    w = w.cut(cq.Workplane('XY').circle(p.seat_d\
+    \ / 2).extrude(depth))\n    # top seat\n    w = w.cut(cq.Workplane('XY').workplane(offset=p.wheel_w\
+    \ - depth).circle(p.seat_d / 2).extrude(depth))\n    # web hole through the middle\n\
+    \    w = w.cut(cq.Workplane('XY').circle(p.web_hole_d / 2).extrude(p.wheel_w))\n\
+    \    return w"
+  print_orientation: one flat face on the bed (axis vertical)
+  use_orientation: axle horizontal, rolling on the track
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od / 2).circle(p.spacer_id\
+    \ / 2).extrude(p.spacer_len)"
+  print_orientation: flat ring on the bed
+  use_orientation: on the bolt between each bearing inner race and the bracket (print
+    2)
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints: []
+criteria:
+- id: c-seat-bottom
+  part: wheel
+  feature: bottom bearing seat
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - seat_d
+  - bearing_w
+  - bearing_recess
+  check:
+    method: coupon
+    ref: null
+    description: 22.19 mm seat from the coupon held a 608 bearing
+- id: c-seat-top
+  part: wheel
+  feature: top bearing seat
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - seat_d
+  - bearing_w
+  - bearing_recess
+  check:
+    method: coupon
+    ref: null
+    description: same seat diameter as the coupon
+- id: c-web
+  part: wheel
+  feature: web hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.75
+  params:
+  - web_hole_d
+  check:
+    method: measure
+    ref: null
+    description: inner race can spin freely, no rubbing on the web
+- id: c-spacer-bolt
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - spacer_id
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: spacer slides on the bolt
+manual:
+- n: '1'
+  text: Print 1 wheel and 2 spacers in PLA, no supports. Check the bearing seats are
+    clean (no elephant-foot lip on the bed-side seat; scrape it off if needed).
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing squarely into each seat, from both faces of the wheel,
+    until it hits the web. Use a vise or a flat board and a light tap. Each bearing
+    ends up 0.2 mm below the wheel face. The seat is sized to hold the bearing by
+    friction.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Check the wheel spins freely on your finger. If it feels rough, one bearing
+    is probably cocked, so press it flatter.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Thread the bolt through the bracket arm, then a spacer, then the wheel (through
+    both bearings), then the second spacer, then the other bracket arm. Each spacer
+    should touch only the bearing's inner race.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Fit the lock nut and tighten until the bracket arms grip the spacers. The
+    wheel should still spin freely. Do not over-tighten, because PLA spacers will
+    crush.
+  parts: []
+  hardware:
+  - locknut
+  tool: null

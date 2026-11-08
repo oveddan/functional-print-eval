@@ -1,0 +1,278 @@
+task: bearing-wheel
+note: ''
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel was 'about 50 mm across' — new wheel sized to match
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel was 'about 16 mm wide'
+  axle_shank_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user measured their bolt's shank ~8 mm — it is M8, matching the 608 bearing
+      bore
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608ZZ nominal OD (caliper reading 21.22 was jaw-pinched; 22.0 used)
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: matches the M8 axle
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  pocket_d:
+    value: 21
+    unit: mm
+    kind: design
+    source: design
+    note: about 0.1 mm interference press-fit for the 608 in PLA; verified on the
+      coupon
+  pocket_depth:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: two 608s stacked (14 mm) pressed from the open face, flush with it; leaves
+      a 2 mm solid floor
+  bore_d:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for the M8 axle through the pocket floor
+  bolt_len:
+    value: 50
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8x50; the user's own M8 bolt can be used instead if it is at least
+      45 mm long under the head
+  fork_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: bracket gap couldn't be measured; bolt length covers a fork gap up to ~12
+      mm, or a tapped-hole bracket
+parts:
+- id: roller-wheel
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    # Printed solid-face down (z=0 is the solid face); the\
+    \ bearing pocket opens at the top.\n    r_od = p.wheel_od / 2.0\n    w = p.wheel_width\n\
+    \    r_p = p.pocket_d / 2.0\n    z_f = w - p.pocket_depth      # pocket floor\
+    \ = 2 mm solid\n    r_b = p.bore_d / 2.0\n    c = 0.5                       #\
+    \ chamfers: press lead-in + bore lead-in\n    pts = [\n        (r_b + c, 0.0),\n\
+    \        (r_b, c),\n        (r_b, z_f + c),\n        (r_b + c, z_f),\n       \
+    \ (r_p, z_f),\n        (r_p, w - c),\n        (r_p - c, w),\n        (r_od, w),\n\
+    \        (r_od, 0.0),\n    ]\n    wheel = (cq.Workplane(\"XZ\")\n            \
+    \ .polyline(pts).close()\n             .revolve(360, (0, 0, 0), (0, 1, 0)))\n\
+    \    return wheel"
+  print_orientation: solid face (opposite the bearing-pocket opening) down on the
+    bed, pocket opening up
+  use_orientation: axle vertical — the bolt passes along the part's z axis
+- id: bearing-fit-coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    # Same pocket diameter as the wheel, so the press-fit\
+    \ feel transfers.\n    r_p = p.pocket_d / 2.0\n    r_b = p.bore_d / 2.0\n    c\
+    \ = 0.5\n    pts = [\n        (r_b + c, 0.0),\n        (r_b, c),\n        (r_b,\
+    \ 7.0),          # pocket floor (pocket is 7.0 deep = one bearing)\n        (r_p,\
+    \ 7.0),\n        (r_p - c, 8.0),\n        (14.0, 8.0),\n        (14.0, 0.0),\n\
+    \    ]\n    disc = (cq.Workplane(\"XZ\")\n            .polyline(pts).close()\n\
+    \            .revolve(360, (0, 0, 0), (0, 1, 0)))\n    return disc"
+  print_orientation: flat bottom down on the bed, pocket opening up
+  use_orientation: pocket axis vertical, same as the wheel
+hardware:
+- id: axle_bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: locknut_m8
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer_m8
+  ref: ISO 7089 M8
+  qty: 2
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -9.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: roller-wheel
+    feature: axle bore through the pocket floor
+    role: clearance
+  - part: roller-wheel
+    feature: solid face (z=0)
+    role: washer
+  - part: roller-wheel
+    feature: hub face (bearing-pocket side)
+    role: washer
+  nut: locknut_m8
+  external: closet-door roller bracket — either two prongs the bolt passes through,
+    or a tapped M8 hole it screws into
+criteria:
+- id: bearing-pocket-press
+  part: roller-wheel
+  feature: 21.9 mm hub pocket
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: null
+  params:
+  - pocket_d
+  - bearing_od
+  - pocket_depth
+  check:
+    method: coupon
+    ref: bearing-fit-coupon
+    description: 'press one bearing into the coupon pocket: firm press, no wobble;
+      same diameter as the wheel''s pocket'
+- id: axle-clears-bore
+  part: roller-wheel
+  feature: 8.4 mm axle bore
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: 0.4
+  params:
+  - bore_d
+  - axle_shank_d
+  check:
+    method: coupon
+    ref: bearing-fit-coupon
+    description: the M8 bolt must slide through the coupon's small hole
+- id: rim-clears-track
+  part: roller-wheel
+  feature: rim, 50 mm dia x 16 wide
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_width
+  check:
+    method: measure
+    ref: null
+    description: test-fit the printed wheel in the door's track groove; if it binds,
+      sand the rim edges or reprint 1 mm narrower
+- id: wheel-fits-fork
+  part: roller-wheel
+  feature: wheel width vs bracket prong gap
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_width
+  - fork_gap
+  check:
+    method: measure
+    ref: null
+    description: the wheel must pass between the bracket prongs; if tight, sand the
+      wheel's side faces
+- id: nut-retains-wheel
+  part: roller-wheel
+  feature: hub face + axle stack
+  relation: supports
+  hardware: locknut_m8
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - bore_d
+  check:
+    method: measure
+    ref: null
+    description: after assembly the wheel must not slide along the axle but must spin
+      freely with a flick (lock nut snug, not cranked)
+manual:
+- n: '1'
+  text: Print the bearing-fit-coupon flat on the bed, 100 % infill. It is a small
+    disc with the same bearing pocket (and bolt hole) as the real wheel.
+  parts:
+  - bearing-fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Press-fit test: press one 608ZZ into the coupon''s pocket between two scrap
+    boards in a vise or clamp. Firm pressure = correct fit. If it slides in by hand,
+    plan to add a drop of superglue when fitting the real wheel; if it won''t start,
+    sand the pocket wall lightly and try again. Then slide the M8 bolt through the
+    coupon''s small hole — it must pass freely.'
+  parts:
+  - bearing-fit-coupon
+  hardware:
+  - bearing_608
+  - axle_bolt
+  tool: vise or clamp + two flat scrap pieces
+- n: '3'
+  text: Print the roller-wheel with the solid face down (pocket opening up), 100 %
+    infill, no supports needed. At ~50 g it prints in under an hour.
+  parts:
+  - roller-wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press both bearings into the wheel's pocket from the open face, one after
+    the other, until the top one is flush with the pocket rim. If the coupon fit was
+    loose, put a drop of superglue on the pocket wall before pressing.
+  parts:
+  - roller-wheel
+  hardware:
+  - bearing_608
+  tool: vise or clamp
+- n: '5'
+  text: 'Mount to the bracket. Variant A — fork with holes in two prongs: washer under
+    the bolt head, pass the bolt through both prongs, drop the wheel in between (solid
+    face toward the bolt head), then washer and lock nut on the other side. Variant
+    B — bracket with a tapped hole: screw the bolt in until ~10 mm of thread sticks
+    out, washer, wheel (solid face toward the bracket), washer, lock nut. If the prong
+    holes are too small for the M8 bolt, drill them out to 9 mm first.'
+  parts:
+  - roller-wheel
+  hardware:
+  - axle_bolt
+  - washer_m8
+  - locknut_m8
+  tool: 9 mm drill if needed
+- n: '6'
+  text: Snug the lock nut until the wheel can't slide side-to-side along the axle
+    but still spins with a flick of the finger. Too tight = drag; too loose = wobble.
+    The nylon insert keeps it from working loose.
+  parts: []
+  hardware:
+  - locknut_m8
+  tool: hex key / 13 mm spanner
+- n: '7'
+  text: Hang the door and roll it. The wheel should turn freely with no rubbing on
+    the fork or track sides. If it rubs, back the lock nut off a touch, or sand the
+    wheel's edges if it's snug in the track.
+  parts:
+  - roller-wheel
+  hardware: []
+  tool: null

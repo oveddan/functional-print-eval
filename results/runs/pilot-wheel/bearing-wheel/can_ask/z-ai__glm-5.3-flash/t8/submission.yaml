@@ -1,0 +1,411 @@
+task: bearing-wheel
+note: ''
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 50 mm across' — matched exactly so door height and track
+      fit stay the same
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 16 mm wide' — also the assumed max the track accepts
+  bolt_shank_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: asked
+    note: axle bolt M8, user's own 'about 8 mm' shank; ISO 4762 M8 catalog screw also
+      fits, nominal 8.0
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 nominal; caliper read 21.22 jaw-pinched, catalog says use 22.0
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 nominal; caliper read 7.94 — bolt should be a snug slip fit
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 nominal width; two bearings = 14 mm of the 16 mm wheel
+  pocket_dia:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: bearing pocket for a light press fit (printed holes run slightly small);
+      verified on coupon first
+  face_hole_d:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: 0.4 mm clearance around the 8.0 bolt wherever it passes plastic
+  cap_pilot_d:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: self-tap pilot for M8x1.25 in PLA (major 8.0 - ~0.8); verified on coupon
+      first
+  cap_af:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: hex cap across flats, same as an M8 nut — spanner or pliers
+  cap_t:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: compact so a short bolt still reaches ~6 mm of thread
+  spacer_od:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: covers the bearing outer face it presses against
+  spacer_05_t:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: fine step for the fork-gap fill
+  spacer_10_t:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: step for the fork-gap fill
+  spacer_20_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: step for the fork-gap fill
+  fork_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: gap between bracket arms unmeasured — spacer set fills any gap from 16.5
+      to ~30 mm in 0.5 mm steps
+  bolt_len:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: bolt length unmeasured — 40 mm catalog length assumed; manual has a check
+      step for whether the cap still engages ~6 mm of thread
+parts:
+- id: wheel
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    W = p.wheel_w                 # 16 mm axial width\n  \
+    \  r_out = p.wheel_od / 2.0      # 25 mm rim radius\n    r_pk = p.pocket_dia /\
+    \ 2.0     # bearing pocket radius\n    r_ax = p.face_hole_d / 2.0    # axle clearance\n\
+    \    bw = p.bearing_w              # 7 mm per bearing\n    body = cq.Workplane(\"\
+    XY\").circle(r_out).extrude(W)\n    pk_a = cq.Workplane(\"XY\").circle(r_pk).extrude(bw)\
+    \                      # pocket A: z 0..7\n    pk_b = cq.Workplane(\"XY\", origin=(0,\
+    \ 0, W - bw)).circle(r_pk).extrude(bw)  # pocket B: z 9..16\n    axle = cq.Workplane(\"\
+    XY\").circle(r_ax).extrude(W)                       # 8.4 hole through web\n \
+    \   return body.cut(pk_a).cut(pk_b).cut(axle)"
+  print_orientation: bottom face (z=0, the face with pocket A opening) flat on the
+    bed; axle axis vertical while printing
+  use_orientation: axle horizontal, rim riding in the track; wheel's flat faces vertical,
+    bolt through the central bores
+- id: cap
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    cc = p.cap_af / 0.8660254     # hex across-corners for\
+    \ the given across-flats\n    cap = cq.Workplane(\"XY\").polygon(6, cc).extrude(p.cap_t)\n\
+    \    hole = cq.Workplane(\"XY\").circle(p.cap_pilot_d / 2.0).extrude(p.cap_t)\n\
+    \    return cap.cut(hole)"
+  print_orientation: bottom hex face flat on the bed
+  use_orientation: threaded onto the horizontal axle outside the bracket arm
+- id: spacer_05
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    ring = cq.Workplane(\"XY\").circle(p.spacer_od / 2.0).extrude(p.spacer_05_t)\n\
+    \    hole = cq.Workplane(\"XY\").circle(p.face_hole_d / 2.0).extrude(p.spacer_05_t)\n\
+    \    return ring.cut(hole)"
+  print_orientation: flat face on the bed
+  use_orientation: stacked on the horizontal axle between bracket arm and wheel face
+- id: spacer_10
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    ring = cq.Workplane(\"XY\").circle(p.spacer_od / 2.0).extrude(p.spacer_10_t)\n\
+    \    hole = cq.Workplane(\"XY\").circle(p.face_hole_d / 2.0).extrude(p.spacer_10_t)\n\
+    \    return ring.cut(hole)"
+  print_orientation: flat face on the bed
+  use_orientation: stacked on the horizontal axle between bracket arm and wheel face
+- id: spacer_20
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    ring = cq.Workplane(\"XY\").circle(p.spacer_od / 2.0).extrude(p.spacer_20_t)\n\
+    \    hole = cq.Workplane(\"XY\").circle(p.face_hole_d / 2.0).extrude(p.spacer_20_t)\n\
+    \    return ring.cut(hole)"
+  print_orientation: flat face on the bed
+  use_orientation: stacked on the horizontal axle between bracket arm and wheel face
+- id: coupon_bearing
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    disc = cq.Workplane(\"XY\").circle(15.0).extrude(p.bearing_w)\
+    \   # 30 x 7 disc\n    hole = cq.Workplane(\"XY\").circle(p.pocket_dia / 2.0).extrude(p.bearing_w)\n\
+    \    return disc.cut(hole)"
+  print_orientation: flat face on the bed
+  use_orientation: hand-held press-fit test only
+- id: coupon_thread
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    blk = cq.Workplane(\"XY\").rect(20, 20).extrude(10.0)\
+    \           # 20 x 20 x 10 block\n    hole = cq.Workplane(\"XY\").circle(p.cap_pilot_d\
+    \ / 2.0).extrude(10.0)\n    return blk.cut(hole)"
+  print_orientation: bottom face on the bed
+  use_orientation: hand-held self-tap thread test only
+hardware:
+- id: axle_bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: bearings_608
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 16.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel
+    feature: central bore through both bearing inner races (8.4 clearance; inner races
+      are the running surfaces)
+    role: clearance
+  - part: spacer_05
+    feature: 8.4 centre hole
+    role: clearance
+  - part: spacer_10
+    feature: 8.4 centre hole
+    role: clearance
+  - part: spacer_20
+    feature: 8.4 centre hole
+    role: clearance
+  - part: cap
+    feature: 7.2 pilot hole, self-tapped by the bolt (M8x1.25)
+    role: thread
+  nut: null
+  external: 'roller bracket fork: head presses the outside of arm 1, cap clamps the
+    outside of arm 2, bolt passes through both arm holes; head side and cap side may
+    swap if it suits the bracket'
+criteria:
+- id: bearing_seat
+  part: wheel
+  feature: bearing pockets, 22.1 dia x 7 deep, one opening from each face
+  relation: seats
+  hardware: bearings_608
+  clearance_mm: null
+  params:
+  - pocket_dia
+  - bearing_od
+  - bearing_w
+  check:
+    method: coupon
+    ref: null
+    description: 'press a bearing into the coupon''s 22.1 hole: it should go with
+      firm hand pressure and not wiggle; bearing flush with the coupon face'
+- id: bolt_through_bores
+  part: wheel
+  feature: central bores / bearing inner races
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: null
+  params:
+  - bolt_shank_d
+  - bearing_bore
+  check:
+    method: none
+    ref: null
+    description: bolt must slide through both inner races by hand and spin freely;
+      if tight, polish the shank with fine sandpaper until it slips
+- id: wheel_in_fork
+  part: wheel
+  feature: rim width vs fork gap
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - fork_gap
+  check:
+    method: none
+    ref: null
+    description: 16 mm wheel sits between the arms; fill any extra gap with printed
+      spacers (16 + spacer stack = fork gap)
+- id: rim_in_track
+  part: wheel
+  feature: rim, 50 dia x 16 wide
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_w
+  check:
+    method: none
+    ref: null
+    description: rim matches the old wheel's 50 x 16 so the door height and track
+      fit are unchanged
+- id: cap_thread
+  part: cap
+  feature: 7.2 pilot hole self-tapped by M8x1.25, ~6 mm engagement
+  relation: engages
+  hardware: axle_bolt
+  clearance_mm: null
+  params:
+  - cap_pilot_d
+  check:
+    method: coupon
+    ref: null
+    description: bolt threads into the coupon block's 7.2 hole with firm hand force
+      and holds without spinning
+- id: spacer_fill
+  part: spacer_10
+  feature: spacer stack between arm and wheel face
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - fork_gap
+  - spacer_05_t
+  - spacer_10_t
+  - spacer_20_t
+  check:
+    method: none
+    ref: null
+    description: stack 0.5/1/2 mm washers each side until the assembly (head | arm
+      | spacers | wheel | spacers | arm | cap) is just snug; wheel must not rattle
+      axially but must spin freely
+manual:
+- n: '1'
+  text: 'Print the two coupons first, both PLA at 0.2 mm: coupon_bearing and coupon_thread.'
+  parts:
+  - coupon_bearing
+  - coupon_thread
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into coupon_bearing's hole. It should need a firm press
+    and sit flush. If it drops in with a rattle, the wheel pockets will be loose —
+    a ring of glue around the race will hold it, or reprint the coupon/wheel after
+    sanding advice below. If it won't start, ease the hole with rolled-up 240-grit
+    sandpaper.
+  parts:
+  - coupon_bearing
+  hardware:
+  - bearings_608
+  tool: null
+- n: '3'
+  text: Screw the M8 axle bolt into coupon_thread's 7.2 hole by hand. It should cut
+    its thread with firm hand force and hold tight. If it won't start, open the hole
+    slightly with sandpaper rolled into it.
+  parts:
+  - coupon_thread
+  hardware:
+  - axle_bolt
+  tool: null
+- n: '4'
+  text: 'Once both coupons check out, print the real parts: wheel, cap, and two of
+    each spacer (0.5, 1 and 2 mm).'
+  parts:
+  - wheel
+  - cap
+  - spacer_05
+  - spacer_10
+  - spacer_20
+  hardware: []
+  tool: null
+- n: '5'
+  text: Press one bearing into each wheel pocket, one from each face, until flush
+    with the wheel's faces (it should bottom with no gap). Vise with soft jaws or
+    two wood blocks and a clamp; tap with a mallet if needed. If the pocket edge is
+    tight, deburr it with a knife first.
+  parts:
+  - wheel
+  hardware:
+  - bearings_608
+  tool: vise or clamp with wood blocks, mallet
+- n: '6'
+  text: 'Bolt prep: the axle bolt is the catalog M8x40 socket screw, or your own M8
+    bolt if it is at least ~40 mm long. Check where the bearing span will sit — the
+    section of bolt through the bearings must be the smooth shank. If the bolt is
+    fully threaded, file that middle section smooth (to ~7.9 mm) over at least 25
+    mm. Then slide the bolt through the wheel''s bearings: it should spin freely by
+    hand; polish with fine sandpaper if tight. The wheel spins on the bolt; the bolt
+    itself stays still.'
+  parts:
+  - wheel
+  hardware:
+  - axle_bolt
+  - bearings_608
+  tool: fine file, sandpaper
+- n: '7'
+  text: 'Dry-stack on the bracket: bolt head outside arm 1, then (spacers), wheel
+    with bearings, (spacers), arm 2. Now measure the fork gap the hard way — keep
+    adding spacer pairs until the stack just fills the gap with the wheel centred.'
+  parts:
+  - wheel
+  - spacer_05
+  - spacer_10
+  - spacer_20
+  hardware:
+  - axle_bolt
+  - bearings_608
+  tool: null
+- n: '8'
+  text: Thread the cap onto the bolt end outside arm 2 (spanner or pliers on the 13
+    mm hex). Tighten until the stack is snug — the wheel must not rattle axially but
+    must still spin freely by hand; the rotation happens inside the bearings, so a
+    firm clamp is correct. If the bolt doesn't leave ~6 mm of thread past arm 2 for
+    the cap, drop spacers from the stack until it does. If a long bolt tip pokes past
+    the cap, check it clears the track wall.
+  parts:
+  - cap
+  - spacer_05
+  - spacer_10
+  - spacer_20
+  hardware:
+  - axle_bolt
+  tool: 13 mm spanner or pliers
+- n: '9'
+  text: 'Optional anti-vibration: a small drop of nail polish or threadlocker on the
+    cap threads keeps it from backing off.'
+  parts:
+  - cap
+  hardware: []
+  tool: null
+- n: '10'
+  text: Refit the bracket to the door, drop the wheel into the track, and check the
+    door height and rolling match the other door. Spin test again after a week of
+    use.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

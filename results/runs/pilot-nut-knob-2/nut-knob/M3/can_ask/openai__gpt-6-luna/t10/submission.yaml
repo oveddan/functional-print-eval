@@ -1,0 +1,203 @@
+task: nut-knob/M3
+note: Single-piece hand knob for an M3 hex nut. Print with the nut-entry face on the
+  build plate; the short roof bridge over the nut pocket is only about 5.7 mm across.
+  The slotted, narrowed entry is intended to flex locally as the nut is pressed in
+  by hand, then retain it behind the internal shoulder. Fit can vary with printer/material
+  calibration; test the press fit gently before fully seating the nut.
+questions: []
+params:
+  outer_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Approximate across-grip diameter requested.
+  height:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height.
+  pocket_clearance_af:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Added across flats to nut AF for the main hex pocket.
+  throat_interference_af:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Subtracted across flats from nut AF at the retaining entry throat.
+  throat_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_axial_clearance:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance above nut height in its pocket.
+  bore_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Bolt clearance bore through the knob.
+  slot_width:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: Radial flex slots around the retaining throat.
+  slot_h:
+    value: 1.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_r_inner:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_r_outer:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_flute_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_flute_r:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_flute_inset:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Flute-circle centre is this far inside the nominal outer radius.
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA)
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.outer_d\
+    \ / 2.0).extrude(p.height)\n\n    # Shallow vertical flutes for finger grip.\n\
+    \    flute_r = p.grip_flute_r\n    flute_center_r = p.outer_d / 2.0 - p.grip_flute_inset\n\
+    \    for i in range(int(p.grip_flute_count)):\n        a = 2.0 * math.pi * i /\
+    \ int(p.grip_flute_count)\n        cutter = (cq.Workplane(\"XY\").workplane(offset=-0.1)\n\
+    \                  .center(flute_center_r * math.cos(a), flute_center_r * math.sin(a))\n\
+    \                  .circle(flute_r).extrude(p.height + 0.2))\n        body = body.cut(cutter)\n\
+    \n    def hex_cutter(af, z0, h):\n        # Regular hexagon with specified across-flats\
+    \ dimension; vertex on +X.\n        radius = af / math.sqrt(3.0)\n        pts\
+    \ = [(radius * math.cos(math.radians(60 * i)),\n                radius * math.sin(math.radians(60\
+    \ * i))) for i in range(6)]\n        return cq.Workplane(\"XY\").polyline(pts).close().extrude(h).translate((0,\
+    \ 0, z0))\n\n    # Underside entry throat, then the larger captive-nut pocket\
+    \ and its shoulder.\n    body = body.cut(hex_cutter(p.nut_af - p.throat_interference_af,\
+    \ 0, p.throat_h))\n    pocket_z = p.throat_h\n    pocket_h = p.nut_h + p.pocket_axial_clearance\n\
+    \    body = body.cut(hex_cutter(p.nut_af + p.pocket_clearance_af, pocket_z, pocket_h))\n\
+    \n    # Radial slits make six short retaining fingers able to deflect over the\
+    \ nut.\n    for i in range(6):\n        a = math.radians(60 * i)\n        ux,\
+    \ uy = math.cos(a), math.sin(a)\n        vx, vy = -uy, ux\n        r0, r1, w =\
+    \ p.slot_r_inner, p.slot_r_outer, p.slot_width / 2.0\n        pts = [(r0*ux +\
+    \ w*vx, r0*uy + w*vy),\n               (r1*ux + w*vx, r1*uy + w*vy),\n       \
+    \        (r1*ux - w*vx, r1*uy - w*vy),\n               (r0*ux - w*vx, r0*uy -\
+    \ w*vy)]\n        slit = cq.Workplane(\"XY\").polyline(pts).close().extrude(p.slot_h)\n\
+    \        body = body.cut(slit)\n\n    # The clearance bore connects the nut to\
+    \ both faces so the bolt exits the far side.\n    bore = cq.Workplane(\"XY\").circle(p.bore_d\
+    \ / 2.0).extrude(p.height)\n    return body.cut(bore)"
+  print_orientation: Flat underside / nut-entry face on the build plate (z=0). Print
+    without supports.
+  use_orientation: Press the M3 nut into the hexagonal opening on the underside. The
+    bolt enters that same face, threads through the nut, and can protrude through
+    the opposite face.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_fits_and_is_captive
+  part: hand_knob
+  feature: underside flexing hex throat retains the ISO 4032 M3 nut inside the larger
+    hex pocket; nut cannot pass through the far-side roof
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clearance_af
+  - throat_interference_af
+  - throat_h
+  - slot_width
+  - slot_h
+  check:
+    method: measure
+    ref: null
+    description: Press the nut in by hand. It should pass the slotted throat, seat
+      in the internal hex pocket, and remain captured when the knob is turned upside
+      down. Do not force it if the throat will not flex.
+- id: bolt_path
+  part: hand_knob
+  feature: 3.4 mm axial clearance bore through the knob and nut pocket
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bore_d
+  check:
+    method: measure
+    ref: null
+    description: Confirm the intended M3 bolt passes through the clearance bore and
+      can emerge from the opposite face.
+manual:
+- n: '1'
+  text: Print the hand_knob with the nut-entry face flat on the build plate. Remove
+    any brim or debris from the hex entry and the bolt bore.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M3 nut with the hex opening on the underside. Press it
+    straight in by hand until it seats in the internal pocket behind the retaining
+    throat. The nut should stay in place when inverted.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Insert the M3 bolt through the underside, thread it into the captive nut,
+    and tighten by turning the knob. The bolt can project through the opposite face.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null

@@ -247,7 +247,7 @@ def test_a_replay_runs_arms_are_read_as_trials_kept_apart():
     """loop-estoa saves loop.json, not grades.json: each arm with a design is sliced, under its own key."""
     arms = list(se.loop_arms(se.RUNS / "loop-estoa"))
     with_design = [(folder, arm) for folder, arm in arms if (folder / "submission.yaml").exists()]
-    assert len(with_design) == 28  # 14 trials, feedback and neutral; a baseline's design is pilot-estoa's
+    assert len(with_design) == 52  # 26 trials, feedback and neutral; a baseline's design is pilot-estoa's
     assert {arm.condition for _, arm in with_design} == {"can_ask/feedback", "can_ask/neutral"}
     keys = [("loop-estoa", arm.task, arm.condition, arm.model, arm.trial) for _, arm in with_design]
     assert len(set(keys)) == len(keys)

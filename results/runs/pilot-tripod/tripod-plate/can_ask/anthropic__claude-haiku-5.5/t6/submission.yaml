@@ -1,0 +1,131 @@
+task: tripod-plate
+note: Temporary part. Plate length (70 mm) and thickness (12 mm) are guesses. Only
+  the width (38 mm) was measured. Verify both before use. PLA is not safe for heavy
+  loads, so use only with a light camera.
+questions: []
+params:
+  plate_l:
+    value: 70
+    unit: mm
+    kind: world
+    source: guessed
+    note: Plate length not measured. The tripod clamp only gave a width. Check against
+      the real plate before use.
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Width of plate the tripod clamp accepts.
+  plate_t:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness chosen so the bolt has room to seat and the plate stays stiff.
+      Plate thickness was not measured.
+  hole_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance for the 1/4-20 bolt shaft.
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Webcam bolt head diameter.
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Webcam bolt head height.
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Webcam bolt length under the head. Short; check it reaches into the camera
+      socket.
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(p.plate_l, p.plate_w, p.plate_t,\
+    \ centered=(True, True, False))\n    hole = cq.Workplane('XY').circle(p.hole_d\
+    \ / 2).extrude(p.plate_t)\n    pocket = cq.Workplane('XY').circle(p.head_d / 2\
+    \ + 0.4).extrude(p.head_h + 0.5)\n    return plate.cut(hole).cut(pocket)\n"
+  print_orientation: flat, bottom face on the bed
+  use_orientation: bottom face down on the tripod clamp, bolt shaft pointing up into
+    the camera
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt_joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: bottom head pocket
+    role: head_seat
+  nut: null
+  external: null
+criteria:
+- id: head_pocket
+  part: plate
+  feature: bottom head pocket
+  relation: seats
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  check:
+    method: measure
+    ref: null
+    description: Bolt head sits flush in the bottom pocket.
+- id: shaft_clearance
+  part: plate
+  feature: center hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - hole_d
+  check:
+    method: measure
+    ref: null
+    description: Bolt shaft passes through the hole without binding.
+manual:
+- n: '1'
+  text: Print the plate flat, bottom face on the bed.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the webcam bolt head into the pocket on the bottom of the plate so the
+    shaft points up through the hole.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Check the bolt shaft reaches into the camera socket. Do not mount the camera
+    until the fit has been checked by hand.
+  parts: []
+  hardware:
+  - bolt
+  tool: null

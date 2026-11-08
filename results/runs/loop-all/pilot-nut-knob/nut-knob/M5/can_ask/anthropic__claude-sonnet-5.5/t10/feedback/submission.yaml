@@ -1,0 +1,229 @@
+task: nut-knob/M5
+note: Revision 2. Your report was a 7.35 mm pocket, with no fit result. The ribbed
+  pocket was designed at 7.75 mm, so I read that as the printer making it about 0.4
+  mm small. The nut would not fit that. I raised pocket_clr from 0.15 to 0.35 and
+  lowered the rib from 0.4 to 0.3. This is a judgment call, not a confirmed fit. Use
+  the coupon to check it. The nut should press in with firm thumb force and stay in
+  when upside down. If it's still too tight, raise pocket_clr. If it's loose, raise
+  rib.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 bolt nominal diameter
+  bolt_hole_clr:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for the bolt through the floor
+  pocket_clr:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Raised from 0.15. The first print's pocket measured 7.35 mm against a 7.75
+      mm design value, so it printed about 0.4 mm small. This restores room for the
+      nut. Tune with the coupon.
+  rib:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Crush rib protrusion. Lowered from 0.4. With the larger pocket, rib-to-opposite-flat
+      is 8.05 mm as designed, and about 7.65 mm if the printer shrinks it 0.4 mm.
+  rib_h:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Rib height at the pocket mouth
+  rib_w:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Rib width
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Requested about 30 mm across
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Closed end wall that the nut sits on. Pocket depth is knob_h minus this,
+      which is 8 mm for a 4.7 mm nut.
+  coupon_d:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of the nut-fit test coupon
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    a = (p.nut_af + p.pocket_clr) / 2.0\n   \
+    \ R = a / math.cos(math.radians(30))\n    h = p.knob_h\n    f = p.floor_t\n  \
+    \  body = cq.Workplane('XY').circle(p.knob_d / 2.0).extrude(h)\n    body = body.faces('<Z').edges().chamfer(0.8)\n\
+    \    for i in range(8):\n        ang = math.radians(i * 45.0 + 22.5)\n       \
+    \ c = (cq.Workplane('XY').workplane(offset=-1)\n             .center(17.5 * math.cos(ang),\
+    \ 17.5 * math.sin(ang))\n             .circle(4.5).extrude(h + 2))\n        body\
+    \ = body.cut(c)\n    pocket = (cq.Workplane('XY').workplane(offset=f)\n      \
+    \        .polygon(6, 2 * R).extrude(h - f + 1))\n    body = body.cut(pocket)\n\
+    \    hole = (cq.Workplane('XY').workplane(offset=-1)\n            .circle((p.bolt_d\
+    \ + p.bolt_hole_clr) / 2.0).extrude(f + 2))\n    body = body.cut(hole)\n    zt\
+    \ = h\n    zb = h - p.rib_h\n    pts = [(a + 0.3, zt), (a, zt), (a - p.rib, zt\
+    \ - 0.5), (a - p.rib, zb), (a + 0.3, zb)]\n    rib = cq.Workplane('XZ').polyline(pts).close().extrude(p.rib_w\
+    \ / 2.0, both=True)\n    for k in range(3):\n        body = body.union(rib.rotate((0,\
+    \ 0, 0), (0, 0, 1), 30 + 120 * k))\n    return body\n"
+  print_orientation: Grip end (the closed end with the bolt hole) flat on the bed.
+    The nut pocket opens upward, so it needs no support or bridging.
+  use_orientation: Mounted on the bolt end with the pocket opening facing the work.
+    Either side up works because the nut is held by the ribs.
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    a = (p.nut_af + p.pocket_clr) / 2.0\n   \
+    \ R = a / math.cos(math.radians(30))\n    h = p.knob_h\n    f = p.floor_t\n  \
+    \  body = cq.Workplane('XY').circle(p.coupon_d / 2.0).extrude(h)\n    pocket =\
+    \ (cq.Workplane('XY').workplane(offset=f)\n              .polygon(6, 2 * R).extrude(h\
+    \ - f + 1))\n    body = body.cut(pocket)\n    hole = (cq.Workplane('XY').workplane(offset=-1)\n\
+    \            .circle((p.bolt_d + p.bolt_hole_clr) / 2.0).extrude(f + 2))\n   \
+    \ body = body.cut(hole)\n    zt = h\n    zb = h - p.rib_h\n    pts = [(a + 0.3,\
+    \ zt), (a, zt), (a - p.rib, zt - 0.5), (a - p.rib, zb), (a + 0.3, zb)]\n    rib\
+    \ = cq.Workplane('XZ').polyline(pts).close().extrude(p.rib_w / 2.0, both=True)\n\
+    \    for k in range(3):\n        body = body.union(rib.rotate((0, 0, 0), (0, 0,\
+    \ 1), 30 + 120 * k))\n    return body\n"
+  print_orientation: Closed end flat on the bed, pocket opening upward
+  use_orientation: Test piece only. Press an M5 nut in, turn it upside down and shake
+    it.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: nut_fit_coupon
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clr
+  - floor_t
+  - knob_h
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: M5 nut presses in by hand, sits on the floor below the ribs, and
+      stays in when the coupon is turned upside down and shaken.
+- id: c2
+  part: nut_fit_coupon
+  feature: crush ribs at the pocket mouth
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - rib
+  - rib_h
+  - rib_w
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: The ribs grip the nut firmly. It needs firm thumb pressure to insert
+      and does not fall out. If it is too loose, reduce pocket_clr or raise rib. If
+      it won't go in, do the opposite.
+- id: c3
+  part: knob
+  feature: bolt hole through the floor
+  relation: clears
+  hardware: nut
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - bolt_hole_clr
+  check:
+    method: measure
+    ref: null
+    description: An M5 bolt passes through the floor hole freely. The hole is smaller
+      than the nut across flats, so the nut cannot be pushed out.
+- id: c4
+  part: knob
+  feature: pocket floor
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - nut_h
+  - knob_h
+  check:
+    method: measure
+    ref: null
+    description: The nut sits fully below the knob's open face. Its top is about 3.3
+      mm below the face, and the ribs overhang it.
+manual:
+- n: '1'
+  text: Print the nut_fit_coupon first (about 10 minutes). Lay it with the closed
+    end on the bed. Press an M5 nut in by hand, turn the coupon upside down and shake
+    it. If the nut falls out, reduce pocket_clr or raise rib and reprint. If you can't
+    push it in, do the opposite.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Print the knob with the closed (grip) end flat on the bed, 0.2 mm layers,
+    3 or more walls, and 15% or more infill. No supports are needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop an M5 nut into the hex pocket, square to the hex. Press it down firmly
+    with your thumb, or with a bolt as a pusher, until it sits flat on the pocket
+    floor under the three small ribs.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Turn the knob over and check that the nut stays put. Thread the knob onto
+    your M5 bolt. The bolt goes through the nut and out of the hole in the closed
+    end. Tighten by hand.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
+from pbe.graders import assumed
 from pbe.graders import placed
 from pbe.graders.nuts import coupons_in_the_manual
 from pbe.graders.checks import Verdict
@@ -731,7 +732,8 @@ def _insert_under(piece, screw, insert_sized, depth_into):
 @_readable
 def insert_posts(sub, built, insert, insert_sized, hole_ok, bulged, held, depth_into):
     """Every insert a screw goes into has plastic around it like the posts that held, not the ones that
-    bulged, and sits in a hole like the ones inserts were set in."""
+    bulged, and sits in a hole like the ones inserts were set in. `bulged` is None when no recorded post
+    bulged at the setup's infill: then a thinner post than any that held is not graded, never failed."""
     if not _uses(sub, insert):
         return Verdict(None, "no heat-set inserts")
     piece, why = placed.piece(sub, built)
@@ -744,12 +746,16 @@ def insert_posts(sub, built, insert, insert_sized, hole_ok, bulged, held, depth_
             continue
         width, wall = found
         where = f"the {screw.item} screw's insert"
-        if wall <= bulged + TOL:
+        if bulged is not None and wall <= bulged + TOL:
             verdicts.append(Verdict(False, f"{where} has {wall:.2f} mm of plastic at its thinnest: posts with {bulged} mm bulged"))
         elif not hole_ok[0] - TOL <= width <= hole_ok[1] + TOL:
             verdicts.append(Verdict(None, f"{where} is in a {width:.2f} mm hole; inserts were only set in {hole_ok[0]} to {hole_ok[1]} mm"))
         elif wall >= held - TOL:
             verdicts.append(Verdict(True, f"{where}: {width:.2f} mm hole, {wall:.2f} mm of plastic at its thinnest"))
+        elif bulged is None and wall >= held - assumed.ASSUMED_WITHIN - TOL:
+            verdicts.append(Verdict(True, f"{where}: {width:.2f} mm hole, {wall:.2f} mm of plastic ({assumed.note(held)})"))
+        elif bulged is None:
+            verdicts.append(Verdict(None, f"{where} has {wall:.2f} mm of plastic, thinner than any post printed; {held} mm held"))
         else:
             verdicts.append(Verdict(None, f"{where} has {wall:.2f} mm of plastic: between {bulged}, which bulged, and {held}, which held"))
     if not verdicts:

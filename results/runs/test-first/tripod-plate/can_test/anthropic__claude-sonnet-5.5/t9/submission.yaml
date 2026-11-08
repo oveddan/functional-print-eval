@@ -1,0 +1,225 @@
+task: tripod-plate
+note: This is a best-effort temporary plate. The measured inputs are the 38 mm clamp
+  plate width, the 1/4-20 camera socket, and the approximate salvaged-bolt dimensions.
+  The plate thickness (5 mm) and the lip angle (45°) are guesses, because the clamp's
+  jaw details could not be measured and the print test results came back unreadable.
+  It may need a reprint after a fit check. I used the metal webcam bolt as the screw.
+  A printed 1/4-20 thread would be weak and could strip the camera socket.
+questions:
+- text: What is the clamp's jaw slot height (plate thickness) and the lip angle? These
+    couldn't be measured, so 5 mm and 45° are guesses.
+  answer: null
+- text: Is the 1/4-20 bolt's thread length really about 10 mm? That gives only about
+    4.6 mm of thread engagement in the camera.
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes (measured at the widest, bottom face;
+      assumed)
+  plate_l:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: length along the clamp; clamp length not measured
+  plate_t:
+    value: 5
+    unit: mm
+    kind: world
+    source: guessed
+    note: jaw slot height not measurable by owner; 5 mm guess, check fit
+  bevel_ang:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: clamp has angled lips, angle unknown; 45 deg from horizontal assumed
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  bolt_clear:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: extra on hole diameter for print tolerance
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam bolt head, approx
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: approx
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under head, approx
+  head_clear:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: extra on counterbore diameter
+  head_depth_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  boss_d:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: raised pad under the camera
+  boss_h:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: lets the bolt head be recessed while leaving a floor
+  floor_t:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: material under the bolt head (8 layers)
+parts:
+- id: camera_plate
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    w=p.plate_w/2\n    inset=p.plate_t/math.tan(math.radians(p.bevel_ang))\n\
+    \    pts=[(-w,0),(w,0),(w-inset,p.plate_t),(-w+inset,p.plate_t)]\n    plate=cq.Workplane('XZ').polyline(pts).close().extrude(-p.plate_l).translate((0,-p.plate_l/2,0))\n\
+    \    boss=cq.Workplane('XY').workplane(offset=p.plate_t).circle(p.boss_d/2).extrude(p.boss_h)\n\
+    \    body=plate.union(boss)\n    top=p.plate_t+p.boss_h\n    hole=cq.Workplane('XY').circle((p.bolt_d+p.bolt_clear)/2).extrude(top)\n\
+    \    cb_depth=top-p.floor_t\n    cb=cq.Workplane('XY').circle((p.bolt_head_d+p.head_clear)/2).extrude(cb_depth)\n\
+    \    return body.cut(hole).cut(cb)"
+  print_orientation: wide flat face (clamp side) on the bed, counterbore opening on
+    the bed
+  use_orientation: dropped into tripod clamp from above, raised pad facing up under
+    the camera
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 1.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: camera_plate
+    feature: counterbore floor
+    role: head_seat
+  - part: camera_plate
+    feature: bolt hole
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: camera_plate
+  feature: plate width and edge bevel
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_t
+  - bevel_ang
+  check:
+    method: measure
+    ref: null
+    description: 'Drop the plate into the clamp: it should seat fully and the angled
+      lips should grip the bevel when the knob is tightened. If it is loose or won''t
+      enter, adjust plate_w, plate_t, or bevel_ang.'
+- id: c2
+  part: camera_plate
+  feature: bolt hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.45
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: measure
+    ref: null
+    description: 1/4-20 bolt passes freely through the 6.8 mm hole
+- id: c3
+  part: camera_plate
+  feature: counterbore
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_clear
+  - head_depth_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt head (about 15 x 5 mm) sits fully recessed in the counterbore
+manual:
+- n: '1'
+  text: Print the camera_plate with the flat clamp-side face on the bed, in PLA, no
+    supports. Use about 4 walls and 40% or more infill so the plate is strong.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Test the plate in the tripod clamp before using it: drop it in from above
+    and tighten the knob. If it is loose or won''t go in, tell me or adjust plate
+    thickness or bevel angle and reprint. These values were guesses.'
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the 1/4-20 bolt up from the underside, with the head in the large recess
+    and the threaded shank coming out of the raised pad.
+  parts:
+  - camera_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Set the camera on the raised pad and screw the bolt into the camera's 1/4-20
+    socket by turning the bolt from underneath. Make it snug and don't overtighten,
+    because only about 4-5 mm of thread reaches the camera. Check that the bolt head
+    stays flush inside the recess so the plate still seats in the clamp.
+  parts:
+  - camera_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Slide or drop the plate into the tripod clamp and tighten the knob. For a
+    temporary mount, support the camera by hand when you first load it, and keep a
+    strap on it.
+  parts:
+  - camera_plate
+  hardware: []
+  tool: null

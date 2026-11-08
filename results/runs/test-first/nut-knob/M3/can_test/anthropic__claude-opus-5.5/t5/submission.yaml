@@ -1,0 +1,150 @@
+task: nut-knob/M3
+note: The pocket size is a best guess. The test showed 5.45 mm is too tight, and we
+  didn't find out how 5.55 or 5.65 fit. If the nut won't go in, change pocket_af to
+  5.6. If it falls out, change it to 5.5 and reprint.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  pocket_af:
+    value: 5.55
+    unit: mm
+    kind: design
+    source: design
+    note: 'Coupon: 5.45 too tight to push in. 5.55 is the next step up. Its fit wasn''t
+      reported.'
+  nut_recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: nut top sits this far below the knob face
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_n:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_r:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d / 2\n    k = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    k = k.faces('>Z').edges().chamfer(0.6)\n    for i in range(int(p.grip_n)):\n\
+    \        a = 2 * math.pi * i / p.grip_n\n        s = (cq.Workplane('XY').center((R\
+    \ + 0.4) * math.cos(a), (R + 0.4) * math.sin(a))\n             .circle(p.grip_r).extrude(p.knob_h))\n\
+    \        k = k.cut(s)\n    depth = p.nut_h + p.nut_recess\n    pocket = (cq.Workplane('XY').workplane(offset=p.knob_h\
+    \ - depth)\n              .polygon(6, p.pocket_af / math.cos(math.radians(30))).extrude(depth\
+    \ + 0.1))\n    k = k.cut(pocket)\n    lead = (cq.Workplane('XY').workplane(offset=p.knob_h\
+    \ - 0.3)\n            .polygon(6, (p.pocket_af + 0.6) / math.cos(math.radians(30)))\n\
+    \            .workplane(offset=0.3).polygon(6, (p.pocket_af + 0.6) / math.cos(math.radians(30))).loft())\n\
+    \    k = k.cut(lead)\n    hole = cq.Workplane('XY').circle(p.bolt_clear_d / 2).extrude(p.knob_h)\n\
+    \    k = k.cut(hole)\n    return k"
+  print_orientation: solid bottom face on the bed, nut pocket opening upward
+  use_orientation: any; nut pocket faces away from the clamped work, bolt passes through
+    floor and nut
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: knob
+  feature: hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: 'Nut goes in with a thumb push and stays in with the knob upside
+      down. Coupon result: 5.45 too tight, 5.55 not yet confirmed.'
+- id: nut_below_face
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Seated nut sits about 0.4 mm below the top face
+- id: floor_stops_nut
+  part: knob
+  feature: pocket floor with 3.4 mm hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The 3.4 mm hole is smaller than the nut, so the nut can't pass through
+      the floor
+manual:
+- n: '1'
+  text: Print the knob flat with the pocket facing up. No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Line the M3 nut up with the hex pocket and push it in with your thumb (or
+    press it on the table) until it hits the floor. It should sit just below the top
+    face. Turn the knob upside down to check it stays in.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Thread your M3 bolt in from either side. It passes through the floor hole
+    and the nut and comes out the other side. Turn the knob by its grip to tighten.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

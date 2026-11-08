@@ -1,0 +1,282 @@
+task: tripod-plate
+note: I didn't print a screw. A 1/4-20 thread printed in PLA is weak and strips easily,
+  so the plate uses the metal webcam bolt you already have. Its 15 mm head works as
+  the thumbscrew. The head sits in a recess on the underside, and the thread comes
+  up through a slot to the camera. The plate is 38 mm wide (0.4 mm narrower than the
+  clamp opening), 60 mm long and has a raised boss for the bolt. I couldn't get the
+  clamp's gap height, the clamp's length or the camera's socket depth, so those are
+  guesses (4 mm plate, 5.5 mm bolt protrusion). Print the small coupon first to check
+  the fit before the full plate. The plate has no anti-twist feature, so the camera
+  can swivel if the bolt is loose. Tighten it well, or put a rubber or paper pad between
+  the camera and the boss.
+questions:
+- text: What is the gap height (plate thickness) the tripod clamp accepts? I couldn't
+    get this measurement, so plate_t = 4 mm is a guess.
+  answer: null
+- text: How deep is the camera's 1/4-20 socket? The bolt is designed to stick up about
+    5.5 mm. This is a guess.
+  answer: null
+- text: Does the tripod clamp have a locating pin or a lip that the plate has to catch?
+    I got no answer, so the plate is a plain flat rectangle.
+  answer: null
+params:
+  clamp_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes
+  plate_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: total side clearance so plate slides into the clamp
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: plate length; clamp length not obtained
+  plate_t:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: flange thickness; clamp gap height could not be measured. Check with the
+      coupon
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head, 'about 15 mm'
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head height, about 5 mm
+  shank_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: length under head, about 10 mm
+  head_clear:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance around bolt head
+  head_depth_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: extra counterbore depth over head height
+  engage:
+    value: 5.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: how far the bolt sticks up above the plate into the camera. Camera socket
+      depth could not be measured; 5-6 mm is typical
+  hole_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance of shank slot
+  slot_travel:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: bolt position adjustment along plate length
+  wall:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: wall around counterbore in the raised boss
+  corner_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: plate corner radius
+  coupon_l:
+    value: 34
+    unit: mm
+    kind: design
+    source: design
+    note: length of the test coupon
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = p.clamp_w - p.plate_clear\n    cb_d = p.head_d + p.head_clear\n\
+    \    cb_len = cb_d + p.slot_travel\n    cb_depth = p.head_h + p.head_depth_clear\n\
+    \    floor = p.shank_len - p.engage\n    total = cb_depth + floor\n    hole_d\
+    \ = p.bolt_d + p.hole_clear\n    plate = (cq.Workplane('XY').box(w, p.plate_l,\
+    \ p.plate_t, centered=(True, True, False))\n             .edges('|Z').fillet(p.corner_r))\n\
+    \    boss = (cq.Workplane('XY').slot2D(cb_len + 2*p.wall, cb_d + 2*p.wall, 90)\n\
+    \            .extrude(total))\n    body = plate.union(boss)\n    cb = cq.Workplane('XY').slot2D(cb_len,\
+    \ cb_d, 90).extrude(cb_depth)\n    sl = cq.Workplane('XY').slot2D(p.slot_travel\
+    \ + hole_d, hole_d, 90).extrude(total)\n    return body.cut(cb).cut(sl)\n"
+  print_orientation: underside (the side that sits in the tripod clamp) flat on the
+    bed; the bolt-head recess opens onto the bed
+  use_orientation: Underside down in the tripod clamp, raised boss up, camera on top
+    of the boss
+- id: plate-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w = p.clamp_w - p.plate_clear\n    cb_d = p.head_d + p.head_clear\n\
+    \    cb_len = cb_d + p.slot_travel\n    cb_depth = p.head_h + p.head_depth_clear\n\
+    \    floor = p.shank_len - p.engage\n    total = cb_depth + floor\n    hole_d\
+    \ = p.bolt_d + p.hole_clear\n    plate = (cq.Workplane('XY').box(w, p.coupon_l,\
+    \ p.plate_t, centered=(True, True, False))\n             .edges('|Z').fillet(p.corner_r))\n\
+    \    boss = (cq.Workplane('XY').slot2D(cb_len + 2*p.wall, cb_d + 2*p.wall, 90)\n\
+    \            .extrude(total))\n    body = plate.union(boss)\n    cb = cq.Workplane('XY').slot2D(cb_len,\
+    \ cb_d, 90).extrude(cb_depth)\n    sl = cq.Workplane('XY').slot2D(p.slot_travel\
+    \ + hole_d, hole_d, 90).extrude(total)\n    return body.cut(cb).cut(sl)\n"
+  print_orientation: underside flat on the bed
+  use_orientation: 'Test only: slide into the tripod clamp and drop the salvaged bolt
+    into the recess'
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-screw
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: head counterbore (underside)
+    role: head_seat
+  - part: plate
+    feature: shank slot
+    role: clearance
+  nut: null
+  external: camera base 1/4-20 tripod socket
+criteria:
+- id: c-width
+  part: plate-coupon
+  feature: plate width and thickness in the tripod clamp
+  relation: seats
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - clamp_w
+  - plate_clear
+  - plate_t
+  check:
+    method: coupon
+    ref: plate-coupon
+    description: Slide the coupon into the tripod clamp and tighten. It should enter
+      without force and be held firmly. If loose or too thick, adjust plate_t or plate_clear.
+- id: c-head
+  part: plate
+  feature: head counterbore
+  relation: contains
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - head_d
+  - head_h
+  - head_clear
+  - head_depth_clear
+  check:
+    method: coupon
+    ref: plate-coupon
+    description: The bolt head should drop into the recess and sit fully inside it,
+      with no part of the head below the plate underside.
+- id: c-slot
+  part: plate
+  feature: shank slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - hole_clear
+  - slot_travel
+  check:
+    method: coupon
+    ref: plate-coupon
+    description: The bolt shank should slide freely along the full slot.
+- id: c-engage
+  part: plate
+  feature: bolt protrusion above boss
+  relation: engages
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - engage
+  - shank_len
+  check:
+    method: measure
+    ref: null
+    description: With the bolt in place, measure how far the thread sticks out above
+      the boss top (about 5.5 mm). It must be no more than the camera socket depth.
+      If the bolt bottoms out before the camera sits on the boss, add a washer or
+      shim.
+manual:
+- n: '1'
+  text: Print the plate-coupon first (underside on the bed, about 10 minutes). Slide
+    it into the tripod clamp and check that it fits and is gripped. Drop the webcam
+    bolt into the recess and check that it fits and slides in the slot. If the plate
+    is too thick or loose, tell me and change plate_t.
+  parts:
+  - plate-coupon
+  hardware:
+  - bolt
+  tool: null
+- n: '2'
+  text: Print the plate with the underside on the bed. Use 4 walls, 20-25% infill
+    and no supports. The recess roof bridges only about 22 mm.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the webcam bolt up from the underside, so the head sits in the recess
+    and the thread comes out through the slot on top of the boss.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Set the camera on the boss and screw the bolt into the camera's 1/4-20 socket
+    by turning the bolt head with your fingers. Slide the bolt along the slot first
+    if you want to adjust the balance. Stop when the camera is snug against the boss.
+    Don't overtighten.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Slide the plate into the tripod clamp (boss up, bolt head down) and lock the
+    clamp. Check that the camera is held before you let go. PLA softens in a hot car
+    or in direct sun, so don't leave it there.
+  parts:
+  - plate
+  hardware: []
+  tool: null

@@ -1,0 +1,199 @@
+task: nut-knob/M3
+note: Test results for the 5.55-5.75 mm pockets never came back. The only thing we
+  learned is that a 5.45 mm hex won't take the nut. So the pocket is a little loose
+  (5.65 mm) and three small crush ribs give the grip, which works across a wider range
+  of tolerances than a plain tight hex.
+questions:
+- text: Did the nut press in by hand, and does it stay in when you turn the knob upside
+    down?
+  answer: null
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af:
+    value: 5.65
+    unit: mm
+    kind: design
+    source: design
+    note: slightly loose hex; grip comes from crush ribs. A full 5.45 hex would not
+      go in (coupon)
+  rib_protrude:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: '3 ribs on alternate flats: rib-to-opposite-flat = 5.50'
+  rib_w:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: nut top sits this far below the knob face
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    h = p.knob_h\n    k = cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \    k = k.faces('>Z').edges().chamfer(0.8)\n    for i in range(int(p.scallop_n)):\n\
+    \        a = 2*math.pi*i/p.scallop_n\n        R = p.knob_d/2 + 0.6\n        k\
+    \ = k.cut(cq.Workplane('XY').center(R*math.cos(a), R*math.sin(a)).circle(p.scallop_r).extrude(h))\n\
+    \    depth = p.nut_h + p.nut_recess\n    z0 = h - depth\n    k = k.cut(cq.Workplane('XY').workplane(offset=z0).polygon(6,\
+    \ p.pocket_af/math.cos(math.pi/6)).extrude(depth + 1))\n    k = k.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(h))\n\
+    \    L = p.rib_protrude + 0.5\n    r = p.pocket_af/2 - p.rib_protrude + L/2\n\
+    \    for ang in (30, 150, 270):\n        rib = (cq.Workplane('XY').workplane(offset=z0)\n\
+    \               .center(r, 0).rect(L, p.rib_w).extrude(depth - 0.4)\n        \
+    \       .rotate((0,0,0),(0,0,1), ang))\n        k = k.union(rib)\n    return k\n"
+  print_orientation: flat bearing face on bed, nut pocket opening upward (no overhangs)
+  use_orientation: bearing face (bed side) against the work, nut pocket facing you
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_retained
+  part: knob
+  feature: hex pocket with crush ribs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - rib_protrude
+  - rib_w
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: 'Press nut in by hand; flip the knob over and shake: nut must stay
+      in. Earlier coupon results for 5.55-5.75 pockets weren''t reported, so this
+      fit hasn''t been tested.'
+- id: nut_below_face
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Nut top sits about 0.4 mm below the knob face
+- id: floor_stops_nut
+  part: knob
+  feature: pocket floor with 3.4 mm hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: Floor hole is smaller than the nut, so the nut can't be pushed out
+      the far side
+- id: bolt_passes
+  part: knob
+  feature: through hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: ''
+manual:
+- n: '1'
+  text: Print the knob flat side down with the hex pocket facing up. No supports.
+    0.2 mm layers, 3 walls.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Line the M3 nut's flats up with the pocket's flats and press it in with your
+    thumb. If it's stiff, press it against the table or squeeze it in a vise. The
+    three small ribs are meant to crush. Push it in until it reaches the floor, about
+    0.4 mm below the top face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down and shake it. The nut should stay in. If it falls
+    out or won't go in, tell me how it went and I'll change rib_protrude (bigger number
+    = tighter, smaller = looser).
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: 'Use: put the flat face (the side without the nut) against the work and thread
+    the M3 bolt in from that side, through the hole and the nut and out past the pocket.
+    When you tighten, the nut pulls against the solid floor, not against the press
+    fit.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

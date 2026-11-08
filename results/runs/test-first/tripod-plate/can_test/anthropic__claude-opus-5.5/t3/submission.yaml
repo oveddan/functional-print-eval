@@ -1,0 +1,211 @@
+task: tripod-plate
+note: 'Arca-Swiss style quick-release plate, 38 mm wide. The screw is your 1/4-20
+  webcam bolt, not a printed one: a printed 1/4-20 thread is weak and wears the camera
+  socket. The plate is 11 mm thick, so the 10 mm bolt sticks into the camera about
+  4.5 mm.'
+questions:
+- text: Does the webcam bolt's head have a slot or hex for a tool, or is it a thumb
+    knob?
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: plate width the clamp takes (Arca-Swiss style)
+  dovetail_angle:
+    value: 45
+    unit: mm
+    kind: world
+    source: guessed
+    note: Arca-style standard bevel; the clamp's knob takes up any small mismatch
+  plate_l:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_h:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: straight edge height before the bevel starts
+  bevel:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: horizontal inset of the 45 deg bevel
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt length under the head, 'about 10'
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_clear_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: 1/4-20 (6.35) plus clearance
+  head_clear:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cam_engage:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: how far the bolt pokes into the camera; standard 1/4-20 sockets are deeper
+      than this
+  slot_travel:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: lets you slide the camera forward/back to balance it
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W=p.plate_w; T=p.plate_t; h1=p.edge_h; c=p.bevel; L=p.plate_l\n\
+    \    pts=[(-W/2,0),(W/2,0),(W/2,h1),(W/2-c,h1+c),(W/2-c,T),(-W/2+c,T),(-W/2+c,h1+c),(-W/2,h1)]\n\
+    \    body=cq.Workplane('YZ').polyline(pts).close().extrude(L).translate((-L/2,0,0))\n\
+    \    cb_d=p.bolt_head_d+p.head_clear\n    web=p.bolt_len-p.cam_engage\n    cb_depth=T-web\n\
+    \    hole=cq.Workplane('XY').slot2D(p.slot_travel+p.bolt_clear_d,p.bolt_clear_d).extrude(T)\n\
+    \    pocket=cq.Workplane('XY').slot2D(p.slot_travel+cb_d,cb_d).extrude(cb_depth)\n\
+    \    return body.cut(hole).cut(pocket)\n"
+  print_orientation: Flat bottom (the side that sits in the clamp, with the bolt-head
+    pocket) on the bed; beveled edges face up, so it needs no supports. The pocket
+    ceiling is a 16 mm bridge.
+  use_orientation: 'Same way up: bottom in the tripod clamp, camera on the narrow
+    top face'
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: bottom pocket
+    role: head_seat
+  - part: qr_plate
+    feature: through slot
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: fits_clamp
+  part: qr_plate
+  feature: beveled sides
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - dovetail_angle
+  - bevel
+  - edge_h
+  check:
+    method: measure
+    ref: null
+    description: Drop the plate into the open clamp and tighten the knob. The jaws'
+      lips should press on the bevels and the plate should not rock or pull out when
+      you tug it.
+- id: head_recessed
+  part: qr_plate
+  feature: bottom pocket
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_head_h
+  - plate_t
+  - bolt_len
+  - cam_engage
+  check:
+    method: measure
+    ref: null
+    description: With the bolt in, its head must sit fully inside the pocket, below
+      the bottom face, so the plate sits flat in the clamp.
+- id: bolt_depth
+  part: qr_plate
+  feature: top face
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - cam_engage
+  check:
+    method: measure
+    ref: null
+    description: The bolt should stick out of the top about 4.5 mm. If it sticks out
+      more than about 5.5 mm, it could bottom out in the camera's socket.
+manual:
+- n: '1'
+  text: Print qr_plate flat side down. Use 4+ walls and 40%+ infill so it's stiff.
+    No supports needed.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Push the webcam bolt up through the slot from the bottom so the head sits
+    in the pocket and the thread sticks out of the top by about 4.5 mm.
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Hold the bolt head still with a finger (or a key or coin if the head takes
+    one) and turn the camera onto the thread until it's snug. Hand-tight only, because
+    PLA and the camera's socket don't need force. Slide it along the slot to balance
+    the camera first.
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Loosen the tripod knob, drop the plate in from above, and tighten the knob
+    so the jaws grip the beveled edges. Tug gently to check before you let go of the
+    camera. Don't leave a heavy camera on it in a hot car, because PLA softens.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null

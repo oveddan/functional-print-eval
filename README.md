@@ -1,645 +1,148 @@
-# Print-and-Build Eval
+# Functional 3D Printing Eval
 
-Can a frontier model design a 3D-printed part that a person at home can print, test and assemble, when some of what decides whether it works can only be learned by printing?
+**Contents:** [How a trial runs](#how-a-trial-runs) · [Constraints](#constraints) · [What the eval tests: failure classes](#what-the-eval-tests-failure-classes) · [The test prints behind the checks](#the-test-prints-behind-the-checks) · [The tasks](#the-tasks) · [Results](#results) · [What we couldn't grade](#what-we-couldnt-grade) · [Run it](#run-it) · [Limits](#limits) · [Prior work and comparable evals](#prior-work-and-comparable-evals) · [Tools used](#tools-used) · [How we used AI](#how-we-used-ai) · [More](#more)
 
-A person asks in plain language for a printed fix: a camera plate, a knob with a nut pressed in, a wheel with bearings. The model gets the request, the printer and filament, and a bin of common hardware. It can ask the person to measure their own things. It hands in CadQuery code for each part, the hardware it uses, a manual, and any test prints it wants made first. Code checks then decide, part by part, whether the design would print and fit, using limits taken from real test prints on one printer. Where no print on record can decide, the check says so: **not graded**, never a pass.
+3d printing is becoming far more accessible to the general public, as state of the art printers have become cheaper while increasing their capabilities, and LLMs can generate designs using open source tools, without a user needing to learn 3d modeling or purchase expensive software.  
 
-**Who it's for.** The at-home 3D printing market is growing rapidly ([CONTEXT's figures: shipments of printers under $2,500 rose 26% in 2025, and Bambu Lab sold 37% of them](https://www.tomshardware.com/3d-printing/bambu-lab-overtakes-creality-as-the-worlds-top-selling-budget-3d-printer-brand)). A lot more 3D printers are becoming available and more affordable to home users: the Bambu Lab A1 Mini is about $200 ([Wirecutter's top pick](https://www.nytimes.com/wirecutter/reviews/best-home-3d-printer/)). That opens up tons of possibilities, like fixing a broken part you had at the house, or doing a creative project where you want to connect two parts together that you didn't know how to connect. This is really a project about functional 3D printing.
+![The Estoa enclosure in OpenSCAD: its code on the left, written with an LLM, and the 3D model it renders on the right](https://media.danoved.xyz/print-build-eval/nogit/b08d6d81/estoa-openscad.jpg)
 
-**Why it matters.** Before, you had to pay for Fusion or Rhino, take a 3D modeling course and start learning 3D modeling, and iteration took forever. Even for me, I had to learn parametric modeling in Rhino to make a screw. Now, with LLMs and OpenSCAD, you can prompt-design a model and print it without needing to pay for any software. But it makes a lot of assumptions, and it makes a lot of mistakes. With 3D printing in particular, mistakes are expensive: they cost time, they cost material, and they cost you waiting for hours to get results. When software writes software, you write tests, see the results instantly, and do your fix. I think it's really important to know which models are doing the best at this kind of functional 3D printing.
+*The Estoa light's enclosure in OpenSCAD, an open-source modeling tool: the code, written with an LLM, and the part it describes.*
 
-## Where this came from
+Over the past month, I've been working on a bunch of 3D printing projects at home. A week before a gallery show, I was asked to make [a piece](https://danoved.xyz/portfolio/estoa) for it ([the post](https://x.com/oveddan/status/2113742922080272443)). Starting with an LED disc I'd had for 5 years, I worked with Opus 5.5 to 3D model, fabricate and program it: a light that rewards stillness, with a presence sensor, an ESP32 and frosted sides. With Opus 5.5 I was able to do a lot more than I could before; it told me about heat-set inserts, which I didn't even know about. I also printed parts to hang a lamp I bought at a flea market. A key part of all of this was doing test prints: to see how the frosting looked, and whether the inserts fit the holes the model designed. There were always mistakes on the way: a battery holder designed without knowing the battery's size, a back plate that took 6 hours to print where I couldn't reach the insert to screw it in, and cable holes too narrow for the cable to flex.
 
-Over the past month, I've been working on a bunch of 3D printing projects at home. Back in grad school, I did a lot of 3D printing, and it would take me a while to get anything done. I had to leave 3D prints overnight and wouldn't know if they would work. I would come in the morning, and then something was broken. This month, I had access to a 3D printer.
-
-I was asked a week before a gallery show to make [a piece](https://x.com/oveddan/status/2113742922080272443) for it. Starting with an LED disc I had from 5 years back, I collaborated with Opus 5.5 to 3D model, fabricate and program the concept around it: it rewards stillness; built with a presence sensor, ESP32, frosted glass. Working with Opus 5.5, I was able to do a lot more than I could do before. It told me about heat-set threaded inserts I could use that I didn't even know about, which melt into plastic with a soldering iron, so that a screw can securely join two pieces. The piece was fabricated with a combination of 3D printed PLA, and frosted glass. In the front, where the lights are shown, the sides are made of transparent, sanded PLA. In the back, opaque white PLA.
-
-![Animation of the enclosure coming apart and back together: top ring, frosted glass, wall, LED disk, radar, spider, back box and lid](https://media.danoved.xyz/estoa/process/explode-v1.webp)
-
-*The enclosure coming apart and back together: top ring, frosted glass, wall, LED disk, radar, spider, back box and lid. A render from [the piece's portfolio page](https://danoved.xyz/portfolio/estoa).*
-
-A key part of this process was definitely doing test prints:
-- to see how the frosting looked
-- to see if the inserts can be inserted into the hole size that the model created and we printed.
-
-| ![Clear PLA wall before sanding: every LED shows as a vertical streak](https://media.danoved.xyz/print-build-eval/nogit/7063f444/IMG_4815.jpg) | ![The same clear PLA after wet-sanding: an even frost over the LED disk](https://media.danoved.xyz/estoa/photos/wall-glow-sanded-v1.jpg) |
-|---|---|
-| Oct 2: the frosting test print, unsanded; the layer lines show every LED as a streak | after wet-sanding at 120, then 220 grit |
-
-Just because something says it's the size doesn't mean it's going to fit snugly into a print of PLA.
-
-| ![The original insert test print: two small pieces with holes](https://media.danoved.xyz/print-build-eval/nogit/e12a75b0/IMG_4731.jpg) | ![Melting an insert into the test print with a soldering iron](https://media.danoved.xyz/print-build-eval/nogit/0cacc125/IMG_4732.jpg) | ![The test print screwed to a top piece](https://media.danoved.xyz/print-build-eval/nogit/fd0ef7ed/IMG_4769.jpg) |
+| ![Animation of the Estoa enclosure coming apart and back together](https://media.danoved.xyz/estoa/process/explode-v1.webp) | ![The clear PLA wall after wet-sanding: an even frost over the LED disc](https://media.danoved.xyz/estoa/photos/wall-glow-sanded-v1.jpg) | ![Melting a heat-set insert into a test print with a soldering iron](https://media.danoved.xyz/print-build-eval/nogit/0cacc125/IMG_4732.jpg) |
 |---|---|---|
-| Oct 1: making the original test print | using a soldering iron to insert it | Oct 2: screwing it to a top piece |
-| ![An insert in a post on the back plate, with the plastic deformed around it](https://media.danoved.xyz/print-build-eval/nogit/a50c4880/IMG_4909.jpg) | ![The fix's test print: two small blocks with inserts](https://media.danoved.xyz/print-build-eval/nogit/2087a255/IMG_4938.jpg) | ![The reprinted back plate, with inserts set in posts joined to the wall](https://media.danoved.xyz/print-build-eval/nogit/1f75ff6d/estoa-back-plate-fixed.jpg) |
-| Oct 4: the back plate print not working with the material molding | Oct 5: a test print that fixes it | the back plate, nicely fixed |
+| The gallery piece, coming apart and back together | Its frosted wall, after a test print showed the layer lines | A test print for the heat-set inserts |
 
-One common issue is that the model kept designing prints for the enclosure that held the battery without knowing its size, or how the cable would go from the battery to the board. So this led to designs that would not work; the holder for the battery was too small, so it couldn't fit in properly, and the cable from the battery would never reach the USB-C port. Test prints would have caught this, or if it asked me for measurements. We went through multiple iterations. I printed a final backplate. It took maybe 6 hours and tons of material, and there were all these issues with it. I printed out something it designed, but the way it was designed, I could not reach the insert to screw into.
+In the design process, these models often make mistakes, which are costly both in time and money, as prints can take hours to complete, and physical material is consumed. If there are errors, another print needs to be made, thus wasting the time and material spent.
 
-![The full back box of the Estoa piece printing overnight](https://media.danoved.xyz/print-build-eval/nogit/1bdd025b/estoa-box-printing.gif)
+![One of the art installation's insert posts (left), warped where the brass insert was pressed in, and the whole back plate (right)](https://media.danoved.xyz/print-build-eval/nogit/bca67479/back-plate-insert-warp-closeup-first.jpg)
 
-*The full back box printing overnight, Oct 4, at 100% infill. From the session records: a skeleton test print on Oct 3 caught the first battery bay, drawn from a guessed 154 mm battery and a guessed cable exit (the real power bank is 155 x 74 x 18 mm). The test piece after it left out the bay's end stop, so this box had only 0.5 mm of play there and had to be reprinted.*
+*An example of a print that failed, and cost lots of time and money: the back plate for an art installation, which had inserts. The poles for the inserts did not have enough give, causing them to warp when the inserts were pressed in. This was a costly and timely mistake. We fixed it later, but had to reprint the whole plate again.*
 
-I bought an old light from the flea market, and I wanted to install it, but I didn't have anything to connect it to the ceiling. I worked with Opus 5.5 to design something to hold the cable, and then something that would make it flush with the ceiling. It came out great, but there were always a few mistakes on the way, such as: the part that hangs on the cable did not have enough spacing to allow the cable to properly slide through and grip. The holes, which were 6.6 mm, were too narrow for a 6 mm cable, as it didn't give any room to flex. The original test print for that part also was too thick, so it couldn't hang properly on the hook.
+How can we determine which models produce the best designs, with the least amount of tokens spent, material consumed, and time waited for printing?  How can we simulate the result of each print design, and know if it will be successful or not before printing it?  How can we build a feedback loop that allows a model to correct its mistakes, and measure if its fix got us closer to the final answer?
 
-I was just working with Opus 5.5, but it would have been great to be able to know: which model is the best for this task, which is going to be the cheapest to run, and which is going to get me to the answer (my final print) the fastest with the least amount of trial and error, and the least amount of material used.
+This repository builds a framework for simulating and measuring the success when LLMs are designing [functional prints](https://www.reddit.com/r/functionalprint/) based on a prompt, measurements, available materials, and simulated results.
 
-### The failure classes the tasks test
+Examples of functional printing tasks would be:
 
-<!-- failure-classes:start (written by report/atlas/build.py --readme; don't edit by hand) -->
-57 failures from real builds with an AI agent, each traced to its session (`seeds/`) and sorted into one of 10 classes that don't depend on the object (`seeds/classes.yaml`). They came from: Tripod and phone stand (12), Estoa light piece (34), Lamp mount and organizer (8), The eval's own test prints (3). The graded tasks test 5 of the classes; each is below with the requirements that test it, one real failure, and photos, which are hosted rather than committed.
-
-#### C1: Designing from unmeasured dimensions
-
-13 failures in the builds. Tested by:
-
-- `tripod-plate` R4, the bolt's head fits in its recess
-
-**From the builds** (Estoa light piece): Modeled the power-bank bay from a guessed 154 mm length and a guessed cable exit, without asking for measurements. Found by: skeleton test print; the battery didn't fit and the cable would be crushed against the breakout.
-
-| ![Estoa's back-box skeleton, Oct 3, with the real power bank on it. The bay was drawn from a guessed 154 mm battery and a guessed cable exit; the power bank didn't fit.](https://media.danoved.xyz/print-build-eval/nogit/243658bb/IMG_4861.jpg) | ![Half an hour later, the fix. A 1:1 paper floor plan with the real power bank, USB-C breakout and cable laid on it, before anything else was printed.](https://media.danoved.xyz/print-build-eval/nogit/be5bddcb/IMG_4869.jpg) |
+| | |
 |---|---|
-| Estoa's back-box skeleton, Oct 3, with the real power bank on it. The bay was drawn from a guessed 154 mm battery and a guessed cable exit; the power bank didn't fit. *Dan's photo* | Half an hour later, the fix. A 1:1 paper floor plan with the real power bank, USB-C breakout and cable laid on it, before anything else was printed. *Dan's photo* |
+| ![The Estoa light taken apart: top ring, frosted glass, wall, LED disc, radar, spider, back box and lid](https://media.danoved.xyz/estoa/process/exploded-v1.jpg) | ![The Estoa back box open: the ESP32 on its perfboard, the wiring and the battery, held by printed posts and brass inserts](https://media.danoved.xyz/print-build-eval/nogit/f6d3b3c4/estoa-enclosure-inside.jpg) |
+| *"I have an LED disk that I want to turn into an artpiece, can we design an enclosure that holds both the ESP32 to drive the lights, a usb c port to power the piece, and a frosted front and sides that diffuse the leds?"* | *Inside the printed enclosure: the ESP32, the wiring and the battery.* |
+| ![Printed parts that hang a vintage lamp from its cable](https://media.danoved.xyz/print-build-eval/nogit/5a90da57/lamp-ceiling-parts.jpg) | ![A printed desk clamp holding a phone mount's arm to the edge of a desk](https://media.danoved.xyz/print-build-eval/nogit/bf88d66c/phone-desk-clamp.jpg) |
+| *"I bought this vintage hanging lamp in the market, what could I print to make it attach to the light box on my ceiling?"* | *"The clamp for a phone mount doesn't fit my desk, can we make a larger one that will?"* |
 
-#### C2: Fit clearance wrong for the printer
+Or: *"Can we design a custom robotic arm that mounts to my desk?"*
 
-4 failures in the builds. Tested by:
+Here's how the agent works (we can link to the agent code):
 
-- `tripod-plate` R3, the camera's bolt goes through the plate, with its head on the clamp side
-- `nut-knob` R4, the nut presses in by hand and stays in upside down on this printer, or a test print would have found a size that does
-- `bearing-wheel` R3, the bearings press in and stay in on this printer, or a test print would find a size where they do
+1. A person asks in plain language for a printed fix: a camera plate, a knob with a nut pressed in, a wheel with bearings
+2. The model is given a 3d printer, filament, and list of available hardware. It writes each part as code (CadQuery, in Python), which it can't run or look at.
+3. The model decides if it needs to know more information, such as measurements of a servo. If it does, it requests this from the user.
+    * The user responds with measurements.
+4. The model decides if it needs to know if an aspect of a print will work, such as an opening, or a connection between hardware and the print. It can then design a test print that can help answer this. The goal is to get to an answer with less filament used or time spent than if we printed the final print without knowing this answer.
+    * We simulate the test print, and generate a response from the user based on the results. The model can test again.
+5. It prints a final version. The code then runs some automated tests on the resulting geometry, to simulate the results of the print.
+    * We simulate the result of this print, and provide the results to the model. If it has not done two prints, it can print again and we repeat that loop.
 
-**From the builds** (Tripod and phone stand): Nut pockets at af+0.3 mm; every nut fell out. Found by: three rounds of test prints.
+Some of my test prints:
 
-#### C3: Fastener stack-up arithmetic
-
-6 failures in the builds. Tested by:
-
-- `tripod-plate` R5, the bolt reaches into the camera
-- `nut-knob` R5, the bolt passes through the nut and out the other side (at least ISO 273's fine clearance hole)
-- `bearing-wheel` R4, the M8 bolt goes through
-
-**From the builds** (Estoa light piece): Lid-screw posts about 8 mm across and 26 mm tall, freestanding, with 4.3 mm holes for 5 mm inserts; they softened, bent and flared, and inserts sat off-centre. Dan followed the instructed technique. Found by: assembly.
-
-| ![A lid-screw post after its heat-set insert went in, Oct 5. The post was too thin and tall for a 5 mm insert, so its walls flared and the insert sat off-centre.](https://media.danoved.xyz/print-build-eval/nogit/efec6749/IMG_4928.jpg) | ![The tripod's phone clamp, Oct 24. The design treated an M5x50 as fully threaded; it's threaded only at the far end, so the lock nut couldn't reach the end wall.](https://media.danoved.xyz/print-build-eval/nogit/1625ab83/IMG_5297.jpg) |
-|---|---|
-| A lid-screw post after its heat-set insert went in, Oct 5. The post was too thin and tall for a 5 mm insert, so its walls flared and the insert sat off-centre. *Dan's photo* | The tripod's phone clamp, Oct 24. The design treated an M5x50 as fully threaded; it's threaded only at the far end, so the lock nut couldn't reach the end wall. *Dan's photo* |
-
-#### C5: Mating-part envelopes
-
-6 failures in the builds. Tested by:
-
-- `tripod-plate` R1, there's a printed plate
-- `tripod-plate` R2, the plate fits the tripod's clamp
-- `nut-knob` R3, a hex pocket that takes the whole nut, can be reached from one face, stops the nut turning, and stops it going out the far side
-- `bearing-wheel` R1, about the size of the old wheel
-- `bearing-wheel` R2, there's room for both bearings
-
-**From the builds** (Estoa light piece): Dan asked for the ESP32's USB opening to be "more to the right, and narrower" after a test print; the agent chose 11.5 mm (about 0.4 mm each side of the receptacle) at the end of a 9 mm recess, without saying plug heads need more; ordinary plug heads couldn't reach the port. Found by: use after the build.
-
-| ![The ESP32's USB-C opening in Estoa's back box. Sized to the port, not the plug, at the end of a 9 mm recess; ordinary plug heads couldn't reach.](https://media.danoved.xyz/print-build-eval/nogit/c524a219/IMG_4884.jpg) |
-|---|
-| The ESP32's USB-C opening in Estoa's back box. Sized to the port, not the plug, at the end of a 9 mm recess; ordinary plug heads couldn't reach. *Dan's photo* |
-
-#### C6: Printability in the chosen orientation
-
-11 failures in the builds. Tested by:
-
-- `nut-knob` R1, one printed part (a test print doesn't count)
-- every task: `bridges`, one connected body, fits the bed
-
-**From the builds** (Tripod and phone stand): The roof over the head recess was a plain bridge with the bolt slot cut through it, with no stepped layers, though the repo already used that technique. Found by: first print; the roof came out stringy and messy.
-
-| ![The underside of the tripod's Arca plate, Oct 12, the project's first print. The roof over the bolt-head recess was a plain bridge with a slot cut through it, and it printed as a tangle.](https://media.danoved.xyz/print-build-eval/nogit/1e41d9fa/IMG_5045.jpg) | ![Estoa's test wall, Oct 1. A screw hole through a bridged pocket roof printed as loose strands and closed up; the slicer had warned of a floating cantilever.](https://media.danoved.xyz/print-build-eval/nogit/d7a954c0/IMG_4746.jpg) | ![The fix, already used in Estoa a week earlier. Each pair of layers bridges onto the last, so the hole has a solid edge to print on.](https://media.danoved.xyz/print-build-eval/nogit/393de70f/stepped-hole.png) |
+| | | |
 |---|---|---|
-| The underside of the tripod's Arca plate, Oct 12, the project's first print. The roof over the bolt-head recess was a plain bridge with a slot cut through it, and it printed as a tangle. *Dan's photo* | Estoa's test wall, Oct 1. A screw hole through a bridged pocket roof printed as loose strands and closed up; the slicer had warned of a floating cantilever. *Dan's photo* | The fix, already used in Estoa a week earlier. Each pair of layers bridges onto the last, so the hole has a solid edge to print on. *Diagram from the Estoa repo* |
+| ![A roof over a hole, printed in the air: loose loops and tangles around the hole](https://media.danoved.xyz/print-build-eval/nogit/51fb657f/test-print-bridge-tangle.jpg) | ![A small test block with a hole for a heat-set insert](https://media.danoved.xyz/print-build-eval/nogit/a512308b/test-print-insert-block.jpg) | ![The box's wall with the USB-C openings, the power bank and ESP32 board lined up behind it](https://media.danoved.xyz/print-build-eval/nogit/81e6b064/test-print-usb-wall-with-parts.jpg) |
+| A roof over a hole: it printed as loose loops | A block to try a heat-set insert in | The wall with the USB-C openings, with the real parts behind it |
+| ![A skeleton of the battery bay and board frame](https://media.danoved.xyz/print-build-eval/nogit/e6251637/test-print-skeleton-tray.jpg) | ![A plate of small test pieces: an arc of the ring, the disc mount, insert posts](https://media.danoved.xyz/print-build-eval/nogit/c945cd21/test-prints-plate.jpg) | ![Assembling the knob's test print](https://media.danoved.xyz/print-build-eval/nogit/511bf8a8/knob-test-print-assembly.gif) |
+| A skeleton of the battery bay, before the full box | A plate of small test pieces | Putting a knob's test print together |
 
-**Recorded but not tested by any task yet:** C4 tool and hand access (3); C7 works in the orientation it's used (3); C8 test-plan coverage (3); C9 manual correctness (5); C10 print process and material settings (3).
-<!-- failure-classes:end -->
 
-## What existed before the hackathon
+## How a trial runs
 
-I was going to be away from home, flying on Oct 30 and only returning on Nov 9, so for the whole hackathon I'd be away from my 3D printer. I wanted to be sure I could print what was needed before Oct 30, so I did the minimum to prove that: I gathered and categorized real failure cases to work out which test prints I needed, then made those prints to define the ground truth, along with the plan and supporting code, including the first checks. None of the evals were built or run by the time the hackathon started.
-
-## Run it
-
-Everything in this section runs from a clean clone with **no API key and no model calls**. It was tested on a fresh clone in a clean Ubuntu 24.04 container (4 cores); the times below are from that run. macOS wasn't tested on a clean machine, and neither was Docker for `can_run_code`.
-
-### Install
-
-You need:
-- [uv](https://docs.astral.sh/uv/), which installs Python 3.12 and every Python dependency from `uv.lock` on first use;
-- git;
-- a sandbox for building model-written parts: **bubblewrap** (`bwrap`) on Linux, or `sandbox-exec`, which ships with macOS. Without one, parts don't build unless you set `PBE_NO_SANDBOX=1`, which is only for a throwaway container or VM;
-- on Linux, `libgl1` for CadQuery's kernel, and `fontconfig` with a font for parts with text.
-- optional: [Bambu Studio](https://bambulab.com/en/download/studio), only for print-time and filament estimates (`scripts/slice_estimates.py <run>...`). The checks and the eval don't need it. The script looks for the macOS app at `/Applications/BambuStudio.app`; elsewhere, set `BAMBU_STUDIO` to the program and, if its presets aren't found beside it, `BAMBU_STUDIO_PROFILES` to its `profiles/BBL` folder. `docs/slice-estimates.md` has the method and its limits.
-
-On Ubuntu 24.04:
-
-```bash
-sudo apt-get install -y git curl bubblewrap libgl1 fontconfig fonts-dejavu-core
+```mermaid
+flowchart TD
+  A[Person asks for a part] --> B[Model designs it<br/>and can ask for measurements]
+  B --> Q{Is the model unsure<br/>part of it will work?}
+  Q -->|yes, its choice| T[Model asks for a test print]
+  T --> R[Person says how each piece came out,<br/>from Dan's recorded prints,<br/>or that they can't tell]
+  R --> B
+  Q -->|no| F[Final design, printed in simulation:<br/>checks compare it with parts Dan printed]
+  F --> P[Verified pass]
+  F --> X[Fail]
+  F --> N[Not graded:<br/>no recorded print decides it]
 ```
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+A trial where the model asked for a test print before its final design (Sonnet 5.5's M3 knob):
 
-Ubuntu 24.04 stops unprivileged programs from making the namespaces bubblewrap needs. On a machine you can throw away (a VM or CI runner, as CI does), allow them:
+![One trial in four panels: the request, the test print of four nut pockets the model asked for, the person's report on each pocket, and the final knob with its pocket at 5.70 mm](docs/media/walkthrough/test-print-storyboard.png)
 
-```bash
-sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-```
+In each trial, nothing actually gets printed. We have checks, run by code, that simulate the model's parts and compare them with the results of my test prints to see if they would print successfully. Here's an example of a trial that failed and then succeeded after we gave the model feedback about what failed (Gemini 4 Argon on the Estoa light, from the earlier loop, where the feedback came after its first print):
 
-Then:
+![One trial in four panels: the request, the first simulated print failing on the roof over the USB window, the person's one-line report, and the second print passing with an open channel](docs/media/walkthrough/storyboard.png)
 
-```bash
-git clone https://github.com/oveddan/print-build-eval.git
-```
+## Constraints
 
-```bash
-cd print-build-eval && uv sync
-```
+* The print shouldn't require any supports
+* The model has up to 12 turns
+* We are currently restricting to high-speed PLA.
 
-### Everything at once
+## What the eval tests: failure classes
 
-```bash
-scripts/reproduce.sh
-```
+Every one of our checks comes from failures that happened on my real builds. We used AI to scrape my existing sessions, found 57 failures, and categorized them into 10 classes ([every check](docs/reference.md#the-failure-classes-the-tasks-test)). Six of the classes were tested in these trials.
 
-It runs the six steps below in order and stops at the first one that fails. Expected: every step passes, ending with `done`. It took 29 minutes on the clean run.
-
-### Step by step
-
-| Step | Command | Expected | Time on the clean run |
+| Class | From Dan's builds | A real failure | How the code checks it |
 |---|---|---|---|
-| 1. Install | `uv sync` | Python 3.12 and the locked dependencies installed | 7 s, with a fast network |
-| 2. Tests | `uv run pytest` | all pass; the three Bambu Studio tests skip where it isn't installed. Sandbox tests run in the sandbox a trial would use here; `--all-sandboxes` runs them in Docker too | 509 passed, 3 skipped (Linux cloud session, `-n 4`) |
-| 3. Every reference | `uv run python -m pbe.eval --reference --task tripod-plate` (and `m5-spacer`, `bearing-wheel`, `nut-knob/M3`, `nut-knob/M5`, `nut-knob/M8`) | each task's reference design passes every check; exit code 0 | 29 s for all six |
-| 4. Regrade every saved trial, on a copy | see below | every run's `summary.csv` unchanged | 16 min 35 s for all 13 runs (151 trials) |
-| 5. Results page | `uv run python scripts/results_page.py` | `results/local/results-page/index.html`: the `can_ask` and `all_given` trials on the knob, wheel and tripod (120 on the clean run), each with its parts in 3D and every check. It leaves out the spacer and the `can_run_code` runs | 8 min 10 s, most of it rebuilding parts |
-| 6. README results | `uv run python scripts/results_table.py --check` | "README.md's results and assumptions match results/runs/" | under 1 s |
+| **C1** Designing from unmeasured dimensions | ![Estoa's back-box skeleton with the real power bank on it: the bay drawn from a guessed size was too small](https://media.danoved.xyz/print-build-eval/nogit/243658bb/IMG_4861.jpg) | The Estoa battery bay was drawn from a guessed 154 mm length; the battery didn't fit. | The person's measurements are only given if the model asks. The checks compare the design against the real ones, such as the bolt head's real size in the tripod plate's recess. |
+| **C2** Fit clearance wrong for the printer | ![A fit test on Oct 22: a bolt and nut tried in a printed block's pockets](https://media.danoved.xyz/print-build-eval/nogit/8d028eda/fit-test-bolt-nut.gif) | Nut pockets 0.3 mm over the nut; every nut fell out. | It measures the nut pocket or bearing seat in the built part and looks that size up in the recorded test prints: went in and held, fell out, or wouldn't go in. |
+| **C3** Fastener stack-up | ![A lid-screw post after its heat-set insert went in: too thin, it bent and flared](https://media.danoved.xyz/print-build-eval/nogit/efec6749/IMG_4928.jpg) | Estoa's posts for the heat-set inserts (brass threaded sleeves melted into the plastic) were too thin; they bent and the inserts sat crooked. | It adds up each bolt's path from the part and the catalog's real thread lengths: does the bolt reach the camera, pass through the nut, or bottom out before it tightens; is there enough plastic around each insert. |
+| **C5** Mating-part envelopes | ![The ESP32's USB-C opening in the Estoa box, sized to the port, not the plug](https://media.danoved.xyz/print-build-eval/nogit/c524a219/IMG_4884.jpg) | Estoa's USB opening fit the port, but a real plug's head is wider than the hole. | It places the real hardware against the part (the clamp's jaws, both bearings, the perfboard, a USB-C plug) and checks each one fits. |
+| **C6** Printability in the orientation printed | ![The underside of the tripod's Arca plate: the roof over the bolt's recess printed as a tangle](https://media.danoved.xyz/print-build-eval/nogit/1e41d9fa/IMG_5045.jpg) | The bottom of the camera plate: the plastic printed over the bolt's recess collapsed into loose strands. | It cuts the part into layers as printed and lays strands across every overhang. If too few land on solid at both ends, the roof fails. Each part must also be one piece and fit the bed. |
+| **C7** Works in the orientation it's used | no photo | Estoa's keyhole slots ran down, so it couldn't hang on its screws. | It reads which way is up from the design and checks each keyhole's slot runs up from its entry. |
 
-Regrading reads each saved design and grades it again with today's checks, without calling a model. Point it at a copy so `results/` isn't touched:
+<details>
+<summary>How two of the checks use my test prints, in pseudocode</summary>
 
-```bash
-cp -r results/runs /tmp/runs
+**C2, does the nut fit its pocket** (`pbe/graders/nuts.py`), against the nut-pocket test print:
+
+```text
+recorded = my nut-pocket test print: for each nut size, each pocket's clearance and what the nut did
+           (won't go in / snug, holds upside down / falls out)
+
+for each layer of the model's part, from the bed up:
+    find a hexagonal hole about the size of the nut
+pocket = the widest across-flats of that hole
+if the pocket has ribs, clips or relief cut into it:  not graded  (no test print had them)
+clearance = pocket - the nut's across-flats size (ISO table)
+
+if a recorded pocket is within 0.01 mm of clearance:  use what that nut did
+elif clearance is between two recorded pockets that did the same thing:  use that
+elif it's tighter than one that wouldn't go in, or looser than one that fell out:  use that
+else:  not graded  (no print says)
+pass only if the nut goes in by hand and holds upside down
 ```
 
-```bash
-uv run python -m pbe.eval --regrade --runs-dir /tmp/runs --run pilot-tripod --task tripod-plate
+**C6, does a roof print over air** (`pbe/graders/bridges.py`), against the roof test prints:
+
+```text
+longest_clean_span = the longest roof my test prints bridged cleanly (50 mm)
+
+slice the part into 0.2 mm layers, from the bed up
+for each layer:
+    unsupported = this layer minus the layer below
+    skip anything within a short overhang of the layer below
+    for each unsupported region:
+        for strand directions every few degrees:
+            lay strands 0.4 mm apart across the region
+            a strand is good if both ends land on the layer below, within longest_clean_span
+        if some direction has (nearly) every strand good:  the roof prints
+if no direction works:  fail  (a hole cut through a roof always fails: strands end at the hole)
+a ledge narrower than any that tangled in a test print:  not graded
 ```
 
-```bash
-diff results/runs/pilot-tripod/summary.csv /tmp/runs/pilot-tripod/summary.csv
-```
+</details>
 
-No output from `diff` means every verdict in the run reproduced. When anything that decides a verdict changes, including a check's detail text, the trial's `grades.json` is rewritten with the earlier reading kept under `regrades`. On Linux, a few `bridges` details come out with the strand angle mirrored (the saved runs were mostly graded on macOS), so those trials' `grades.json` change while their verdicts don't. Runs that aren't model trials (`crash-replay`, `loop-sample`, `loop-sample-2`) keep their own `summary.csv`, which a regrade leaves alone.
+Not tested yet: C4 tool and hand access, C8 test-plan coverage, C9 manual correctness, C10 print settings.
 
-One design by hand, with the generic checks only (the Arca plate as first drawn, and as fixed after its first print):
-
-```bash
-uv run python -m pbe.run examples/arca-plate/original.yaml examples/arca-plate/fix.yaml
-```
-
-Expected, in 4 s: the original fails `bridges` (its roof tangled when printed) and the fix passes every check, so the command exits 1.
-
-CI runs steps 2 and 3 on every pull request and on `main` (`.github/workflows/ci.yml`), and step 6 as one of the tests.
-
-### Running new trials (needs an API key)
-
-Models are called through [OpenRouter](https://openrouter.ai), by API. Set `OPENROUTER_API_KEY` in your environment (if it's unset, the runner tries the 1Password CLI, which only works on Dan's machine). Never commit it.
-
-```bash
-uv run python -m pbe.eval --run my-run --task tripod-plate --model anthropic/claude-haiku-5.5 --trials 1 --budget 0.50
-```
-
-- `--condition` is `can_ask` (the default), `all_given` or `can_run_code`. Several `--model`, `--task` and `--condition` flags multiply.
-- `--budget` is in US dollars for the whole run. It's checked between trials, so the last trial can run over.
-- Each trial saves `transcript.json`, `submission.yaml` and `grades.json` under `results/runs/<run>/<task>/<condition>/<model>/t<n>/`, and the run gets a `summary.csv`. A stopped run resumes where it left off.
-- **What it costs:** the Cost column in [Results](#results) is what OpenRouter charged for the saved trials, by task, condition and model. Divide by the Trials column for a trial's cost.
-- **Prompt caching:** Claude models ask for OpenRouter's prompt caching; every model gets the same messages and tools, byte for byte (issue 34, `tests/test_caching.py`). Each trial saved since records `settings.prompt_caching`. Trials saved before had no caching, so their Claude costs are full price. `scripts/cost_report.py <run>...` gives cost per trial and per turn by model.
-- **`can_run_code`** lets the model run Python before handing in. That code runs in bubblewrap on Linux, or in Docker with the image from `scripts/build_run_python_image.sh`. Docker on macOS hasn't been tested; a Linux cloud machine is the tested route. The saved runs `pilot-code-smoke` (one trial) and `pilot-code` (three per lineup model on the tripod) used it, under bubblewrap (issue 34).
-
-### Print-time and filament estimates (optional, needs Bambu Studio)
-
-```bash
-uv run python scripts/slice_estimates.py pilot-estoa loop-estoa
-```
-
-A test-print replay such as `loop-estoa` is read arm by arm (`can_ask/feedback`, `can_ask/neutral`). Its first print is the replayed trial's design, so slice that run too, here `pilot-estoa`.
-
-It slices each saved design with Bambu's stock X1C presets, offline, and writes `slice_estimates.csv` (per trial) and `slice_estimates_parts.csv` (per part) beside each run's `summary.csv`. It changes no grade. These are slicer estimates, not timed prints.
-
-### Building the submission ZIP
-
-```bash
-uv run python scripts/build_submission.py main
-```
-
-It packages the files tracked at that git ref into `../print-build-eval-<commit>.zip`, beside the repo, with this README at the ZIP's root (`--out` picks another path outside the repo). It writes nothing, and lists every reason, if the ZIP would be 50 MB or more, or would hold a video, `docs/context/`, `.git`, a secret, or a machine-local path such as a home folder or a LAN address. Left out on purpose, each with its reason in the script's `LEFT_OUT`: `docs/context/`, the two overnight logs, the failure atlas (`report/atlas/`) and the Estoa datasheet, which is fetched from Adafruit (product 2477) instead.
-
-## The tasks
-
-Each task is a folder in `tasks/`: the person's request (`brief.md`), the facts the person can measure if asked (`hidden_facts.yaml`), the checks (`requirements.yaml`), and a reference design that must pass every check (`reference.yaml`). Every task also gets the generic checks: the code builds, each part is one connected body, it fits the bed, and every overhang can be bridged (`bridges`).
-
-| Task | The request | Graded on | Wording |
-|---|---|---|---|
-| `tripod-plate` | Dan's real first message: replace the lost plate that joins a camera to a borrowed tripod | a plate exists; it fits the clamp; the bolt goes through, head on the clamp side; the head fits its recess; the bolt reaches into the camera | Dan's own words, approved by him for model runs |
-| `nut-knob` (M3, M5, M8) | A hand knob with a hex nut pressed in, which must stay in upside down | one part; about the right size; a pocket that takes the nut, stops it turning and stops it going through; the nut presses in and holds on this printer, or a test print would find a size that does; the bolt passes through | draft, not approved: runs are exploratory. M8 has a reference but no runs |
-| `bearing-wheel` | A closet-door roller wheel on two 608 bearings and an M8 bolt | about the old wheel's size; room for both bearings; the bearings press in and stay, or a test print would find a size; the bolt goes through | written by Claude and not reviewed by Dan; the door is invented: runs are exploratory |
-| `m5-spacer` | A 20 mm spacer for an M5 bolt, everything stated | one part; size; a clearance hole; round | a control: if models fail it, the harness is broken |
-| `estoa-light` | The box behind Dan's Estoa wall light | 7 checks on the assembled box | built on PR #23, approved by Dan, **not merged and not run**: no results |
-| `phone-stand` | A desk-clamp phone stand | its `requirements.yaml` names checks that were never built | **can't run** |
-
-Why each is hard, and every limit's source, is in its `brief.md`. The fit limits come from test prints made on one Bambu Lab X1C in one PLA, recorded with predictions committed before printing (`results/predictions/`). Photos of those prints are hosted, not committed; `docs/media/photos.md` indexes them.
-
-### Conditions
-
-- **`can_ask`** (the main one): the request and the setup facts. The person's own measurements are withheld, and the model can ask for them with `measure`. The person is a lookup table, not a model: anything not on record gets "I can't measure that".
-- **`all_given`**: the same, with every recorded measurement stated up front. Passing only here means the model didn't ask.
-- **`can_run_code`**: `can_ask` plus a sandboxed `run_python` tool, and `submit_design` builds every part and sends build errors back.
-
-Every condition also has `report_limitation`, which changes nothing and records what the model wanted but couldn't use.
-
-## How grading works
-
-- **Code, not a judge.** Every check is a program reading the built geometry (`pbe/graders/`). No LLM judges anything.
-- **Three answers per check:** pass, fail, or not graded. Not graded means the test prints on record can't decide the case. It's never a pass.
-- **One verdict per trial:** pass (every counted check passes), fail, not graded, or **declined**: the model handed in no final part, or a final part whose own code stops until a measurement it left blank is filled in (`pbe/graders/declined.py`). Declined is neither a pass nor a fail.
-- **Test prints are graded but don't count.** The generic checks run on test prints too, and `summary.csv` lists their failures (`test_print_failed`), but a test print can't fail a trial on its own.
-- **Grade the outcome, not the technique.** `bridges` asks whether every overhang will print, so a stepped roof, flipping the part or moving the feature all pass.
-- **How the checks are tested** (`tests/`): each reference passes every check; versions of the real failures fail the check aimed at them and no other; simple reward hacks fail; designs unlike the reference pass; and cases between two records come back not graded.
-- **No independent CAD or printing expert has reviewed the checks or the verdicts.** Dan wrote the tasks from his own builds and made the calls listed under [Limits](#limits). Claude wrote the checks, and the audits are further readings by Claude and Codex.
-
-## Results
-
-<!-- results:start (written by scripts/results_table.py; don't edit by hand) -->
-326 trials of 12 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 6 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
-
-| Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
-|---|---|---|---|---|---|---|---|
-| `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
-| `can_ask` | 297 | 90 | 127 | 71 | 6 | 3 | $24.17 |
-| `can_run_code` | 19 | 3 | 10 | 1 | 5 | 0 | $2.55 |
-| **all** | **326** | 94 | 144 | 73 | 12 | 3 | $27.83 |
-
-### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
-
-| Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
-|---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.04 |
-| `can_ask` | anthropic/claude-opus-5.5 | 5 | 1 | 2 | 2 | 0 | 0 | $1.01 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 0 | 3 | 2 | 0 | 0 | $0.52 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 5 | 0 | 5 | 0 | 0 | 0 | $0.19 |
-| `can_ask` | deepseek/deepseek-v4.1-flash | 5 | 0 | 5 | 0 | 0 | 0 | $0.31 |
-| `can_ask` | google/gemini-3.8-flash | 5 | 3 | 1 | 1 | 0 | 0 | $0.49 |
-| `can_ask` | google/gemini-4-argon | 5 | 0 | 0 | 5 | 0 | 0 | $0.79 |
-| `can_ask` | openai/gpt-6-luna | 5 | 0 | 5 | 0 | 0 | 0 | $0.02 |
-| `can_ask` | openai/gpt-6.1-sol | 5 | 3 | 1 | 1 | 0 | 0 | $0.61 |
-| `can_ask` | qwen/qwen3.8-flash | 5 | 0 | 4 | 1 | 0 | 0 | $0.25 |
-| `can_ask` | z-ai/glm-5.3-flash | 5 | 0 | 4 | 1 | 0 | 0 | $0.23 |
-
-### `estoa-light` (drafted from Dan's answers, approved by Dan)
-
-| Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
-|---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 3 | 0 | 3 | 0 | 0 | 0 | $0.09 |
-| `can_ask` | anthropic/claude-opus-5.5 | 3 | 0 | 2 | 1 | 0 | 0 | $1.55 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 3 | 0 | 2 | 1 | 0 | 0 | $1.41 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 3 | 0 | 2 | 1 | 0 | 0 | $0.07 |
-| `can_ask` | google/gemini-4-argon | 3 | 0 | 3 | 0 | 0 | 0 | $2.40 |
-| `can_ask` | openai/gpt-6.1-sol | 3 | 0 | 2 | 0 | 0 | 1 | $0.51 |
-
-Each check across the 17 graded designs (one verdict per design), on the records alone and then with the assumptions below (`python -m pbe.assumptions`). A check the records decide never changes.
-
-| Check | Pass | Fail | Not graded | With assumptions: pass | fail | not graded |
-|---|---|---|---|---|---|---|
-| builds | 17 | 0 | 0 | 17 | 0 | 0 |
-| connected_bodies | 16 | 1 | 0 | 16 | 1 | 0 |
-| bed_fit | 17 | 0 | 0 | 17 | 0 | 0 |
-| bridges | 4 | 11 | 2 | 4 | 11 | 2 |
-| R1 | 9 | 1 | 7 | 14 | 1 | 2 |
-| R2 | 8 | 1 | 8 | 10 | 3 | 4 |
-| R3 | 9 | 2 | 6 | 9 | 2 | 6 |
-| R4 | 2 | 6 | 9 | 4 | 7 | 6 |
-| R5 | 10 | 3 | 4 | 10 | 3 | 4 |
-| R6 | 1 | 6 | 10 | 6 | 7 | 4 |
-| R7 | 16 | 1 | 0 | 16 | 1 | 0 |
-
-Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not graded.
-
-### `m5-spacer` (control, draft wording: exploratory)
-
-| Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
-|---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 5 | 5 | 0 | 0 | 0 | 0 | $0.01 |
-| `can_ask` | anthropic/claude-opus-5.5 | 5 | 5 | 0 | 0 | 0 | 0 | $0.29 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 5 | 0 | 0 | 0 | 0 | $0.15 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 5 | 5 | 0 | 0 | 0 | 0 | $0.06 |
-| `can_ask` | deepseek/deepseek-v4.1-flash | 5 | 5 | 0 | 0 | 0 | 0 | $0.03 |
-| `can_ask` | google/gemini-3.8-flash | 5 | 5 | 0 | 0 | 0 | 0 | $0.13 |
-| `can_ask` | google/gemini-4-argon | 5 | 5 | 0 | 0 | 0 | 0 | $0.11 |
-| `can_ask` | openai/gpt-6-luna | 5 | 5 | 0 | 0 | 0 | 0 | $0.00 |
-| `can_ask` | openai/gpt-6.1-sol | 5 | 5 | 0 | 0 | 0 | 0 | $0.11 |
-| `can_ask` | qwen/qwen3.8-flash | 5 | 3 | 2 | 0 | 0 | 0 | $0.04 |
-| `can_ask` | x-ai/grok-4.7 | 1 | 1 | 0 | 0 | 0 | 0 | $0.06 |
-| `can_ask` | z-ai/glm-5.3-flash | 5 | 5 | 0 | 0 | 0 | 0 | $0.02 |
-| `can_run_code` | anthropic/claude-haiku-5.5 | 1 | 1 | 0 | 0 | 0 | 0 | $0.00 |
-
-### `nut-knob/M3` (draft, not approved by Dan: exploratory)
-
-| Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
-|---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.03 |
-| `can_ask` | anthropic/claude-opus-5.5 | 5 | 3 | 0 | 2 | 0 | 0 | $0.66 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 2 | 1 | 2 | 0 | 0 | $0.34 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 5 | 1 | 4 | 0 | 0 | 0 | $0.56 |
-| `can_ask` | deepseek/deepseek-v4.1-flash | 5 | 3 | 1 | 1 | 0 | 0 | $0.23 |
-| `can_ask` | google/gemini-3.8-flash | 5 | 0 | 4 | 1 | 0 | 0 | $0.45 |
-| `can_ask` | google/gemini-4-argon | 5 | 0 | 0 | 5 | 0 | 0 | $0.37 |
-| `can_ask` | openai/gpt-6-luna | 5 | 0 | 4 | 1 | 0 | 0 | $0.02 |
-| `can_ask` | openai/gpt-6.1-sol | 5 | 1 | 0 | 4 | 0 | 0 | $0.47 |
-| `can_ask` | qwen/qwen3.8-flash | 5 | 0 | 5 | 0 | 0 | 0 | $0.22 |
-| `can_ask` | z-ai/glm-5.3-flash | 5 | 3 | 1 | 1 | 0 | 0 | $0.07 |
-
-### `nut-knob/M5` (draft, not approved by Dan: exploratory)
-
-| Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
-|---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 5 | 0 | 0 | 5 | 0 | 0 | $0.02 |
-| `can_ask` | anthropic/claude-opus-5.5 | 5 | 2 | 0 | 3 | 0 | 0 | $0.81 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 2 | 0 | 3 | 0 | 0 | $0.39 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 5 | 0 | 3 | 2 | 0 | 0 | $0.53 |
-| `can_ask` | deepseek/deepseek-v4.1-flash | 6 | 1 | 1 | 4 | 0 | 0 | $0.20 |
-| `can_ask` | google/gemini-3.8-flash | 5 | 1 | 1 | 3 | 0 | 0 | $0.50 |
-| `can_ask` | google/gemini-4-argon | 5 | 1 | 1 | 3 | 0 | 0 | $0.32 |
-| `can_ask` | openai/gpt-6-luna | 5 | 1 | 0 | 4 | 0 | 0 | $0.02 |
-| `can_ask` | openai/gpt-6.1-sol | 5 | 0 | 0 | 5 | 0 | 0 | $0.46 |
-| `can_ask` | qwen/qwen3.8-flash | 5 | 0 | 3 | 1 | 0 | 1 | $0.26 |
-| `can_ask` | x-ai/grok-4.7 | 1 | 0 | 0 | 1 | 0 | 0 | $0.48 |
-| `can_ask` | z-ai/glm-5.3-flash | 5 | 1 | 1 | 3 | 0 | 0 | $0.10 |
-
-### `tripod-plate` (Dan's own words, approved by Dan)
-
-| Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
-|---|---|---|---|---|---|---|---|---|
-| `all_given` | anthropic/claude-haiku-5.5 | 1 | 0 | 1 | 0 | 0 | 0 | $0.00 |
-| `all_given` | anthropic/claude-opus-5.5 | 1 | 0 | 1 | 0 | 0 | 0 | $0.25 |
-| `all_given` | anthropic/claude-sonnet-5.5 | 1 | 0 | 0 | 1 | 0 | 0 | $0.13 |
-| `all_given` | deepseek/deepseek-v4.1-flash | 1 | 0 | 1 | 0 | 0 | 0 | $0.11 |
-| `all_given` | google/gemini-3.8-flash | 1 | 0 | 1 | 0 | 0 | 0 | $0.14 |
-| `all_given` | google/gemini-4-argon | 1 | 1 | 0 | 0 | 0 | 0 | $0.22 |
-| `all_given` | openai/gpt-6-luna | 1 | 0 | 1 | 0 | 0 | 0 | $0.01 |
-| `all_given` | openai/gpt-6.1-sol | 1 | 0 | 0 | 0 | 1 | 0 | $0.14 |
-| `all_given` | qwen/qwen3.8-flash | 1 | 0 | 1 | 0 | 0 | 0 | $0.05 |
-| `all_given` | z-ai/glm-5.3-flash | 1 | 0 | 1 | 0 | 0 | 0 | $0.05 |
-| `can_ask` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.03 |
-| `can_ask` | anthropic/claude-opus-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $1.09 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.62 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 5 | 0 | 5 | 0 | 0 | 0 | $0.42 |
-| `can_ask` | deepseek/deepseek-v4.1-flash | 5 | 1 | 4 | 0 | 0 | 0 | $0.11 |
-| `can_ask` | google/gemini-3.8-flash | 5 | 2 | 2 | 0 | 0 | 1 | $0.93 |
-| `can_ask` | google/gemini-4-argon | 5 | 2 | 3 | 0 | 0 | 0 | $0.60 |
-| `can_ask` | openai/gpt-6-luna | 5 | 0 | 4 | 0 | 1 | 0 | $0.02 |
-| `can_ask` | openai/gpt-6.1-sol | 5 | 0 | 0 | 0 | 5 | 0 | $0.32 |
-| `can_ask` | qwen/qwen3.8-flash | 5 | 0 | 5 | 0 | 0 | 0 | $0.26 |
-| `can_ask` | x-ai/grok-4.7 | 1 | 1 | 0 | 0 | 0 | 0 | $0.46 |
-| `can_ask` | z-ai/glm-5.3-flash | 5 | 0 | 4 | 1 | 0 | 0 | $0.29 |
-| `can_run_code` | anthropic/claude-haiku-5.5 | 3 | 0 | 1 | 0 | 2 | 0 | $0.01 |
-| `can_run_code` | anthropic/claude-opus-5.5 | 3 | 1 | 2 | 0 | 0 | 0 | $0.57 |
-| `can_run_code` | anthropic/claude-sonnet-5.5 | 3 | 0 | 3 | 0 | 0 | 0 | $0.38 |
-| `can_run_code` | deepseek/deepseek-v4-pro-0813 | 3 | 0 | 2 | 1 | 0 | 0 | $0.52 |
-| `can_run_code` | google/gemini-4-argon | 3 | 1 | 2 | 0 | 0 | 0 | $0.91 |
-| `can_run_code` | openai/gpt-6.1-sol | 3 | 0 | 0 | 0 | 3 | 0 | $0.17 |
-<!-- results:end -->
-
-Every trial's transcript, design and grades are in `results/runs/`; the results page (step 5) shows each one with its parts in 3D. `scripts/digest.py <run> --why` prints each failure's evidence.
-
-Follow-up experiments on saved trials, each with its own write-up:
-- **Telling the model how its test print came out** (`docs/coupon-loop.md`, run `loop-sample` and `loop-sample-2`): one more turn after a reply built from the recorded prints, against a neutral "take another look". In each of two samples of 12 trials, the reply's arm passed 3 and the neutral arm 1. That's a small sample, and the 2 extra passes both rest on the M3 +0.1 mm print.
-- **Printing the tripod plate and saying how its roof came out** (same write-up, run `loop-tripod`): the 24 saved plates that fail on a holed roof, each told "loose loops and tangles around the hole; hole partly closed" and nothing about why. 14 of 24 fixed the roof, against 2 of 24 after a neutral second look. 8 flipped the plate, 3 used a cone, 2 the stepped bridge and 1 a skin to push out. Most still fail elsewhere, so 3 pass every check (4 with the R3 fix that came after the run).
-- **Sending a build error back once** (`docs/crash-replay.md`, run `crash-replay`): each saved crash replayed with its error.
-
-**Letting the model run code** (`can_run_code`, run `pilot-code`): three tripod trials per lineup model. 2 of 18 pass, against 3 of 23 for the same models without code (`can_ask` t1 to t3 and `all_given`; `can_ask` t4 and t5 came after the person started giving the clamp's width, so they're left out). Fewer designs fail on a roof with the bolt's hole cut through it: 4 of 13 against 12 of 19. No design was sent back for a build error. That's a small sample, and Sonnet's three plates all have the dovetail upside down instead.
-
-### Where models fail
-
-Is kind of designing a print, not really understanding the constraints of 3D printing. Some did more. A lot of them design bridges without describing supports. I think also one of the constraints we should say is we're assuming there are no supports made. It would design an enclosure or a place to slot in a nut without any kind of gap, or it would be too big. The biggest place it fails is assuming something's going to work and not doing a test run first.
-
-> **TODO(Dan): the hot take.** The one lesson to remember.
-
-## What went wrong, task by task
-
-Counts are trials, from the saved runs; a trial can fail more than one way. The pictures are cuts through saved designs, made by `scripts/failure_figures.py`, with the hardware drawn in orange where it has to go. None of these designs was printed.
-
-### `tripod-plate`: 84 trials
-
-| What went wrong | Trials |
-|---|---|
-| A roof with the bolt's hole cut through it (`bridges`) | 28 |
-| Declined: handed in only a test print, because the clamp's size isn't known | 12 |
-| Straight sides, nothing for the clamp's lips to grip | 12 |
-| Dovetail upside down: the bolt head's recess is on the camera's side | 11 |
-| No usable bolt hole | 9 |
-| Code didn't run | 8 |
-| A part in pieces | 4 |
-| Head recess too small for the bolt's head | 4 |
-| A roof too wide to bridge, with no hole through it | 3 |
-| Bolt doesn't reach far enough into the camera | 2 |
-| A broken shape | 1 |
-| No design handed in | 1 |
-
-`can_ask` t4 and t5 ran after the person started giving the clamp's width as 38 mm. GPT-6.1 Sol was told it and still declined both times: "A nominal 38 mm width does not ensure dovetail retention".
-
-| The plate Dan printed | Dovetail upside down | Straight sides |
-|---|---|---|
-| ![Reference plate, cut across: it widens toward the bed, so the clamp's lips bear on its bevels](docs/media/failures/tripod-reference.png) | ![Sonnet's plate, cut across: the bevels are on the wrong face](docs/media/failures/tripod-dovetail-upside-down.png) | ![Haiku's plate, cut across: straight sides](docs/media/failures/tripod-straight-sides.png) |
-| The reference, cut across its length. The bevels the clamp grips widen toward the bed. | Sonnet 5.5, `pilot-tripod` t1. 38 mm wide with bevels, but the recess opens on the narrow face. | Haiku 5.5, `pilot-tripod` t2. It "narrows by only 0.00 mm on both edges". |
-
-![The strand picture for GPT-6 Luna's plate: red strands end at the bolt's hole](docs/media/failures/tripod-holed-roof.svg)
-
-The bridge check's picture of GPT-6 Luna's roof (`pilot-tripod` t1, 449 mm² at 5.4 mm): green strands land on solid at both ends, red ones don't. In the best direction only 66% are anchored, because the bolt's hole is cut through the middle of the roof. Dan's first plate tangled on this shape.
-
-### `bearing-wheel`: 55 trials
-
-| What went wrong | Trials |
-|---|---|
-| A roof with the bolt's hole cut through it (`bridges`), over the seat that opens at the bed | 22 |
-| Code didn't run | 9 |
-| Bearing seat a size the prints don't take | 9 |
-| Other wheel geometry | 2 |
-
-| Fails: a flat roof | Not graded: a narrow ledge | Passes: a cone |
-|---|---|---|
-| ![Sonnet's wheel t1, cut through the middle, with two bearings and the bolt drawn in](docs/media/failures/wheel-flat-roof.png) | ![Sonnet's wheel t3, cut through the middle](docs/media/failures/wheel-narrow-ledge.png) | ![Opus's wheel t1, cut through the middle](docs/media/failures/wheel-cone.png) |
-| Sonnet 5.5 t1. A flat ring of 230 mm² over the lower bearing; 22% of strands anchored. | Sonnet 5.5 t3. A 157 mm² ledge, about 2.5 mm wide: narrower than any roof seen to tangle, so not graded. | Opus 5.5 t1. The roof is a cone stepping in about 0.2 mm a layer, so nothing has to bridge. |
-
-### `nut-knob` (M3 and M5): 112 trials
-
-| What went wrong | Trials |
-|---|---|
-| Nut pocket a size the prints don't take | 13 |
-| The pocket is closed, so the nut can't be pressed in | 11 |
-| Code didn't run | 9 |
-| A roof with the bolt's hole cut through it | 3 |
-| A part in pieces | 2 |
-| A ledge too wide to bridge: the grip overhangs its boss | 1 |
-| Its test print labelled as a final part | 1 |
-| No design handed in | 1 |
-
-| No clearance | A closed pocket |
-|---|---|
-| ![Sonnet's M3 pocket cut across, with the nut outline on it](docs/media/failures/knob-no-clearance.png) | ![Haiku's M3 knob cut through the middle, with the nut drawn in](docs/media/failures/knob-snap-lip.png) |
-| Sonnet 5.5 M3 t1. The pocket is 5.50 mm across flats for a 5.5 mm nut; the print at that size "does not go in". | Haiku 5.5 M3 t1. A lip narrower than the nut closes the pocket's mouth, so a nut "can't be pressed in from either face". |
-
-Most knob trials that didn't pass weren't failed: 22 pass, 35 fail and 54 are not graded, mostly for the pockets below.
-
-### `m5-spacer`: 57 trials
-
-The control. 55 of 57 trials pass. Qwen 3.8 Flash fails two: t3's code didn't run, and t5's spacer is in pieces.
-
-## What wasn't graded, and the prints that would settle it
-
-A check is not graded when no recorded print decides it. A trial can have more than one. No print is planned before publishing (Dan, 2026-10-30), so this is future work; `docs/limitations.md` has the full list.
-
-| Not graded because | Trials | The print that would settle it |
-|---|---|---|
-| A nut pocket with crush ribs or clips | 37 | Pockets with ribs, clips or relief beside plain ones. Each model's ribs differ, so one print settles only designs like it |
-| A tripod head recess under 5 mm deep | 13 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
-| A roof ledge 1.5 to 3 mm wide | 20 | Ring roofs 1.5 to 3 mm wide around a bolt hole |
-| A tripod bolt hole between 6.35 and 6.8 mm | 11 | Bolt holes at 6.5 and 6.6 mm |
-| A plate width outside 37 to 39 mm | 8 | Dovetail plates from 34 to 45 mm tried in the clamp |
-| A wheel bolt hole between 8.0 and 8.4 mm | 8 | Holes at 8.1, 8.2 and 8.3 mm on an M8 |
-| A bearing seat between printed sizes, or ribbed | 5 | Seats at 22.05, 22.4 and 22.5 mm, and lobed seats |
-| Bearings a little proud, or no shoulder | 9 | Wheels with bearings 0.2 to 0.6 mm proud, and a bore with no shoulder |
-| A nut pocket tighter than any printed | 7 | M5 pockets at -0.15, -0.10 and -0.05 mm |
-| A test print whose pockets are ribbed or unsettled | 6 | The ribbed pockets above, and coupon B2's finer steps |
-| A nut pocket between printed sizes | 4 | Coupon B2's finer steps |
-| A pocket shape the checker can't read | 1 | None: the checker needs fixing |
-
-Ribbed pockets are the biggest gap. Two models' answers, cut where the nut is tightest, with the M5 nut's outline dashed:
-
-| Crush ribs | Clips |
-|---|---|
-| ![Opus's M5 pocket with three small crush ribs](docs/media/failures/knob-ribs-opus.png) | ![GPT-6.1 Sol's M5 pocket with flexing clips](docs/media/failures/knob-ribs-sol.png) |
-| Opus 5.5 M5 t2: three ribs reaching 0.3 mm into the nut's flats, in a pocket 0.25 mm over the nut. | GPT-6.1 Sol M5 t1: three clips cut free so they can flex. |
-
-## Harder tasks: a first look
-
-> **TODO(Dan): intro.** Why you tried harder tasks, and why they're kept out of the results above.
-
-These tasks are on unmerged branches. Their graders haven't had the audit or the verdict review the four tasks above had, so these numbers aren't in the results. Each count comes from the runs saved on that task's branch.
-
-| Task | Branch | What it tests | Model trials | Result | Cost |
-|---|---|---|---|---|---|
-| Estoa light | [#23](https://github.com/oveddan/print-build-eval/pull/23), run `pilot-estoa` | | 18 | 0 pass, 14 fail, 3 not graded, 1 with no design | $6.03 |
-| Servo mount | [#47](https://github.com/oveddan/print-build-eval/pull/47), runs `servo-first-look`, `servo-first-look-2`, `servo-datasheet` | | 29 | 1 pass, 17 fail, 11 not graded | $4.81 |
-| Game spinner | [#44](https://github.com/oveddan/print-build-eval/pull/44) | | 0 | not run | — |
-
-> **TODO(Dan): what each task tests.** One line each for the empty column.
-
-### Estoa light
-
-The failures that come up most, by trial: a roof that can't be bridged (11 of 18), an insert post with less plastic than the 1.85 mm that bulged on the real build (6), and a keyhole slot running the wrong way, so the piece can't hang on its screw (6). Most of the not graded checks need something nobody recorded, such as the board's thickness.
-
-> **TODO(Dan): what went wrong.** How these compare with what went wrong when you built Estoa yourself.
-
-### Servo mount
-
-One check decides most trials: R3, "the tabs sit flush", doesn't pass on 24 of 29. The plates leave no room for the rib on each tab. That includes 9 of the 12 `all_given` trials, where the rib's size is in the prompt, against 11 of 12 in `can_ask`. That's the same mistake as Claude's own test print D.
-
-> **TODO(Dan): what went wrong.** What you make of models missing the rib even when they're told about it.
-
-### Game spinner
-
-A task built from the 608 bearing seat and M5 pocket prints already on record. No model has run on it.
-
-> **TODO(Dan): why it's here.** What it's meant to test, if you keep it.
-
-> **TODO(Dan): what it would take.** What these tasks would need before they count: more recorded prints, reviewed graders, more trials.
-
-## Limits
-
-A lot of the results are not gradeable, because they require ground truth prints, to verify if a print works in a desired configuration. For example, some prints made ribs and our test prints never covered that. Without having my 3D printer nearby, I could not print to verify these work.
-
-In my 3D printing workflow, I constantly am adding a self-learning knowledge base around mistakes that provides context and failure cases to the model when 3D modeling. This was not available in the current workflow. So it leads to more failures.
-
-Our test prints were done on my Bambu Lab X1C, only on PLA, with a single print setting. To make it more expansive, we would do test prints in different materials. On different 3D printers.
-
-### Assumptions the verdicts rest on
-
-These are treated as true without a print that shows them for that exact case. The full table, and the prints that would settle each, is in `docs/limitations.md`.
-
-<!-- assumptions:start (written by scripts/results_table.py; don't edit by hand) -->
-| Assumption | Check | What rests on it in the saved runs |
-|---|---|---|
-| The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (55 pass, 2 fail), so all 10 tripod passes |
-| One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (43 pass, 12 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 32 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
-| Each hole's centre is at the middle of where Dan's readings put it, 16.85 mm out. Source: the middle of 16.60 to 17.11, from Dan's calipers; no reading pins it closer. | estoa-light R1 | Graded apart: 5 pass, 0 fail of the estoa-light designs it decides |
-| The disk's board is 1.6 mm thick, and each hole's centre is 16.85 mm out. Source: 1.6 mm is the standard circuit board thickness and what the Estoa model used; the holes as in R1's assumption. | estoa-light R2 | Graded apart: 2 pass, 2 fail of the estoa-light designs it decides |
-| An insert holds with at least 2.85 mm of plastic around it, and its post bulges with less. Source: halfway between the 1.85 mm that bulged and the 3.85 mm that held; no print in between. Halfway itself holds (2.80 to 2.85 within the checker's 0.02 mm reading tolerance). | estoa-light R4 | Graded apart: 2 pass, 1 fail of the estoa-light designs it decides |
-| The wall screws' heads are 9 mm across, so a keyhole works if its entry passes a 9 mm head and its slot carries the head clear of the entry, in place of matching the one keyhole that hung (10.5 mm entry, 12 mm slot). Source: Dan bought #8 round heads 9 mm across at most; the rest is geometry. | estoa-light R6 | Graded apart: 5 pass, 1 fail of the estoa-light designs it decides |
-<!-- assumptions:end -->
-
-### Whose calls these are
-
-From the audit of the saved failures (issue 15):
-- **Dan's:** a test print can't fail a trial on its own; declining is its own verdict, never a pass; a roof with the bolt's hole cut through it fails `bridges`; nothing new is printed or measured before publishing, so what the records can't decide is not graded; one printer and one filament; M3 at +0.1 mm goes in by hand "with force", so it counts as holding (his memory of one print); the person answers the clamp's width as 38 mm, the Arca-Swiss standard his plate fit (new runs only); the test-print loop may print the final plate, not only the model's test prints.
-- **Claude's, delegated by Dan** ("do what you think is best"): DeepSeek V4.1 Flash's M5 test print labelled `final` stays a fail, which Dan reviewed and kept. These aren't Dan's expert judgment. Also Claude's: one official set of counts, with no second, more optimistic score (issue 35).
-
-### Known limits
-
-- **Pilots, not pass rates.** Five `can_ask` trials per model on the five older tasks for 11 models (Grok 4.7 has one), and one to three on `estoa-light` and in the other conditions.
-- **One printer, one filament.** The fit and bridge limits hold for a Bambu Lab X1C in one PLA only.
-- **One person's projects.** The tasks come from Dan's builds and mostly one agent's mistakes. Only the tripod's request was approved before it ran.
-- **The phone stand can't run**, and print-settings mistakes (failure class C10) aren't tested: a submission has no field for them, and nothing is sliced.
-- **Code review findings not fixed.** Two reviews of `main` (issues 2 and 4, closed as not planned) listed findings that weren't fixed; they stand as known limits. Among them, as last checked on those issues: model-written part code can still read files in the repository while it builds (it gets no network and no environment); a nut pocket 0.8 to 1.5 times the nut's size counts as nut-sized for the knob's R3, so a pocket too small for the nut can pass R3 and be left to R4; `bridges` samples one plane per layer and directions every 5°, so a feature one layer thick can be missed and verdicts can depend on the part's rotation; `bed_fit` uses the nominal bed and has no failing test. Code added since 2 November hasn't had that full review.
-- **Detail text can differ by platform.** Every saved verdict reproduces on Linux as on macOS, but tied bridge directions can come out mirrored in the detail text.
-
-## What's built and what isn't
-
-Built: the four runnable task families above with references and checks; the runner with the lookup-table person and three conditions; sandboxed builds; regrading; the test-print loop and the crash replay; the results page; the test print designs and their recorded outcomes (`coupons/`, `results/predictions/`).
-
-Not built: an assembly simulation (parts moving into place along the manual's steps); a printer simulator with a hidden error; any score beyond pass, fail, not graded and declined; a comparison with a hand ranking; a simulated builder. The failure atlas (`report/atlas/`) builds only on Dan's Mac: it uses `sips` and points at local photos.
-
-## Where things are
-
-The eval design guide suggests `tasks/`, `reference/`, `graders/`, `results/` and `transcripts/`. Here:
-
-| Guide | This repo |
-|---|---|
-| `tasks/` | `tasks/<task>/brief.md` (the request), `hidden_facts.yaml` (what the person can measure), `requirements.yaml` (the checks) |
-| `reference/` | `tasks/<task>/reference.yaml` |
-| `graders/` | `pbe/graders/`; the submission format and building in `pbe/parts/` |
-| `run_eval.py` | `pbe/eval.py` (`uv run python -m pbe.eval`), with the model loop in `pbe/runner/` |
-| `requirements.txt` | `pyproject.toml` and `uv.lock` |
-| `results/` | `results/runs/<run>/summary.csv` and each trial's `grades.json`; test print records in `results/predictions/` |
-| `transcripts/` | every trial's `transcript.json`, beside its grades in `results/runs/` |
-
-Also:
-- `seeds/`: the real failures behind the tasks (tripod, Estoa, side projects, the test prints), each tagged with a failure class from `seeds/classes.yaml`. They're evidence, not tasks, and their `grader:` fields are planned, not built.
-- `catalog/`: the hardware bin (`hardware.yaml`, with real thread lengths) and the printer (`printer.yaml`).
-- `coupons/`: the test print designs and the scripts that predicted their outcomes.
-- `docs/`: `scoring.md` (the quality bar), `limitations.md`, and the write-ups of each experiment. `PLAN.md` is the working plan and `CHANGELOG.md` ties every change to its evidence.
-- `scripts/`: the results page, the README's results table, the reproduce script and the experiments.
-- `examples/arca-plate/`: the Arca plate before and after its first print.
-
-## Future work
-
-- **More test prints** to turn assumptions into records: the models' roof shapes, ring roofs, finer nut clearances, the clamp's jaw travel, the bolt's length. The list is in `docs/limitations.md`.
-- **Letting the model suggest hardware**, with only the printer and filament fixed (issue 12).
-- **Letting the model ask clarifying questions**, not only for measurements (issue 13).
-- **A research step, as a recorded lookup**, so reruns stay identical (issue 16).
-- More trials per model, the Estoa task's first runs (issue 37), and the assembly simulation.
-
-## Provenance and how AI was used
-
-We used LLMs to scrape all of my 3D printing sessions for failures, then aggregated them into [categories](#the-failure-classes-the-tasks-test). We wrote test cases for each of these to simulate making a 3D model, and proving that 3D model would fail for this test case.
-
-![The underside of the tripod's Arca plate, Oct 12, the project's first print. The roof over the bolt-head recess was a plain bridge with a slot cut through it, and it printed as a tangle.](https://media.danoved.xyz/print-build-eval/nogit/1e41d9fa/IMG_5045.jpg)
-
-*The tripod's Arca plate as first printed: the roof over the bolt's head was a plain bridge with the bolt's slot cut through it, and it printed as a tangle. Its test case runs the design as drawn and as fixed:*
+*Every failure has a test case. For example, C6's photo above is a failed first attempt at printing a tripod's Arca plate, as designed by a model. The roof over where the bolt's head goes printed as tangled strands. The command shown below runs the checks again on both the original design and the fixed one. The test fails the original design, just like it happened in real life, but the fixed design passes.*
 
 ```bash
 uv run python -m pbe.run examples/arca-plate/original.yaml examples/arca-plate/fix.yaml
@@ -647,39 +150,232 @@ uv run python -m pbe.run examples/arca-plate/original.yaml examples/arca-plate/f
 
 *Expected: the original fails `bridges` and the fix passes every check.*
 
-We also developed test prints, to test how bolts fit into certain pockets, to validate that a print would work for a given bolt. This acts as a ground truth.
+## The test prints behind the checks
 
-Here is a video of what we tested **(TODO(Dan): pick the clip)**. This ended up being a limitation because there were more designs that were came up with by the models that I did not anticipate. There's no way to verify they work without doing a test print.
+The hackathon started on Oct 30, but I was flying away from home that day and would be away from my 3D printer for the whole hackathon. So on Oct 28, I began creating test prints that could provide the ground truth for parts of the 3D printing simulation, shown below.
 
-We then created an agent, that can run on any model, prompted it with a task.
+Each print tests the ground truth of one thing. For example, if there's a roof over a hole, will it print successfully? We printed nut pockets at different sizes, using different techniques, to see which size a nut would fit into snugly without falling out.
 
-These are the things it can do:
-- `measure`: ask the person to measure one of their own things;
-- `submit_design`: hand in the parts, the hardware, the manual and any test prints;
-- `report_limitation`: say what it wanted to use but couldn't;
-- `run_python`, in the `can_run_code` condition only: run Python in a sandbox before handing in.
+What each print tests, why we printed it, and what happened, from the test-print code (`coupons/coupons.py`) and the records of both rounds with my notes (`results/predictions/`):
 
-- **Tasks** come from Dan's own builds: the tripod plate (his real first message to a coding agent, and the agent's mistakes), Estoa (his wall light), and his test prints. The knob, wheel and spacer requests are drafts. Every limit a check uses traces to a test print, a datasheet or the ISO tables in `catalog/hardware.yaml`.
-- **Test prints** were designed, printed and recorded before Oct 30, each with the checks' predictions committed before printing (`results/predictions/`).
-- **AI use:** Claude (through Claude Code) wrote nearly all the code, checks, tests and docs, including this README, from Dan's direction, and Dan decided the calls listed above. Codex reviewed many of the pull requests, and each of its findings was checked against the code. The agent sessions behind the seeds are in Dan's private archive; their ids in the seed files are kept as opaque references.
-- Models are tested only through OpenRouter's API, under its terms.
+| Round one, printing | Round two, printing |
+|---|---|
+| ![Timelapse of the first round of test prints on the printer](https://media.danoved.xyz/print-build-eval/nogit/7dfd078a/timelapse-round1.gif) | ![Timelapse of the second round of test prints on the printer](https://media.danoved.xyz/print-build-eval/nogit/72451465/timelapse-round2.gif) |
 
-## Prior art
+| The print | What it tests | Why we printed it | What happened |
+|---|---|---|---|
+| ![Pressing nuts into the nut-pocket test print, Oct 29, at 2.5 times speed](https://media.danoved.xyz/print-build-eval/nogit/854da3b2/nut-test-print.gif) | **Nut pockets.** I wanted to find the actual best size to print the opening so it holds the nut. I took nuts of different sizes (M3, M5, M8 and 1/4-20), pressed them into pockets from exactly the nut's size to 0.3 mm over, and saw which one was the most snug while still realistic to push in (Oct 29, at 2.5 times speed) | In the past, I'd had nuts that wouldn't fit snugly into an opening in a 3D print, and when you turned the part a certain way, the nut would fall out | M3 needs 0.2 mm over ("goes in with pushing, snug"); at 0.1 it "really struggles". M5 holds at 0 and 0.1 mm over, and is loose at 0.2. M8 and 1/4-20 hold only at the nut's exact size |
+| ![The roof strip: square pockets roofed at 20 to 50 mm, walls on all four sides](https://media.danoved.xyz/print-build-eval/nogit/ddb66572/test-print-roof-strip.jpg) ![The underside of the tunnel print: the roof printed as loose strands](https://media.danoved.xyz/print-build-eval/nogit/d2483df5/IMG_5409.jpg) | **Bridges and overhangs.** I wanted to test different scenarios to see what kind of overhang prints work and which ones fail and result in strands: roofs over pockets 20 to 50 mm wide with walls on all four sides, one with a hole cut through it, and tunnels open at their ends | I've had a bunch of successes and failures when printing with overhangs and bridges | When there are no walls on one side, it fails, as you can see here in both attempts, but if there are walls on four sides, it seems to be pretty successful, even when you get pretty wide. The roofs with four walls printed clean up to 50 mm (the 40 mm one sagged in round one and printed clean in round two); the roof with a hole through it tangled; the tunnels printed as strands both times |
+| | **Bearing seats.** 608 bearing seats from 22.0 to 22.3 mm, and 8 mm pegs for the bearing's bore | The closet-door wheel task: does a bearing press in and stay in, and at what size? | The 22.0 mm seat wouldn't take the bearing; 22.1, 22.2 and 22.3 took it and held it upside down. Only the tightest 8 mm peg was snug |
 
-| Work | Licence | How it's used |
+## The tasks
+
+Each task is based on a realistic prompt that a person would write. The **reference solution** is one I made by hand that I know passes all the checks, to show the task can realistically be done. The other pictures show the designs the models came up with.
+
+### Tripod plate
+
+> "I borrowed my friend's tripod, and I can't seem to find the part that connects the camera to the tripod. How hard would it be to 3D print it, both the flat part and the part that screws in? Just as a temporary thing until I find the real one. I know it's metal normally."
+
+| Reference solution | Pass | Fail: dovetail upside down | Fail: roof over the bolt's hole |
+|---|---|---|---|
+| ![The reference camera plate](docs/media/tasks/tripod-plate-reference.png) | ![Opus 5.5's plate, t5](docs/media/tasks/tripod-plate-pass.png) | ![Sonnet's plate cut across: the bevels are on the wrong face](docs/media/failures/tripod-dovetail-upside-down.png) | ![The bridge check's strands across GPT-6 Luna's roof](docs/media/failures/tripod-holed-roof.svg) |
+| Hand-written, after the plate Dan printed | Opus 5.5, trial 5 | Sonnet 5.5, trial 1, cut end-on: the plate narrows toward the tripod, the opposite of what the clamp's angled jaws hook over. Flipped to fit, the bolt head ends up on the camera's side | GPT-6 Luna, trial 1, the bolt's recess seen from below: the hole is cut through the roof, so the red strands end in mid-air; only 66% land on plastic at both ends |
+
+More from the saved trials: four passes and four failures, failures seen from below with the failing roof or ledge in red.
+
+![Four passing and four failing tripod plates from the saved trials, each labelled with its model and trial](docs/media/tasks/tripod-plate-gallery.png)
+
+### Closet door wheel
+
+> "The roller wheel on my sliding closet door snapped. I've got two 608 skateboard bearings and an M8 bolt I could use. Could I 3D print a new wheel that spins on the bolt? The old one was about 50 mm across and about 16 mm wide."
+
+| Reference solution | Pass: a cone roof | Fail: a flat roof | Not graded: a narrow ledge |
+|---|---|---|---|
+| ![The reference wheel](docs/media/tasks/bearing-wheel-reference.png) | ![Opus's wheel cut through the middle: the roof is a cone](docs/media/failures/wheel-cone.png) | ![Sonnet's wheel cut through the middle: a flat roof over the lower bearing](docs/media/failures/wheel-flat-roof.png) | ![Sonnet's wheel cut through the middle: a narrow ledge](docs/media/failures/wheel-narrow-ledge.png) |
+| Seats for both bearings | Opus 5.5, trial 1: the ledge between the bearings steps inward each layer, so nothing is printed over air | Sonnet 5.5, trial 1: a flat ledge over the empty lower bearing seat; only 22% of strands land on plastic at both ends, so it would sag | Sonnet 5.5, trial 3: a ledge about 2.5 mm wide, narrower than any that failed in a test print, so it isn't graded |
+
+More from the saved trials: four passes and four failures, failures seen from below with the failing roof or ledge in red.
+
+![Four passing and four failing wheels from the saved trials, each labelled with its model and trial](docs/media/tasks/bearing-wheel-gallery.png)
+
+### Hand knob (M3 and M5)
+
+> "I want a hand knob for an M3 bolt, about 20 mm across, so I can tighten it without a tool. It's one printed piece. An M3 hex nut (ISO 4032) presses into the knob by hand and has to stay in when I turn the knob upside down, no glue."
+
+| Reference solution | Pass | Fail: no clearance | Not graded: crush ribs |
+|---|---|---|---|
+| ![The reference knob](docs/media/tasks/nut-knob-reference.png) | ![Sonnet 5.5's M3 knob, its pocket set from its own test print](docs/media/tasks/nut-knob-pass.png) | ![Sonnet's M3 pocket cut across with the nut's outline](docs/media/failures/knob-no-clearance.png) | ![Close-up of Opus's M5 knob: small round ridges stand out from the hex pocket's walls](docs/media/tasks/nut-knob-ribs.png) |
+| Pocket at a size the test print held | Sonnet 5.5, M3, trial 2 with test prints: it asked for a test print of four pocket sizes and heard 5.40 and 5.50 mm won't go in, 5.60 mm really struggles, and 5.70 mm goes in snug and stays upside down. Its knob uses 5.70 mm | Sonnet 5.5, M3 trial 1, cut across: the pocket is exactly as wide as the nut, with no gap. Dan's test print at that size wouldn't take the nut | Opus 5.5, M5 trial 2: the small round ridges on the pocket's walls are meant to grip the nut. No test print has tried ribs, so the check can't say whether the nut would hold |
+
+More from the saved trials: four passes and four failures, failures seen from below with the failing roof or ledge in red.
+
+![Four passing and four failing knobs from the saved trials, each labelled with its model and trial](docs/media/tasks/nut-knob-gallery.png)
+
+### Estoa light box (harder task)
+
+> "I'm making a round light to hang on my wall: an Adafruit DotStar LED disc, the 255-LED one. … for now I only need that box, with the disc screwed onto it."
+
+| Reference solution | The real one |
+|---|---|
+| ![The reference box](docs/media/tasks/estoa-light-reference.png) | ![The real Estoa back box open, with the ESP32 and battery inside](https://media.danoved.xyz/print-build-eval/nogit/f6d3b3c4/estoa-enclosure-inside.jpg) |
+| A box the disc screws onto; any shape that passes the checks works | Dan's build |
+
+We ran out of time to make the test-print loop work on this task. Some example failures:
+
+| A roof over air | A keyhole that runs down | A perfboard with no wall on one side |
 |---|---|---|
-| BenchCAD (`BenchCAD/BenchCAD-main`, HF `BenchCAD/BenchCAD`) | MIT code, CC-BY data (per its README; read its LICENSE before reuse) | CadQuery sandbox, standard fastener families |
-| BenchCAD 2.0 library (`BenchCAD-org/benchcad-2`) | MIT | part-family format (a build file plus a check file), cited |
-| BenchCAD 2.0 harness (`BenchCAD-org/benchcad-2-main`) | none | ideas only, cited |
-| CADEngBench (arXiv 2608.09296, `coderjs-lab/cadengbench`) | none | layered grading, cited and reimplemented |
-| Hephaestus-CCX (arXiv 2605.17448) | — | typed requirements, cited |
-| HW-Bench | — | a different scope: funded, professional hardware engineering, not something to beat. TODO(Dan): add its link and one line on its scope; this session couldn't reach its site to check |
-| Epoch Furniture Assembly, IKEA-Manual, FDM-Bench, VLM DfM rules (2311.12668), FEABench, EngDesign, SKY-001, NVIDIA ASPIRE, τ-Bench and τ²-Bench, Anthropic's "Demystifying evals for AI agents" | various | read as prior art; nothing copied |
+| ![Argon's first box, whole and close up: the strip over the USB opening, in red, has nothing under it](docs/media/walkthrough/first-whole-and-close-up.png) | ![The back of Opus's box cut at the keyholes: both slots run down from their entries](docs/media/failures/estoa-keyhole-down.png) | ![Sol's box cut just above the perfboard: the wall stops short of the board's side](docs/media/failures/estoa-perfboard-open.png) |
+| Gemini 4 Argon, trial 2: the top edge of the USB opening (red) spans thin air and would sag | Opus 5.5, trial 2 with test prints: both slots run down from their entries, so the box can't drop onto the wall screws | GPT-6.1 Sol, trial 3 with test prints: the wall stops short of the perfboard's side, so the board isn't inside the box |
 
-## Licence
+## Results
 
-MIT, in `LICENSE`. `docs/context/` is Dan's private material and isn't covered: it's left out of the submission ZIP.
+<!-- scorecard:start (written by scripts/scorecard.py; don't edit by hand) -->
+![Pass rate per task and cost per working part for each model when it can ask for test prints, the best in each row in green](docs/media/results-table.svg)
 
-## Private material
+In these results the model can ask for test prints before its final design, as in [How a trial runs](#how-a-trial-runs). Each column is a model, best first; the best in each row is in green. A pass means every check passes on my recorded test prints. Time, filament and cost per pass count everything the model printed, test prints included, divided by the parts that work.
 
-`docs/context/` holds Dan's own notes and clippings. It's private: the submission ZIP leaves it out, and it stays out of any public copy. Citations elsewhere name their source instead of pointing into it.
+**Best to worst, when the model can ask for test prints** (7 models, 5 or more trials on each of the four tasks):
+
+1. **Gemini 4 Argon**, 77% of trials pass (20/26): $0.20 and 0.4 print hours per working part
+2. **Gemini 3.8 Flash**, 57% of trials pass (13/23): $0.26 and 0.4 print hours per working part
+3. **GPT-6.1 Sol**, 52% of trials pass (21/40): $0.09 and 0.6 print hours per working part
+4. **Opus 5.5**, 44% of trials pass (17/39): $0.35 and 0.6 print hours per working part
+5. **DeepSeek V4.1 Flash**, 31% of trials pass (8/26): $0.19 and 1.3 print hours per working part
+6. **Sonnet 5.5**, 25% of trials pass (10/40): $0.42 and 1.3 print hours per working part
+7. **Haiku 5.5**, 15% of trials pass (3/20): $0.04 and 2.0 print hours per working part
+
+Not run with test prints, ranked by their first print without them: GPT-6 Luna 15%, GLM 5.3 Flash 15%, DeepSeek V4 Pro 5%, Qwen 3.8 Flash 0%. Grok 4.7 was left out because it was too expensive to run 10 trials on.
+
+**What asking for test prints changed.** Across these 7 models, 23% of first prints pass without test prints, and 43% pass when the model can ask for test prints before its final design.
+
+| Model | First print, no test prints | Second print, after hearing how the first came out | Asking for test prints first | Change from the first print |
+|---|---|---|---|---|
+| Gemini 4 Argon | 28% (11/40) | 72% | 77% (20/26) | +49 points |
+| Gemini 3.8 Flash | 30% (12/40) | 57% | 57% (13/23) | +27 points |
+| GPT-6.1 Sol | 22% (9/40) | 30% | 52% (21/40) | +30 points |
+| Opus 5.5 | 25% (10/40) | 38% | 44% (17/39) | +19 points |
+| DeepSeek V4.1 Flash | 29% (12/41) | 41% | 31% (8/26) | +2 points |
+| Sonnet 5.5 | 22% (9/40) | 35% | 25% (10/40) | +2 points |
+| Haiku 5.5 | 8% (3/40) | not replayed | 15% (3/20) | +8 points |
+
+In 150 of these 214 trials the person answered at least one test piece with "I can't tell you how that one came out", for a size my test prints never tried. 58 of the 92 passes came after such an answer, so some may owe part of the pass to moving to a size I did print (see Limits).
+<!-- scorecard:end --> 
+
+<!-- scorecard-note:start (written by scripts/scorecard.py; don't edit by hand) -->
+Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Gemini 4 Argon 6 of its 18, Gemini 3.8 Flash 4 of its 11, GPT-6.1 Sol 1 of its 3. DeepSeek V4.1 Flash, Opus 5.5 and Sonnet 5.5 had none.
+
+**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 0 of 30 designs pass on the first print. After the person says how the box came out, 1 of the 26 failures replayed passes. Asking for test prints first, 0 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
+<!-- scorecard-note:end -->
+
+### Where models fail
+
+The models design a print without really understanding the constraints of 3D printing. A lot of them design roofs over open space that can't print without supports. They design a place to slot in a nut without any kind of gap, so the nut won't go in. The models do make test prints, but they test the wrong thing. On the wheel they tested if the bearing fits, and mostly got that right. Then the wheel failed on stuff they never tested, like not leaving room for both bearings, the bolt not fitting through, or a roof printed over air.
+
+### The takeaway
+
+With 3D printing, there's a lot of things people can now do. It's getting more accessible, but you still need to have some knowledge of how it works. You want the model to be able to do some testing with you to test what it knows, so it can know what it doesn't know. It's the same as unit testing, except you're printing a small piece of material. The test print isn't that great, actually. It's almost like it's writing a unit test, but the unit test isn't testing the edge cases or the risky part.
+
+Designing a 3D model with AI reveals similar issues as when you write code. It can appear visually correct, but there can be all these internal issues that come up without a human experienced in 3D printing knowing the errors, that occurred due to a lack of testing before delivering the final version.
+
+Sending the 3D model to the slicer is like compilation: it tells you how long and expensive it will be to print.
+
+A test print is like a unit test of code. An experienced 3D print designer would know the edge cases of what can go wrong, and would make a test that minimally tests a specific error. A good test print, like a good unit test, tests just one thing, and can save loads of time when printing the final result.
+
+The final print is like deploying a release, except the consequences of being wrong are more expensive than in software, in both time and material.
+
+Another takeaway is that all these failures that we are now able to predict would be great to use on their own. This can be like a suite that I could use in the future when I'm doing my 3D modeling, because I can catch errors that I know are going to happen.
+
+With more test prints around all these designs that the model makes, I can really have a better ground truth, and even skip doing a physical test print, because I know if it's going to fail or not.
+
+## What we couldn't grade
+
+For the duration of the hackathon, I was away from my 3D printer, so I could not print additional test prints that would help me grade unanticipated designs that the model produced, beyond the ones I printed before the hackathon began. For example, some models generated crush ribs to hold the nut, which were never in our test prints. We can't count this kind of trial as a pass, because we don't know the truth, so we mark it as **not graded**.
+
+This list shows the types of designs we weren't able to grade, how many trials produced each one, and the type of print that would help us answer if it succeeded or failed:
+
+<!-- not-graded:start (written by scripts/failure_tables.py; don't edit by hand) -->
+| Not graded because | Example | Trials | The print that would settle it |
+|---|---|---|---|
+| A nut pocket with crush ribs or clips | <img src="docs/media/not-graded/a-nut-pocket-with-crush-ribs-or-clips.png" width="160" alt="A nut pocket with crush ribs or clips: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 111 | Pockets with ribs, clips or relief beside plain ones. Each model's ribs differ, so one print settles only designs like it |
+| A roof ledge 1.5 to 3 mm wide | <img src="docs/media/not-graded/a-roof-ledge-1-5-to-3-mm-wide.png" width="160" alt="A roof ledge 1.5 to 3 mm wide: Opus 5.5, estoa light, trial 3"><br><sub>Opus 5.5, estoa light, trial 3</sub> | 54 | Ring roofs 1.5 to 3 mm wide around a bolt hole |
+| A tripod head recess under 5 mm deep | <img src="docs/media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 8"><br><sub>Haiku 5.5, tripod plate, trial 8</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
+| Bearings a little proud, or no shoulder | <img src="docs/media/not-graded/bearings-a-little-proud-or-no-shoulder.png" width="160" alt="Bearings a little proud, or no shoulder: Opus 5.5, bearing wheel, trial 6"><br><sub>Opus 5.5, bearing wheel, trial 6</sub> | 23 | Wheels with bearings 0.2 to 0.6 mm proud, and a bore with no shoulder |
+| A tripod bolt hole between 6.35 and 6.8 mm | <img src="docs/media/not-graded/a-tripod-bolt-hole-between-6-35-and-6-8-mm.png" width="160" alt="A tripod bolt hole between 6.35 and 6.8 mm: Haiku 5.5, tripod plate, trial 2"><br><sub>Haiku 5.5, tripod plate, trial 2</sub> | 13 | Bolt holes at 6.5 and 6.6 mm |
+| A plate width outside 37 to 39 mm | <img src="docs/media/not-graded/a-plate-width-outside-37-to-39-mm.png" width="160" alt="A plate width outside 37 to 39 mm: DeepSeek V4.1 Flash, tripod plate, trial 2"><br><sub>DeepSeek V4.1 Flash, tripod plate, trial 2</sub> | 11 | Dovetail plates from 34 to 45 mm tried in the clamp |
+| A nut pocket tighter than any printed | <img src="docs/media/not-graded/a-nut-pocket-tighter-than-any-printed.png" width="160" alt="A nut pocket tighter than any printed: Haiku 5.5, knob M5, trial 2"><br><sub>Haiku 5.5, knob M5, trial 2</sub> | 3 | M5 pockets at -0.15, -0.10 and -0.05 mm |
+| A test print whose pockets are ribbed or unsettled | <img src="docs/media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Haiku 5.5, knob M5, trial 3"><br><sub>Haiku 5.5, knob M5, trial 3</sub> | 3 | The ribbed pockets above, and coupon B2's finer steps |
+| A pocket shape the checker can't read | <img src="docs/media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 2 | None: the checker needs fixing |
+| A bearing seat between printed sizes, or ribbed | <img src="docs/media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: Haiku 5.5, bearing wheel, trial 3"><br><sub>Haiku 5.5, bearing wheel, trial 3</sub> | 1 | Seats at 22.05, 22.4 and 22.5 mm, and lobed seats |
+<!-- not-graded:end -->
+
+## Run it
+
+From the unzipped folder, with [uv](https://docs.astral.sh/uv/) installed and no API key:
+
+```bash
+uv sync
+```
+
+```bash
+uv run python scripts/scorecard.py
+```
+
+```bash
+scripts/reproduce.sh
+```
+
+The scorecard prints the table above from the saved runs. `reproduce.sh` checks everything end to end: tests, a regrade of every saved trial, the results page and the README's tables (about 30 minutes). Building model-written parts needs a sandbox: macOS has one built in, and on Linux install `bubblewrap`. [The reference](docs/reference.md#run-it) has every step, the Linux setup and how to run new trials.
+
+**Run a trial yourself** (needs an [OpenRouter](https://openrouter.ai) key: make an account, add credits and create a key in its settings; one trial costs a few cents):
+
+```bash
+OPENROUTER_API_KEY=... uv run python -m pbe.eval --run mine --condition can_test --task nut-knob/M3 --model anthropic/claude-sonnet-5.5 --budget 0.50
+```
+
+`--condition can_test` is the mode in the results: the model can ask for test prints before its final design. `can_ask` has no test prints.
+
+It saves the conversation, the design and every check's result under `results/runs/mine/`. The tasks are `tripod-plate`, `bearing-wheel`, `nut-knob/M3`, `nut-knob/M5` and `estoa-light`, and `--model` takes any OpenRouter model id.
+
+## Limits
+
+Many designs couldn't be graded without more test prints ([What we couldn't grade](#what-we-couldnt-grade)).
+
+The replies only come from my test prints. For a size I never printed, the person can only say "I can't tell you how that one came out," so models switch to sizes I did print. That wouldn't happen in real life.
+
+In my own 3D printing workflow, I'm constantly adding to a self-learning knowledge base of mistakes that gives the model context and failure cases when 3D modeling. The models in this eval didn't have it, which leads to more failures.
+
+Our test prints were done on my Bambu Lab X1C, only in PLA, with a single print setting. To make the eval broader, we would do test prints in different materials and on different 3D printers.
+
+I worked with Opus 5.5 to go through and decide on assumptions about results that would enable us to grade some of the unknowns.  These are captured in [the reference](docs/reference.md#assumptions-calls-and-known-limits).
+
+## Prior work and comparable evals
+
+| Eval | What it tests | How this one differs |
+|---|---|---|
+| BenchCAD | CadQuery code from images and text, across 106 part families | Grades whether a part works with real hardware on a real printer, not whether it matches a reference shape |
+| CADEngBench | Parametric parts graded on valid solids and design-for-manufacturing checks | Fit limits come from test prints on one printer, and the model can ask for measurements and hear how a print came out |
+| Hephaestus-CCX | Requirements written as typed checks | Borrowed: each task's requirements are typed checks (`requirements.yaml`) |
+
+Code from BenchCAD (MIT) is used for its CadQuery sandbox; CADEngBench has no licence, so its layered grading is reimplemented and cited. [Prior art](docs/reference.md#prior-art) has the full list.
+
+## Tools used
+
+- **Models**: tested through [OpenRouter](https://openrouter.ai)'s API.
+- **Building and checking parts**: CadQuery (the models write their parts in it), trimesh, manifold3d and shapely for the geometry, bubblewrap or `sandbox-exec` to run model code in a sandbox.
+- **Print time and filament**: Bambu Studio's slicer, offline.
+- **Test prints**: a Bambu Lab X1C, PLA.
+- **Writing the code**: Claude Code (Opus 5.5), with reviews by Codex.
+- **README**: Pangram to check which parts read as AI-written.
+
+## How we used AI
+
+* Claude Code and Opus 5.5 wrote pretty much all the code, did the refactoring, wrote all the checks and the test cases, and helped me edit the docs.
+* It also ran all the evals, set up the connection to OpenRouter, and helped me scrape my old printing sessions for failures.
+* I was able to use AI to run a suite of evals in the cloud while I was away from my computer.
+* I used Codex to review the code Opus 5.5 generated.
+* I also had Opus 5.5 generate sample renders and pages so I could review how the evals ran and give human feedback on how they were being scored.
+* I wrote or dictated most of the README's text myself. Claude wrote the generated tables, the failure-class table and some captions, and edited the rest.
+
+## More
+
+The full results, every check, what went wrong task by task and the prior art are in [docs/reference.md](docs/reference.md). MIT licence, in `LICENSE`. `docs/context/` is my private material, isn't covered, and is left out of the submission ZIP.

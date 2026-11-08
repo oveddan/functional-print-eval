@@ -1,0 +1,187 @@
+task: nut-knob/M3
+note: One-piece, 20 mm hand knob with a captive M3 hex nut. Uses the tested 5.70 mm
+  hex pocket without changing its fit. Retention is a friction fit validated by your
+  inversion-and-shake test, not a permanent lock.
+questions:
+- text: Which test pocket allows hand insertion and retains the nut upside down?
+  answer: '5.70 mm: goes in with pushing, snug; nut stayed in when inverted and shaken.
+    Smaller pockets were too tight.'
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 nominal major diameter; bolt length depends on the user's application.
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: Selected from successful hand-insertion and inversion/shake coupon test.
+  nut_recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Nut top sits this far below the knob top when seated.
+  bore_d:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: Same through-hole diameter as the test coupon.
+  scallop_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_radius:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_radius:
+    value: 10.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    floor = p.knob_h - p.nut_h - p.nut_recess\n\
+    \    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n    for i\
+    \ in range(int(p.scallop_count)):\n        a = 2*math.pi*i/p.scallop_count\n \
+    \       x = p.scallop_center_radius*math.cos(a)\n        y = p.scallop_center_radius*math.sin(a)\n\
+    \        cutter = cq.Workplane('XY').center(x,y).circle(p.scallop_radius).extrude(p.knob_h)\n\
+    \        body = body.cut(cutter)\n    bore = cq.Workplane('XY').circle(p.bore_d/2).extrude(p.knob_h)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=floor).polygon(6,p.pocket_af/math.cos(math.pi/6)).extrude(p.nut_h+p.nut_recess)\n\
+    \    return body.cut(bore).cut(pocket)"
+  print_orientation: Flat bottom at z=0 on the bed, hex pocket opening upward. No
+    supports.
+  use_orientation: Bolt axis is the central Z axis. The nut seats on the pocket floor
+    at z=3.2 mm; its top is recessed below the pocket opening.
+hardware:
+- id: captive_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_retention
+  part: hand_knob
+  feature: 5.70 mm across-flats hex pocket
+  relation: contains
+  hardware: captive_nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: User confirmed 5.70 mm pocket accepts the nut with hand pushing and
+      retains it inverted and shaken. Recheck on final print.
+- id: nut_seat
+  part: hand_knob
+  feature: Solid 3.2 mm floor surrounding the 3.5 mm through bore
+  relation: supports
+  hardware: captive_nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - nut_h
+  - nut_recess
+  - bore_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Check nut is fully seated, recessed below the top, and cannot pass
+      through the smaller bottom hole.
+- id: bolt_passage
+  part: hand_knob
+  feature: Central through bore aligned with nut thread
+  relation: clears
+  hardware: null
+  clearance_mm: 0.25
+  params:
+  - bore_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: An M3 bolt should pass freely through the printed bore and thread
+      into the nut without cross-threading.
+manual:
+- n: '1'
+  text: Print hand_knob in black PLA at 0.2 mm layers with the pocket facing upward.
+    Use 4 walls and 100% infill; no supports.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove any loose brim or first-layer burr from the central hole. Align the
+    M3 nut with the hex pocket and press it straight in by hand until seated on the
+    floor. Its upper face should be about 0.4 mm below the opening. Do not hammer
+    it in.
+  parts:
+  - hand_knob
+  hardware:
+  - captive_nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down over a tray and shake gently. The nut must stay
+    seated, as it did in the coupon. If it falls out, do not rely on this print for
+    captive retention; if it will not seat by hand, do not force it.
+  parts:
+  - hand_knob
+  hardware:
+  - captive_nut
+  tool: null
+- n: '4'
+  text: Thread your M3 bolt through the nut; the bolt can continue through the central
+    hole on the opposite side. Choose bolt length for your application. For use as
+    a female tightening knob on a protruding bolt, face the flat, closed side toward
+    the work so tightening presses the nut against its solid floor.
+  parts:
+  - hand_knob
+  hardware:
+  - captive_nut
+  tool: null
+- n: '5'
+  text: Tighten with fingers only. The pocket prevents the nut rotating; the floor
+    prevents it passing through the far side. Avoid high torque or hot environments,
+    and recheck friction retention after repeated removal of the bolt.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null

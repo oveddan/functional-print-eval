@@ -1,0 +1,252 @@
+task: bearing-wheel
+note: 'Rim is flat with 1 mm chamfers because the track profile couldn''t be measured.
+  If the old wheel had a groove, say so and the rim can be changed. The bracket gap
+  is unknown, so the side collars are a 1 mm guess. M8x35 is a guess too: it fits
+  plates up to about 3 mm thick. If your own M8 bolt is long enough, use that instead.'
+questions:
+- text: Is the old wheel's rolling edge flat, V-grooved, or concave? Does the track
+    have a raised rail?
+  answer: null
+- text: What is the inside gap between the bracket plates?
+  answer: null
+params:
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608ZZ OD, re-measured ~22
+  bearing_w:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_fit:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: measured
+    note: 'from coupon: 22.29 seat goes in, holds; 21.99 won''t go in'
+  inner_race_od:
+    value: 12.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 inner race shoulder ~12 mm
+  outer_race_land_d:
+    value: 19.5
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: lip bore; lip must touch only the outer race
+  bolt_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  wheel_od:
+    value: 50.0
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 50 mm'
+  wheel_w:
+    value: 16.0
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 16 mm'
+  rim_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: track profile unknown; flat rim chosen
+  lip_t:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: wheel_w - 2*bearing_w
+  collar_t:
+    value: 1.0
+    unit: mm
+    kind: world
+    source: guessed
+    note: bracket inside gap unknown; collars fill (gap - wheel_w)/2 each side
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od/2\n    W = p.wheel_w\n    w = cq.Workplane('XY').circle(R).extrude(W)\n\
+    \    w = w.faces('>Z').edges().chamfer(p.rim_chamfer)\n    w = w.faces('<Z').edges().chamfer(p.rim_chamfer)\n\
+    \    pd = p.bearing_od + p.bearing_fit\n    pocket_bot = cq.Workplane('XY').circle(pd/2).extrude(p.bearing_w)\n\
+    \    pocket_top = cq.Workplane('XY').workplane(offset=W - p.bearing_w).circle(pd/2).extrude(p.bearing_w)\n\
+    \    lip_bore = cq.Workplane('XY').circle(p.outer_race_land_d/2).extrude(W)\n\
+    \    w = w.cut(pocket_bot).cut(pocket_top).cut(lip_bore)\n    # lead-in chamfer\
+    \ on pocket mouths\n    for z0, s in ((0, 1), (W, -1)):\n        cone = cq.Solid.makeCone(pd/2\
+    \ + 0.6, pd/2, 0.6, pnt=cq.Vector(0,0,z0), dir=cq.Vector(0,0,s))\n        w =\
+    \ w.cut(cq.Workplane('XY').add(cone))\n    return w"
+  print_orientation: flat, axle vertical, one face on bed
+  use_orientation: axle horizontal through bracket
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.inner_race_od/2).circle((p.bolt_d\
+    \ + p.bolt_clear)/2).extrude(p.lip_t)"
+  print_orientation: flat ring on bed
+  use_orientation: on the bolt between the two bearings' inner races, inside the wheel's
+    lip
+- id: side_collar
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.inner_race_od/2).circle((p.bolt_d\
+    \ + p.bolt_clear)/2).extrude(p.collar_t)"
+  print_orientation: flat ring on bed
+  use_orientation: on the bolt between a bearing inner race and the bracket plate;
+    print two
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -4.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: side_collar
+    feature: bore
+    role: clearance
+  - part: inner_spacer
+    feature: bore
+    role: clearance
+  - part: side_collar
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: bearing_press
+  part: wheel
+  feature: bearing pockets
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - bearing_fit
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: 22.3 mm seat pressed in and held upside down
+- id: lip_outer_only
+  part: wheel
+  feature: centre lip bore
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - outer_race_land_d
+  - inner_race_od
+  check:
+    method: measure
+    ref: null
+    description: 'spin each bearing''s inner race by finger after pressing: must turn
+      freely, lip must not touch shield/inner race'
+- id: spacer_len
+  part: inner_spacer
+  feature: length
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - lip_t
+  check:
+    method: measure
+    ref: null
+    description: with the bolt tightened, the wheel still spins freely (spacer stops
+      inner races being squeezed)
+- id: bracket_fit
+  part: side_collar
+  feature: thickness
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - collar_t
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: wheel + collars fill the bracket gap without forcing the plates apart
+manual:
+- n: '1'
+  text: Print the wheel flat on the bed with no supports. Print one inner_spacer and
+    two side_collar rings. The small ledge inside the wheel prints as a short overhang;
+    if it droops, trim it flat with a knife.
+  parts:
+  - wheel
+  - inner_spacer
+  - side_collar
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into a pocket until it seats against the centre ledge.
+    Press it square with a flat block in a vise or with even thumb pressure. Don't
+    push on the shield.
+  parts:
+  - wheel
+  hardware: []
+  tool: vise or flat block
+- n: '3'
+  text: Drop the inner_spacer into the wheel's centre so it rests on the first bearing's
+    inner race. Press the second bearing into the other side. Spin each inner race
+    with a finger to check it turns freely.
+  parts:
+  - wheel
+  - inner_spacer
+  hardware: []
+  tool: null
+- n: '4'
+  text: Put a washer on the bolt and push it through the first bracket plate. Then
+    slide on one side_collar, the wheel, the second side_collar, the second plate,
+    the second washer and the lock nut. If the wheel and collars don't fill the bracket
+    gap, or are too tight, reprint the collars thicker or thinner (change collar_t),
+    or leave them out.
+  parts:
+  - side_collar
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  - locknut
+  tool: null
+- n: '5'
+  text: Tighten the lock nut until it's snug. The inner spacer takes the clamping
+    force, so the wheel should still spin freely. Rehang the door.
+  parts: []
+  hardware:
+  - bolt
+  - locknut
+  tool: 6 mm hex key + 13 mm spanner

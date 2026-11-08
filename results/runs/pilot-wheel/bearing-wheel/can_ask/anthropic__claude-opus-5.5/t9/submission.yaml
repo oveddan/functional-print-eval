@@ -1,0 +1,238 @@
+task: bearing-wheel
+note: The wheel is 50 x 16 mm and holds two 608 bearings back to back, with a 2 mm
+  lip between them. A printed spacer sits between the inner rings so tightening the
+  bolt clamps the inner rings and the axle, not the bearing seals. The bracket gap
+  and the track shape weren't measured, so the tread is flat and the bolt length is
+  a best guess.
+questions:
+- text: Does the track have a ridge or a V that the old wheel's tread had a groove
+    for? If so, I can cut a matching groove into the tread.
+  answer: null
+- text: How wide is the gap in the bracket? If it's wider than about 19 mm (wheel
+    plus washers), add spacer washers so the wheel can't slide along the bolt.
+  answer: null
+params:
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: re-measured square across the outer race; matches 608 nominal 22.000
+  bearing_w:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  press_fit:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: added to the bore diameter to make up for printed holes coming out small;
+      tune with the coupon
+  lip_bore_d:
+    value: 16.0
+    unit: mm
+    kind: design
+    source: design
+    note: centre lip catches the bearing outer race and stays clear of the inner race
+  spacer_od:
+    value: 11.0
+    unit: mm
+    kind: design
+    source: design
+    note: smaller than the 608 inner race (~12 mm) so it only touches the inner races
+  spacer_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tread_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  ef_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in at the bore mouths; also cancels elephant's foot on the bed side
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_d/2\n    W = p.wheel_w\n    bw = p.bearing_w\n\
+    \    rb = (p.bearing_od + p.press_fit)/2\n    rl = p.lip_bore_d/2\n    c = p.tread_chamfer\n\
+    \    e = p.ef_chamfer\n    pts = [(rb+e,0),(R-c,0),(R,c),(R,W-c),(R-c,W),(rb+e,W),(rb,W-e),(rb,W-bw),(rl,W-bw),(rl,bw),(rb,bw),(rb,e)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().revolve(360,(0,0,0),(0,1,0))\n"
+  print_orientation: flat on one face, axle vertical (as modelled)
+  use_orientation: axle horizontal, tread on the track
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.wheel_w - 2*p.bearing_w\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_id/2).extrude(h)\n"
+  print_orientation: flat ring on the bed
+  use_orientation: on the bolt between the two bearing inner races
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    rb = (p.bearing_od + p.press_fit)/2\n    e = p.ef_chamfer\n\
+    \    H = p.bearing_w\n    Ro = rb + 4\n    pts = [(rb+e,0),(Ro,0),(Ro,H),(rb+e,H),(rb,H-e),(rb,e)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().revolve(360,(0,0,0),(0,1,0))\n"
+  print_orientation: flat ring on the bed
+  use_orientation: 'handheld test: press a bearing in'
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: axle
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle_joint
+  fastener: axle
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -6.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: bearing bores (bolt runs through the bearing inner races)
+    role: clearance
+  - part: inner_spacer
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: closet door roller bracket (axle hole about 8 mm)
+criteria:
+- id: bearing_press
+  part: wheel
+  feature: bearing pockets
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_od
+  - press_fit
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The bearing should press in firmly by hand or in a vice and not fall
+      out. If it's loose, lower press_fit by 0.05. If it won't go in, raise it by
+      0.05.
+- id: bearing_depth
+  part: wheel
+  feature: pocket depth
+  relation: contains
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_w
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: Once pressed in, each bearing sits flush with the wheel face, or
+      no more than 0.2 mm proud.
+- id: spacer_len
+  part: inner_spacer
+  feature: length
+  relation: supports
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: With the nut done up, the wheel still spins freely. If it drags,
+      the spacer is too short (reprint it, or add a thin shim).
+- id: tread
+  part: wheel
+  feature: tread
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_d
+  - wheel_w
+  check:
+    method: none
+    ref: null
+    description: The tread is flat with chamfered edges because the track profile
+      wasn't measured.
+manual:
+- n: '1'
+  text: Print fit_coupon first. Press one bearing into it. It should go in firmly
+    and stay put. If it's loose or won't go in, change press_fit (see the criteria)
+    and print the coupon again.
+  parts:
+  - fit_coupon
+  hardware:
+  - bearing
+  tool: null
+- n: '2'
+  text: Print the wheel flat (100% infill or 6 walls, so it's strong under the door's
+    weight) and the inner_spacer.
+  parts:
+  - wheel
+  - inner_spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one bearing into one side of the wheel until it bottoms out on the centre
+    lip. Use a vice or a flat block, and push only on the bearing's outer ring. Turn
+    the wheel over, drop the inner_spacer into the centre, and press the second bearing
+    in from the other side.
+  parts:
+  - wheel
+  - inner_spacer
+  hardware:
+  - bearing
+  tool: vice or flat block
+- n: '4'
+  text: Put the bolt through the bracket, then a washer, the wheel, a second washer,
+    and the other bracket arm. Finish with the lock nut. Tighten until it's snug and
+    the wheel still spins freely. If the bolt is too long or too short for your bracket,
+    use another M8 bolt. Your old one is fine.
+  parts:
+  - wheel
+  hardware:
+  - axle
+  - washer
+  - locknut
+  tool: 6 mm hex key + 13 mm spanner

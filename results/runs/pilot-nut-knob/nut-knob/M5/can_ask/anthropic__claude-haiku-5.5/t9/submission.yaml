@@ -1,0 +1,141 @@
+task: nut-knob/M5
+note: ''
+questions:
+- text: Is the bolt you'll use an M5 with a thread long enough to reach through the
+    nut and out the top hole?
+  answer: null
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  pocket_af:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: nut AF + 0.1 mm so the nut presses in by hand; PLA flexes
+  pocket_depth:
+    value: 4.9
+    unit: mm
+    kind: design
+    source: design
+    note: nut thickness + 0.2 mm
+  lip_af:
+    value: 7.6
+    unit: mm
+    kind: design
+    source: design
+    note: retaining lip at the bottom, smaller than nut AF so the nut snaps past it
+      and cannot fall out
+  lip_t:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: lip thickness
+  bolt_hole_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole in the top, smaller than the nut so the nut cannot exit that
+      side
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: about 30 mm across
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: overall height
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2).extrude(p.knob_h)\n    body = body.faces('>Z').edges().fillet(1.0)\n  \
+    \  def hexprism(af, z0, z1):\n        d = af / math.cos(math.radians(30))\n  \
+    \      return cq.Workplane('XY').workplane(offset=z0).polygon(6, d).extrude(z1\
+    \ - z0)\n    pocket = hexprism(p.pocket_af, p.lip_t, p.lip_t + p.pocket_depth)\n\
+    \    lip = hexprism(p.lip_af, -1, p.lip_t)\n    top = p.lip_t + p.pocket_depth\n\
+    \    hole = cq.Workplane('XY').workplane(offset=top - 0.1).circle(p.bolt_hole_d\
+    \ / 2).extrude(p.knob_h)\n    return body.cut(pocket).cut(lip).cut(hole)\n"
+  print_orientation: bottom face (nut opening, z=0) on the bed; hex pocket prints
+    open downward with its ceiling as a short bridge
+  use_orientation: knob upright, nut pocket facing down, bolt entering from below
+    and the tip passing out through the top hole
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket (8.1 mm AF, 4.9 mm deep)
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.1
+  params:
+  - pocket_af
+  - pocket_depth
+  - nut_af
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Nut presses in by hand and stays when the knob is inverted
+- id: retain_lip
+  part: knob
+  feature: bottom retaining lip (7.6 mm AF)
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - lip_af
+  - lip_t
+  check:
+    method: measure
+    ref: null
+    description: Nut cannot fall out of the bottom opening
+manual:
+- n: '1'
+  text: Print the knob with the flat bottom face on the bed. Remove any stringing
+    from inside the hex pocket.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Test-fit the M5 hex nut into the hex pocket from the bottom opening. It should
+    press in by hand past the lip and seat against the pocket ceiling. If it is too
+    tight, lightly sand the pocket walls; do not force it past the lip with a tool.
+  parts: []
+  hardware: []
+  tool: null
+- n: '3'
+  text: Confirm the nut stays in with the knob upside down. Note that the lip only
+    holds it at the opening; the nut is trapped between the lip and the ceiling.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread the M5 bolt up through the bottom lip opening and into the nut. Tighten
+    by turning the knob. The bolt tip passes out through the top hole.
+  parts: []
+  hardware: []
+  tool: null

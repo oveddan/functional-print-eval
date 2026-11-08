@@ -1,0 +1,192 @@
+task: nut-knob/M3
+note: Pocket oversize of 0.2 mm across flats (5.7 mm) was chosen from a print test
+  of 5.5, 5.6, 5.7 and 5.8 mm pockets. 5.5 mm and 5.6 mm were too tight, and 5.7 mm
+  was snug and held the nut when inverted. Print the pocket face on the bed with the
+  same printer and filament settings as the test.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: about 20 mm across
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 height
+  hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 bolt clearance hole, through the whole knob
+  depth_extra:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: pocket depth over nut height
+  pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: measured
+    note: 'pocket across-flats oversize (5.7 mm pocket): snug press fit, nut stayed
+      in when inverted and shaken in print test'
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: grip scallop radius
+  coupon_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c0:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c1:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c2:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c3:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    r=p.knob_d/2\n    k=cq.Workplane('XY').circle(r).extrude(p.knob_h)\n\
+    \    k=k.faces('>Z').edges().chamfer(0.8)\n    for i in range(int(p.scallop_n)):\n\
+    \        a=2*math.pi*i/p.scallop_n\n        cx=(r+p.scallop_r*0.6)*math.cos(a)\n\
+    \        cy=(r+p.scallop_r*0.6)*math.sin(a)\n        k=k.cut(cq.Workplane('XY').center(cx,cy).circle(p.scallop_r).extrude(p.knob_h))\n\
+    \    d=(p.nut_af+p.pocket_clear)/math.cos(math.radians(30))\n    pocket=cq.Workplane('XY').polygon(6,d).extrude(p.nut_h+p.depth_extra)\n\
+    \    hole=cq.Workplane('XY').circle(p.hole_d/2).extrude(p.knob_h)\n    return\
+    \ k.cut(pocket).cut(hole)\n"
+  print_orientation: nut-pocket opening face flat on the bed (z=0), knob top up
+  use_orientation: pocket face against the work, bolt end pointing through the knob
+- id: nut-fit-coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    cs=[p.c0,p.c1,p.c2,p.c3]\n    w=cq.Workplane('XY').box(44,12,p.coupon_h,centered=(True,True,False))\n\
+    \    for i,c in enumerate(cs):\n        x=-16.5+i*11\n        d=(p.nut_af+c)/math.cos(math.radians(30))\n\
+    \        pocket=cq.Workplane('XY').center(x,0).polygon(6,d).extrude(p.nut_h+p.depth_extra)\n\
+    \        hole=cq.Workplane('XY').center(x,0).circle(p.hole_d/2).extrude(p.coupon_h)\n\
+    \        w=w.cut(pocket).cut(hole)\n    return w\n"
+  print_orientation: pocket opening face flat on the bed
+  use_orientation: same
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut-retention
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clear
+  - depth_extra
+  check:
+    method: coupon
+    ref: nut-fit-coupon
+    description: 5.7 mm across-flats pocket pressed in by hand and held the nut when
+      inverted and shaken
+- id: bolt-pass
+  part: knob
+  feature: through hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - hole_d
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes freely through the 3.4 mm hole and threads into the
+      seated nut
+- id: nut-stop
+  part: knob
+  feature: pocket roof
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - nut_h
+  - depth_extra
+  check:
+    method: none
+    ref: null
+    description: 5.4 mm solid roof above the pocket stops the nut passing through
+      the far side
+manual:
+- n: '1'
+  text: Print the knob with the hex-pocket face flat on the bed, no supports. The
+    pocket ceiling is a short bridge of about 6 mm.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M3 nut's flats with the hex pocket in the flat underside of the
+    knob. Press it in by hand until it bottoms out against the pocket ceiling. Press
+    it flat with a flat surface if needed. It should be snug and stay put when the
+    knob is upside down.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Thread your M3 bolt into the nut from the pocket side. It runs through the
+    nut and the 3.4 mm hole and can come out of the top of the knob. Turn the knob
+    by hand to tighten.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

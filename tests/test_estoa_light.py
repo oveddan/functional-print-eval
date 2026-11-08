@@ -167,7 +167,6 @@ def test_reference_passes_every_check(tmp_path):
     pytest.param(disk_holes_apart(30), {"R1"}, {"R2"}, id="disk-holes-30-apart"),
     pytest.param(disk_holes_apart(30, template=True), set(), {"R2"}, id="disk-holes-30-apart-but-checked-on-a-template"),
     pytest.param(hard_coded_disk_holes(disk_holes_apart(30, template=True)), {"R1"}, {"R2"}, id="template-but-the-holes-are-hard-coded"),
-    pytest.param(corner_posts(7.5), {"R4"}, set(), id="insert-posts-under-8"),
     pytest.param(perfboard_under_the_disk_screws("ISO 4762 M3x20"), {"R2"}, set(), id="m3x20-reaches-the-esp32"),
     pytest.param(screws_on_the_back(), {"R7"}, set(), id="screw-heads-proud-of-the-back"),
     # more ways to get them wrong
@@ -187,7 +186,7 @@ def test_reference_passes_every_check(tmp_path):
     pytest.param(rectangular_opening(13, 7.5), set(), {"R3"}, id="usb-opening-holds-the-bare-plug-head-only"),
     pytest.param(socket_set_back(-1.5, usb_w=11.5), set(), {"R3"}, id="small-opening-in-a-thin-wall-at-the-port"),
     pytest.param(design(key_entry=9.5), set(), {"R6"}, id="keyhole-entry-9.5-never-hung"),
-    pytest.param(corner_posts(10), set(), {"R4"}, id="insert-posts-10-between-records"),
+    pytest.param(corner_posts(7.5), set(), {"R4"}, id="insert-posts-under-8-thinner-than-any-printed"),
 ])
 def test_wrong_or_undecided_designs(tmp_path, sub, want_failed, want_not_graded):
     findings = grade(sub, tmp_path)
@@ -235,6 +234,12 @@ def test_inserts_behind_the_disk_need_a_template(tmp_path, template, want):
     findings = {f.check: f.ok for f in grade(inserts_behind_the_disk(template), tmp_path)}
     assert findings["R1"] is want
     assert findings["R2"] is True and findings["R4"] is True
+
+
+def test_posts_like_the_8_mm_ones_that_bulged_at_100_percent_infill_hold(tmp_path):
+    # Dan, 2026-11-08: those posts bulged because of the infill; graded as printed at 20%, they hold
+    findings = {f.check: f.ok for f in grade(corner_posts(8), tmp_path)}
+    assert findings["R4"] is True
 
 
 def inserts_behind_a_skin(skin):

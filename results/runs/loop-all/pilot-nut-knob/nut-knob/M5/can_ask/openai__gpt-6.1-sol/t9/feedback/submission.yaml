@@ -1,0 +1,304 @@
+task: nut-knob/M5
+note: 'Unchanged fit geometry: 8.30 mm across-flats hex socket, 7.60 mm relaxed gap
+  between retaining lips. The reported 7.64 mm pocket result did not establish fit,
+  so no fit adjustment has been made. Print the coupon first. Finished assembly uses
+  one printed knob and one M5 nut; the coupon is only a test print. Catalog-based,
+  unverified fit; intended for light hand tightening at room temperature.'
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal AF; actual nut unmeasured.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  socket_af_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Total AF clearance, giving 8.30 mm socket.
+  bolt_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance, giving 5.60 mm hole.
+  nut_axial_play:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  latch_ramp_h:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  latch_projection:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Each lip projects inward from socket flat. Relaxed lip gap 7.60 mm.
+  tab_t:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tab_w:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tab_side_gap:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tab_back_gap:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_cutter_r:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cutter_offset:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: Radial location of scallop cutter centres.
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    af = p.nut_af + p.socket_af_clearance\n\
+    \    a = af/2\n    z_lip = p.floor_t + p.nut_h + p.nut_axial_play\n    height\
+    \ = z_lip + p.latch_ramp_h\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(height)\n\
+    \    for i in range(int(p.grip_count)):\n        ang = 2*math.pi*i/p.grip_count\n\
+    \        cutter = cq.Workplane('XY').center(p.grip_cutter_offset*math.cos(ang),p.grip_cutter_offset*math.sin(ang)).circle(p.grip_cutter_r).extrude(height)\n\
+    \        body = body.cut(cutter)\n    r = af/math.sqrt(3)\n    verts = [(r*math.cos(i*math.pi/3),r*math.sin(i*math.pi/3))\
+    \ for i in range(6)]\n    body = body.cut(cq.Workplane('XY',origin=(0,0,p.floor_t)).polyline(verts).close().extrude(height))\n\
+    \    body = body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(height))\n\
+    \    ww = p.tab_w+2*p.tab_side_gap\n    wd = p.tab_t+p.tab_back_gap\n    for s\
+    \ in (-1,1):\n        window = cq.Workplane('XY').box(ww,wd,height-p.floor_t,centered=(True,True,False)).translate((0,s*(a+wd/2),p.floor_t))\n\
+    \        body = body.cut(window)\n    for s in (-1,1):\n        tab = cq.Workplane('XY').box(p.tab_w,p.tab_t,height-p.floor_t,centered=(True,True,False)).translate((0,s*(a+p.tab_t/2),p.floor_t))\n\
+    \        points = [(s*a,z_lip),(s*(a-p.latch_projection),z_lip),(s*a,height)]\n\
+    \        lip = cq.Workplane('YZ',origin=(-p.tab_w/2,0,0)).polyline(points).close().extrude(p.tab_w)\n\
+    \        body = body.union(tab).union(lip)\n    return body.clean()\n"
+  print_orientation: Flat bottom at z=0 on bed, nut opening and tabs up. No supports.
+  use_orientation: Nut enters top hex opening; bolt passes axially through nut and
+    bottom clearance hole.
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    af = p.nut_af + p.socket_af_clearance\n\
+    \    a = af/2\n    z_lip = p.floor_t + p.nut_h + p.nut_axial_play\n    height\
+    \ = z_lip + p.latch_ramp_h\n    body = cq.Workplane('XY').circle(p.coupon_d/2).extrude(height)\n\
+    \    r = af/math.sqrt(3)\n    verts = [(r*math.cos(i*math.pi/3),r*math.sin(i*math.pi/3))\
+    \ for i in range(6)]\n    body = body.cut(cq.Workplane('XY',origin=(0,0,p.floor_t)).polyline(verts).close().extrude(height))\n\
+    \    body = body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(height))\n\
+    \    ww = p.tab_w+2*p.tab_side_gap\n    wd = p.tab_t+p.tab_back_gap\n    for s\
+    \ in (-1,1):\n        window = cq.Workplane('XY').box(ww,wd,height-p.floor_t,centered=(True,True,False)).translate((0,s*(a+wd/2),p.floor_t))\n\
+    \        body = body.cut(window)\n    for s in (-1,1):\n        tab = cq.Workplane('XY').box(p.tab_w,p.tab_t,height-p.floor_t,centered=(True,True,False)).translate((0,s*(a+p.tab_t/2),p.floor_t))\n\
+    \        points = [(s*a,z_lip),(s*(a-p.latch_projection),z_lip),(s*a,height)]\n\
+    \        lip = cq.Workplane('YZ',origin=(-p.tab_w/2,0,0)).polyline(points).close().extrude(p.tab_w)\n\
+    \        body = body.union(tab).union(lip)\n    return body.clean()\n"
+  print_orientation: Flat bottom at z=0 on bed, opening up. No supports.
+  use_orientation: Same insertion direction and retention geometry as knob.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: hand_press
+  part: knob
+  feature: Hex socket and ramped snap tabs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - socket_af_clearance
+  - tab_t
+  - tab_w
+  - latch_projection
+  - latch_ramp_h
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Nut must enter with finger pressure, seat on bottom shoulder, and
+      allow both tabs to spring inward. No hammering, whitening or cracks.
+- id: retention
+  part: knob
+  feature: Two snap lips above nut
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - socket_af_clearance
+  - latch_projection
+  - nut_h
+  - nut_axial_play
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Without a bolt installed, invert over a tray and gently shake; nut
+      must remain captured.
+- id: stop
+  part: knob
+  feature: Solid bottom shoulder around central hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - bolt_d
+  - bolt_clearance
+  - nut_af
+  - nut_h
+  - nut_axial_play
+  - latch_ramp_h
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Nut is fully recessed and cannot pass through the bottom under hand
+      pressure.
+- id: passage
+  part: knob
+  feature: 5.6 mm axial clearance hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Your intended M5 bolt threads through the nut and emerges through
+      the bottom without rubbing plastic.
+- id: anti_rotation
+  part: knob
+  feature: Fixed hexagonal socket walls
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - socket_af_clearance
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: With your M5 bolt finger-threaded into the nut, nut must not spin
+      freely inside coupon. Slight angular play is acceptable.
+manual:
+- n: '1'
+  text: Print nut_fit_coupon first, using PLA, 0.2 mm layers, at least 4 walls, 5
+    top/bottom layers and 30% infill. Use the supplied orientation, without supports.
+    Check slicer preview for two intact 0.8 mm tabs and open relief gaps.
+  parts:
+  - nut_fit_coupon
+  hardware: []
+  tool: Slicer
+- n: '2'
+  text: Cool fully and remove strings from the pocket and relief gaps without thinning
+    the tabs. Align the nut flats with the socket. On a flat table, press the nut
+    straight in with your thumb until it rests on the bottom shoulder and both tabs
+    return inward. Stop if excessive force is needed; do not hammer.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Check hand insertion, upside-down retention with no bolt installed, fully
+    recessed seating, the bottom stop, anti-rotation and through-bolt passage. Fit
+    remains unverified until these tests pass. If the lips are too tight, reduce latch_projection
+    by 0.05 mm and reprint the coupon. If fixed socket walls bind, increase socket_af_clearance
+    by 0.1 mm and retest. If retention fails, increase latch_projection by 0.05 mm
+    and retest. Changes must also be used for the final knob. Discard cracked or whitened
+    prints.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: To recover the nut from the coupon, gently flex both tabs outward while pushing
+    the nut upward through the bottom hole with a small blunt rod narrower than the
+    hole. Keep fingers out of the rod's path. Avoid repeated insertion/removal; the
+    PLA snaps are intended primarily for one-time installation.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  tool: Small blunt rod
+- n: '5'
+  text: After the coupon passes, print knob with the same tested parameters and settings,
+    opening upward. Cool, clean and hand-press the nut in. Repeat retention and bolt-passage
+    checks. Only knob and nut are used in the finished assembly; no glue or additional
+    retainer.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '6'
+  text: Use as a captive-nut knob on your M5 bolt. The bolt can emerge from the other
+    side through the central hole. Tighten by hand only; do not use pliers, power
+    tools or a lever. Stop if plastic cracks or the nut slips. Keep away from heat
+    and inspect before use.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

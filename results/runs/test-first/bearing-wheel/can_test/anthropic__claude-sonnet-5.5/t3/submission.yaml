@@ -1,0 +1,241 @@
+task: bearing-wheel
+note: 'Wheel is 50 mm OD x 16 mm wide. It has two 608 bearings pressed into opposite
+  faces, with a 2.8 mm web between them. The bearings stand 0.4 mm proud of the faces,
+  and M8 washers on the inner races keep the bracket arms off the wheel and the outer
+  races. The pocket diameter is 22.3 mm, taken from the fit coupon. The bracket gap,
+  bolt length and rail profile could not be measured, so the rim is flat and the manual
+  says how to adjust the washer stack. The design prints without supports: the bottom
+  pocket opens onto the bed, and the web is bridged over a 22 mm opening.'
+questions:
+- text: What is the clear gap between the bracket arms? The wheel stack needs about
+    20.2 mm with two washers.
+  answer: null
+- text: Does the track need a groove in the rim (V or round)? The measurement could
+    not be taken, so the rim is flat.
+  answer: null
+- text: How long is the M8 bolt? Only its 8 mm shank diameter was measured. The M8x50
+    in the hardware list is a placeholder for your own bolt.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: asked
+    note: 608 OD nominal 22.0; user reads about 22
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: asked
+    note: 608 width 7; user reads about 7
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M8 shank about 8 mm
+  seat_clr:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: 'Press-fit clearance chosen from the fit coupon: 22.29 mm seat went in easily
+      and held; 21.99 would not go in'
+  protrusion:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: how far each bearing sticks out of the wheel face so the washers load the
+      inner race and not the wheel
+  web_hole_d:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: clears the 8 mm bolt and the inner race (about 12 mm OD) so only the outer
+      race touches the web
+  rim_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in on the bed-side pocket to offset elephant foot
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R=p.bearing_od/2+p.seat_clr/2\n    depth=p.bearing_w-p.protrusion\n\
+    \    w=cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w).edges().chamfer(p.rim_chamfer)\n\
+    \    bot=cq.Workplane('XY').circle(R).extrude(depth)\n    lead=cq.Workplane('XY').circle(R+p.entry_chamfer).workplane(offset=p.entry_chamfer).circle(R).loft()\n\
+    \    top=cq.Workplane('XY').workplane(offset=p.wheel_w-depth).circle(R).extrude(depth)\n\
+    \    hole=cq.Workplane('XY').circle(p.web_hole_d/2).extrude(p.wheel_w)\n    return\
+    \ w.cut(bot).cut(lead).cut(top).cut(hole)"
+  print_orientation: flat on one circular face, axis vertical
+  use_orientation: axis horizontal, rolling on the rail
+- id: fit-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    pitch=28\n    offs=[0,0.15,0.3,0.45]\n    w=cq.Workplane('XY').box(4*pitch+2,\
+    \ pitch, 4, centered=(True,True,False))\n    for i,o in enumerate(offs):\n   \
+    \     x=(i-1.5)*pitch\n        pocket=cq.Workplane('XY').workplane(offset=1).center(x,0).circle((p.bearing_od+o)/2).extrude(3)\n\
+    \        hole=cq.Workplane('XY').center(x,0).circle(p.web_hole_d/2).extrude(4)\n\
+    \        w=w.cut(pocket).cut(hole)\n    return w"
+  print_orientation: flat, pocket side up
+  use_orientation: flat
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: nut
+  ref: ISO 4032 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -4.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: web_hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: c1
+  part: wheel
+  feature: bottom bearing pocket
+  relation: contains
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bearing_od
+  - seat_clr
+  - bearing_w
+  - protrusion
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: 22.29 mm seat pressed in easily and held
+- id: c2
+  part: wheel
+  feature: top bearing pocket
+  relation: contains
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bearing_od
+  - seat_clr
+  - bearing_w
+  - protrusion
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: same fit as the bottom pocket
+- id: c3
+  part: wheel
+  feature: web hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 2.5
+  params:
+  - web_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: bolt and inner races spin freely through the 13 mm hole
+- id: c4
+  part: wheel
+  feature: bearing faces
+  relation: supports
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - protrusion
+  - bearing_w
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: each bearing sticks out about 0.4 mm past the wheel face so the washers
+      load the inner race
+manual:
+- n: '1'
+  text: Print the wheel flat on the bed with the wide face down. Print it with at
+    least 4 walls and 30% or more infill (gyroid or grid), because the rim carries
+    the door's weight. No supports.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into each pocket until it bottoms against the centre
+    web. Use a socket or the flat of a vise, and push on the outer race only. Each
+    bearing should stick out about 0.4 mm. The fit was tested and should go in firmly
+    by hand pressure.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: Slide the M8 bolt through the first bracket arm. Put a washer on it, then
+    the wheel, then the second washer. The washers must touch only the bearing inner
+    races. Pass the bolt through the second bracket arm and tighten the nut. The inner
+    races get clamped and the wheel spins on the outer races. Check the wheel spins
+    freely. The stack is about 20.2 mm wide (16 mm wheel + 2 × 0.4 mm bearing stick-out
+    + 2 × 1.6 mm washers). If your bracket gap is wider, add washers. If it is narrower,
+    drop one washer and check that the bearing outer race does not rub the bracket.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  - nut
+  tool: 13 mm spanner and 6 mm hex key (or the tool for your bolt head)
+- n: '4'
+  text: Hang the door and check that the rim sits properly on the track. The rim is
+    flat with 1 mm chamfered edges. If the old wheel had a groove, tell me its depth
+    and width and I can add it.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

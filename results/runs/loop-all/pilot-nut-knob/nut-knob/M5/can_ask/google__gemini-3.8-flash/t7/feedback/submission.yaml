@@ -1,0 +1,280 @@
+task: nut-knob/M5
+note: Ergonomic 30 mm hand knob for an M5 bolt with captive ISO 4032 M5 nut pocket
+  and accompanying coupon to test pocket fit.
+questions: []
+params:
+  coupon_pitch_y:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Grid spacing in Y for test coupon
+  coupon_push_hole_d:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole diameter in test coupon for pushing out nut
+  pocket_af:
+    value: 8.2
+    unit: mm
+    kind: design
+    source: design
+    note: Width across flats of hex pocket in knob
+  knob_height:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob for comfortable grip
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Width across flats of ISO 4032 M5 hex nut
+  rim_top_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Top outer rim chamfer for comfortable grip
+  bolt_clearance_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole clearance diameter for M5 bolt
+  scallop_center_radius:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from knob axis to scallop centers
+  coupon_pitch_x:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Grid spacing in X for test coupon
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Thickness of ISO 4032 M5 hex nut
+  scallop_radius:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of cylindrical finger grip cutouts
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of M5 bolt
+  entry_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Lead-in chamfer at pocket entrance for easy alignment
+  coupon_plate_h:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: Overall thickness of test coupon
+  shoulder_thickness:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of internal retaining shoulder to support clamping load
+  num_lobes:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of ergonomic grip scallops around perimeter
+  coupon_pocket_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of nut pockets in test coupon
+  rim_bottom_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom edge chamfer to eliminate elephant foot
+  knob_outer_diameter:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of knob across lobe crests
+parts:
+- id: nut_coupon
+  role: coupon
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\n\ndef build(p):\n  nx = 7\n  ny = 2\n\
+    \  plate_len = (nx - 1) * p.coupon_pitch_x + 24.0\n  plate_wid = (ny - 1) * p.coupon_pitch_y\
+    \ + 24.0\n\n  base = (\n      cq.Workplane(\"XY\")\n      .box(plate_len, plate_wid,\
+    \ p.coupon_plate_h, centered=(True, True, False))\n  )\n\n  # 14 pocket sizes:\
+    \ 7.90 to 8.60 mm\n  sizes = [\n      [7.90, 8.00, 8.10, 8.20, 8.30, 8.40, 8.50],\n\
+    \      [8.05, 8.15, 8.25, 8.35, 8.45, 8.55, 8.60],\n  ]\n\n  x_start = -((nx -\
+    \ 1) * p.coupon_pitch_x) / 2.0\n  y_start = -((ny - 1) * p.coupon_pitch_y) / 2.0\n\
+    \n  for r in range(ny):\n    for c in range(nx):\n      af = sizes[r][c]\n   \
+    \   cx = x_start + c * p.coupon_pitch_x\n      cy = y_start + r * p.coupon_pitch_y\n\
+    \n      # Push-through hole\n      hole = (\n          cq.Workplane(\"XY\")\n\
+    \          .workplane(offset=-1.0)\n          .pushPoints([(cx, cy)])\n      \
+    \    .circle(p.coupon_push_hole_d / 2.0)\n          .extrude(p.coupon_plate_h\
+    \ + 2.0)\n      )\n      base = base.cut(hole)\n\n      # Regular hex pocket\n\
+    \      r_flat = af / 2.0\n      r_corner = r_flat / math.cos(math.pi / 6.0)\n\
+    \      pts = []\n      for i in range(6):\n        angle = i * (math.pi / 3.0)\
+    \ + math.pi / 6.0\n        pts.append((\n            cx + r_corner * math.cos(angle),\n\
+    \            cy + r_corner * math.sin(angle),\n        ))\n\n      pocket = (\n\
+    \          cq.Workplane(\"XY\")\n          .workplane(offset=p.coupon_plate_h\
+    \ - p.coupon_pocket_depth)\n          .polyline(pts)\n          .close()\n   \
+    \       .extrude(p.coupon_pocket_depth + 1.0)\n      )\n      base = base.cut(pocket)\n\
+    \n  return base\n"
+  print_orientation: Bottom face flat on bed (Z=0), pocket openings facing up (+Z)
+  use_orientation: Test insertion force and inverted retention of M5 hex nut in each
+    pocket
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\n\ndef build(p):\n  # 1. Base cylindrical\
+    \ body\n  knob = (\n      cq.Workplane(\"XY\")\n      .circle(p.knob_outer_diameter\
+    \ / 2.0)\n      .extrude(p.knob_height)\n  )\n\n  # 2. Outer rim chamfers\n  knob\
+    \ = knob.edges(\">Z\").chamfer(p.rim_top_chamfer)\n  knob = knob.edges(\"<Z\"\
+    ).chamfer(p.rim_bottom_chamfer)\n\n  # 3. Cut finger scallops\n  for i in range(int(p.num_lobes)):\n\
+    \    angle = i * (2.0 * math.pi / p.num_lobes)\n    cx = p.scallop_center_radius\
+    \ * math.cos(angle)\n    cy = p.scallop_center_radius * math.sin(angle)\n    scallop\
+    \ = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n       \
+    \ .pushPoints([(cx, cy)])\n        .circle(p.scallop_radius)\n        .extrude(p.knob_height\
+    \ + 2.0)\n    )\n    knob = knob.cut(scallop)\n\n  # 4. Central clearance through-hole\
+    \ for M5 bolt\n  through_hole = (\n      cq.Workplane(\"XY\")\n      .workplane(offset=-1.0)\n\
+    \      .circle(p.bolt_clearance_d / 2.0)\n      .extrude(p.knob_height + 2.0)\n\
+    \  )\n  knob = knob.cut(through_hole)\n\n  # 5. Hexagonal nut pocket\n  r_flat\
+    \ = p.pocket_af / 2.0\n  r_corner = r_flat / math.cos(math.pi / 6.0)\n  pts =\
+    \ []\n  for i in range(6):\n    angle = i * (math.pi / 3.0) + math.pi / 6.0\n\
+    \    pts.append((r_corner * math.cos(angle), r_corner * math.sin(angle)))\n\n\
+    \  pocket_depth = p.knob_height - p.shoulder_thickness\n  pocket = (\n      cq.Workplane(\"\
+    XY\")\n      .workplane(offset=p.shoulder_thickness)\n      .polyline(pts)\n \
+    \     .close()\n      .extrude(pocket_depth + 1.0)\n  )\n  knob = knob.cut(pocket)\n\
+    \n  # 6. Lead-in chamfer at pocket entrance\n  chamfer_cut = (\n      cq.Workplane(\"\
+    XY\")\n      .workplane(offset=p.knob_height - p.entry_chamfer)\n      .circle(r_corner)\n\
+    \      .workplane(offset=p.entry_chamfer + 0.5)\n      .circle(r_corner + p.entry_chamfer\
+    \ + 0.5)\n      .loft(combine=False)\n  )\n  knob = knob.cut(chamfer_cut)\n\n\
+    \  return knob\n"
+  print_orientation: Bottom clamping face flat on bed (Z=0), nut pocket facing upward
+    (+Z), no supports needed
+  use_orientation: Bottom face (Z=0) sits against clamped workpiece/washer; hex nut
+    pressed flush inside top pocket; gripped and rotated by hand
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x25
+  qty: 1
+joints:
+- id: knob_nut_bolted_joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: nut_pocket_fit_and_retention
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  check:
+    method: coupon
+    ref: nut_coupon
+    description: Test candidate pocket sizes on nut_coupon to determine the optimal
+      pocket size for hand press-fit and inverted retention.
+- id: bolt_clearance_hole
+  part: knob
+  feature: bolt_hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Verify M5 bolt passes freely through the central hole.
+- id: knob_diameter_check
+  part: knob
+  feature: outer_profile
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_outer_diameter
+  check:
+    method: measure
+    ref: null
+    description: Verify outer diameter across lobes is approximately 30 mm.
+manual:
+- n: '1'
+  text: Print the test coupon nut_coupon. Test pressing an M5 hex nut (ISO 4032) into
+    each pocket to identify the size that presses in firmly by hand and stays retained
+    upside down without glue.
+  parts:
+  - nut_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the knob. Align an M5 hex nut with the hexagonal pocket at the top face
+    of the knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Press the nut firmly into the pocket until it seats flat against the bottom
+    internal shoulder. Verify the nut sits fully inside the pocket and stays in when
+    the knob is inverted.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread your M5 bolt through the knob and nut until it extends out the far
+    side. Tighten by hand using the lobed grip.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null

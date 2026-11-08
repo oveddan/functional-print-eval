@@ -1,0 +1,292 @@
+task: nut-knob/M3
+note: Hand knob for M3 bolt with revised 5.65 mm captive nut pocket and 4-size verification
+  coupon (5.55 to 5.70 mm).
+questions: []
+params:
+  nut_fit_clearance:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance allowance (+0.15 mm) compensating for Bambu Lab X1C 0.4mm nozzle
+      hole shrinkage
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal thickness/height of ISO 4032 M3 hex nut
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole clearance diameter for M3 bolt
+  scallop_radius:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of cylindrical grip cutouts on perimeter
+  screw_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal screw diameter for M3 bolt
+  knob_diameter:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of hand knob across grip lobes
+  num_scallops:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip scallops around perimeter
+  lead_in_depth:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of circular entry counterbore
+  lead_in_diameter:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Circular counterbore at pocket entrance to center nut before pressing
+  bottom_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom rim chamfer to prevent elephant foot on print bed
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Width across flats for ISO 4032 M3 hex nut
+  top_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Top rim chamfer for ergonomic finger comfort
+  nut_pocket_depth:
+    value: 3.8
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of hex pocket from top face, leaving nut recessed
+  nut_pocket_af:
+    value: 5.65
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket width across flats (5.65 mm = 5.50 + 0.15)
+  knob_height:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    import math\n\n    knob_d =\
+    \ p.knob_diameter\n    knob_h = p.knob_height\n    scallop_r = p.scallop_radius\n\
+    \    num_scallops = int(p.num_scallops)\n    bolt_d = p.bolt_clearance_d\n   \
+    \ pocket_af = p.nut_pocket_af\n    pocket_depth = p.nut_pocket_depth\n    lead_in_d\
+    \ = p.lead_in_diameter\n    lead_in_depth = p.lead_in_depth\n    bottom_chamfer\
+    \ = p.bottom_chamfer\n    top_chamfer = p.top_chamfer\n\n    r = knob_d / 2.0\n\
+    \    hex_corner_d = pocket_af / math.cos(math.radians(30))\n\n    # Base cylinder\n\
+    \    body = cq.Workplane(\"XY\").circle(r).extrude(knob_h)\n\n    # Chamfer top\
+    \ and bottom outer edges\n    if bottom_chamfer > 0:\n        body = body.edges(\"\
+    <Z\").chamfer(bottom_chamfer)\n    if top_chamfer > 0:\n        body = body.edges(\"\
+    >Z\").chamfer(top_chamfer)\n\n    # Scallops for ergonomic grip\n    scallop_pts\
+    \ = [\n        (\n            r * math.cos(i * 2.0 * math.pi / num_scallops),\n\
+    \            r * math.sin(i * 2.0 * math.pi / num_scallops),\n        )\n    \
+    \    for i in range(num_scallops)\n    ]\n    scallops = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=-1.0)\n        .pushPoints(scallop_pts)\n   \
+    \     .circle(scallop_r)\n        .extrude(knob_h + 2.0)\n    )\n    body = body.cut(scallops)\n\
+    \n    # Central bolt clearance hole through entire knob\n    bolt_cutter = (\n\
+    \        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n        .circle(bolt_d\
+    \ / 2.0)\n        .extrude(knob_h + 2.0)\n    )\n    body = body.cut(bolt_cutter)\n\
+    \n    # Hex nut pocket from top face\n    hex_cutter = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=knob_h - pocket_depth)\n        .polygon(6, hex_corner_d)\n\
+    \        .extrude(pocket_depth + 1.0)\n    )\n    body = body.cut(hex_cutter)\n\
+    \n    # Circular lead-in at top face to guide nut entry\n    if lead_in_depth\
+    \ > 0 and lead_in_d > 0:\n        leadin_cutter = (\n            cq.Workplane(\"\
+    XY\")\n            .workplane(offset=knob_h - lead_in_depth)\n            .circle(lead_in_d\
+    \ / 2.0)\n            .extrude(lead_in_depth + 1.0)\n        )\n        body =\
+    \ body.cut(leadin_cutter)\n\n    return body\n"
+  print_orientation: Bottom contact face sits on print bed at Z = 0; nut pocket opens
+    upward at +Z. No supports needed.
+  use_orientation: Bottom face (Z = 0) bears against clamped surface; top face faces
+    user for finger turning.
+- id: coupon_nut_fit
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    import math\n\n    pocket_af\
+    \ = p.nut_pocket_af\n    pocket_depth = p.nut_pocket_depth\n    bolt_d = p.bolt_clearance_d\n\
+    \    lead_in_d = p.lead_in_diameter\n    lead_in_depth = p.lead_in_depth\n\n \
+    \   coupon_l = 40.0\n    coupon_w = 12.0\n    coupon_h = 5.0\n\n    base = cq.Workplane(\"\
+    XY\").box(coupon_l, coupon_w, coupon_h, centered=(True, True, False))\n\n    #\
+    \ 4 test sizes: 5.55, 5.60, 5.65 (nominal knob), and 5.70 mm\n    deltas = [-0.10,\
+    \ -0.05, 0.0, 0.05]\n    x_positions = [-13.5, -4.5, 4.5, 13.5]\n\n    for x_pos,\
+    \ delta in zip(x_positions, deltas):\n        af = pocket_af + delta\n       \
+    \ corner_d = af / math.cos(math.radians(30))\n\n        # Clearance hole through\n\
+    \        hole = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=-1.0)\n\
+    \            .transformed(offset=cq.Vector(x_pos, 0, 0))\n            .circle(bolt_d\
+    \ / 2.0)\n            .extrude(coupon_h + 2.0)\n        )\n        base = base.cut(hole)\n\
+    \n        # Hex pocket\n        hex_cut = (\n            cq.Workplane(\"XY\")\n\
+    \            .workplane(offset=coupon_h - pocket_depth)\n            .transformed(offset=cq.Vector(x_pos,\
+    \ 0, 0))\n            .polygon(6, corner_d)\n            .extrude(pocket_depth\
+    \ + 1.0)\n        )\n        base = base.cut(hex_cut)\n\n        # Lead-in counterbore\n\
+    \        if lead_in_depth > 0 and lead_in_d > 0:\n            leadin = (\n   \
+    \             cq.Workplane(\"XY\")\n                .workplane(offset=coupon_h\
+    \ - lead_in_depth)\n                .transformed(offset=cq.Vector(x_pos, 0, 0))\n\
+    \                .circle(lead_in_d / 2.0)\n                .extrude(lead_in_depth\
+    \ + 1.0)\n            )\n            base = base.cut(leadin)\n\n    return base\n"
+  print_orientation: Flat bottom on bed at Z = 0, test pockets opening upward at +Z.
+  use_orientation: Horizontal on work table, test pockets facing upward.
+hardware:
+- id: nut_m3
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt_m3
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: joint_bolt_nut
+  fastener: bolt_m3
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 9.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_hole
+    role: clearance
+  nut: nut_m3
+  external: null
+criteria:
+- id: crit_nut_retention
+  part: knob
+  feature: nut_pocket
+  relation: contains
+  hardware: nut_m3
+  clearance_mm: 0.15
+  params:
+  - nut_af
+  - nut_pocket_af
+  - nut_fit_clearance
+  check:
+    method: coupon
+    ref: coupon_nut_fit
+    description: Test coupon verification with pockets from 5.55 to 5.70 mm to verify
+      hand press-fit and upside-down retention
+- id: crit_shoulder_stop
+  part: knob
+  feature: nut_pocket
+  relation: supports
+  hardware: nut_m3
+  clearance_mm: 0.0
+  params:
+  - nut_pocket_depth
+  - knob_height
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Measure internal shoulder stop to ensure nut cannot be pushed through
+      far side
+- id: crit_bolt_clearance
+  part: knob
+  feature: bolt_hole
+  relation: clears
+  hardware: bolt_m3
+  clearance_mm: 0.4
+  params:
+  - bolt_clearance_d
+  - screw_d
+  check:
+    method: measure
+    ref: null
+    description: Ensure M3 bolt passes freely through clearance hole and captive nut
+- id: crit_knob_diameter
+  part: knob
+  feature: outer_profile
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_diameter
+  check:
+    method: measure
+    ref: null
+    description: Verify knob outer diameter is approximately 20 mm for comfortable
+      finger grip
+manual:
+- n: '1'
+  text: 'Print the updated test coupon coupon_nut_fit on your Bambu Lab X1C (0.2 mm
+    layer height, flat on bed). It tests four sizes: 5.55 mm, 5.60 mm, 5.65 mm, and
+    5.70 mm from left to right.'
+  parts:
+  - coupon_nut_fit
+  hardware: []
+  tool: null
+- n: '2'
+  text: Test-press the ISO 4032 M3 nut into the test pockets with thumb pressure.
+    The 5.65 mm pocket (3rd from left, matching the knob) compensates for nozzle toolpath
+    and shrinkage, seating by hand and remaining retained when inverted.
+  parts:
+  - coupon_nut_fit
+  hardware:
+  - nut_m3
+  tool: null
+- n: '3'
+  text: Print the knob with its bottom contact face flat on the build plate (Z = 0)
+    and the nut pocket facing upward (+Z). No supports required.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Set the ISO 4032 M3 nut into the widened 6.8 mm circular entry lead-in, align
+    the hex flats, and press firmly with your thumb into the 5.65 mm pocket until
+    it bottoms out against the internal shoulder (~1.4 mm recessed below the top rim).
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  tool: null
+- n: '5'
+  text: Turn the knob upside down and give it a shake to verify the nut is held securely
+    by friction without glue.
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  tool: null
+- n: '6'
+  text: Thread your M3 bolt through the knob and captive nut to tighten your workpiece
+    by hand without tools.
+  parts:
+  - knob
+  hardware:
+  - bolt_m3
+  - nut_m3
+  tool: null

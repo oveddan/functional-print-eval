@@ -1,0 +1,223 @@
+task: nut-knob/M3
+note: Single-piece hand knob for M3 bolt with thumb press-fit captive nut retention
+  and through-hole clearance.
+questions: []
+params:
+  rib_protrusion:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Inward protrusion of each retention crush rib from the pocket flat
+  flute_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of perimeter finger grip flutes
+  rib_r:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of cylindrical crush rib profile
+  nut_pocket_af:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Base width across flats of the hex pocket
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip flutes around the perimeter
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut width across flats
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter across knob crests
+  shoulder_h:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of solid base shoulder supporting the nut
+  flute_dist:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from center to flute center
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole clearance diameter for M3 bolt shank
+  rib_lead_in:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of smooth entry at mouth of pocket before ribs begin
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M3 bolt shank diameter
+  nut_pocket_depth:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of hex pocket (nut is fully recessed)
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    import math\n\n    # 1. Main\
+    \ cylindrical body\n    knob = cq.Workplane(\"XY\").circle(p.knob_d / 2.0).extrude(p.knob_h)\n\
+    \n    # 2. Cut 6 perimeter flutes for finger grip\n    for i in range(int(p.flute_count)):\n\
+    \        angle = i * (360.0 / p.flute_count)\n        rad = math.radians(angle)\n\
+    \        x = p.flute_dist * math.cos(rad)\n        y = p.flute_dist * math.sin(rad)\n\
+    \        flute = cq.Workplane(\"XY\").center(x, y).circle(p.flute_r).extrude(p.knob_h)\n\
+    \        knob = knob.cut(flute)\n\n    # 3. Through-hole for M3 bolt shank\n \
+    \   bolt_hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d / 2.0).extrude(p.knob_h)\n\
+    \    knob = knob.cut(bolt_hole)\n\n    # 4. Hexagonal nut pocket from top face\
+    \ down to shoulder\n    pocket_z = p.knob_h - p.nut_pocket_depth\n    pocket_d\
+    \ = p.nut_pocket_af / math.cos(math.radians(30))\n    hex_pocket = (\n       \
+    \ cq.Workplane(\"XY\")\n        .workplane(offset=pocket_z)\n        .polygon(6,\
+    \ pocket_d)\n        .extrude(p.nut_pocket_depth)\n    )\n    knob = knob.cut(hex_pocket)\n\
+    \n    # 5. Add retention crush ribs along the flats of the hex pocket\n    # The\
+    \ 6 flats of the hexagon are centered at 30, 90, 150, 210, 270, 330 degrees\n\
+    \    rib_dist = (p.nut_pocket_af / 2.0) + p.rib_r - p.rib_protrusion\n    rib_h\
+    \ = p.nut_pocket_depth - p.rib_lead_in\n    for i in range(6):\n        angle\
+    \ = 30.0 + i * 60.0\n        rad = math.radians(angle)\n        rx = rib_dist\
+    \ * math.cos(rad)\n        ry = rib_dist * math.sin(rad)\n        rib = (\n  \
+    \          cq.Workplane(\"XY\")\n            .workplane(offset=pocket_z - 0.1)\n\
+    \            .center(rx, ry)\n            .circle(p.rib_r)\n            .extrude(rib_h\
+    \ + 0.1)\n        )\n        knob = knob.union(rib)\n\n    return knob\n"
+  print_orientation: Bottom face (z=0) flat on the build plate. Pocket opens upwards
+    (+Z).
+  use_orientation: M3 bolt passes along Z axis through the clearance hole and threads
+    into the captive nut.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: knob_bolt_joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: nut_pocket_retention
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: nut
+  clearance_mm: 0.1
+  params:
+  - nut_pocket_af
+  - nut_af
+  - nut_pocket_depth
+  - nut_h
+  - rib_protrusion
+  check:
+    method: none
+    ref: null
+    description: Verify M3 hex nut presses into pocket and is retained upside down
+- id: bolt_hole_clearance
+  part: knob
+  feature: bolt_hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_clearance_d
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: Verify M3 bolt passes freely through the clearance hole
+- id: shoulder_support
+  part: knob
+  feature: shoulder
+  relation: supports
+  hardware: nut
+  clearance_mm: 0.0
+  params:
+  - shoulder_h
+  - nut_h
+  - knob_h
+  check:
+    method: none
+    ref: null
+    description: Verify solid shoulder stops nut from pushing through far side
+manual:
+- n: '1'
+  text: Print the knob with its flat bottom face (z = 0) resting on the build plate.
+    No supports or brims are needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Orient the M3 hex nut with the hexagonal pocket on the top face of the knob.
+    Align the nut flats with the pocket flats and start the nut into the smooth lead-in.
+    Press the nut straight in with your thumb until it seats completely against the
+    solid interior shoulder. The six retention crush ribs will deform slightly, holding
+    the nut securely inside even when inverted.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Thread the M3 bolt through the nut and clearance hole to secure your assembly
+    by hand without requiring any hex keys or wrenches.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  tool: null

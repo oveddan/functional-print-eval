@@ -1,0 +1,226 @@
+task: nut-knob/M5
+note: ''
+questions:
+- text: 'Which side does your bolt enter: do you want the bolt head resting on the
+    knob''s flat pocket-side face (knob acts as a big thumbscrew), or coming from
+    the far face? The knob works either way, but tell me if you''d like a recess for
+    the head.'
+  answer: null
+- text: Is the ~14 mm height OK for your grip, or would you like it chunkier (e.g.
+    18 mm)?
+  answer: null
+params:
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: bolt shank diameter (user's own M5 bolt)
+  bolt_hole_d:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: bolt through-hole
+  flute_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: number of grip flutes
+  flute_cutter_d:
+    value: 6.4
+    unit: mm
+    kind: design
+    source: design
+    note: grip flute cutter diameter
+  knob_dia:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: user asked for about 30 mm across
+  knob_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: knob height
+  lip_af:
+    value: 7.7
+    unit: mm
+    kind: design
+    source: design
+    note: snap lip across-flats
+  lip_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: snap lip height
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut across-flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut thickness
+  pocket_af:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: hex pocket across-flats
+  pocket_depth:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: hex pocket depth
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed, black)
+  code: "import math\n\ndef build(p):\n    h = p.knob_h\n    body = cq.Workplane(\"\
+    XY\").circle(p.knob_dia / 2.0).extrude(h)\n    # soften the two flat faces\n \
+    \   body = body.edges(\"<Z\").chamfer(1.5)\n    body = body.edges(\">Z\").chamfer(1.0)\n\
+    \    # grip flutes around the wall\n    pts = []\n    for i in range(p.flute_count):\n\
+    \        a = 2.0 * math.pi * i / p.flute_count\n        pts.append((p.knob_dia\
+    \ / 2.0 * math.cos(a), p.knob_dia / 2.0 * math.sin(a)))\n    flutes = (\n    \
+    \    cq.Workplane(\"XY\")\n        .workplane(offset=1.6)\n        .pushPoints(pts)\n\
+    \        .circle(p.flute_cutter_d / 2.0)\n        .extrude(h - 3.2)\n    )\n \
+    \   body = body.cut(flutes)\n    # bolt through-hole, bottom to top\n    body\
+    \ = body.cut(cq.Workplane(\"XY\").circle(p.bolt_hole_d / 2.0).extrude(h))\n  \
+    \  # lead-in flare at the bottom exit\n    flare = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(p.bolt_hole_d / 2.0 + 0.7)\n        .workplane(offset=1.2)\n\
+    \        .circle(p.bolt_hole_d / 2.0)\n        .loft()\n    )\n    body = body.cut(flare)\n\
+    \    # hex nut pocket, opening at the top face (printed up)\n    pocket_ac = p.pocket_af\
+    \ / math.cos(math.pi / 6.0)\n    lip_ac = p.lip_af / math.cos(math.pi / 6.0)\n\
+    \    pocket_main = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=h\
+    \ - p.pocket_depth)\n        .polygon(6, pocket_ac)\n        .extrude(p.pocket_depth\
+    \ - p.lip_h)\n    )\n    lip = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=h\
+    \ - p.lip_h)\n        .polygon(6, lip_ac)\n        .extrude(p.lip_h + 0.01)\n\
+    \    )\n    body = body.cut(pocket_main).cut(lip)\n    return body"
+  print_orientation: flat pocket-side face up (z=0 is the bolt-exit face); hex pocket
+    opens upward, no supports
+  use_orientation: nut pocket faces the bolt head / clamping side, bolt exits the
+    opposite face
+hardware:
+- id: nut-m5
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: captive-nut-seat
+  fastener: nut-m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 6.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: hex nut pocket (8.4 AF, 6.0 deep, 7.7 AF snap lip at mouth)
+    role: nut_pocket
+  nut: null
+  external: null
+criteria:
+- id: pocket-fits-nut
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut-m5
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af
+  - pocket_depth
+  check:
+    method: none
+    ref: null
+    description: Pocket across-flats (8.4) and depth (6.0) clear the nut (8.0 x 4.7)
+      with 0.2-0.3 mm side and 0.8 mm top clearance under the lip
+- id: lip-retains-nut
+  part: knob
+  feature: snap lip at pocket mouth
+  relation: engages
+  hardware: nut-m5
+  clearance_mm: null
+  params:
+  - nut_af
+  - lip_af
+  - lip_h
+  check:
+    method: none
+    ref: null
+    description: 'Lip across-flats 7.7 < nut across-flats 8.0: the nut can only leave
+      by flexing the 1.0 mm lip ring, so it stays in upside down'
+- id: nut-cannot-exit-far-side
+  part: knob
+  feature: bolt through-hole below pocket
+  relation: clears
+  hardware: nut-m5
+  clearance_mm: null
+  params:
+  - bolt_hole_d
+  - pocket_depth
+  - knob_h
+  check:
+    method: none
+    ref: null
+    description: Below the nut there is only a 5.3 mm hole in 8 mm of plastic; the
+      nut (9.24 mm across corners) cannot pass through the far face
+- id: bolt-clears
+  part: knob
+  feature: bolt path through nut and out far side
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_hole_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: Bolt shank (5.0) passes through the 5.3 mm hole and out the far face,
+      threads engaging the captive nut
+manual:
+- n: '1'
+  text: Print the knob lying flat, pocket face up, no supports needed (the hex pocket
+    and its snap lip print cleanly open-side-up on the X1C).
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Look into the hex pocket: you should see the narrow lip ring just under the
+    opening, and the 5.3 mm hole in the pocket floor.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop the M5 hex nut into the pocket and press it with your thumb until it
+    clicks past the lip. It should not rattle and must not fall out when you flip
+    the knob upside down.
+  parts:
+  - knob
+  hardware:
+  - nut-m5
+  tool: null
+- n: '4'
+  text: Thread your M5 bolt into the captive nut (from either flat face of the knob)
+    so it passes through the nut and out the other side. Turning the knob now drives
+    or grips the bolt without tools.
+  parts:
+  - knob
+  hardware: []
+  tool: null

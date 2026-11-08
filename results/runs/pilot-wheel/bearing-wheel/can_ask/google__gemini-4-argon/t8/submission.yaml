@@ -1,0 +1,369 @@
+task: bearing-wheel
+note: Designed a 50 mm OD x 16 mm wide replacement closet door roller wheel housing
+  two 608ZZ bearings on an M8 bolt. The two 7 mm wide bearings sit flush on either
+  side of a 2.0 mm internal outer-race shoulder printed without supports via two-stage
+  sequential bridging. A 2.1 mm thick inner-race spacer between the bearings and a
+  pair of 11.5 mm OD speed rings on the outside ensure that tightening the M8 bolt
+  clamps only the bearing inner races, preventing axial binding or shield rub.
+questions:
+- text: What are the outer diameter, total width, and rim profile of the old roller
+    wheel?
+  answer: I can't measure that. Use your best judgment.
+- text: What are the inside gap width, mounting hole diameter, and wall thickness
+    of the door bracket?
+  answer: I can't measure that. Use your best judgment.
+- text: What is the width or shape of the rail/track that the wheel rolls on?
+  answer: I can't measure that. Use your best judgment.
+- text: What are the dimensions of your M8 bolt?
+  answer: 'bolt across: about 8 mm (the shank)'
+params:
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of inner spacer and speed rings; contacts only the 608ZZ
+      inner race (d <= 12 mm)
+  bearing_radial_clearance:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance for snug press-fit of 608ZZ outer race in PLA (22.10 mm
+      pocket diameter)
+  speed_ring_t:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of outer speed rings that keep bracket/washers off the bearing
+      shields and wheel face
+  spacer_preload_margin:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Extra thickness of inner-race spacer over outer-race web (2.1 mm vs 2.0
+      mm) so clamping the M8 bolt never pinches the bearings axially
+  pocket_lead_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Entry chamfer on bearing pockets to guide press-fit and relieve elephant
+      foot
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M8 bolt shank diameter (608ZZ bore nominal 8.0 mm, measured ~8 mm)
+  coupon_od:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the quick-print bearing press-fit test coupon
+  coupon_web_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom shoulder thickness of the bearing test coupon
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Outer diameter of original closet door roller wheel (~50 mm)
+  bolt_radial_clearance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance for M8 bolt through printed spacer and speed rings
+  rim_chamfer:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree chamfer on top and bottom outer edges of the wheel rim for smooth
+      track guidance and clean bed printing
+  center_bore_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of center web opening; supports 608ZZ outer race (19-22 mm) while
+      clearing inner race (12 mm) and inner spacer (11.5 mm)
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Width of original closet door roller wheel (~16 mm)
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ bearing nominal width
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ bearing outer diameter
+  layer_h:
+    value: 0.2
+    unit: mm
+    kind: world
+    source: catalog
+    note: Printer layer height used for 2-layer sequential bridge in center web
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    d_pocket = p.bearing_od + 2.0 * p.bearing_radial_clearance\n\
+    \    c_web_z0 = p.bearing_w\n    c_web_z1 = p.wheel_w - p.bearing_w\n\n    # Main\
+    \ wheel cylinder with 45-deg rim chamfers\n    wheel = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(p.wheel_od / 2.0)\n        .extrude(p.wheel_w)\n      \
+    \  .edges()\n        .chamfer(p.rim_chamfer)\n    )\n\n    # Central bore through\
+    \ the internal web\n    wheel = (\n        wheel.faces(\"<Z\")\n        .workplane()\n\
+    \        .circle(p.center_bore_d / 2.0)\n        .cutThruAll()\n    )\n\n    #\
+    \ Bottom bearing pocket (z = 0 to bearing_w)\n    bottom_pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(d_pocket / 2.0)\n        .extrude(p.bearing_w)\n    )\n\
+    \    wheel = wheel.cut(bottom_pocket)\n\n    # Sequential bridge layer 1 (z =\
+    \ bearing_w to bearing_w + layer_h): straight chords along X\n    bridge_1 = (\n\
+    \        cq.Workplane(\"XY\")\n        .workplane(offset=c_web_z0)\n        .rect(d_pocket,\
+    \ p.center_bore_d)\n        .extrude(p.layer_h)\n        .intersect(\n       \
+    \     cq.Workplane(\"XY\")\n            .workplane(offset=c_web_z0)\n        \
+    \    .circle(d_pocket / 2.0)\n            .extrude(p.layer_h)\n        )\n   \
+    \ )\n    wheel = wheel.cut(bridge_1)\n\n    # Sequential bridge layer 2 (z = bearing_w\
+    \ + layer_h to bearing_w + 2*layer_h): straight chords along Y\n    bridge_2 =\
+    \ (\n        cq.Workplane(\"XY\")\n        .workplane(offset=c_web_z0 + p.layer_h)\n\
+    \        .rect(p.center_bore_d, p.center_bore_d)\n        .extrude(p.layer_h)\n\
+    \    )\n    wheel = wheel.cut(bridge_2)\n\n    # Top bearing pocket (z = wheel_w\
+    \ - bearing_w to wheel_w)\n    top_pocket = (\n        cq.Workplane(\"XY\")\n\
+    \        .workplane(offset=c_web_z1)\n        .circle(d_pocket / 2.0)\n      \
+    \  .extrude(p.bearing_w)\n    )\n    wheel = wheel.cut(top_pocket)\n\n    # Entry\
+    \ lead-in cones at z = 0 and z = wheel_w\n    bot_lead = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(d_pocket / 2.0 + p.pocket_lead_chamfer)\n        .workplane(offset=p.pocket_lead_chamfer)\n\
+    \        .circle(d_pocket / 2.0)\n        .loft()\n    )\n    top_lead = (\n \
+    \       cq.Workplane(\"XY\")\n        .workplane(offset=p.wheel_w - p.pocket_lead_chamfer)\n\
+    \        .circle(d_pocket / 2.0)\n        .workplane(offset=p.pocket_lead_chamfer)\n\
+    \        .circle(d_pocket / 2.0 + p.pocket_lead_chamfer)\n        .loft()\n  \
+    \  )\n    wheel = wheel.cut(bot_lead).cut(top_lead)\n    return wheel\n"
+  print_orientation: Flat on the print bed with wheel axis vertical (z = 0 to z =
+    16 mm)
+  use_orientation: Spins around the horizontal M8 bolt axis inside the closet door
+    roller bracket
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    spacer_h = (p.wheel_w - 2.0 * p.bearing_w) + p.spacer_preload_margin\n\
+    \    bore_d = p.bolt_d + 2.0 * p.bolt_radial_clearance\n    return (\n       \
+    \ cq.Workplane(\"XY\")\n        .circle(p.spacer_od / 2.0)\n        .circle(bore_d\
+    \ / 2.0)\n        .extrude(spacer_h)\n    )\n"
+  print_orientation: Flat on the print bed (z = 0 to z = 2.1 mm)
+  use_orientation: Concentric with the M8 bolt between the two 608ZZ bearing inner
+    races inside the wheel
+- id: speed_ring_a
+  role: final
+  material: PLA
+  code: "def build(p):\n    bore_d = p.bolt_d + 2.0 * p.bolt_radial_clearance\n  \
+    \  return (\n        cq.Workplane(\"XY\")\n        .circle(p.spacer_od / 2.0)\n\
+    \        .circle(bore_d / 2.0)\n        .extrude(p.speed_ring_t)\n    )\n"
+  print_orientation: Flat on the print bed (z = 0 to z = 1.0 mm)
+  use_orientation: On the M8 bolt against the outer face of the first 608ZZ bearing
+    inner race
+- id: speed_ring_b
+  role: final
+  material: PLA
+  code: "def build(p):\n    bore_d = p.bolt_d + 2.0 * p.bolt_radial_clearance\n  \
+    \  return (\n        cq.Workplane(\"XY\")\n        .circle(p.spacer_od / 2.0)\n\
+    \        .circle(bore_d / 2.0)\n        .extrude(p.speed_ring_t)\n    )\n"
+  print_orientation: Flat on the print bed (z = 0 to z = 1.0 mm)
+  use_orientation: On the M8 bolt against the outer face of the second 608ZZ bearing
+    inner race
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    d_pocket = p.bearing_od + 2.0 * p.bearing_radial_clearance\n\
+    \    total_h = p.coupon_web_t + p.bearing_w\n\n    coupon = (\n        cq.Workplane(\"\
+    XY\")\n        .circle(p.coupon_od / 2.0)\n        .extrude(total_h)\n    )\n\n\
+    \    coupon = (\n        coupon.faces(\"<Z\")\n        .workplane()\n        .circle(p.center_bore_d\
+    \ / 2.0)\n        .cutThruAll()\n    )\n\n    pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=p.coupon_web_t)\n        .circle(d_pocket / 2.0)\n\
+    \        .extrude(p.bearing_w)\n    )\n    coupon = coupon.cut(pocket)\n\n   \
+    \ top_lead = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=total_h\
+    \ - p.pocket_lead_chamfer)\n        .circle(d_pocket / 2.0)\n        .workplane(offset=p.pocket_lead_chamfer)\n\
+    \        .circle(d_pocket / 2.0 + p.pocket_lead_chamfer)\n        .loft()\n  \
+    \  )\n    coupon = coupon.cut(top_lead)\n    return coupon\n"
+  print_orientation: Flat on the print bed (z = 0 to z = 9.0 mm)
+  use_orientation: Test ring for checking the 608ZZ bearing press-fit before printing
+    the full wheel
+hardware:
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+- id: bolt_m8
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: locknut_m8
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer_m8
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle_joint
+  fastener: bolt_m8
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -2.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: speed_ring_a
+    feature: washer_seat_bottom
+    role: washer
+  - part: roller_wheel
+    feature: bottom_bearing_pocket
+    role: clearance
+  - part: inner_spacer
+    feature: spacer_bore
+    role: clearance
+  - part: roller_wheel
+    feature: top_bearing_pocket
+    role: clearance
+  - part: speed_ring_b
+    feature: washer_seat_top
+    role: washer
+  nut: locknut_m8
+  external: closet_door_bracket
+criteria:
+- id: bearing_press_fit
+  part: roller_wheel
+  feature: bearing_pockets
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: 0.05
+  params:
+  - bearing_od
+  - bearing_radial_clearance
+  - bearing_w
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: Test-press a 608ZZ bearing into the coupon first; it should press
+      in firmly by hand or against a flat table and seat flat on the internal shoulder
+      without wobbling.
+- id: bolt_clears_spacer
+  part: inner_spacer
+  feature: spacer_bore
+  relation: clears
+  hardware: bolt_m8
+  clearance_mm: 0.1
+  params:
+  - bolt_d
+  - bolt_radial_clearance
+  check:
+    method: measure
+    ref: null
+    description: Verify the M8 bolt slides smoothly through the inner spacer and both
+      608ZZ bearings.
+- id: spacer_engages_inner_race
+  part: inner_spacer
+  feature: spacer_faces
+  relation: engages
+  hardware: bearing_608
+  clearance_mm: 0.05
+  params:
+  - spacer_od
+  - wheel_w
+  - bearing_w
+  - spacer_preload_margin
+  check:
+    method: none
+    ref: null
+    description: Confirm the inner spacer contacts only the inner races of the two
+      608ZZ bearings and clears the wheel's center bore so the wheel spins freely
+      when the M8 bolt is tightened.
+- id: wheel_envelope
+  part: roller_wheel
+  feature: outer_rim
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_w
+  - rim_chamfer
+  check:
+    method: measure
+    ref: null
+    description: Measure the finished wheel outer diameter (~50 mm) and width (~16
+      mm) to match the original broken roller wheel.
+manual:
+- n: '1'
+  text: Print the bearing_fit_coupon first and test-press one of your 608ZZ bearings
+    into the pocket. It should press in snugly and seat flat against the internal
+    shoulder. If it is too tight or too loose, adjust bearing_radial_clearance slightly
+    before printing the full wheel.
+  parts:
+  - bearing_fit_coupon
+  hardware:
+  - bearing_608
+  tool: null
+- n: '2'
+  text: 'Print the roller_wheel, inner_spacer, and both speed_ring parts flat on the
+    print bed (z = 0). No supports are needed: the wheel''s internal bearing shoulder
+    uses two-stage sequential bridging across the center bore.'
+  parts:
+  - roller_wheel
+  - inner_spacer
+  - speed_ring_a
+  - speed_ring_b
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the first 608ZZ bearing firmly into one side of the roller_wheel until
+    it seats flush with the outer face against the internal center shoulder.
+  parts:
+  - roller_wheel
+  hardware:
+  - bearing_608
+  tool: null
+- n: '4'
+  text: Drop the inner_spacer into the center of the wheel against the first bearing's
+    inner race, press the second 608ZZ bearing into the opposite side of the roller_wheel
+    until flush, and slide the M8 bolt through to align the inner_spacer with both
+    bearing bores.
+  parts:
+  - roller_wheel
+  - inner_spacer
+  hardware:
+  - bearing_608
+  - bolt_m8
+  tool: null
+- n: '5'
+  text: Place speed_ring_a and speed_ring_b against the outer faces of the two 608ZZ
+    bearing inner races so the door bracket and M8 washers cannot rub on the bearing
+    shields or wheel hub. Mount the assembly into your closet door bracket using the
+    M8 bolt, M8 washers, and M8 lock nut (or existing bracket thread) and tighten
+    firmly; the inner_spacer takes the clamping load so the wheel spins freely without
+    binding.
+  parts:
+  - roller_wheel
+  - inner_spacer
+  - speed_ring_a
+  - speed_ring_b
+  hardware:
+  - bolt_m8
+  - locknut_m8
+  - washer_m8
+  tool: 6 mm hex key and 13 mm wrench

@@ -1,0 +1,228 @@
+task: nut-knob/M5
+note: No changes from the last version. No fit results came back from the prints,
+  so there was nothing to adjust from. The knob uses the default 7.70 mm gap between
+  opposite ribs, which is the middle coupon pocket. To tune it, run step 2 with the
+  coupon.
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: about 30 mm across, as requested
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  edge_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_r:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: finger scallop radius
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: 'through hole: the bolt passes freely, the nut can''t'
+  pocket_clear:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: clearance per side between the nut flat and the pocket wall
+  nut_recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: how far the nut sits below the top face, so it is fully inside
+  rib_r:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: crush rib radius
+  rib_interf:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: how far each rib reaches past the nut flat, giving 7.70 mm between opposite
+      ribs. No coupon results came back, so this is still the default
+  rib_lead:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: top of the pocket with no ribs, so the nut sits square before you press
+      it
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d/2\n    H = p.knob_h\n    body\
+    \ = cq.Workplane('XY').circle(R).extrude(H).edges('%CIRCLE').chamfer(p.edge_chamfer)\n\
+    \    n = int(p.grip_count)\n    for i in range(n):\n        a = 2*math.pi*i/n\n\
+    \        c = R + p.grip_r*0.55\n        cutter = cq.Workplane('XY').center(c*math.cos(a),\
+    \ c*math.sin(a)).circle(p.grip_r).extrude(H)\n        body = body.cut(cutter)\n\
+    \    af = p.nut_af + 2*p.pocket_clear\n    depth = p.nut_h + p.nut_recess\n  \
+    \  dcorner = af/math.cos(math.radians(30))\n    pocket = cq.Workplane('XY').workplane(offset=H-depth).polygon(6,\
+    \ dcorner).extrude(depth+1)\n    body = body.cut(pocket)\n    protr = p.pocket_clear\
+    \ + p.rib_interf\n    rib_len = depth - p.rib_lead\n    for k in range(6):\n \
+    \       ang = math.radians(30 + 60*k)\n        d = af/2 + p.rib_r - protr\n  \
+    \      rib = cq.Workplane('XY').workplane(offset=H-depth).center(d*math.cos(ang),\
+    \ d*math.sin(ang)).circle(p.rib_r).extrude(rib_len)\n        body = body.union(rib)\n\
+    \    hole = cq.Workplane('XY').circle(p.bolt_clear/2).extrude(H)\n    body = body.cut(hole)\n\
+    \    return body\n"
+  print_orientation: flat bottom face (bolt exit side) on the bed, nut pocket opening
+    facing up
+  use_orientation: pocket side toward the bolt head; bolt tip exits through the small
+    hole on the bottom face
+- id: rib_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    af = p.nut_af + 2*p.pocket_clear\n    depth\
+    \ = p.nut_h + p.nut_recess\n    floor = 1.2\n    H = depth + floor\n    pitch\
+    \ = 14\n    bar = cq.Workplane('XY').box(3*pitch, 14, H, centered=(True, True,\
+    \ False))\n    dcorner = af/math.cos(math.radians(30))\n    for j, delta in enumerate([-0.1,\
+    \ 0.0, 0.1]):\n        x = (j-1)*pitch\n        pocket = cq.Workplane('XY').workplane(offset=floor).center(x,\
+    \ 0).polygon(6, dcorner).extrude(depth+1)\n        bar = bar.cut(pocket)\n   \
+    \     protr = p.pocket_clear + p.rib_interf + delta\n        for k in range(6):\n\
+    \            ang = math.radians(30 + 60*k)\n            d = af/2 + p.rib_r - protr\n\
+    \            rib = cq.Workplane('XY').workplane(offset=floor).center(x + d*math.cos(ang),\
+    \ d*math.sin(ang)).circle(p.rib_r).extrude(depth - p.rib_lead)\n            bar\
+    \ = bar.union(rib)\n        bar = bar.cut(cq.Workplane('XY').center(x, 0).circle(p.bolt_clear/2).extrude(H))\n\
+    \        for m in range(j+1):\n            notch = cq.Workplane('XY').box(1.2,\
+    \ 2, H, centered=(True, True, False)).translate((x - 2 + 2*m, 7, 0))\n       \
+    \     bar = bar.cut(notch)\n    return bar\n"
+  print_orientation: flat bottom on the bed, pockets facing up
+  use_orientation: handheld test
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: rib_coupon
+  feature: crush-rib hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - rib_interf
+  - pocket_clear
+  - nut_af
+  check:
+    method: coupon
+    ref: rib_coupon
+    description: Pick the tightest pocket where the nut goes fully home with thumb
+      pressure and stays in when you turn it over and shake it. 1 notch = 7.90 mm
+      between opposite ribs, 2 = 7.70, 3 = 7.50
+- id: c2
+  part: knob
+  feature: nut pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Once pressed in, the nut's top face sits about 0.4 mm below the knob's
+      top face
+- id: c3
+  part: knob
+  feature: bolt through hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.6
+  params:
+  - bolt_clear
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: The M5 bolt comes out the bottom face. The 5.6 mm hole is narrower
+      than the nut, so the nut can't be pushed through
+manual:
+- n: '1'
+  text: Print rib_coupon in PLA at 0.2 mm layers, pockets facing up, no supports.
+  parts:
+  - rib_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Press the M5 nut into each coupon pocket with your thumb. Notches show which
+    is which: 1 = loosest (7.90 mm between opposite ribs), 2 = default (7.70 mm),
+    3 = tightest (7.50 mm). Use the tightest pocket the nut fully seats in that still
+    holds it when you turn it over and shake it. If you pick pocket 1, lower rib_interf
+    by 0.1. If you pick pocket 3, raise it by 0.1. If you pick pocket 2, leave it
+    as it is.'
+  parts:
+  - rib_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Print the knob with its flat bottom (the side with the small hole) on the
+    bed and the hex pocket facing up. No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Line up the nut's flats with the hex pocket and set it on the unribbed lip
+    at the top. Press it straight down until it sits on the pocket floor, about 0.4
+    mm below the top face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread the M5 bolt through the nut so it comes out through the hole in the
+    bottom face. Turn the knob by hand to tighten. The pocket floor takes the load,
+    so the nut can't push out.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

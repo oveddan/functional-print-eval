@@ -1,0 +1,213 @@
+task: nut-knob/M3
+note: 'One-piece, approximately 20 mm PLA hand knob with a recessed M3 hex nut and
+  a through-hole. IMPORTANT: hand-press fit and upside-down retention are unverified.
+  The 5.35 and 5.45 mm test pockets rejected the nut; results for larger pockets were
+  unavailable. The selected 5.55 mm socket is a provisional design choice, not a validated
+  fit. Do not force the nut or use this knob if retention fails. This is a nut-driven
+  knob: it threads onto an M3 bolt; it does not capture the bolt head.'
+questions:
+- text: Actual nut across-flats width and thickness?
+  answer: Could not measure; used ISO 4032 catalog dimensions.
+- text: Does the 5.55 mm test pocket accept the nut by hand and retain it upside down?
+  answer: Unknown; no usable result supplied.
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across flats; actual nut not measured.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_h:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 2.7
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal nut sits 0.3 mm below top face.
+  socket_af:
+    value: 5.55
+    unit: mm
+    kind: design
+    source: design
+    note: Provisional fit; not confirmed by test. Smaller 5.35 and 5.45 mm sockets
+      did not accept the nut.
+  bore_d:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_h:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_af_extra:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_cut_r:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_center_r:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "import math\n\ndef build(p):\n    h = p.floor_h + p.pocket_depth\n    body\
+    \ = cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n    for i in range(int(p.grip_count)):\n\
+    \        a = 2*math.pi*i/p.grip_count\n        x = p.grip_center_r*math.cos(a)\n\
+    \        y = p.grip_center_r*math.sin(a)\n        cut = cq.Workplane('XY').center(x,y).circle(p.grip_cut_r).extrude(h)\n\
+    \        body = body.cut(cut)\n    bore = cq.Workplane('XY').circle(p.bore_d/2).extrude(h)\n\
+    \    pocket = (cq.Workplane('XY').workplane(offset=p.floor_h)\n              .polygon(6,p.socket_af/math.cos(math.pi/6)).extrude(p.pocket_depth))\n\
+    \    lead = (cq.Workplane('XY').workplane(offset=h-p.lead_h)\n            .polygon(6,p.socket_af/math.cos(math.pi/6))\n\
+    \            .workplane(offset=p.lead_h)\n            .polygon(6,(p.socket_af+p.lead_af_extra)/math.cos(math.pi/6)).loft())\n\
+    \    return body.cut(bore).cut(pocket).cut(lead)"
+  print_orientation: Flat circular underside at z=0 on bed; hex socket upward. No
+    supports.
+  use_orientation: Nut presses into upward-facing hex socket until seated on its floor.
+    Bolt threads through the nut and passes through the underside bore.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: hand_fit
+  part: knob
+  feature: Hex socket and flared entry
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - socket_af
+  - nut_af
+  - lead_h
+  - lead_af_extra
+  check:
+    method: coupon
+    ref: fit_coupon_large
+    description: 'UNRESOLVED: 5.55 mm pocket result unavailable. Must accept the nut
+      fully with firm thumb pressure alone and retain it when inverted and gently
+      tapped.'
+- id: nut_recess
+  part: knob
+  feature: Socket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.3
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: After seating, verify the entire nut is below the upper face.
+- id: floor_stop
+  part: knob
+  feature: Solid floor surrounding 3.5 mm through-bore
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_h
+  - bore_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Check that the nut seats against the intact floor and cannot pass
+      through the smaller bore.
+- id: anti_rotation
+  part: knob
+  feature: Six hexagonal socket walls
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - socket_af
+  - nut_af
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Nut must not spin in the socket during gentle hand tightening.
+manual:
+- n: '1'
+  text: Print knob socket-up at 0.2 mm layers with a 0.4 mm nozzle, four walls and
+    100% infill. No supports. Use the same filament and dimensional settings as the
+    fit coupons.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Let the print cool. Clear any loose strings from the socket and bore. Align
+    the M3 nut with the hex socket and press it to the floor using thumb pressure
+    only. Do not hammer it in. Stop if it will not seat; the 5.55 mm fit has not been
+    validated.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: 'Check that the nut is completely below the upper face. Invert the knob over
+    a tray and gently tap it. If the nut falls out, rocks, or spins, the fit fails:
+    do not use glue or treat it as a finished retaining knob. A socket-size revision
+    and another fit test are needed.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread the knob onto your M3 bolt by hand, checking that the bolt exits freely
+    through the underside hole. For clamping, put the flat underside toward the work
+    so tightening draws the nut against the printed floor. Tighten gently by hand
+    only; no pliers. Check retention periodically because PLA can relax over time.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

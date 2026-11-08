@@ -1,0 +1,399 @@
+task: nut-knob/M5
+note: 'A 30 mm fluted hand knob, 8.9 mm tall, printed as one piece flat on the bed
+  with no supports. Pocket sequence from the open face inward: a flared lead-in (10.2
+  mm across flats) so the nut starts square, a 7.8 mm ''grip band'' (0.10 mm per side
+  smaller than the nut) that the nut is pressed through, then a 8.4 mm free pocket,
+  then a flat floor with a Ø5.5 hole. The nut ends up gripped by the band (holds when
+  the knob is turned upside down, no glue), sits 1 mm inside the open face, and cannot
+  be pushed out the closed face because the only opening there is Ø5.5 — smaller than
+  the nut''s 8.0 across flats, leaving a 1.25 mm bearing ring. Your M5 bolt enters
+  from the open face, threads through the nut and emerges from the Ø5.5 hole. Under
+  load the nut slides that last 1 mm and bears directly on the workpiece, so the clamping
+  force goes into the workpiece rather than through the plastic band. I could neither
+  measure your nut nor get results back from the fit-test coupon, so grip_int (0.10
+  mm per side) is the middle of the candidates; the submitted coupon re-tests exactly
+  this value (variant 3, three dots) so a single print tells you whether to keep it.'
+questions:
+- text: 'How does the nut''s press feel: does it need a hard push and hold firm when
+    upside down, is it about right, or does it drop in loose? (If it''s loose I''ll
+    shrink the grip band by 0.05 mm per side; if it won''t press in by hand I''ll
+    open it by the same amount.)'
+  answer: null
+- text: What M5 bolt will it go on — length and how much thread? The knob uses 8 mm
+    of bolt from the open face (4.7 mm through the nut plus 3.2 mm of shoulder), so
+    I want to be sure enough thread is left to reach through your workpiece.
+  answer: null
+params:
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 screw shank diameter
+  bolt_hole_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: through hole in the closed face the bolt emerges from; must be smaller than
+      nut_af
+  edge_ch:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on both outer edges of the disc
+  flare_h:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: 20 deg printable step under the grip band
+  grip_h:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: axial length of the interference band
+  grip_int:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: radial interference per side of the grip band; middle of the tested range
+  knob_od:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: as requested, about 30 mm across
+  mouth_extra:
+    value: 1.1
+    unit: mm
+    kind: design
+    source: design
+    note: radial flare above the grip band, lead-in for the nut
+  mouth_lead:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: height of the lead-in flare; also how far the nut's outer face sits below
+      the open face
+  nut_ac:
+    value: 9.24
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 'across corners, derived: nut_af x 2/sqrt(3)'
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats; not measurable here, catalog value used
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height
+  pocket_clr:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: radial clearance per side in the free part of the hex pocket
+  scallop_depth:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: finger flute depth at the rim
+  scallop_n:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: number of finger flutes round the rim
+  scallop_r:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: radius of the cutter forming each flute
+  shoulder_t:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: solid thickness behind the nut, i.e. the ring the nut bears on from the
+      far side
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef _hd(af):\n    return af / math.cos(math.pi / 6.0)\n\n\
+    def _hexp(af, z0, z1):\n    return (cq.Workplane(\"XY\").workplane(offset=z0)\n\
+    \            .polygon(6, _hd(af)).extrude(z1 - z0))\n\ndef _hexl(af0, z0, af1,\
+    \ z1):\n    return (cq.Workplane(\"XY\").workplane(offset=z0).polygon(6, _hd(af0))\n\
+    \            .workplane(offset=z1 - z0).polygon(6, _hd(af1)).loft())\n\ndef build(p):\n\
+    \    R = p.knob_od / 2.0\n    H = p.shoulder_t + p.nut_h + p.mouth_lead\n    af_p\
+    \ = p.nut_af + 2.0 * p.pocket_clr\n    af_g = p.nut_af - 2.0 * p.grip_int\n  \
+    \  af_m = p.nut_af + 2.0 * p.mouth_extra\n    z_floor = p.shoulder_t\n    z_gt\
+    \ = H - p.mouth_lead\n    z_gb = max(z_gt - p.grip_h, z_floor)\n    z_fb = max(z_gb\
+    \ - p.flare_h, z_floor)\n\n    body = cq.Workplane(\"XY\").cylinder(H, R).translate((0.0,\
+    \ 0.0, H / 2.0))\n    body = body.faces(\"<Z\").edges().chamfer(p.edge_ch)\n \
+    \   body = body.faces(\">Z\").edges().chamfer(p.edge_ch)\n\n    n = int(p.scallop_n)\n\
+    \    for i in range(n):\n        a = 2.0 * math.pi * i / n\n        rc = R + p.scallop_r\
+    \ - p.scallop_depth\n        body = body.cut(cq.Workplane(\"XY\").workplane(offset=-1.0)\n\
+    \                        .center(rc * math.cos(a), rc * math.sin(a))\n       \
+    \                 .circle(p.scallop_r).extrude(H + 2.0))\n\n    sol = []\n   \
+    \ if z_fb - z_floor > 0.1:\n        sol.append(_hexp(af_p, z_floor, z_fb))\n \
+    \   if z_gb - z_fb > 0.1:\n        sol.append(_hexl(af_p, z_fb, af_g, z_gb))\n\
+    \    if z_gt - z_gb > 0.1:\n        sol.append(_hexp(af_g, z_gb, z_gt))\n    sol.append(_hexl(af_g,\
+    \ z_gt, af_m, H))\n    cav = sol[0]\n    for s in sol[1:]:\n        cav = cav.union(s)\n\
+    \    body = body.cut(cav)\n\n    body = body.cut(cq.Workplane(\"XY\").workplane(offset=-1.0)\n\
+    \                    .circle(p.bolt_hole_d / 2.0).extrude(H + 2.0))\n    return\
+    \ body\n"
+  print_orientation: 'Closed face down on the bed: the flat face with the Ø5.5 hole
+    at z = 0, hex nut pocket opening upward. No supports, no bridges.'
+  use_orientation: 'Flipped from the print: the open hex-pocket face is the bottom
+    and presses on the workpiece; the closed Ø5.5 face is the top and the bolt''s
+    end emerges there. Turn it by the fluted rim.'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef _hd(af):\n    return af / math.cos(math.pi / 6.0)\n\n\
+    def _hexp(af, z0, z1):\n    return (cq.Workplane(\"XY\").workplane(offset=z0)\n\
+    \            .polygon(6, _hd(af)).extrude(z1 - z0))\n\ndef _hexl(af0, z0, af1,\
+    \ z1):\n    return (cq.Workplane(\"XY\").workplane(offset=z0).polygon(6, _hd(af0))\n\
+    \            .workplane(offset=z1 - z0).polygon(6, _hd(af1)).loft())\n\ndef _cell(p,\
+    \ interf, band_h, H):\n    af_p = p.nut_af + 2.0 * p.pocket_clr\n    af_g = p.nut_af\
+    \ - 2.0 * interf\n    af_m = p.nut_af + 2.0 * p.mouth_extra\n    z_floor = p.shoulder_t\n\
+    \    z_gt = H - p.mouth_lead\n    z_gb = max(z_gt - band_h, z_floor)\n    z_fb\
+    \ = max(z_gb - p.flare_h, z_floor)\n    sol = []\n    if z_fb - z_floor > 0.1:\n\
+    \        sol.append(_hexp(af_p, z_floor, z_fb))\n    if z_gb - z_fb > 0.1:\n \
+    \       sol.append(_hexl(af_p, z_fb, af_g, z_gb))\n    if z_gt - z_gb > 0.1:\n\
+    \        sol.append(_hexp(af_g, z_gb, z_gt))\n    sol.append(_hexl(af_g, z_gt,\
+    \ af_m, H))\n    c = sol[0]\n    for s in sol[1:]:\n        c = c.union(s)\n \
+    \   return c\n\ndef build(p):\n    # test matrix: (interference per side, band\
+    \ height). Variant 3 is the knob.\n    H = p.shoulder_t + p.nut_h + p.mouth_lead\n\
+    \    variants = [(0.0, p.grip_h), (0.5 * p.grip_int, p.grip_h),\n            \
+    \    (p.grip_int, p.grip_h), (1.5 * p.grip_int, p.grip_h),\n                (p.grip_int,\
+    \ p.nut_h)]\n    pitch = 24.0\n    n = len(variants)\n    L = pitch * (n - 1)\
+    \ + 22.0\n    bar = cq.Workplane(\"XY\").box(L, 26.0, H).translate((0.0, 0.0,\
+    \ H / 2.0))\n    for i in range(n):\n        x = (i - (n - 1) / 2.0) * pitch\n\
+    \        interf, band_h = variants[i]\n        bar = bar.cut(_cell(p, interf,\
+    \ band_h, H).translate((x, 0.0, 0.0)))\n        bar = bar.cut(cq.Workplane(\"\
+    XY\").workplane(offset=-1.0).center(x, 0.0)\n                      .circle(p.bolt_hole_d\
+    \ / 2.0).extrude(H + 2.0))\n        for k in range(i + 1):\n            dx = (k\
+    \ - i / 2.0) * 3.0\n            bar = bar.cut(cq.Workplane(\"XY\").workplane(offset=H\
+    \ - 1.2)\n                          .center(x + dx, -9.5).circle(1.0).extrude(1.7))\n\
+    \    return bar\n"
+  print_orientation: Flat bottom face (the face with the Ø5.5 holes) on the bed, pockets
+    opening upward, dots on top. No supports.
+  use_orientation: On the bench, pockets up, to press nuts in; then flip it to see
+    which stay in.
+hardware:
+- id: nut_m5
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt_m5
+  ref: ISO 4762 M5x20
+  qty: 1
+joints:
+- id: nut_pressed_in
+  fastener: nut_m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.9
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: 'hex pocket mouth: lead-in flare and grip band'
+    role: insert
+  nut: null
+  external: null
+- id: bolt_through_nut
+  fastener: bolt_m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.9
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: Ø5.5 bolt clearance hole in the closed face
+    role: clearance
+  nut: nut_m5
+  external: null
+criteria:
+- id: c1
+  part: knob
+  feature: bolt clearance hole, Ø5.5
+  relation: clears
+  hardware: bolt_m5
+  clearance_mm: 0.5
+  params:
+  - bolt_hole_d
+  - bolt_d
+  check:
+    method: template
+    ref: null
+    description: 'Ø5.5 through hole for the 5.0 mm bolt: 0.25 mm radial clearance
+      on each side.'
+- id: c2
+  part: knob
+  feature: hex pocket free cavity, 8.4 across flats
+  relation: contains
+  hardware: nut_m5
+  clearance_mm: 0.4
+  params:
+  - nut_af
+  - nut_ac
+  - pocket_clr
+  check:
+    method: template
+    ref: null
+    description: 'Free part of the pocket is 0.2 mm per side wider than the nut, so
+      the nut drops onto the floor without binding. Corner clearance: 0.23 mm (nut_ac
+      9.24 vs pocket 9.70).'
+- id: c3
+  part: knob
+  feature: shoulder ring at the closed face (floor of the pocket)
+  relation: supports
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - shoulder_t
+  - bolt_hole_d
+  - nut_af
+  check:
+    method: template
+    ref: null
+    description: Only opening on the closed face is Ø5.5 < 8.0 across flats, so the
+      nut cannot be pushed out that side; minimum bearing ring 1.25 mm at the flats,
+      more at the corners.
+- id: c4
+  part: knob
+  feature: mouth grip band, 7.8 across flats x 2.0 mm
+  relation: engages
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - nut_af
+  - grip_int
+  - grip_h
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Push the nut through variant 3 (three dots, 0.10 mm per side, 2.0
+      mm band) and confirm it holds when the coupon is turned over and tapped. Variants
+      1-5 bracket it: 0.0 (control, should not hold), 0.05, 0.10, 0.15 per side, and
+      0.10 over the full nut height.'
+- id: c5
+  part: knob
+  feature: nut recess below the open face
+  relation: contains
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - mouth_lead
+  - grip_h
+  - nut_h
+  check:
+    method: template
+    ref: null
+    description: Upper end of the pocket sits 1.0 mm inside the open face, so the
+      nut is fully inside; under load it slides that 1.0 mm and then bears on the
+      workpiece. The nut's 4.7 mm length still spans the 2.0 mm band, so it stays
+      captive.
+manual:
+- n: '1'
+  text: 'Print knob.stl in PLA, 0.4 mm nozzle, 0.2 mm layers, no supports. It is already
+    oriented: the flat closed face with the Ø5.5 hole goes on the bed and the hex
+    nut pocket opens upward. One piece, ~30 mm across, ~9 mm tall. Let it cool, then
+    lift it off — no brim needed.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Look into the hex pocket on the open face. You should see, from the mouth
+    inward: a flared lead-in, then a narrow hex band (the grip band, 7.8 mm across
+    flats), then a wider hex, ending in a flat floor with a Ø5.5 hole in the middle.
+    Clear any stringing out of the mouth so the nut starts square.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Set the knob flat on a hard bench, open face up. Drop the M5 hex nut into
+    the pocket, hex-aligned and flat. Press it in squarely with both thumbs — pressing
+    the knob down onto the nut on the bench works well. It squeezes through the grip
+    band with a firm push, then drops about 2 mm onto the pocket floor. It must go
+    in square; if it jams crooked, pull it out and start again. If your thumbs aren't
+    enough, squeeze it in with a C-clamp or tap it with a wood block — never hammer
+    it crooked.
+  parts:
+  - knob
+  hardware:
+  - nut_m5
+  tool: C-clamp or wood block, only if needed
+- n: '4'
+  text: 'Check it is captive: turn the knob upside down and shake it. The nut must
+    stay in — the grip band holds it, no glue. It also cannot be driven out the other
+    way: the closed face has only a Ø5.5 hole, smaller than the nut, so it seats on
+    a solid plastic ring. The nut''s outer face now sits about 1 mm below the knob''s
+    open face.'
+  parts:
+  - knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '5'
+  text: From the same open face, start your M5 bolt into the nut and turn it in by
+    hand. It threads through the nut and comes out of the Ø5.5 hole in the closed
+    face — that is the side that will show.
+  parts:
+  - knob
+  hardware:
+  - nut_m5
+  - bolt_m5
+  tool: null
+- n: '6'
+  text: 'To use: pass the bolt through the workpiece so its head is on the far side,
+    then turn the knob by the fluted rim with your fingers. The nut slides the last
+    1 mm and then bears straight on the workpiece, so the clamping force goes into
+    the workpiece and not through the plastic. Hand-tight is plenty — the flutes are
+    for fingers, not pliers.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '7'
+  text: To move the knob to another bolt, just unscrew it. The nut stays with the
+    knob. If you ever want the nut out, press it back through the grip band from the
+    closed-face side with a drift and a firm squeeze.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '8'
+  text: 'Optional, if the press felt wrong: print fit_coupon.stl (same settings, flat,
+    no supports). It has five pockets marked with 1-5 dots. Pocket 3 is the knob''s
+    grip band; 1 is a no-interference control, 2 and 4 are looser and tighter, 5 grips
+    over the full nut height. Press a nut into each and flip the bar over to see which
+    hold — that tells you which way to move the grip band.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: none

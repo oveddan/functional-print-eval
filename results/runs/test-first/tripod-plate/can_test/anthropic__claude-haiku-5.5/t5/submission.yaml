@@ -1,0 +1,132 @@
+task: tripod-plate
+note: 'Temporary only. The first test print failed: the roof over the head pocket
+  printed with loose loops and the hole partly closed, so the head pocket is not yet
+  reliable. Plate thickness (6 mm) and chamfer (1.5 mm) are guesses; the jaw gap was
+  never measured, so the fit is unverified. Use for light loads only. Also check the
+  lock is secure before trusting it.'
+questions:
+- text: Can you check the plate fit in your tripod jaws and tell me whether it slides
+    in and grips?
+  answer: null
+- text: What does your camera weigh? PLA can creep under sustained load, so this matters
+    for whether to trust the printed plate.
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: clamp plate width the jaws take
+  plate_l:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: kept under 50 mm bridge limit
+  plate_t:
+    value: 6
+    unit: mm
+    kind: world
+    source: guessed
+    note: plate thickness unknown; must check against jaw gap
+  lip_ch:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: guessed
+    note: bottom edge chamfer, guessed lip seat
+  bolt_clear:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for 1/4-20 shank
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt head, approx
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt head, approx
+  pocket_clr:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: clearance around head
+parts:
+- id: plate
+  role: final
+  material: PLA high-speed black
+  code: "def build(p):\n    plate = cq.Workplane('XY').box(p.plate_w, p.plate_l, p.plate_t,\
+    \ centered=(True, True, False))\n    plate = plate.edges('|Y and <Z').chamfer(p.lip_ch)\n\
+    \    hole = cq.Workplane('XY').circle(p.bolt_clear / 2).extrude(p.plate_t + 2).translate((0,\
+    \ 0, -1))\n    pocket = cq.Workplane('XY').circle(p.head_d / 2 + p.pocket_clr).extrude(p.head_h\
+    \ + 0.2).translate((0, 0, -0.1))\n    return plate.cut(hole).cut(pocket)\n"
+  print_orientation: bottom face (the one with the head pocket) on the bed
+  use_orientation: lying flat, bolt pointing up into the camera
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: head_pocket
+  part: plate
+  feature: bottom head pocket
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  - pocket_clr
+  check:
+    method: coupon
+    ref: null
+    description: 'Bolt head sits in the pocket without rocking. FAILED test: the roof
+      over the pocket printed with loose loops and the hole partly closed.'
+- id: clamp_fit
+  part: plate
+  feature: plate width and edge chamfers
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_t
+  - lip_ch
+  check:
+    method: measure
+    ref: null
+    description: Plate slides into the tripod jaws without play. Not yet tested; jaw
+      gap and plate thickness are unknown.
+manual:
+- n: '1'
+  text: 'Print the plate lying flat with the head-pocket side down. Check the pocket
+    roof: if it is loose or closed, reprint or use the real part.'
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Push the webcam bolt head into the pocket from below, shank going up through
+    the hole.
+  parts:
+  - plate
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '3'
+  text: Test the plate in the tripod jaws. If it does not seat firmly, stop and do
+    not mount a camera on it.
+  parts:
+  - plate
+  hardware: []
+  tool: null

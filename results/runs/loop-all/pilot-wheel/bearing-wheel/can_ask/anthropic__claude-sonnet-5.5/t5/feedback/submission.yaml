@@ -1,0 +1,215 @@
+task: bearing-wheel
+note: 'The design is unchanged. Your print confirmed the bearing seat: it measured
+  22.09 mm, the bearing is snug, and it holds upside down. I kept pocket_clear at
+  0.1 mm. Still unknown: the bracket gap, the bolt length and the track profile. I
+  assumed a flat tread. The ISO 4762 M8x40 entry is only a placeholder for your own
+  M8 bolt.'
+questions:
+- text: What is the clear gap between the bracket arms, and how long is your M8 bolt?
+    The stack is about 18.8 mm wide, and the bolt must also pass through the bracket.
+  answer: null
+- text: What shape is the track (flat, round or V)? I assumed a flat tread with chamfered
+    edges.
+  answer: null
+params:
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD nominal 22.000
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 width nominal
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: bolt shank about 8 mm; matches 608 bore 8
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8
+  pocket_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance added to the bearing OD. Printed seat measured 22.09
+      mm. The bearing goes in snug and holds upside down, so the fit is confirmed
+      by a print.
+  web_t:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: centre web equals one M8 washer thickness, so a washer in the web hole spaces
+      the two inner races
+  web_hole_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance around the central washer
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_od:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA (black), 4+ walls, 40% gyroid infill or more
+  code: "def build(p):\n    pw = p.bearing_od + p.pocket_clear\n    depth = (p.wheel_w\
+    \ - p.web_t) / 2.0\n    w = cq.Workplane('XY').circle(p.wheel_d/2.0).extrude(p.wheel_w)\n\
+    \    w = w.edges('%CIRCLE').chamfer(p.edge_chamfer)\n    bot = cq.Workplane('XY').circle(pw/2.0).extrude(depth)\n\
+    \    top = cq.Workplane('XY').workplane(offset=p.wheel_w-depth).circle(pw/2.0).extrude(depth)\n\
+    \    hole = cq.Workplane('XY').circle((p.washer_od+p.web_hole_clear)/2.0).extrude(p.wheel_w)\n\
+    \    return w.cut(bot).cut(top).cut(hole)\n"
+  print_orientation: One flat face on the bed, axis vertical. The bearing pockets
+    open up and down, so no supports are needed.
+  use_orientation: Axis horizontal, running on the rail, with the bolt through the
+    centre.
+- id: pocket-coupon
+  role: coupon
+  material: PLA (black)
+  code: "def build(p):\n    pw = p.bearing_od + p.pocket_clear\n    depth = (p.wheel_w\
+    \ - p.web_t) / 2.0\n    h = depth + p.web_t\n    c = cq.Workplane('XY').circle(p.coupon_od/2.0).extrude(h)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=p.web_t).circle(pw/2.0).extrude(depth)\n\
+    \    hole = cq.Workplane('XY').circle((p.washer_od+p.web_hole_clear)/2.0).extrude(h)\n\
+    \    return c.cut(pocket).cut(hole)\n"
+  print_orientation: Flat on the bed, pocket facing up.
+  use_orientation: 'Test only: press one 608 bearing into the pocket by hand or with
+    light taps.'
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: washer
+  ref: ISO 7089 M8
+  qty: 3
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: nut
+  ref: ISO 10511 M8
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets (both sides)
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_od
+  - pocket_clear
+  - bearing_w
+  - web_t
+  - wheel_w
+  check:
+    method: coupon
+    ref: pocket-coupon
+    description: 'A 608 bearing presses in snugly and holds when the part is turned
+      upside down. Printed result: the seat measured 22.09 mm and the fit was snug.
+      If it is loose, reduce pocket_clear. If it is too tight, increase it.'
+- id: c2
+  part: wheel
+  feature: centre web hole
+  relation: contains
+  hardware: washer
+  clearance_mm: null
+  params:
+  - washer_od
+  - web_hole_clear
+  - washer_t
+  - web_t
+  check:
+    method: measure
+    ref: null
+    description: The M8 washer drops freely into the web hole, and the web is the
+      same thickness as the washer.
+- id: c3
+  part: wheel
+  feature: outer diameter and width
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_d
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: Compare against the old wheel and the bracket. The stack with washers
+      is about 18.8 mm wide.
+manual:
+- n: '1'
+  text: 'Print the wheel flat on the bed with 4 or more walls and at least 40% infill.
+    The bearing seat was checked on your first print: the bearing fits snugly and
+    holds upside down.'
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one bearing into each side of the wheel until it seats on the centre
+    ledge. Press only on the outer ring, using a flat block or the vice with a flat
+    piece of wood. The bearing sits about 0.2 mm below the face.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: Drop one M8 washer into the centre hole between the bearings. Then slide the
+    bolt through one bearing, the centre washer and the other bearing. Put a washer
+    on each outer side so it sits on the bearing's inner ring. The washers stick out
+    about 1.4 mm beyond the wheel faces, so only the washers touch the bracket and
+    the wheel spins freely.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  tool: null
+- n: '4'
+  text: Mount the wheel in the door bracket and tighten the lock nut until the stack
+    is firm. Then spin the wheel by hand. It should turn freely and not rub on the
+    bracket. If the bracket gap is wider than about 19 mm, add washers on the outsides.
+  parts: []
+  hardware:
+  - nut
+  tool: null

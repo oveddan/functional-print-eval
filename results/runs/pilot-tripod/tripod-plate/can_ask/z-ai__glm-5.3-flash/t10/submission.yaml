@@ -1,0 +1,255 @@
+task: tripod-plate
+note: 'Temporary Arca-style quick-release plate for a 38 mm jaw clamp, plus a test
+  coupon and two spacers. The camera screw is the salvaged metal 1/4"-20 webcam bolt,
+  held captive in a pocket under the plate — nothing printed carries threads. All
+  unknowns (slot depth/length, socket depth, bolt-head shape) are absorbed by the
+  standard 45° profile, the balance slot, and the spacers. PLA: temporary use only,
+  no heavy glass, keep out of the sun.'
+questions: []
+params:
+  clamp_plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: tripod clamp takes 38 mm plates
+  plate_top_width:
+    value: 37.8
+    unit: mm
+    kind: design
+    source: design
+    note: 0.2 mm side clearance under the clamp width
+  plate_length:
+    value: 45
+    unit: mm
+    kind: design
+    source: design
+    note: slot length on the tripod unknown; 45 mm fits most Arca-style clamps
+  plate_thickness:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: slot depth not measurable; standard Arca plates run 8-10 mm thick
+  dovetail_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: design
+    note: standard Arca dovetail
+  bolt_thread:
+    value: 20
+    unit: count
+    kind: hardware
+    source: datasheet
+    note: 1/4-20, pitch 1.27 mm
+  bolt_dia:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4 in nominal
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: head across widest part
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: head height
+  bolt_underhead_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under-head to tip
+  bolt_slot_w:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: 0.85 mm clearance over the 6.35 mm shaft
+  head_pocket_w:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: over the 15 mm head, any head shape (hex/D-ring/round) fits
+  head_pocket_len:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: slotted pocket matches the balance slot
+  head_pocket_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: equals the 5 mm head height, so the head sits flush with the plate's underside
+  balance_slot_len:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: lets the bolt slide +/-8 mm so the camera can be balanced without knowing
+      the socket offset
+  spacer2_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: reduces screw engagement to 4.5 mm if the bolt bottoms out
+  spacer4_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: reduces screw engagement to 2.5 mm if 2 mm is still too much
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W = p.plate_top_width          # width at the camera face\n\
+    \    T = p.plate_thickness          # 45 deg flanks -> bottom width = W - 2T\n\
+    \    Wb = W - 2 * T\n    L = p.plate_length\n    # cross-section: camera face\
+    \ (z=0, print bed) is the wide side;\n    # dovetail bottom at z=T is the narrow\
+    \ side\n    plate = (cq.Workplane(\"YZ\")\n             .polyline([(-W / 2, 0),\
+    \ (W / 2, 0),\n                        (Wb / 2, T), (-Wb / 2, T)])\n         \
+    \    .close()\n             .extrude(L)\n             .translate((-L / 2, 0, 0)))\n\
+    \    # head pocket in the underside (dovetail face): slotted, depth = head height\n\
+    \    pocket = (cq.Workplane(\"XY\")\n              .box(p.head_pocket_len, p.head_pocket_w,\
+    \ p.head_pocket_depth + 1.0,\n                   centered=(True, True, False))\n\
+    \              .translate((0, 0, T - p.head_pocket_depth)))\n    # balance slot\
+    \ through the remaining web, in line with the pocket\n    slot = (cq.Workplane(\"\
+    XY\")\n            .box(p.balance_slot_len, p.bolt_slot_w, p.head_pocket_depth\
+    \ + 1.0,\n                 centered=(True, True, False))\n            .translate((0,\
+    \ 0, -0.5)))\n    return plate.cut(pocket).cut(slot)"
+  print_orientation: camera face (the wide flat face, z=0) on the bed; dovetail flanks
+    rise at 45 deg
+  use_orientation: dovetail bottom down in the clamp, camera bolt pointing up out
+    of the flat top face
+- id: dovetail_test
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    W = p.plate_top_width\n    T = p.plate_thickness\n   \
+    \ Wb = W - 2 * T\n    return (cq.Workplane(\"YZ\")\n            .polyline([(-W\
+    \ / 2, 0), (W / 2, 0),\n                       (Wb / 2, T), (-Wb / 2, T)])\n \
+    \           .close()\n            .extrude(15))"
+  print_orientation: 'same as the plate: wide face on the bed, 45 deg flanks rising'
+  use_orientation: dropped into the tripod clamp to check the dovetail fit
+- id: spacer_2
+  role: final
+  material: PLA
+  code: "def build(p):\n    return (cq.Workplane(\"XY\")\n            .circle(11.0)\n\
+    \            .circle(p.bolt_slot_w / 2)\n            .extrude(p.spacer2_t))"
+  print_orientation: flat face on the bed
+  use_orientation: laid flat on the plate's top face around the bolt, camera rests
+    on it
+- id: spacer_4
+  role: final
+  material: PLA
+  code: "def build(p):\n    return (cq.Workplane(\"XY\")\n            .circle(11.0)\n\
+    \            .circle(p.bolt_slot_w / 2)\n            .extrude(p.spacer4_t))"
+  print_orientation: flat face on the bed
+  use_orientation: laid flat on the plate's top face around the bolt, camera rests
+    on it
+hardware:
+- id: bolt_webcam
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt_into_camera
+  fastener: bolt_webcam
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: qr_plate
+    feature: underside head pocket
+    role: head_seat
+  - part: qr_plate
+    feature: balance slot through the plate web
+    role: clearance
+  - part: qr_plate
+    feature: camera 1/4-20 socket
+    role: thread
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria: []
+manual:
+- n: '1'
+  text: 'Print the dovetail_test coupon first. Drop it into the tripod''s clamp (angled
+    sides down, flat side up): it should slide in and the clamp knob should grip it
+    snugly. If it''s too tight to insert, sand the two angled sides lightly and retry.
+    If it''s very loose or sinks in past the jaws, stop and tell me - the clamp geometry
+    isn''t standard.'
+  parts:
+  - dovetail_test
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print qr_plate plus both spacers (the spacers may not be needed, but they're
+    a few minutes each and cover a shallow camera socket).
+  parts:
+  - qr_plate
+  - spacer_2
+  - spacer_4
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop the webcam bolt head-first into the pocket on the plate's UNDERSIDE (the
+    side with the slanted dovetail edges), then push the shaft up through the slot
+    so it points out of the flat top face. The head is trapped in the pocket, so the
+    bolt can slide along the slot and rotate, but can't fall out.
+  parts:
+  - qr_plate
+  hardware:
+  - bolt_webcam
+  tool: null
+- n: '4'
+  text: Sit the camera on the plate over the bolt and turn the bolt (fingers, or a
+    coin/flat key if the head has a slot) to screw it into the camera. Slide the bolt
+    along the slot until the camera feels balanced front-to-back, then tighten until
+    the camera sits snug and flat on the plate.
+  parts:
+  - qr_plate
+  hardware:
+  - bolt_webcam
+  tool: null
+- n: '5'
+  text: If the bolt stops turning while there is still a visible gap between camera
+    and plate, do NOT force it - the camera's socket is shallower than the bolt is
+    long. Lift the camera off, lay spacer_2 flat on the plate around the bolt, and
+    retry. If it still bottoms out, use spacer_4 instead.
+  parts:
+  - spacer_2
+  - spacer_4
+  hardware:
+  - bolt_webcam
+  tool: null
+- n: '6'
+  text: Slide the plate into the tripod clamp, dovetail edges down, and tighten the
+    knob firmly. Before letting go, check the camera can't rotate, tilt or slide.
+    Remember the clamp knob must always be tight - an Arca plate slides out of a loose
+    clamp.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '7'
+  text: 'House rules for a PLA stopgap: light camera bodies and small lenses only,
+    no heavy telephoto glass, never trust it upside-down or over hard floors, and
+    don''t leave it in a hot car or direct sun. Find the real metal plate soon.'
+  parts: []
+  hardware: []
+  tool: null

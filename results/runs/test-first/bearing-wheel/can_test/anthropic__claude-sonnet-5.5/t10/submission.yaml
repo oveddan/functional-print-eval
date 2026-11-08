@@ -1,0 +1,170 @@
+task: bearing-wheel
+note: Wheel is 50 mm OD x 16 mm wide, with two 608 bearings pressed in from the two
+  faces. A 3 mm web separates them. The pocket diameter (22.3 mm) was confirmed with
+  a print test coupon. Rail profile, bolt length and bracket gap were not measured,
+  so check them before printing. The bolt line is a placeholder for your existing
+  M8 bolt.
+questions:
+- text: Does your rail have a groove or V profile? The tread is a flat 16 mm face,
+    so tell me if it needs a groove.
+  answer: null
+- text: What is the length of your M8 bolt, and what is the gap between the bracket
+    arms? I couldn't get either measurement. The wheel plus two washers is about 16
+    + 2×0.5 + 3.2 mm, roughly 20 mm.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD 22.000; user measured about 22
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 width 7; user measured about 7
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 'user: M8 shank about 8 mm'
+  pocket_clr:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: 'Coupon: 22.29 pocket held bearing, went in easily, not loose; 21.99 would
+      not go in'
+  bearing_protrude:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Bearing stands proud of each wheel face so the washers and bracket touch
+      only the bearing inner race side, not the wheel
+  web_hole_d:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Opening through the centre web, clear of the bolt and the inner races
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    depth = p.bearing_w - p.bearing_protrude\n    pocket_d\
+    \ = p.bearing_od + p.pocket_clr\n    w = p.wheel_w\n    body = cq.Workplane('XY').circle(p.wheel_od\
+    \ / 2).extrude(w)\n    body = body.edges().chamfer(p.edge_chamfer)\n    bottom\
+    \ = cq.Workplane('XY').circle(pocket_d / 2).extrude(depth)\n    top = cq.Workplane('XY').workplane(offset=w\
+    \ - depth).circle(pocket_d / 2).extrude(depth)\n    hole = cq.Workplane('XY').circle(p.web_hole_d\
+    \ / 2).extrude(w)\n    return body.cut(bottom).cut(top).cut(hole)\n"
+  print_orientation: one flat face on the bed, axis vertical
+  use_orientation: axis horizontal on the M8 bolt, tread rolling on the rail
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints: []
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets (both faces)
+  relation: contains
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bearing_od
+  - pocket_clr
+  - bearing_w
+  - bearing_protrude
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: 22.29 mm pocket held a 608 bearing, easy to insert, not loose
+- id: c2
+  part: wheel
+  feature: centre web opening
+  relation: clears
+  hardware: null
+  clearance_mm: 2.0
+  params:
+  - web_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Bolt passes through both bearings without touching the wheel web
+- id: c3
+  part: wheel
+  feature: overall width and diameter
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_w
+  check:
+    method: measure
+    ref: null
+    description: Wheel fits the bracket gap and rolls on the rail like the old one
+manual:
+- n: '1'
+  text: Print the wheel with a flat face on the bed, no supports. Use 3+ walls and
+    about 25% infill so the tread is strong.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into each pocket by hand, or with light pressure from
+    a vice or clamp. Push it in square. It sits about 0.5 mm proud of the wheel face.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: Take the old wheel's remains off the bolt and bracket. Slide the M8 bolt through
+    the bracket arm, a washer, the wheel's bearings, a second washer, and the other
+    arm. The washers touch only the bearing inner races, so the wheel can spin freely.
+    Reassemble it with the same nut or fasteners you took off.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  tool: null
+- n: '4'
+  text: Tighten the bolt so the bracket arms clamp the washers and inner races. Spin
+    the wheel by hand. It should turn freely and not rub on the arms. Then rehang
+    the door.
+  parts: []
+  hardware: []
+  tool: null

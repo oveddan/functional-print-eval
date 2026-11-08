@@ -1,0 +1,292 @@
+task: nut-knob/M3
+note: 'Unchanged fit: the feedback on the 5.30 mm retaining opening was inconclusive,
+  so there is no basis to tighten or loosen it yet. This is a one-piece knob with
+  six flexible retaining fingers, a recessed nut seat, and a bolt passage through
+  the opposite face. Please check hand insertion and inverted retention on this reprint.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats.
+  nut_thickness:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_recess:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_allowance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral bolt clearance.
+  pedestal_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  well_r:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  finger_inner_r:
+    value: 2.95
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_outer_r:
+    value: 3.65
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_width:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_root_overlap:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  retention_interference:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Opposing retaining faces are 5.30 mm apart; nominal finger deflection is
+      0.10 mm each.
+  bump_start_above_seat:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bump_ramp_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_extra_radius:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_cut_r:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_offset:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    seat = p.knob_h - p.nut_recess - p.nut_thickness\n\
+    \    bore = (p.bolt_d + p.bore_allowance)/2\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n\
+    \    well = cq.Workplane('XY').workplane(offset=p.floor_t).circle(p.well_r).extrude(p.knob_h)\n\
+    \    body = body.cut(well)\n    pedestal = cq.Workplane('XY').circle(p.pedestal_r).extrude(seat)\n\
+    \    body = body.union(pedestal)\n    z0 = p.floor_t - p.finger_root_overlap\n\
+    \    zb = seat + p.bump_start_above_seat\n    zc = zb + p.bump_ramp_h\n    zl\
+    \ = p.knob_h - p.entry_lead_h\n    ri = p.finger_inner_r\n    rb = (p.nut_af-p.retention_interference)/2\n\
+    \    re = p.nut_af/2+p.entry_extra_radius\n    ro = p.finger_outer_r\n    profile\
+    \ = [(ri,z0),(ri,zb),(rb,zc),(rb,zl),(re,p.knob_h),(ro,p.knob_h),(ro,z0)]\n  \
+    \  finger = cq.Workplane('XZ').polyline(profile).close().extrude(p.finger_width/2,both=True)\n\
+    \    for i in range(int(p.finger_count)):\n        body = body.union(finger.rotate((0,0,0),(0,0,1),i*360/p.finger_count))\n\
+    \    for i in range(int(p.grip_count)):\n        a = 2*math.pi*i/p.grip_count\n\
+    \        r = p.knob_d/2+p.grip_cut_offset\n        cutter = cq.Workplane('XY').center(r*math.cos(a),r*math.sin(a)).circle(p.grip_cut_r).extrude(p.knob_h)\n\
+    \        body = body.cut(cutter)\n    hole = cq.Workplane('XY').circle(bore).extrude(p.knob_h)\n\
+    \    return body.cut(hole).clean()\n"
+  print_orientation: Closed circular underside on the bed at z=0; nut opening upward.
+    No supports.
+  use_orientation: Closed underside faces the clamped item. Bolt enters through that
+    underside, threads through the captive nut, and emerges into the open top.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: hand_insertion_retention
+  part: hand_knob
+  feature: Six flexible fingers and their tapered retaining faces
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - retention_interference
+  - finger_width
+  - finger_inner_r
+  - finger_outer_r
+  check:
+    method: measure
+    ref: null
+    description: Align the six nut flats with the fingers and press completely home
+      using only hand pressure. Invert over a tray and lightly shake. Nut must remain
+      inside. Report separately whether hand insertion succeeds and whether inverted
+      retention succeeds.
+- id: recess_and_stop
+  part: hand_knob
+  feature: Central pedestal and integral bottom floor
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_thickness
+  - nut_recess
+  - knob_h
+  - pedestal_r
+  - floor_t
+  - bolt_d
+  - bore_allowance
+  check:
+    method: measure
+    ref: null
+    description: Nut must sit flat on the pedestal, nominally 1 mm below the top rim,
+      and must not push through the 3.5 mm underside passage under firm thumb pressure.
+- id: torque_transfer
+  part: hand_knob
+  feature: Six flat-contact retaining fingers
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - retention_interference
+  check:
+    method: measure
+    ref: null
+    description: Thread an M3 bolt through by turning the knob. The nut must not spin
+      inside it during light hand tightening. Recheck inverted retention after several
+      tightening cycles.
+manual:
+- n: '1'
+  text: 'Print hand_knob with its closed underside on the bed and the opening upward.
+    Use the 0.4 mm nozzle, 0.2 mm layers, at least 4 walls, and 5 top/bottom layers.
+    No supports: leave the flexible fingers and their surrounding gaps unobstructed.'
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Allow the print to cool. Remove loose strings without cutting or bending the
+    fingers. Confirm all six fingers are separate above the floor and that the central
+    passage is clear.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Align each M3 nut flat with one finger. Press straight down by hand until
+    the nut rests on the central pedestal, with its top approximately 1 mm below the
+    rim. Do not hammer it or use a bolt to force it into place.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: 'Invert over a tray and lightly shake. Report two results: whether the nut
+    could be seated by hand, and whether it remained inside when inverted. The previous
+    5.30 mm fit result was unknown, so this reprint intentionally uses the same fit.'
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: If it is loose, increase retention_interference by 0.1 mm and reprint. If
+    it cannot be seated by hand, decrease retention_interference by 0.1 mm and reprint.
+    Do not accept a loose or cracked part; nominal nut sizes and printer tolerances
+    make a physical fit check necessary.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '6'
+  text: Feed your M3 bolt through the closed underside and turn the knob to engage
+    the nut. Confirm the bolt passes through the nut and emerges on the open side
+    without the nut spinning. Bolt length depends on your application and is not specified
+    here.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '7'
+  text: Use for light hand tightening, not wrench-level torque or safety-critical
+    clamping. Recheck retention after several cycles and periodically afterward. Keep
+    away from heat; PLA fingers may relax over time.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null

@@ -1,0 +1,119 @@
+task: nut-knob/M3
+note: ''
+questions: []
+params:
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: hand knob outer diameter
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: knob height; leaves 9.6 mm of solid under the nut pocket
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: 'press-fit pocket across flats; coupon test: 5.5 and 5.6 would not take
+      the nut, 5.7 snug and retained when inverted and shaken'
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance hole through the solid end
+parts:
+- id: knob
+  role: final
+  material: PLA high-speed black
+  code: "def build(p):\n    import math\n    R = p.knob_od / 2\n    H = p.knob_h\n\
+    \    body = cq.Workplane('XY').circle(R).extrude(H)\n    # 12 shallow vertical\
+    \ grip grooves (vertical walls, no overhang)\n    for i in range(12):\n      \
+    \  a = 2 * math.pi * i / 12\n        g = cq.Workplane('XY').center((R + 0.5) *\
+    \ math.cos(a), (R + 0.5) * math.sin(a)).circle(1.0).extrude(H)\n        body =\
+    \ body.cut(g)\n    d = p.pocket_af * 2 / math.sqrt(3)\n    pocket = cq.Workplane('XY').workplane(offset=H\
+    \ - p.nut_h).polygon(6, d).extrude(p.nut_h + 1)\n    hole = cq.Workplane('XY').circle(p.bolt_clear_d\
+    \ / 2).extrude(H)\n    return body.cut(pocket).cut(hole)\n"
+  print_orientation: bottom face (the end with the bolt hole) on the bed; nut pocket
+    faces up, no supports needed
+  use_orientation: 'as printed: nut pocket up, bolt enters through the bottom end
+    and threads into the nut'
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket, 5.7 mm across flats, 2.4 mm deep, open on the top face
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_h
+  check:
+    method: coupon
+    ref: null
+    description: 'Coupon test: 5.7 mm pocket takes the M3 nut with a push and holds
+      it when inverted and shaken.'
+- id: bolt_clear
+  part: knob
+  feature: 3.4 mm clearance hole through the solid end, below the nut pocket
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: Design clearance for M3 bolt; hole is round and open top to bottom.
+manual:
+- n: '1'
+  text: Print the knob with the flat bottom end on the bed. No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check the hex pocket on the top face. Remove any stringing or blobs so the
+    pocket is clean.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Line up the M3 hex nut with the pocket and press it in by hand with the nut
+    flat. It should go in snugly; no glue.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Insert the M3 bolt from the bottom through the clearance hole and thread it
+    into the nut. Tighten by hand using the knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

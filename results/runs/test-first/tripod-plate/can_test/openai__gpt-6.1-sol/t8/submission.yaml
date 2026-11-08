@@ -1,0 +1,254 @@
+task: tripod-plate
+note: Support-free two-piece fit prototypes only, NOT a validated camera-support plate.
+  First recessed prototype failed its pocket roof. Revised open-base and flat-pad
+  prints have no reported fit results. Receiver bevel geometry, socket usable depth
+  and camera load are unknown. Do not mount a camera on these prototypes. Use the
+  original or a compatible commercial replacement plate until verification is possible.
+  Use only a metal camera screw; no printed thread supplied.
+questions:
+- text: Does the revised base seat flat and lock securely under both jaws without
+    rocking, lifting or sliding?
+  answer: null
+- text: What are the receiver's actual bevel angle and gripping height?
+  answer: null
+- text: What is the camera socket's usable threaded depth, and actual bolt projection
+    through the pad?
+  answer: null
+- text: What is the camera/lens mass and overhang?
+  answer: null
+params:
+  plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported plate width; width reference on dovetail not verified.
+  plate_length:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_flat:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bevel_height:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Trial geometry, not a measured receiver dimension.
+  bevel_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: guessed
+    note: Unverified trial angle.
+  base_height:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pad_thickness:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal bolt projection is length minus pad thickness = 4 mm; not validated
+      for camera.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate; nominal bottom clearance in base is 1 mm.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length.
+  bolt_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 major diameter.
+  head_clearance:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral allowance.
+  shaft_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral allowance.
+  socket_usable_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  camera_lens_mass:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Not measured; no load rating assigned. Mass not represented by this schema's
+      available units.
+parts:
+- id: open_base
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    w=p.plate_width\n    i=p.bevel_height/math.tan(math.radians(p.bevel_angle))\n\
+    \    pts=[(-w/2,0),(w/2,0),(w/2,p.lip_flat),(w/2-i,p.base_height),(-w/2+i,p.base_height),(-w/2,p.lip_flat)]\n\
+    \    b=cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_length/2,both=True)\n\
+    \    return b.cut(cq.Workplane('XY').circle((p.bolt_head_d+p.head_clearance)/2).extrude(p.base_height))"
+  print_orientation: Wide bottom face at z=0. Through-opening needs no bridge or supports.
+  use_orientation: Wide bottom rests on receiver bed; 50 mm axis runs along jaws.
+    Narrow upper face supports flat_pad. Test without camera only.
+- id: flat_pad
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    w=p.plate_width-2*p.bevel_height/math.tan(math.radians(p.bevel_angle))\n\
+    \    b=cq.Workplane('XY').rect(w,p.plate_length).extrude(p.pad_thickness)\n  \
+    \  return b.cut(cq.Workplane('XY').circle((p.bolt_major_d+p.shaft_clearance)/2).extrude(p.pad_thickness))"
+  print_orientation: Broad face at z=0, hole vertical. No supports or bridges.
+  use_orientation: For off-tripod bench inspection, place bottom at assembly z=6 on
+    open_base, long axes aligned. Metal bolt head bears on pad underside through base
+    opening. Pieces are loose without camera fastening; not a validated assembly.
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: jaw_fit
+  part: open_base
+  feature: Both sloped long edges and bottom seating surface
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - plate_length
+  - lip_flat
+  - bevel_height
+  - bevel_angle
+  - base_height
+  check:
+    method: coupon
+    ref: open_base
+    description: UNVERIFIED. Without camera, confirm full flat seating, contact under
+      both lips, clamp travel remaining, and no movement under firm hand pull/twist.
+      Hand testing alone establishes no load rating.
+- id: head_fit
+  part: open_base
+  feature: Open central bolt-head passage
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: 0.5
+  params:
+  - bolt_head_d
+  - head_clearance
+  - bolt_head_h
+  - base_height
+  check:
+    method: coupon
+    ref: open_base
+    description: UNVERIFIED. Head must pass freely and sit entirely above base bottom
+      when seated against pad.
+- id: shaft_fit
+  part: flat_pad
+  feature: Vertical through-hole and underside head bearing face
+  relation: seats
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_major_d
+  - shaft_clearance
+  - bolt_head_d
+  - pad_thickness
+  check:
+    method: coupon
+    ref: flat_pad
+    description: UNVERIFIED. Shaft must pass without threading into plastic; head
+      must bear flat with no cracking.
+- id: projection_check
+  part: flat_pad
+  feature: Bolt projection above camera-contact face
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - pad_thickness
+  - bolt_length
+  - socket_usable_depth
+  check:
+    method: measure
+    ref: null
+    description: BLOCKED. Measure actual projection and obtain camera manufacturer's
+      permitted thread engagement/depth. Nominal projection 4 mm is not evidence of
+      compatibility; screw must clamp before bottoming.
+manual:
+- n: '1'
+  text: These are fit coupons, not a camera-ready plate. Do not use the failed single-piece
+    print. Print revised parts in their stated orientations at 0.2 mm layers, with
+    at least 5 perimeters and solid infill, without supports. Reject tangled extrusion,
+    cracks, warped seating faces or obstructed holes.
+  parts:
+  - open_base
+  - flat_pad
+  hardware: []
+  tool: Slicer and printer
+- n: '2'
+  text: With no camera fitted, place open_base in the empty tripod receiver. Stop
+    if it cannot sit flat, both jaws do not engage the bevels, or the knob reaches
+    its limit without gripping. Check lifting, sliding and rocking by hand. Passing
+    this check does not establish a safe camera load.
+  parts:
+  - open_base
+  hardware: []
+  tool: null
+- n: '3'
+  text: Remove base from tripod. On a table, align flat_pad on its narrow top face.
+    Insert the metal webcam bolt upward through the base opening and pad hole. Check
+    free shaft clearance, flat head bearing and head clearance above the base bottom.
+    Hold the loose pieces together by hand; no printed screw is used.
+  parts:
+  - open_base
+  - flat_pad
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '4'
+  text: Measure actual bolt projection above pad. Obtain the camera's permitted threaded
+    engagement and usable socket depth from its manufacturer. Do not use the camera
+    socket as a forced depth gauge. Do not attach the camera while depth and engagement
+    remain unknown.
+  parts:
+  - flat_pad
+  hardware:
+  - camera_bolt
+  tool: Caliper and camera documentation
+- n: '5'
+  text: Record the fit results, receiver profile and camera/lens load for a revised,
+    validated design. These prototypes are not authorized for camera support, unattended
+    use, moving a mounted tripod, overhead mounting or valuable equipment. For use
+    now, obtain the original or a confirmed compatible replacement plate.
+  parts: []
+  hardware: []
+  tool: null

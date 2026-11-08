@@ -1,0 +1,167 @@
+task: nut-knob/M3
+note: Pocket size chosen from a 4-coupon print test (clearances 0 to 0.3 mm). 0.2
+  mm was snug and held the nut inverted.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: about 20 mm across
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  fit_c:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: measured
+    note: 'added to af; from print test: 0.2 snug and held nut inverted+shaken (0.1
+      too tight, 0.3 held but looser)'
+  depth_extra:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: pocket deeper than nut so nut is fully inside
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_depth:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R=p.knob_d/2\n    body=cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    body=body.faces('<Z').edges().chamfer(p.chamfer)\n    body=body.faces('>Z').edges().chamfer(p.chamfer)\n\
+    \    cr=R+p.scallop_r-p.scallop_depth\n    pts=[(cr*math.cos(2*math.pi*i/p.scallop_n),cr*math.sin(2*math.pi*i/p.scallop_n))\
+    \ for i in range(int(p.scallop_n))]\n    cuts=cq.Workplane('XY').pushPoints(pts).circle(p.scallop_r).extrude(p.knob_h)\n\
+    \    body=body.cut(cuts)\n    af=p.nut_af+p.fit_c\n    pocket=cq.Workplane('XY').polygon(6,af/math.cos(math.radians(30))).extrude(p.nut_h+p.depth_extra)\n\
+    \    hole=cq.Workplane('XY').circle((p.bolt_d+p.bolt_clear)/2).extrude(p.knob_h)\n\
+    \    return body.cut(pocket).cut(hole)"
+  print_orientation: nut-pocket face down on the bed (flat bottom), no supports
+  use_orientation: pocket face towards the bolt end, knob top facing up/away
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c-nut-pocket
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - nut_af
+  - nut_h
+  - fit_c
+  - depth_extra
+  check:
+    method: coupon
+    ref: nutfit-c2
+    description: 'Print test: pocket af 5.7 mm gave a snug press fit that held the
+      nut when inverted and shaken.'
+- id: c-nut-stop
+  part: knob
+  feature: solid ceiling above pocket
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - nut_h
+  - depth_extra
+  check:
+    method: measure
+    ref: null
+    description: Nut sits fully inside the pocket against the closed ceiling and cannot
+      be pushed through the far side.
+- id: c-bolt-hole
+  part: knob
+  feature: through hole for M3 bolt
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: measure
+    ref: null
+    description: 3.4 mm hole lets the M3 bolt pass through the nut and out the far
+      side.
+manual:
+- n: '1'
+  text: Print the knob with the flat nut-pocket face on the bed, no supports, PLA,
+    0.2 mm layers.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M3 hex nut with the hex pocket in the flat bottom face and press
+    it in by hand with a thumb on a flat surface until it bottoms out against the
+    ceiling. It is a snug press fit, no glue needed.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Thread the knob onto your M3 bolt, pocket side first. The bolt goes through
+    the nut and its tip may exit through the hole in the top. Turn the knob by its
+    scalloped edge to tighten.
+  parts:
+  - knob
+  hardware: []
+  tool: null

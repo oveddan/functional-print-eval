@@ -41,10 +41,10 @@ OTHERS = [
     "qwen/qwen3.8-flash",
     "google/gemini-3.8-flash",
 ]
-TASKS = ["m5-spacer", "nut-knob/M3", "nut-knob/M5", "tripod-plate", "bearing-wheel"]
+TASKS = ["m5-spacer", "nut-knob/M3", "nut-knob/M5", "tripod-plate", "bearing-wheel", "estoa-light"]
 # the run folders that hold these tasks' can_ask pilot trials; where two hold the same task,
 # a model's trials go to the one already holding them (folder_for)
-RUNS = ["pilot-spacer", "pilot-nut-knob", "pilot-nut-knob-2", "pilot-tripod", "pilot-wheel"]
+RUNS = ["pilot-spacer", "pilot-nut-knob", "pilot-nut-knob-2", "pilot-tripod", "pilot-wheel", "pilot-estoa"]
 
 
 @dataclass(frozen=True)
@@ -88,8 +88,8 @@ def folder_for(task, model) -> str:
     return run
 
 
-def plan(models=LINEUP) -> list[Slot]:
-    return [Slot(folder_for(task, model), task, model) for model in models for task in TASKS]
+def plan(models=LINEUP, tasks=TASKS) -> list[Slot]:
+    return [Slot(folder_for(task, model), task, model) for model in models for task in tasks]
 
 
 def missing_trials(slot, trials=TRIALS) -> list[int]:
@@ -131,10 +131,11 @@ def main():
     ap.add_argument("--trials", type=int, default=TRIALS, help="trials each model and task should hold")
     ap.add_argument("--all-models", action="store_true", help="the lineup and OTHERS, not just the lineup")
     ap.add_argument("--model", action="append", help="only these models (repeatable)")
+    ap.add_argument("--task", action="append", choices=TASKS, help="only these tasks (repeatable)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     models = args.model or (LINEUP + OTHERS if args.all_models else LINEUP)
-    slots = plan(models)
+    slots = plan(models, args.task or TASKS)
     for slot in slots:
         print(f"{slot.run:18} {slot.task:14} {slot.model:32} saved {slot.saved_trials()} new {missing_trials(slot, args.trials)}")
     print(f"{sum(len(missing_trials(slot, args.trials)) for slot in slots)} new trials")

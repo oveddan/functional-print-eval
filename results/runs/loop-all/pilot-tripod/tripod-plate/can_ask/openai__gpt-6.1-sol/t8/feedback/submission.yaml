@@ -1,0 +1,220 @@
+task: tripod-plate
+note: 'Unchanged measurement-only design: no usable quick-release plate is included.
+  The previous prints have no reported fit results, so there is no evidence supporting
+  a dimensional revision. Reprinting is optional and will not resolve the missing
+  clamp geometry or camera screw-depth specification. Neither coupon may support a
+  camera. Use the correct replacement plate until the clamp interface and safe metal-screw
+  engagement are established.'
+questions:
+- text: What is the tripod head or original quick-release plate model?
+  answer: null
+- text: What are the clamp cross-section, jaw height, contact length, locking mechanism,
+    and retention-stop geometry?
+  answer: null
+- text: What camera and lens will be supported, and what is their combined mass?
+  answer: null
+- text: What screw insertion depth does the camera manufacturer permit?
+  answer: null
+- text: Is the webcam bolt threaded continuously over the length needed for the eventual
+    plate?
+  answer: null
+- text: Do the printed width and bolt gauges match their intended dimensions and fit
+    freely?
+  answer: No usable inspection or fit results supplied.
+params:
+  plate_nominal_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: User reports width of accepted plate; clamp profile remains unknown.
+  gauge_length:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  gauge_thickness:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate head width; actual shape unconfirmed.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_underhead_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate; safe camera engagement is not established.
+  camera_thread_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 major diameter; camera thread designation confirmed by user.
+  camera_thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clearance_diametral:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_clearance_diametral:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_depth_allowance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_floor:
+    value: 2.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_side:
+    value: 26
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: width_gauge
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').box(p.gauge_length, p.plate_nominal_width,\
+    \ p.gauge_thickness, centered=(True, True, False))"
+  print_orientation: Large rectangular face on bed at z=0; nominal 38 mm width along
+    Y.
+  use_orientation: Loose width comparison above the empty clamp only. This has no
+    dovetail or retention features and is not a mounting plate.
+- id: bolt_gauge
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    h = p.coupon_floor + p.bolt_head_h + p.head_depth_allowance\n\
+    \    body = cq.Workplane('XY').box(p.coupon_side, p.coupon_side, h, centered=(True,\
+    \ True, False))\n    bore = cq.Workplane('XY').circle((p.camera_thread_major_d\
+    \ + p.bolt_clearance_diametral)/2).extrude(h)\n    recess = cq.Workplane('XY').workplane(offset=p.coupon_floor).circle((p.bolt_head_d\
+    \ + p.head_clearance_diametral)/2).extrude(p.bolt_head_h + p.head_depth_allowance)\n\
+    \    return body.cut(bore).cut(recess)"
+  print_orientation: Flat bottom on bed at z=0, large head recess opening upward;
+    no supports.
+  use_orientation: Bench-only bolt clearance gauge. Insert bolt from the recessed
+    side. Never attach this gauge to the camera or tripod.
+hardware:
+- id: webcam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints: []
+criteria:
+- id: nominal_width_check
+  part: width_gauge
+  feature: Distance across Y faces
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_nominal_width
+  check:
+    method: measure
+    ref: null
+    description: Measure printed width and compare loosely above the empty clamp.
+      No fit result is available from the previous print. This cannot establish retention
+      or correct jaw engagement.
+- id: bolt_shank_fit
+  part: bolt_gauge
+  feature: Central through bore
+  relation: clears
+  hardware: webcam_bolt
+  clearance_mm: 0.225
+  params:
+  - camera_thread_major_d
+  - bolt_clearance_diametral
+  check:
+    method: coupon
+    ref: bolt_gauge
+    description: Bolt must pass freely by hand without threading into plastic. Previous
+      fit is unreported; do not assume success.
+- id: bolt_head_fit
+  part: bolt_gauge
+  feature: Open circular recess and floor
+  relation: seats
+  hardware: webcam_bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_clearance_diametral
+  - head_depth_allowance
+  - coupon_floor
+  check:
+    method: coupon
+    ref: bolt_gauge
+    description: Check free head clearance and seating on the floor. Previous fit
+      is unreported. This test does not validate camera engagement or tripod compatibility.
+manual:
+- n: '1'
+  text: The geometry is unchanged. You can reuse the previous prints if intact; another
+    print is not needed unless they failed. If printing again, use PLA, 0.2 mm layers,
+    at least four perimeters and five top/bottom layers, in the indicated orientations
+    without supports.
+  parts:
+  - width_gauge
+  - bolt_gauge
+  hardware: []
+  tool: Slicer and 3D printer
+- n: '2'
+  text: Measure width_gauge across Y and compare it loosely above the empty tripod
+    clamp. Do not force it into the jaws, tighten the clamp onto it, or mount a camera.
+    If you cannot assess the result, leave its fit unverified.
+  parts:
+  - width_gauge
+  hardware: []
+  tool: Calipers
+- n: '3'
+  text: On the bench, insert webcam_bolt through bolt_gauge from the recessed side.
+    Check free shank passage and head seating without force, then remove it. Do not
+    attach this assembly to the camera; its protrusion is not a safe camera insertion
+    depth.
+  parts:
+  - bolt_gauge
+  hardware:
+  - webcam_bolt
+  tool: null
+- n: '4'
+  text: Obtain the tripod head or replacement-plate model, the clamp profile and retention
+    geometry, the camera/lens mass, and the camera manufacturer's permitted screw
+    insertion depth before proceeding to a usable plate. If these cannot be established,
+    obtain the correct replacement metal plate rather than using a guessed printed
+    mount.
+  parts: []
+  hardware: []
+  tool: null
+- n: '5'
+  text: Neither coupon is a temporary camera mount. Keep the metal screw; do not replace
+    it with a printed screw. Do not load either printed gauge.
+  parts: []
+  hardware: []
+  tool: null

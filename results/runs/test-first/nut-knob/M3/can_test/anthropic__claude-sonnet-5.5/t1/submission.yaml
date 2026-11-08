@@ -1,0 +1,195 @@
+task: nut-knob/M3
+note: Pocket size was set from a four-piece fit test (5.5, 5.6, 5.7 and 5.8 mm across
+  flats). I chose 5.7 mm. At 5.7 mm the nut pressed in snug by hand and stayed in
+  when the part was inverted and shaken. The bolt length is not fixed, so use any
+  M3 bolt long enough to reach through the nut. The M3x20 in the hardware list is
+  only an example.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  hole_clr:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance for the bolt through the top wall
+  fit_clr:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: measured
+    note: 'across-flats press-fit allowance chosen from the fit coupons: +0.0 no entry,
+      +0.1 very tight, +0.2 snug and retained when inverted and shaken, +0.3 slightly
+      looser but retained'
+  pocket_extra_depth:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits recessed this much; tested depth
+  knob_d:
+    value: 20
+    unit: mm
+    kind: world
+    source: asked
+    note: about 20 mm across
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: how far each grip scallop cuts into the rim
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    r = p.knob_d / 2\n    body = cq.Workplane('XY').circle(r).extrude(p.knob_h)\n\
+    \    # grip scallops around the rim\n    rc = r - p.scallop_depth + p.scallop_r\n\
+    \    pts = [(rc*math.cos(2*math.pi*i/p.scallop_n), rc*math.sin(2*math.pi*i/p.scallop_n))\
+    \ for i in range(int(p.scallop_n))]\n    cutters = cq.Workplane('XY').pushPoints(pts).circle(p.scallop_r).extrude(p.knob_h)\n\
+    \    body = body.cut(cutters)\n    # hex nut pocket opening on the bed face\n\
+    \    af = p.nut_af + p.fit_clr\n    dia = af / math.cos(math.radians(30))\n  \
+    \  pocket = cq.Workplane('XY').polygon(6, dia).extrude(p.nut_h + p.pocket_extra_depth)\n\
+    \    body = body.cut(pocket)\n    # bolt through-hole out of the far side\n  \
+    \  hole = cq.Workplane('XY').circle((p.bolt_d + p.hole_clr)/2).extrude(p.knob_h)\n\
+    \    return body.cut(hole)\n"
+  print_orientation: nut-pocket face down on the bed (flat bottom face, z=0); the
+    pocket ceiling is a ~6.6 mm bridge, well under the 50 mm limit; no supports
+  use_orientation: pocket side faces the work (bolt enters from the pocket side);
+    the flat top is held in the fingers
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: bolt_through_knob
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -15.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: hex nut pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt through-hole in top wall
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: c_nut_pocket
+  part: knob
+  feature: hex nut pocket (5.7 mm across flats, 2.7 mm deep)
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - nut_af
+  - nut_h
+  - fit_clr
+  - pocket_extra_depth
+  check:
+    method: coupon
+    ref: nutfit_c
+    description: 'Coupon with 5.7 mm AF pocket: nut pushed in snug by hand and stayed
+      in when inverted and shaken.'
+- id: c_nut_retained
+  part: knob
+  feature: pocket ceiling (top wall)
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_extra_depth
+  - knob_h
+  check:
+    method: measure
+    ref: null
+    description: Nut pushed fully in sits recessed ~0.3 mm below the bottom face and
+      cannot pass through the far side, which has only a 3.4 mm hole.
+- id: c_bolt_hole
+  part: knob
+  feature: 3.4 mm bolt through-hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - hole_clr
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes freely through the hole in the top wall and threads
+      into the nut.
+manual:
+- n: '1'
+  text: Print the knob with the flat face that has the hex pocket on the bed. PLA,
+    0.2 mm layers, no supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M3 nut's flats with the hex pocket in the bottom of the knob and
+    press it in with your thumb until it sits at the bottom of the pocket. It is a
+    snug fit, so push firmly and evenly. It stays in when the knob is turned upside
+    down.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Pass the M3 bolt tip through your workpiece, then thread it into the nut from
+    the pocket side. Turn the knob by hand to tighten. The bolt tip can come out through
+    the hole in the top of the knob.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null

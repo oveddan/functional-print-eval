@@ -142,6 +142,7 @@ class TrialRecord(Saved):
     all_pass: bool = False
     declined: str | None = None  # why the trial counts as declined (pbe/graders/declined.py); older records have none
     regrades: list[EarlierVerdict] = []
+    test_prints: list[dict] = []  # can_test: each print_test call, the parts printed and what the person said
 
     @classmethod
     def load(cls, folder: Path) -> Self:
@@ -168,6 +169,8 @@ class TrialRecord(Saved):
         fields = self.model_dump()
         if not self.regrades:
             del fields["regrades"]
+        if not self.test_prints:  # only a can_test trial that printed a test has them
+            del fields["test_prints"]
         if self.settings.run_python is None:
             del fields["settings"]["run_python"]
         if self.settings.prompt_caching is None:

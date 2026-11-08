@@ -1,0 +1,336 @@
+task: nut-knob/M3
+note: 'Unchanged geometry: no usable fit feedback was available. Nominal 20 mm one-piece
+  M3 hand knob with six flexible retaining walls, a recessed nut seat, and a through-hole.
+  The 5.15 mm dimension is the retaining-lip throat, not the main socket; the main
+  hex socket is 5.8 mm across flats. Fit and retention remain unverified. Print and
+  test the optional coupon first. Intended for light hand tightening.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across flats; actual nut unmeasured.
+  nut_height:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  height:
+    value: 8.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_bottom_z:
+    value: 4.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pedestal_d:
+    value: 4.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral allowance; bolt passage is 3.5 mm.
+  socket_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats allowance; main socket AF is 5.8 mm.
+  spring_wall_t:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  relief_width:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: Normal distance between outer spring wall and surrounding body.
+  lip_interference:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats reduction below nominal nut AF; retaining throat AF is 5.15
+      mm.
+  lip_under_z:
+    value: 7.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_throat_z:
+    value: 7.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_entry_z:
+    value: 7.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  corner_slot_width:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  corner_slot_inner_r:
+    value: 2.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  corner_slot_outer_r:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 1.25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_offset:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  boolean_overlap:
+    value: 0.02
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    def hexagon(af):\n        return [(af/math.sqrt(3)*math.cos(math.radians(30+60*i)),\
+    \ af/math.sqrt(3)*math.sin(math.radians(30+60*i))) for i in range(6)]\n    def\
+    \ prism(af,z,h):\n        return cq.Workplane('XY').workplane(offset=z).polyline(hexagon(af)).close().extrude(h)\n\
+    \    def transition(af1,af2,z1,z2):\n        return cq.Workplane('XY').workplane(offset=z1).polyline(hexagon(af1)).close().workplane(offset=z2-z1).polyline(hexagon(af2)).close().loft()\n\
+    \    eps=p.boolean_overlap\n    af=p.nut_af+p.socket_clearance\n    outer=af+2*p.spring_wall_t\n\
+    \    relief=outer+2*p.relief_width\n    throat=p.nut_af-p.lip_interference\n \
+    \   body=cq.Workplane('XY').circle(p.knob_d/2).extrude(p.height)\n    for i in\
+    \ range(p.scallop_count):\n        a=2*math.pi*i/p.scallop_count\n        r=p.knob_d/2+p.scallop_center_offset\n\
+    \        cut=cq.Workplane('XY').center(r*math.cos(a),r*math.sin(a)).circle(p.scallop_r).extrude(p.height+eps)\n\
+    \        body=body.cut(cut)\n    moat=prism(relief,p.floor_t,p.height-p.floor_t+eps).cut(prism(outer,p.floor_t-eps,p.height-p.floor_t+3*eps))\n\
+    \    body=body.cut(moat)\n    cavity=prism(af,p.floor_t,p.lip_under_z-p.floor_t)\n\
+    \    cavity=cavity.union(transition(af,throat,p.lip_under_z,p.lip_throat_z))\n\
+    \    cavity=cavity.union(prism(throat,p.lip_throat_z,p.lip_entry_z-p.lip_throat_z))\n\
+    \    cavity=cavity.union(transition(throat,af,p.lip_entry_z,p.height))\n    cavity=cavity.union(prism(af,p.height-eps,2*eps))\n\
+    \    body=body.cut(cavity)\n    pedestal=cq.Workplane('XY').circle(p.pedestal_d/2).extrude(p.nut_bottom_z)\n\
+    \    body=body.union(pedestal)\n    for i in range(6):\n        length=p.corner_slot_outer_r-p.corner_slot_inner_r\n\
+    \        mid=(p.corner_slot_outer_r+p.corner_slot_inner_r)/2\n        slot=cq.Workplane('XY').box(length,p.corner_slot_width,p.height-p.floor_t+eps,centered=(True,True,False)).translate((mid,0,p.floor_t)).rotate((0,0,0),(0,0,1),30+60*i)\n\
+    \        body=body.cut(slot)\n    hole=cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(p.height+eps)\n\
+    \    return body.cut(hole)\n"
+  print_orientation: Flat circular underside on bed at z=0; nut opening and flexible
+    lips face up. No supports.
+  use_orientation: Nut enters at the top, z=8.2, and seats at z=4.8. Bolt axis is
+    Z; bolt may enter from either side.
+- id: fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    def hexagon(af):\n        return [(af/math.sqrt(3)*math.cos(math.radians(30+60*i)),af/math.sqrt(3)*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    def prism(af,z,h):\n        return cq.Workplane('XY').workplane(offset=z).polyline(hexagon(af)).close().extrude(h)\n\
+    \    def transition(a,b,z,w):\n        return cq.Workplane('XY').workplane(offset=z).polyline(hexagon(a)).close().workplane(offset=w-z).polyline(hexagon(b)).close().loft()\n\
+    \    e=p.boolean_overlap\n    af=p.nut_af+p.socket_clearance\n    outer=af+2*p.spring_wall_t\n\
+    \    relief=outer+2*p.relief_width\n    throat=p.nut_af-p.lip_interference\n \
+    \   body=cq.Workplane('XY').circle(p.coupon_d/2).extrude(p.height)\n    moat=prism(relief,p.floor_t,p.height-p.floor_t+e).cut(prism(outer,p.floor_t-e,p.height-p.floor_t+3*e))\n\
+    \    body=body.cut(moat)\n    cavity=prism(af,p.floor_t,p.lip_under_z-p.floor_t)\n\
+    \    cavity=cavity.union(transition(af,throat,p.lip_under_z,p.lip_throat_z))\n\
+    \    cavity=cavity.union(prism(throat,p.lip_throat_z,p.lip_entry_z-p.lip_throat_z))\n\
+    \    cavity=cavity.union(transition(throat,af,p.lip_entry_z,p.height))\n    cavity=cavity.union(prism(af,p.height-e,2*e))\n\
+    \    body=body.cut(cavity).union(cq.Workplane('XY').circle(p.pedestal_d/2).extrude(p.nut_bottom_z))\n\
+    \    for i in range(6):\n        length=p.corner_slot_outer_r-p.corner_slot_inner_r\n\
+    \        mid=(p.corner_slot_outer_r+p.corner_slot_inner_r)/2\n        slot=cq.Workplane('XY').box(length,p.corner_slot_width,p.height-p.floor_t+e,centered=(True,True,False)).translate((mid,0,p.floor_t)).rotate((0,0,0),(0,0,1),30+60*i)\n\
+    \        body=body.cut(slot)\n    return body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(p.height+e))\n"
+  print_orientation: Flat underside on bed at z=0, opening upward. No supports.
+  use_orientation: Same nut insertion direction and socket geometry as knob. Test
+    only; not part of finished assembly.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: hand_insertion_retention
+  part: knob
+  feature: Six flexible hex walls and inward retaining lips
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - socket_clearance
+  - lip_interference
+  - spring_wall_t
+  - floor_t
+  - lip_throat_z
+  - corner_slot_width
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Nut must insert using thumb pressure alone without cracking or whitening
+      the walls. Turn upside down and gently shake: nut must remain captured. This
+      fit is not yet verified.'
+- id: recessed_nut
+  part: knob
+  feature: Nut seat below retaining lips
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_height
+  - nut_bottom_z
+  - lip_under_z
+  - height
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Nut must rest flat on the pedestal and be fully below the top. Nominal
+      nut top is z=7.2 mm, compared with knob top z=8.2 mm.
+- id: stop
+  part: knob
+  feature: Central annular pedestal and continuous bottom floor
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pedestal_d
+  - nut_bottom_z
+  - bolt_d
+  - bolt_clearance
+  - floor_t
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Firm thumb pressure must not push the nut through the bottom. Check
+      for cracks and delamination.
+- id: bolt_passage
+  part: knob
+  feature: 3.5 mm axial through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Using the intended M3 bolt, confirm it screws freely through the
+      captured nut and exits the opposite face without scraping or rotating the nut
+      in its socket.
+manual:
+- n: '1'
+  text: Print fit_coupon first, flat underside on the bed and opening upward. Use
+    0.2 mm layers, 0.4 mm nozzle, four walls, and 100% infill. Disable supports; keep
+    the spring slots and surrounding relief empty. Use the same settings for the final
+    knob.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: Bambu Lab X1C slicer
+- n: '2'
+  text: Allow the coupon to cool. Inspect the six flexible walls and remove loose
+    strings without enlarging the lips. Align the nut flats with the hex opening and
+    press straight down with your thumb until the nut rests on the central stop. Do
+    not hammer or use a screw to force insertion.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Confirm that the nut is fully recessed, stays in when inverted and gently
+    shaken, and cannot be pressed through the bottom. Thread your intended M3 bolt
+    through by hand and confirm it exits the other side. Stop if a wall cracks or
+    whitens, or the nut spins. If insertion is too hard, reduce lip_interference by
+    0.10 mm and retest; if retention is too loose, increase it by 0.10 mm and retest.
+    Apply the same parameter change to both parts.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: To reuse the test nut, gently spread opposing flexible walls with your fingernails
+    while lifting the nut with a loosely threaded M3 bolt. Do not lever against the
+    lips with a tool. If removal is difficult, leave the nut in the coupon and use
+    another ISO 4032 M3 nut in the final knob.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Print knob with the validated settings and parameter values, opening upward
+    and without supports. Cool fully and press the nut in as tested. Repeat the retention
+    and through-bolt checks. The finished assembly contains one printed knob and one
+    nut.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '6'
+  text: Use as a captive hand nut on your M3 bolt. Tighten lightly by hand only; do
+    not use pliers. This design does not capture a bolt head or lock permanently onto
+    a bolt. Keep away from heat and replace the print if retaining walls crack or
+    the nut becomes loose.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

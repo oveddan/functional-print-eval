@@ -1,0 +1,279 @@
+task: tripod-plate
+note: 'You asked how hard this would be. The flat plate is easy to print. The screw
+  is harder, because printed 1/4-20 threads are weak and sloppy. So I used your salvaged
+  webcam bolt as the screw and printed only the plate. The tripod clamp''s lip geometry
+  and plate thickness didn''t come back from the measurements, so the edge profile
+  is a guess: 38 mm wide at the base, tapering to 34 mm at the top, 8 mm thick. Print
+  the short edge coupon and test it in the clamp before you print the full plate.
+  The camera''s footprint and socket depth are also unknown. The bolt is recessed
+  in a slot, which lets you slide it about 12 mm to balance the camera.'
+questions:
+- text: What is the thickness of the plate the clamp takes, and the shape of the jaw
+    lips?
+  answer: 'Not answered: I couldn''t get these measured. plate_t, lip_h and lip_inset
+    are guesses, so print the coupon first.'
+- text: How do you turn the webcam bolt head, and how deep is the camera's tripod
+    socket?
+  answer: Not answered. The bolt sticks up about 5.5 mm above the pad, and its head
+    is recessed in the plate.
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: length along the clamp
+  plate_t:
+    value: 8
+    unit: mm
+    kind: world
+    source: guessed
+    note: plate thickness; clamp jaw depth NOT measured. Test with the coupon.
+  lip_h:
+    value: 3
+    unit: mm
+    kind: world
+    source: guessed
+    note: height of the full-width lower part of the edge before the taper; clamp
+      lip geometry not measured
+  lip_inset:
+    value: 2
+    unit: mm
+    kind: world
+    source: guessed
+    note: how much each edge tapers inward from lip_h to the top (about 45 degrees
+      at lip_h 3 and plate_t 8 is not exact); clamp angle unknown
+  pad_h:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: raised pad on top that the camera sits on; shortens the bolt protrusion
+  pad_w:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: pad width
+  slot_travel:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: how far the bolt can slide along the plate to balance the camera
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: salvaged webcam bolt head, about 15 mm
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: head height, about 5 mm
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: world
+    source: measured
+    note: length under the head, about 10 mm
+  thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  hole_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter on the bolt hole, for 0.4 mm nozzle PLA
+  head_clear:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter on the head counterbore
+  cb_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: counterbore depth = bolt_head_h + 0.5
+  coupon_l:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: length of the fit-test coupon
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w=p.plate_w; l=p.plate_l; t=p.plate_t\n    pts=[(-w/2,0),(w/2,0),(w/2,p.lip_h),(w/2-p.lip_inset,t),(-w/2+p.lip_inset,t),(-w/2,p.lip_h)]\n\
+    \    body=cq.Workplane('XZ').polyline(pts).close().extrude(l/2,both=True)\n  \
+    \  pad=(cq.Workplane('XY').workplane(offset=t)\n         .slot2D(p.slot_travel+p.pad_w,p.pad_w,90).extrude(p.pad_h))\n\
+    \    body=body.union(pad)\n    hd=p.thread_d+p.hole_clear\n    hole=(cq.Workplane('XY').slot2D(p.slot_travel+hd,hd,90).extrude(t+p.pad_h))\n\
+    \    cd=p.bolt_head_d+p.head_clear\n    cb=(cq.Workplane('XY').slot2D(p.slot_travel+cd,cd,90).extrude(p.cb_depth))\n\
+    \    return body.cut(hole).cut(cb)\n"
+  print_orientation: flat on the bed, the underside (the side with the head counterbore)
+    down
+  use_orientation: Underside down in the clamp, camera sits on the raised pad on top
+- id: edge-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w=p.plate_w; l=p.coupon_l; t=p.plate_t\n    pts=[(-w/2,0),(w/2,0),(w/2,p.lip_h),(w/2-p.lip_inset,t),(-w/2+p.lip_inset,t),(-w/2,p.lip_h)]\n\
+    \    body=cq.Workplane('XZ').polyline(pts).close().extrude(l/2,both=True)\n  \
+    \  hd=p.thread_d+p.hole_clear\n    hole=cq.Workplane('XY').circle(hd/2).extrude(t)\n\
+    \    cd=p.bolt_head_d+p.head_clear\n    cb=cq.Workplane('XY').circle(cd/2).extrude(p.cb_depth)\n\
+    \    return body.cut(hole).cut(cb)\n"
+  print_orientation: flat on the bed, underside down
+  use_orientation: Slide into the tripod clamp to check the fit of the edge profile,
+    and test the bolt in the counterbore
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt-joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: counterbore
+    role: head_seat
+  - part: plate
+    feature: slot
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c-edge
+  part: edge-coupon
+  feature: tapered edge profile
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - plate_t
+  - lip_h
+  - lip_inset
+  check:
+    method: coupon
+    ref: edge-coupon
+    description: Drop the coupon into the tripod clamp from above and tighten the
+      knob. It should seat and not slip out. If it doesn't fit, adjust plate_t, lip_h
+      and lip_inset.
+- id: c-head
+  part: plate
+  feature: head counterbore
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_clear
+  - cb_depth
+  check:
+    method: coupon
+    ref: edge-coupon
+    description: The bolt head should sit in the counterbore of the coupon without
+      binding.
+- id: c-shank
+  part: plate
+  feature: bolt slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - thread_d
+  - hole_clear
+  check:
+    method: coupon
+    ref: edge-coupon
+    description: The 1/4-20 thread should pass through the coupon hole freely.
+- id: c-protrusion
+  part: plate
+  feature: pad top
+  relation: supports
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_len
+  - cb_depth
+  - plate_t
+  - pad_h
+  check:
+    method: measure
+    ref: null
+    description: About 5.5 mm of thread stands above the pad. Check that it threads
+      into the camera socket and the camera sits on the pad. If the socket is shallower
+      than that, the bolt will stop short, so shim the bolt or use a shorter bolt.
+manual:
+- n: '1'
+  text: Print the edge coupon first (flat, underside down, 0.2 mm layers, about 3
+    walls). Drop it into the tripod clamp and tighten the knob. If it is loose or
+    won't go in, tell me how, or change plate_t, lip_h or lip_inset.
+  parts:
+  - edge-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check that the webcam bolt drops through the coupon hole and its head sits
+    in the counterbore.
+  parts:
+  - edge-coupon
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Print the plate flat, underside down. The counterbore needs no supports. Use
+    4 walls and 30% or more infill.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Push the webcam bolt up from the underside, so the head sits in the counterbore
+    and the thread comes out through the pad.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Hold the plate against the camera base and thread the bolt into the camera's
+    1/4-20 socket by turning the head with your fingers or a tool. Tighten until the
+    camera sits on the pad. Slide the bolt along the slot before you tighten, if you
+    need to balance the camera.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: Drop the plate into the tripod clamp from above and tighten the knob. Test
+    it with the camera held in your hand before you let go. This is a temporary part,
+    and printed PLA can creep, so don't leave a heavy camera on it for long.
+  parts:
+  - plate
+  hardware: []
+  tool: null

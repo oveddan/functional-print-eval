@@ -4,6 +4,8 @@
     uv run python scripts/coupon_loop.py --run loop-tripod --budget 3.00
 
 loop-sample and loop-sample-2 replay knob and wheel trials with a test coupon, and report on the coupons.
+loop-all replays every can_ask trial on the four scored tasks that didn't pass: the person prints everything
+sent and says how it came out, then grades the final design (feedback arm only).
 loop-tripod replays the tripod designs whose final part fails on a holed roof, and reports on everything
 printed, the plate included (docs/coupon-loop.md, "Tripod sample"). A can_run_code trial keeps run_python
 and its turn limit in the second turn.
@@ -34,7 +36,7 @@ from pbe.runner.trial_record import TrialRecord  # noqa: E402
 MODELS = ["anthropic/claude-sonnet-5.5", "deepseek/deepseek-v4.1-flash", "z-ai/glm-5.3-flash"]
 FAMILIES = ("nut-knob", "bearing-wheel")
 RUNS = ROOT / "results/runs"
-LOOP_RUNS = ("loop-sample", "loop-sample-2", "loop-tripod", "loop-estoa")  # replays, not trials to replay
+LOOP_RUNS = ("loop-sample", "loop-sample-2", "loop-tripod", "loop-estoa", "loop-all")  # replays, not trials to replay
 TRIPOD_RUNS = ("pilot-tripod", "pilot-tripod-given", "pilot-code")
 # the bridge check fails these on a broken shape, not a roof (scripts/results_page.py, BROKEN_ROOFS)
 BROKEN_ROOFS = {("pilot-tripod-given", "qwen/qwen3.8-flash", 1), ("pilot-tripod", "qwen/qwen3.8-flash", 1)}
@@ -81,7 +83,23 @@ def estoa_sample():
             yield folder, record, submission.load(folder / "submission.yaml")
 
 
-SAMPLES = {"loop-sample": sample, "loop-sample-2": sample, "loop-tripod": tripod_sample, "loop-estoa": estoa_sample}
+ALL_RUNS = ("pilot-tripod", "pilot-wheel", "pilot-nut-knob", "pilot-nut-knob-2")
+
+
+def all_sample():
+    """Every saved can_ask trial on the four scored tasks that didn't pass and handed in a design (loop-all): the person
+    prints what was sent, says how it came out, and the model sends its final design. A trial that passed needs no
+    second print."""
+    for run in ALL_RUNS:
+        for folder, record in sorted(TrialRecord.all_in(RUNS / run), key=lambda pair: (pair[1].model, pair[1].task, pair[1].trial)):
+            if record.condition != "can_ask" or record.verdict == "pass" or not (folder / "submission.yaml").exists():
+                continue
+            yield folder, record, submission.load(folder / "submission.yaml")
+
+
+SAMPLES = {"loop-sample": sample, "loop-sample-2": sample, "loop-tripod": tripod_sample, "loop-estoa": estoa_sample,
+           "loop-all": all_sample}
+FEEDBACK_ONLY = ("loop-all",)  # the neutral arm was measured on the samples; loop-all runs only the printed reply
 PRINTS_THE_PLATE = ("loop-tripod",)
 
 
@@ -170,6 +188,12 @@ def replay(folder, saved, sub, budget, out_root):
         baseline = coupon_loop.LoopRecord.load(out / "baseline")
         report = coupon_loop.estoa_report(baseline.findings, out / "baseline" / "parts")
         printed, max_turns = coupon_loop.printed_text(report), agent.DEFAULT_MAX_TURNS[saved.condition]
+    elif out_root.name == "loop-all":  # print everything sent, then the final design
+        built = build_parts(sub, out / "parts")
+        report = coupon_loop.printed_parts_report(task, sub, built)
+        if saved.task == "tripod-plate":
+            report = coupon_loop.coupon_report(task, sub, built) | coupon_loop.plate_report(task, sub, built)
+        printed, max_turns = coupon_loop.printed_text(report), agent.DEFAULT_MAX_TURNS[saved.condition]
     elif out_root.name in PRINTS_THE_PLATE:
         built = build_parts(sub, out / "parts")
         report = coupon_loop.coupon_report(task, sub, built) | coupon_loop.plate_report(task, sub, built)
@@ -181,7 +205,8 @@ def replay(folder, saved, sub, budget, out_root):
     if not (out / "baseline" / coupon_loop.FILE_NAME).exists():
         grade_baseline(task, saved, sub, out / "baseline", replayed)
     saved_messages = json.loads((folder / "transcript.json").read_text())
-    for arm, text in (("feedback", printed), ("neutral", coupon_loop.NEUTRAL)):
+    arms = (("feedback", printed),) if out_root.name in FEEDBACK_ONLY else (("feedback", printed), ("neutral", coupon_loop.NEUTRAL))
+    for arm, text in arms:
         if is_settled(out / arm):
             continue
         if (out / arm / coupon_loop.FILE_NAME).exists() and stopped_while_grading(coupon_loop.LoopRecord.load(out / arm)):
@@ -222,10 +247,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--run", default="loop-sample-2", choices=LOOP_RUNS, help="the folder under results/runs to save in")
     parser.add_argument("--budget", type=float, default=3.0, help="USD for the whole sample")
+    parser.add_argument("--model", action="append", help="only these models' trials (repeatable), so one process per model can run side by side")
     args = parser.parse_args()
     out_root = RUNS / args.run
     folders = []
     for folder, saved, sub in SAMPLES[args.run]():
+        if args.model and saved.model not in args.model:
+            continue
         folders.append(folder)
         if not replay(folder, saved, sub, args.budget, out_root):
             break

@@ -75,7 +75,7 @@ def estoa_missing(check, detail):
     if check == "R3":
         return "Not graded: a USB opening between the size that stopped plugs and the one that seated", "gap", "prints"
     if check == "R4":
-        return "Not graded: insert posts between the ones that bulged and the ones that held", "gap", "prints"
+        return "Not graded: insert posts thinner than any printed", "gap", "prints"
     if check == "R5":
         return "Not graded: plastic near the perfboard, where its parts' places aren't recorded", "gap", "prints"
     if check == "R6" and "reads only keyholes" in detail:
@@ -94,7 +94,7 @@ def estoa_failure(check):
         "R1": ("The box's holes miss the disk's holes", "real", "render"),
         "R2": ("The disk's screws don't hold, or hit something", "real", "checks"),
         "R3": ("The USB-C plug can't reach the ESP32's port", "real", "coupon"),
-        "R4": ("Insert posts as thin as Estoa's that bulged", "real", "checks"),
+        "R4": ("Insert posts thinner than any printed", "real", "checks"),
         "R5": ("The perfboard or the ESP32 doesn't fit", "real", "render"),
         "R6": ("Keyholes that can't hang it", "real", "checks"),
         "R7": ("A screw stands out of the back", "real", "render"),

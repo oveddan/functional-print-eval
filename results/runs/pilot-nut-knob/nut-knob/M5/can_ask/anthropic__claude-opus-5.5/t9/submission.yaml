@@ -1,0 +1,236 @@
+task: nut-knob/M5
+note: Knob is 30 mm across and 12 mm tall with 8 grip scallops. The hex pocket is
+  5.0 mm deep (nut 4.7 + 0.3 recess) and has a 7 mm solid floor with a 5.5 mm bolt
+  hole, so the nut can't be pushed out the far side. Corner reliefs mean the press
+  fit grips on the flats. Nut size is catalog nominal because it couldn't be measured,
+  which is why the fit coupon comes first.
+questions:
+- text: Which way will the knob face in use? The design puts the solid floor against
+    the work, so clamping load goes through the floor instead of the press fit. Flip
+    it if you want the bolt to go in from the pocket side.
+  answer: null
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats (nominal max; real nuts are 7.78-8.00)
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: through hole in the floor, clears M5 shank
+  fit_offset:
+    value: 0.0
+    unit: mm
+    kind: design
+    source: design
+    note: added to nut_af for the pocket. Printed holes come out ~0.1 mm small, so
+      0.0 gives a light press. Set from the coupon result
+  coupon_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_recess:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits this far below the top face
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  corner_relief_r:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: small reliefs at the hex corners so rounded printed corners don't bind;
+      grip is on the flats
+  leadin:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: depth of the wider entry step at the pocket mouth
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d/2.0\n    H = p.knob_h\n    k\
+    \ = cq.Workplane('XY').circle(R).extrude(H)\n    k = k.edges().chamfer(1.0)\n\
+    \    n = int(p.grip_count)\n    rc = R + p.scallop_r*0.4\n    pts = [(rc*math.cos(2*math.pi*i/n),\
+    \ rc*math.sin(2*math.pi*i/n)) for i in range(n)]\n    k = k.cut(cq.Workplane('XY').pushPoints(pts).circle(p.scallop_r).extrude(H))\n\
+    \    k = k.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2.0).extrude(H))\n   \
+    \ depth = p.nut_h + p.nut_recess\n    af = p.nut_af + p.fit_offset\n    ac = af/math.cos(math.pi/6)\n\
+    \    z0 = H - depth\n    k = k.cut(cq.Workplane('XY').workplane(offset=z0).polygon(6,\
+    \ ac).extrude(depth))\n    cpts = [((ac/2)*math.cos(math.pi/3*i), (ac/2)*math.sin(math.pi/3*i))\
+    \ for i in range(6)]\n    k = k.cut(cq.Workplane('XY').workplane(offset=z0).pushPoints(cpts).circle(p.corner_relief_r).extrude(depth))\n\
+    \    k = k.cut(cq.Workplane('XY').workplane(offset=H-p.leadin).polygon(6, ac+0.6).extrude(p.leadin))\n\
+    \    return k\n"
+  print_orientation: Solid floor (the clamping face) on the bed, hex pocket opening
+    facing up. No supports.
+  use_orientation: Floor face against the work. The bolt comes in through the floor
+    hole, threads through the nut and sticks out of the pocket side. When you tighten,
+    the nut pushes against the floor, not against the press fit.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    pitch = 13.0\n    L = 4*pitch + 2.0\n   \
+    \ W = 14.0\n    depth = p.nut_h + p.nut_recess\n    H = 2.0 + depth\n    c = cq.Workplane('XY').box(L,\
+    \ W, H, centered=(True, True, False))\n    for i in range(4):\n        x = -1.5*pitch\
+    \ + i*pitch\n        af = p.nut_af + p.fit_offset + (i-1)*p.coupon_step\n    \
+    \    ac = af/math.cos(math.pi/6)\n        c = c.cut(cq.Workplane('XY').center(x,\
+    \ 0).circle(p.bolt_clear_d/2.0).extrude(H))\n        c = c.cut(cq.Workplane('XY').workplane(offset=H-depth).center(x,\
+    \ 0).polygon(6, ac).extrude(depth))\n        cpts = [(x+(ac/2)*math.cos(math.pi/3*j),\
+    \ (ac/2)*math.sin(math.pi/3*j)) for j in range(6)]\n        c = c.cut(cq.Workplane('XY').workplane(offset=H-depth).pushPoints(cpts).circle(p.corner_relief_r).extrude(depth))\n\
+    \        c = c.cut(cq.Workplane('XY').workplane(offset=H-p.leadin).center(x, 0).polygon(6,\
+    \ ac+0.6).extrude(p.leadin))\n        for j in range(i+1):\n            nx = x\
+    \ - 3.0 + j*1.6\n            c = c.cut(cq.Workplane('XY').box(0.8, 1.2, H, centered=(True,\
+    \ False, False)).translate((nx, W/2.0-1.0, 0)))\n    return c\n"
+  print_orientation: Flat bottom on the bed, pockets facing up. Print with the same
+    settings as the knob.
+  use_orientation: Handheld test piece
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_press
+  part: knob
+  feature: hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - fit_offset
+  - nut_h
+  - nut_recess
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: You can press the nut in with your thumb or with a light squeeze
+      in a vice, and it stays in when the part is turned upside down and shaken
+- id: nut_flush
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: The nut sits about 0.3 mm below the top face
+- id: no_pushout
+  part: knob
+  feature: floor with 5.5 mm hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The hole is smaller than the nut, so the floor holds the nut
+- id: bolt_clear
+  part: knob
+  feature: floor hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: An M5 bolt slides through the floor hole by hand
+manual:
+- n: '1'
+  text: 'Print fit_coupon first. It has four hex pockets marked with 1 to 4 notches
+    on one edge, from tightest to loosest: notch 1 = -0.1 mm, notch 2 = 0.0 mm, notch
+    3 = +0.1 mm, notch 4 = +0.2 mm on top of fit_offset.'
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the nut into each pocket. Pick the tightest pocket that still lets the
+    nut go all the way down with a firm thumb press or a light squeeze in a vice,
+    and holds the nut when you turn the coupon over and shake it. To get the nut back
+    out, push a bolt or screwdriver through the hole underneath. Change fit_offset
+    by that pocket's offset (e.g. notch 3 means fit_offset += 0.1).
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Print the knob with the flat solid face on the bed and the hex pocket facing
+    up. No supports needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Line up the nut with the hex pocket and press it in until it bottoms out on
+    the floor. It should sit just below the top face. If it's stiff, squeeze it in
+    a vice or press it down on the table with a flat block.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: vice or flat block (optional)
+- n: '5'
+  text: 'Use: put the flat floor face toward the work and thread the bolt through
+    the floor hole, then through the nut. The tip comes out of the pocket side. When
+    you tighten, the nut pushes against the floor, not the press fit.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

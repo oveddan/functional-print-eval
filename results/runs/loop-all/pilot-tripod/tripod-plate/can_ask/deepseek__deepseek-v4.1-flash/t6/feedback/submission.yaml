@@ -1,0 +1,380 @@
+task: tripod-plate
+note: 'What changed and why: nothing about the shape in use. The plate is now modelled
+  in the orientation it is printed in with the CAMERA face on the bed, so the bolt-head
+  pocket opens upward and prints as vertical walls with a flat floor. Previously the
+  clamp face was on the bed, which made the pocket a downward-facing cavity whose
+  ceiling was a ring bridged across thin air - that is the loose loops and tangled,
+  half-closed hole you saw on both the coupon and the plate. There is now no bridge
+  anywhere in the part and no overhang steeper than 45 degrees (the two dovetail chamfers
+  at the bed edges), so it prints support-free.
+
+
+  Because the in-use shape is unchanged, the clamp fit you already confirmed still
+  holds: 37.6 mm across, 11 mm thick, 45 degree x 3 mm chamfers, which printed well
+  enough to fit. The 0.4 mm side clearance and the 0.15 mm press fit on the bolt head
+  are unchanged too.
+
+
+  The bolt still does the work of "the part that screws in": a printed 1/4-20 thread
+  in PLA holding a camera cantilevered off a tripod is the weak link of this whole
+  thing, so the plate carries your salvaged steel webcam bolt instead, pressed into
+  the pocket so it cannot spin while you thread the camera on. The load path is PLA
+  plate, steel thread, camera''s own metal socket.
+
+
+  Still unmeasured, and now the only real unknowns: the clamp''s jaw angle (the dovetail
+  is the standard 38 mm / 45 degree / 3 mm form, and it fit) and your camera''s socket
+  depth (the bolt stands proud by 4.5 mm, under the ~5.5 mm typical minimum). Use
+  the coupon to check the pocket before committing 40 minutes to the plate.'
+questions:
+- text: After pressing the bolt into the new pocket, does the head stay put without
+    turning when you thread the camera on?
+  answer: null
+- text: How deep is the 1/4-20 socket in the bottom of your camera, in mm? (Needed
+    to confirm the 4.5 mm of bolt thread sticking out of the plate doesn't bottom
+    out.)
+  answer: null
+params:
+  bolt_head_across:
+    value: 15.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged webcam-mount bolt, head diameter
+  bolt_head_h:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_pocket_d:
+    value: 14.85
+    unit: mm
+    kind: design
+    source: design
+    note: 0.15 mm interference on the 15.0 mm head so the bolt cannot spin while the
+      camera is threaded on
+  bolt_pocket_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: 0.5 mm more than the head height, so the head stays 0.5 mm below the clamp
+      face
+  bolt_thread_len:
+    value: 10.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: thread length under the head
+  camera_socket_depth:
+    value: 5.5
+    unit: mm
+    kind: world
+    source: datasheet
+    note: typical ISO 1222 minimum socket depth; person could not measure theirs
+  clamp_plate_width:
+    value: 38.0
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the borrowed tripod's clamp takes
+  coupon_len:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  dovetail_chamfer:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: guessed
+    note: 45 deg chamfer on the two camera-face edges; this is the form that fit the
+      clamp
+  plate_length:
+    value: 50.0
+    unit: mm
+    kind: design
+    source: guessed
+    note: standard-ish plate length; slot length unknown, manual says how to shorten
+      it
+  plate_thickness:
+    value: 11.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'set so the bolt protrudes 4.5 mm: 5.5 pocket + 10 thread - 11'
+  plate_width:
+    value: 37.6
+    unit: mm
+    kind: design
+    source: design
+    note: 0.4 mm narrower than the clamp for a sliding fit
+  pocket_lead_in:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg flare at the pocket mouth to help press the head in
+  shank_hole_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: 1/4 inch = 6.35, plus clearance
+  thread_protrusion:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: = bolt_pocket_depth + bolt_thread_len - plate_thickness
+parts:
+- id: plate
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    T = p.plate_thickness\n    floor_z = T - p.bolt_pocket_depth\
+    \          # floor of the bolt head pocket\n    plate = (cq.Workplane(\"XY\")\n\
+    \             .box(p.plate_width, p.plate_length, T, centered=(True, True, False)))\n\
+    \    # The camera face is on the bed (z = 0), so the two 45 deg dovetail chamfers\n\
+    \    # are on its bottom edges. They flare outwards, which prints without support.\n\
+    \    plate = plate.edges(\"|Y\").edges(\"<Z\").chamfer(p.dovetail_chamfer)\n \
+    \   # Bolt shank clearance hole: from below the bed up to the pocket floor.\n\
+    \    hole = (cq.Workplane(\"XY\").workplane(offset=-1.0)\n            .circle(p.shank_hole_d\
+    \ / 2.0)\n            .extrude(floor_z + 1.0))\n    plate = plate.cut(hole)\n\
+    \    # Bolt head pocket: open towards the clamp face, printed facing up, so it\
+    \ is\n    # vertical walls and a flat floor with no roof to bridge over.\n   \
+    \ pocket = (cq.Workplane(\"XY\").workplane(offset=floor_z)\n              .circle(p.bolt_pocket_d\
+    \ / 2.0)\n              .extrude(p.bolt_pocket_depth + 1.0))\n    plate = plate.cut(pocket)\n\
+    \    # Flared lead-in at the pocket mouth. Widening towards the open face, so\
+    \ the\n    # hole gets larger each layer: no overhang.\n    lead = cq.Solid.makeCone(p.bolt_pocket_d\
+    \ / 2.0,\n                             p.bolt_pocket_d / 2.0 + p.pocket_lead_in,\n\
+    \                             p.pocket_lead_in,\n                            \
+    \ cq.Vector(0, 0, T - p.pocket_lead_in),\n                             cq.Vector(0,\
+    \ 0, 1))\n    plate = plate.cut(lead)\n    return plate"
+  print_orientation: 'Camera face on the bed (the narrower face with the two 45 degree
+    chamfered edges); the clamp face, with the round bolt-head pocket, faces up. No
+    supports: the chamfers flare outwards at 45 degrees and the pocket is an open-top
+    cavity.'
+  use_orientation: Slides into the tripod's 38 mm clamp with the wide flat face down
+    on the clamp floor, the chamfered camera face up; the salvaged 1/4-20 bolt goes
+    in from underneath and its thread stands 4.5 mm proud for the camera.
+- id: plate_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    T = p.plate_thickness\n    floor_z = T - p.bolt_pocket_depth\n\
+    \    c = (cq.Workplane(\"XY\")\n         .box(p.plate_width, p.coupon_len, T,\
+    \ centered=(True, True, False)))\n    c = c.edges(\"|Y\").edges(\"<Z\").chamfer(p.dovetail_chamfer)\n\
+    \    hole = (cq.Workplane(\"XY\").workplane(offset=-1.0)\n            .circle(p.shank_hole_d\
+    \ / 2.0)\n            .extrude(floor_z + 1.0))\n    c = c.cut(hole)\n    pocket\
+    \ = (cq.Workplane(\"XY\").workplane(offset=floor_z)\n              .circle(p.bolt_pocket_d\
+    \ / 2.0)\n              .extrude(p.bolt_pocket_depth + 1.0))\n    c = c.cut(pocket)\n\
+    \    lead = cq.Solid.makeCone(p.bolt_pocket_d / 2.0,\n                       \
+    \      p.bolt_pocket_d / 2.0 + p.pocket_lead_in,\n                           \
+    \  p.pocket_lead_in,\n                             cq.Vector(0, 0, T - p.pocket_lead_in),\n\
+    \                             cq.Vector(0, 0, 1))\n    c = c.cut(lead)\n    return\
+    \ c"
+  print_orientation: 'Same as the plate: camera face on the bed, chamfers at the bed
+    edges, pocket facing up. No supports.'
+  use_orientation: 'Throwaway test piece: checks that the pocket now prints clean,
+    that the bolt head presses in without splitting the wall, and that the 37.6 x
+    11 mm cross-section still fits the clamp.'
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt_to_camera
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: bolt head pocket, Dia 14.85 x 5.5 deep, floor of the pocket
+    role: head_seat
+  - part: plate
+    feature: bolt shank clearance hole, Dia 6.8 through to the camera face
+    role: clearance
+  nut: null
+  external: the camera's 1/4-20 tripod socket (ISO 1222)
+criteria:
+- id: clamp_fit
+  part: plate
+  feature: side walls, 37.6 mm across with 45 deg top chamfers
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - clamp_plate_width
+  - plate_width
+  - dovetail_chamfer
+  check:
+    method: coupon
+    ref: plate_coupon
+    description: Coupon slides into the 38 mm clamp without force and is gripped without
+      rocking when the lever/knob is closed.
+- id: no_roof_over_pocket
+  part: plate
+  feature: bolt head pocket, open at the top face of the print
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_pocket_depth
+  - plate_thickness
+  check:
+    method: none
+    ref: null
+    description: Nothing spans the pocket. The pocket opens at the top face of the
+      print, so it is vertical walls plus a flat floor - no roof, no bridge, nothing
+      to droop. This is the feature that failed on the last print.
+- id: head_press_fit
+  part: plate
+  feature: bolt head pocket Dia 14.85 x 5.5 deep
+  relation: contains
+  hardware: bolt
+  clearance_mm: -0.15
+  params:
+  - bolt_head_across
+  - bolt_pocket_d
+  - bolt_head_h
+  - bolt_pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Measured head (15.0 across, 5.0 tall) presses into the pocket, ends
+      up about 0.5 mm short of the clamp face, and does not spin freely.
+- id: thread_protrusion
+  part: plate
+  feature: 1/4-20 thread standing 4.5 mm above the camera face
+  relation: engages
+  hardware: bolt
+  clearance_mm: 1.0
+  params:
+  - bolt_thread_len
+  - bolt_pocket_depth
+  - plate_thickness
+  - thread_protrusion
+  - camera_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: Thread stick-out of 4.5 mm is less than the camera's socket depth,
+      so the bolt cannot bottom out and leave the camera loose.
+- id: clamp_floor_seat
+  part: plate
+  feature: flat clamp face, bolt head recessed 0.5 mm below it
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_pocket_depth
+  - bolt_head_h
+  check:
+    method: none
+    ref: null
+    description: Nothing protrudes past the clamp face, so the plate sits flat on
+      the clamp floor instead of rocking on the bolt head.
+- id: coupon_matches_plate
+  part: plate_coupon
+  feature: cross-section (width, thickness, chamfer, pocket)
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - plate_thickness
+  - dovetail_chamfer
+  - coupon_len
+  check:
+    method: coupon
+    ref: null
+    description: Coupon is a 12 mm slice of the plate with the same cross-section
+      and pocket, so a fit that works on the coupon works on the plate.
+manual:
+- n: '1'
+  text: Print the test coupon again (plate_coupon). PLA, 0.2 mm layers, 4 walls, 40%
+    infill, no supports, flat on its camera face - the face with the two 45 degree
+    chamfered edges - so the round pocket prints facing up. There is no roof over
+    the pocket this time, so the pocket should come out as clean vertical walls with
+    a flat floor.
+  parts:
+  - plate_coupon
+  hardware: []
+  tool: Bambu Lab X1C
+- n: '2'
+  text: 'Check the coupon before going further: the pocket should be a clean round
+    hole with a flat floor and no loops or tangles. Then slide it into the clamp.
+    It should fit exactly as it did before, because the shape is unchanged.'
+  parts:
+  - plate_coupon
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the salvaged bolt head into the coupon's pocket until it stops against
+    the floor. It is a 0.15 mm press fit - a bench vice or a table edge helps. The
+    head should end up just below the open face, and it must not turn easily. If the
+    PLA splits at the pocket wall, tell me and I will open the pocket up.
+  parts:
+  - plate_coupon
+  hardware:
+  - bolt
+  tool: vice or table edge
+- n: '4'
+  text: 'Print the plate (plate). Same settings: 0.2 mm layers, 4 walls, 40% infill,
+    no supports, camera face on the bed, pocket facing up.'
+  parts:
+  - plate
+  hardware: []
+  tool: Bambu Lab X1C
+- n: '5'
+  text: Identify the faces. The narrower face, with the two 45 degree chamfered edges,
+    is the camera face and points up in use. The wider flat face with the round recess
+    is the clamp face and presses on the clamp floor. Press the bolt head into that
+    round recess until it stops. The head finishes about 0.5 mm below the clamp face,
+    so nothing sticks out past it.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: vice or table edge
+- n: '6'
+  text: Hold the plate in one hand and spin the camera onto the 4.5 mm of thread sticking
+    out of the camera face. Tighten by hand until the camera's base is flat and firm.
+    If the camera still turns when you have tightened it, the thread is bottoming
+    out in its socket - tell me and I will thin the plate.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '7'
+  text: If the plate is longer than your clamp's slot, cut or sand the rear end shorter,
+    but keep at least 35 mm so the jaws still have something to grip. Deburr the cut
+    end.
+  parts:
+  - plate
+  hardware: []
+  tool: hacksaw and sandpaper
+- n: '8'
+  text: Slide the plate into the clamp from the open end, camera up and the round
+    pocket facing down, until it seats against the stop. Close the clamp and check
+    the camera cannot be rocked by hand.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '9'
+  text: 'Temporary use only. PLA creeps under load and softens in a warm car: keep
+    the camera''s own strap around your neck or the tripod, take the camera off between
+    shots, and don''t carry the tripod by the camera or the plate.'
+  parts:
+  - plate
+  hardware: []
+  tool: null

@@ -1,0 +1,334 @@
+task: nut-knob/M3
+note: 'Unchanged geometry: the print feedback did not establish whether any fit was
+  too loose or too tight, so there is no evidence for changing the interference. Nominal
+  rib-tip widths are 5.45, 5.35 and 5.25 mm on the coupon; the final knob uses 5.35
+  mm. These are rib-tip constrictions, not the wider hex wall dimensions. Hand insertion
+  and upside-down retention remain unverified. Finished assembly is one printed knob
+  plus its nut; coupon is optional test material.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_h:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats allowance away from ribs
+  nut_interference:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral interference at rib tips; select using coupon
+  rib_r:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_extra_af:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_r:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_center_r:
+    value: 11.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_spacing:
+    value: 23
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_link_w:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_dot_r:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_dot_h:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_dot_spacing:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_dot_y:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  boolean_extra:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    e=p.boolean_extra\n    def pts(af):\n \
+    \       r=af/math.sqrt(3)\n        return [(r*math.cos(math.radians(30+60*i)),r*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    b=cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n\
+    \    for i in range(p.flute_count):\n        a=2*math.pi*i/p.flute_count\n   \
+    \     b=b.cut(cq.Workplane('XY').center(p.flute_center_r*math.cos(a),p.flute_center_r*math.sin(a)).circle(p.flute_r).extrude(p.knob_h+e))\n\
+    \    b=b.cut(cq.Workplane('XY').workplane(offset=p.floor_h).polyline(pts(p.nut_af+p.pocket_clearance)).close().extrude(p.knob_h-p.floor_h+e))\n\
+    \    rc=p.nut_af/2-p.nut_interference/2+p.rib_r\n    for i in range(6):\n    \
+    \    a=math.radians(60*i)\n        b=b.union(cq.Workplane('XY').workplane(offset=p.floor_h-e).center(rc*math.cos(a),rc*math.sin(a)).circle(p.rib_r).extrude(p.knob_h-p.floor_h+e))\n\
+    \    entry=cq.Workplane('XY').workplane(offset=p.knob_h-p.entry_h).polyline(pts(p.nut_af-p.nut_interference)).close().workplane(offset=p.entry_h).polyline(pts(p.nut_af+p.pocket_clearance+p.entry_extra_af)).close().loft(combine=True)\n\
+    \    b=b.cut(entry)\n    return b.cut(cq.Workplane('XY').workplane(offset=-e).circle((p.bolt_d+p.bolt_clearance)/2).extrude(p.knob_h+2*e))\n"
+  print_orientation: Flat closed back on bed at z=0; nut pocket upward. No supports.
+  use_orientation: Bolt passes through closed back, through captive nut, and out open
+    face.
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    e=p.boolean_extra\n    def pts(af):\n \
+    \       r=af/math.sqrt(3)\n        return [(r*math.cos(math.radians(30+60*i)),r*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    def socket(interference):\n        b=cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n\
+    \        for i in range(p.flute_count):\n            a=2*math.pi*i/p.flute_count\n\
+    \            b=b.cut(cq.Workplane('XY').center(p.flute_center_r*math.cos(a),p.flute_center_r*math.sin(a)).circle(p.flute_r).extrude(p.knob_h+e))\n\
+    \        b=b.cut(cq.Workplane('XY').workplane(offset=p.floor_h).polyline(pts(p.nut_af+p.pocket_clearance)).close().extrude(p.knob_h-p.floor_h+e))\n\
+    \        rc=p.nut_af/2-interference/2+p.rib_r\n        for i in range(6):\n  \
+    \          a=math.radians(60*i)\n            b=b.union(cq.Workplane('XY').workplane(offset=p.floor_h-e).center(rc*math.cos(a),rc*math.sin(a)).circle(p.rib_r).extrude(p.knob_h-p.floor_h+e))\n\
+    \        entry=cq.Workplane('XY').workplane(offset=p.knob_h-p.entry_h).polyline(pts(p.nut_af-interference)).close().workplane(offset=p.entry_h).polyline(pts(p.nut_af+p.pocket_clearance+p.entry_extra_af)).close().loft(combine=True)\n\
+    \        b=b.cut(entry)\n        return b.cut(cq.Workplane('XY').workplane(offset=-e).circle((p.bolt_d+p.bolt_clearance)/2).extrude(p.knob_h+2*e))\n\
+    \    result=cq.Workplane('XY').box(2*p.coupon_spacing,p.coupon_link_w,p.floor_h,centered=(True,True,False))\n\
+    \    for j in range(3):\n        x=(j-1)*p.coupon_spacing\n        result=result.union(socket(p.nut_interference+(j-1)*p.coupon_step).translate((x,0,0)))\n\
+    \        for k in range(j+1):\n            dx=(k-j/2)*p.coupon_dot_spacing\n \
+    \           result=result.union(cq.Workplane('XY').workplane(offset=p.knob_h).center(x+dx,p.coupon_dot_y).circle(p.coupon_dot_r).extrude(p.coupon_dot_h))\n\
+    \    return result\n"
+  print_orientation: Flat backs and linking strip on bed at z=0; pockets and dots
+    upward. No supports.
+  use_orientation: Test only; not part of finished assembly. One, two and three dots
+    mark increasing interference, corresponding to 5.45, 5.35 and 5.25 mm rib-tip
+    widths at default settings.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: capture
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: Closed back around through-hole
+    role: head_seat
+  - part: knob
+    feature: Axial 3.5 mm clearance hole
+    role: clearance
+  - part: knob
+    feature: Hex recess with six ribs and solid floor
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria:
+- id: retention
+  part: knob
+  feature: Six crush ribs and antirotation hex pocket
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_interference
+  - rib_r
+  - pocket_clearance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Choose lowest interference allowing thumb-only seating, retaining
+      nut when inverted and gently shaken, and resisting nut rotation under light
+      hand tightening. No successful fit has yet been reported.
+- id: recess
+  part: knob
+  feature: Nut seats at z=1.6; nominal top z=4.0 below z=5.5 rim
+  relation: contains
+  hardware: nut
+  clearance_mm: 1.5
+  params:
+  - floor_h
+  - nut_h
+  - knob_h
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Confirm nut is seated on floor and fully recessed.
+- id: floor
+  part: knob
+  feature: 1.6 mm floor with hole smaller than nut across flats
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_h
+  - bolt_d
+  - bolt_clearance
+  - nut_af
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Gentle thumb pressure cannot push seated nut through closed back.
+- id: passage
+  part: knob
+  feature: Axial hole aligned with nut thread
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Bolt passes through back and threads into nut by hand without cross-threading.
+manual:
+- n: '1'
+  text: Print fit_coupon in PLA at 0.2 mm layers, 4 walls, 5 top/bottom layers and
+    30% infill, without supports. Use identical filament profile and hole compensation
+    for final knob.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Align nut flats with one-dot pocket and press straight in with your thumb
+    until seated. No hammer or pliers. Check recess, invert over a tray and shake
+    gently. If loose, try two dots then three. Select least-tight fit that retains
+    nut and prevents rotation under light hand tightening. For removal, first unthread
+    bolt, then gently push the nut out through the back hole using the bolt tip; do
+    not strike it.
+  parts:
+  - fit_coupon
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '3'
+  text: Default one-dot, two-dot and three-dot interference values are 0.05, 0.15
+    and 0.25 mm, giving rib-tip widths 5.45, 5.35 and 5.25 mm. Set nut_interference
+    to selected value before generating knob. If no socket passes, shift coupon range
+    in 0.10 mm increments and retest instead of forcing the nut. Coupon interference
+    values always equal nut_interference minus coupon_step, nut_interference, and
+    nut_interference plus coupon_step. The current final knob remains at the middle
+    setting because the previous feedback did not identify a fit result.
+  parts:
+  - fit_coupon
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Print knob closed-back-down with identical settings. Clear loose strings without
+    filing ribs. Hand-press nut fully onto floor, flats aligned. Verify it is fully
+    recessed and stays captured upside down. Stop if excessive force is needed. No
+    glue or heat is needed.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: 3D printer
+- n: '5'
+  text: For a function check, pass M3x16 bolt through closed back and thread through
+    nut so it emerges from open face. In use, hold bolt against rotation and turn
+    knob. This is a captive-nut thumb knob, not a bolt-head driver; it does not lock
+    the nut onto the bolt. Use light finger-tight loads only and keep PLA away from
+    heat. Repeated nut removal can wear the crush ribs.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

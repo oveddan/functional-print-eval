@@ -1,0 +1,170 @@
+task: nut-knob/M3
+note: One-piece PLA hand knob for an ISO 4032 M3 nut. The nut is pressed into the
+  recessed hex pocket from the top; the pocket is intentionally slightly undersized
+  for friction retention, and its floor stops the nut from being pushed through. The
+  central clearance bore lets an M3 bolt pass through the nut and out the opposite
+  face. Print the knob as oriented, with the pocket facing up. Press-fit tightness
+  depends on the actual nut and printer; do not force the nut if it will not seat
+  by hand.
+questions: []
+params:
+  body_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal outside diameter.
+  body_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal width across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness.
+  pocket_af:
+    value: 5.35
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across flats; slight interference with nominal nut for hand press-fit
+      retention.
+  pocket_depth:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: Leaves the nut face 0.4 mm below the knob top when seated.
+  mouth_af:
+    value: 5.8
+    unit: mm
+    kind: design
+    source: design
+    note: Short widened entry eases starting the nut.
+  mouth_depth:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Axial clearance bore for the M3 bolt through the floor and out the far face.
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_cut_r:
+    value: 1.15
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of shallow vertical finger-grip scallop cutters.
+  flute_center_r:
+    value: 10.55
+    unit: mm
+    kind: design
+    source: design
+    note: Scallop cutter centre radius; leaves the nominal 20 mm outside envelope
+      between scallops.
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    import math\n    # Z=0 is the flat bed face; hex nut pocket\
+    \ opens at the top.\n    part = cq.Workplane('XY').circle(p.body_d / 2).extrude(p.body_h)\n\
+    \    # Shallow axial scallops for finger grip.\n    for i in range(int(p.flute_count)):\n\
+    \        a = 2 * math.pi * i / int(p.flute_count)\n        x = p.flute_center_r\
+    \ * math.cos(a)\n        y = p.flute_center_r * math.sin(a)\n        cutter =\
+    \ cq.Workplane('XY').center(x, y).circle(p.flute_cut_r).extrude(p.body_h)\n  \
+    \      part = part.cut(cutter)\n    # Through-bore for the bolt.\n    part = part.cut(cq.Workplane('XY').circle(p.bore_d\
+    \ / 2).extrude(p.body_h))\n    # Main hex socket and its wider, short entry. CQ\
+    \ polygon diameter is across corners.\n    hex_d = p.pocket_af / 0.8660254037844386\n\
+    \    main_z = p.body_h - p.pocket_depth\n    main_h = p.pocket_depth - p.mouth_depth\n\
+    \    main_socket = cq.Workplane('XY').workplane(offset=main_z).polygon(6, hex_d).extrude(main_h)\n\
+    \    mouth_d = p.mouth_af / 0.8660254037844386\n    mouth_socket = cq.Workplane('XY').workplane(offset=p.body_h\
+    \ - p.mouth_depth).polygon(6, mouth_d).extrude(p.mouth_depth)\n    return part.cut(main_socket).cut(mouth_socket)"
+  print_orientation: Place the broad flat bottom face on the bed (z=0); hex pocket
+    faces upward. No supports should be needed.
+  use_orientation: Hold the scalloped cylindrical body and turn it as a hand knob.
+    The recessed nut is in the top pocket; the bolt passes through it and the central
+    bore to emerge from the bottom face.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: hand_knob
+  feature: Undersized hex socket retains the nut by sidewall interference; nut face
+    sits below the top surface
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af
+  - pocket_depth
+  - body_h
+  check:
+    method: measure
+    ref: null
+    description: Press the nut into the pocket by hand. It should seat against the
+      floor, remain recessed, and stay in place when the knob is turned upside down.
+- id: bolt_path
+  part: hand_knob
+  feature: Axial bore through the socket floor and opposite face, aligned with the
+    nut
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bore_d
+  check:
+    method: measure
+    ref: null
+    description: Verify the intended M3 bolt passes through the bore and threads through
+      the installed nut.
+manual:
+- n: '1'
+  text: Print one hand_knob in PLA with the flat bottom face on the build plate and
+    the hex pocket facing up. No supports are intended.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M3 nut with the hex pocket and press it in from the top by hand
+    until it rests on the pocket floor. Its top face should remain recessed below
+    the knob surface.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Check that the nut stays seated when the knob is inverted. Thread the M3 bolt
+    through the nut and confirm it passes through the central bore and exits the opposite
+    face.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null

@@ -1,0 +1,188 @@
+task: bearing-wheel
+note: Rim is flat with 1 mm chamfers because I could not get the old rim profile (V,
+  groove or flat). If the track needs a groove or flanges, the rim needs changing.
+  The bracket gap and bolt length are also unknown. The wheel plus washers takes about
+  16 + 3.2 mm of space on the bolt. The two 608 bearings are yours and are not in
+  the hardware list. Their OD was measured at about 22 mm, and the pocket was checked
+  with a print test coupon.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 OD
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 width
+  bearing_clr:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'pocket-b coupon, 22.19 mm: goes in, holds upside down'
+  pocket_depth:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: bearing sticks out 0.5 mm each side so the washers load the bearing rather
+      than the plastic
+  web_hole_d:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: bigger than the inner race (about 12) so the spinning wheel does not rub
+      it; smaller than the outer race bore (about 19) so the web still seats it
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M8 shank
+  rim_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w)\n\
+    \    w = w.edges().chamfer(p.rim_chamfer)\n    pd = p.bearing_od + p.bearing_clr\n\
+    \    w = w.cut(cq.Workplane('XY').circle(pd/2).extrude(p.pocket_depth))\n    w\
+    \ = w.cut(cq.Workplane('XY').workplane(offset=p.wheel_w - p.pocket_depth).circle(pd/2).extrude(p.pocket_depth))\n\
+    \    w = w.cut(cq.Workplane('XY').circle(p.web_hole_d/2).extrude(p.wheel_w))\n\
+    \    return w"
+  print_orientation: one flat face on the bed, axis vertical
+  use_orientation: axis horizontal, rim running on the track
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -1.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: web_hole
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: c-pocket-bottom
+  part: wheel
+  feature: bottom bearing pocket
+  relation: contains
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bearing_od
+  - bearing_clr
+  - pocket_depth
+  check:
+    method: coupon
+    ref: pocket-b
+    description: Same 22.2 mm pocket diameter printed in the coupon; bearing was a
+      snug fit
+- id: c-pocket-top
+  part: wheel
+  feature: top bearing pocket
+  relation: contains
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bearing_od
+  - bearing_clr
+  - pocket_depth
+  check:
+    method: coupon
+    ref: pocket-b
+    description: Same 22.2 mm pocket as the coupon
+- id: c-web
+  part: wheel
+  feature: web_hole
+  relation: clears
+  hardware: null
+  clearance_mm: 3.0
+  params:
+  - web_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Bolt and bearing inner races pass through the 14 mm hole without
+      touching the web
+manual:
+- n: '1'
+  text: Print the wheel flat on the bed, PLA, 0.2 mm layers, no supports. Use at least
+    4 walls and 30% infill or more, since the wheel carries the door's weight. Clean
+    any elephant's-foot ridge from the rims of both bearing pockets.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one of your 608 bearings into each pocket, squarely, by hand or with
+    a vise. The fit is snug and the bearings should seat on the web. Each bearing
+    will stick out about 0.5 mm.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Put an M8 washer on the bolt, then slide the bolt through both bearings. Add
+    the second washer and the lock nut on the far side. Check that the washers touch
+    only the inner races of the bearings and not the plastic.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  - locknut
+  tool: null
+- n: '4'
+  text: Tighten the nut just enough to clamp the inner races between the washers (and
+    the bracket), so the wheel spins freely on the bearings. The bolt must not turn
+    inside the bearings. Mount the bolt in the door bracket and check the wheel runs
+    freely. The M8x40 bolt length is a placeholder. Use your own bolt if it is long
+    enough for the bracket, the two washers and the nut.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - locknut
+  tool: M13 spanner / socket and M6 hex key

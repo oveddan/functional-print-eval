@@ -1,0 +1,218 @@
+task: nut-knob/M3
+note: Single-piece hand knob for M3 bolt with test coupon for M3 hex nut press-fit
+  retention.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut width across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height
+  nut_pocket_af:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Width across flats of the hex nut pocket
+  flute_dist:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from center to flute center
+  nut_pocket_depth:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of hex pocket
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter across knob crests
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole clearance diameter for M3 bolt shank
+  shoulder_h:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of solid base shoulder supporting the nut
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M3 bolt shank diameter
+  flute_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of finger grip flutes
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip flutes around perimeter
+parts:
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    import math\n\n    sizes =\
+    \ [5.40, 5.45, 5.50, 5.55, 5.60, 5.65, 5.70]\n    spacing = 10.0\n    block_l\
+    \ = (len(sizes) + 1) * spacing\n    block_w = 14.0\n    block_h = 5.0\n    pocket_depth\
+    \ = 3.0\n\n    block = cq.Workplane(\"XY\").box(block_l, block_w, block_h, centered=(True,\
+    \ True, False))\n\n    for i, af in enumerate(sizes):\n        x = (i - (len(sizes)\
+    \ - 1) / 2.0) * spacing\n        hole = cq.Workplane(\"XY\").center(x, 0).circle(3.4\
+    \ / 2.0).extrude(block_h)\n        block = block.cut(hole)\n\n        d = af /\
+    \ math.cos(math.radians(30))\n        pocket = (\n            cq.Workplane(\"\
+    XY\")\n            .workplane(offset=block_h - pocket_depth)\n            .center(x,\
+    \ 0)\n            .polygon(6, d)\n            .extrude(pocket_depth)\n       \
+    \ )\n        block = block.cut(pocket)\n\n    return block\n"
+  print_orientation: Flat on the build plate (z=0).
+  use_orientation: Pockets facing up (+Z) to test press-fit with M3 nut.
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n    import math\n\n    # 1. Main\
+    \ cylindrical body\n    knob = cq.Workplane(\"XY\").circle(p.knob_d / 2.0).extrude(p.knob_h)\n\
+    \n    # 2. Cut 6 perimeter flutes for finger grip\n    for i in range(int(p.flute_count)):\n\
+    \        angle = i * (360.0 / p.flute_count)\n        rad = math.radians(angle)\n\
+    \        x = p.flute_dist * math.cos(rad)\n        y = p.flute_dist * math.sin(rad)\n\
+    \        flute = cq.Workplane(\"XY\").center(x, y).circle(p.flute_r).extrude(p.knob_h)\n\
+    \        knob = knob.cut(flute)\n\n    # 3. Through-hole for M3 bolt shank\n \
+    \   bolt_hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d / 2.0).extrude(p.knob_h)\n\
+    \    knob = knob.cut(bolt_hole)\n\n    # 4. Hexagonal nut pocket from top face\
+    \ down to shoulder\n    pocket_z = p.knob_h - p.nut_pocket_depth\n    pocket_d\
+    \ = p.nut_pocket_af / math.cos(math.radians(30))\n    hex_pocket = (\n       \
+    \ cq.Workplane(\"XY\")\n        .workplane(offset=pocket_z)\n        .polygon(6,\
+    \ pocket_d)\n        .extrude(p.nut_pocket_depth)\n    )\n    knob = knob.cut(hex_pocket)\n\
+    \n    return knob\n"
+  print_orientation: Bottom face (z=0) flat on the build plate. Pocket opens upwards
+    (+Z).
+  use_orientation: M3 bolt passes along Z axis through the clearance hole and threads
+    into the captive nut.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: knob_bolt_joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: nut_pocket_retention
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: nut
+  clearance_mm: 0.0
+  params:
+  - nut_pocket_af
+  - nut_af
+  - nut_pocket_depth
+  - nut_h
+  check:
+    method: coupon
+    ref: coupon
+    description: Test press-fit of M3 hex nut across coupon pocket sizes to find the
+      ideal retention fit
+- id: bolt_hole_clearance
+  part: knob
+  feature: bolt_hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_clearance_d
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: Verify M3 bolt passes freely through the clearance hole
+- id: shoulder_support
+  part: knob
+  feature: shoulder
+  relation: supports
+  hardware: nut
+  clearance_mm: 0.0
+  params:
+  - shoulder_h
+  - nut_h
+  - knob_h
+  check:
+    method: none
+    ref: null
+    description: Verify solid shoulder stops nut from pushing through far side
+manual:
+- n: '1'
+  text: Print the test coupon with its flat bottom on the build plate. Test-fit your
+    M3 hex nut in each pocket by hand to verify which size provides a firm thumb press-fit
+    that stays in place when inverted.
+  parts:
+  - coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the knob with its flat bottom face (z = 0) on the build plate. No supports
+    are needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M3 hex nut into the hexagonal pocket on the top face of the knob
+    until it seats against the interior shoulder. The nut sits fully inside and is
+    retained when upside down.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread the M3 bolt through the clearance hole and nut to tighten by hand.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  tool: null

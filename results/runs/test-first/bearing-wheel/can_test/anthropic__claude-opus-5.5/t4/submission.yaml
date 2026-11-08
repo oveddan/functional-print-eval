@@ -1,0 +1,196 @@
+task: bearing-wheel
+note: The tread is flat with 1 mm chamfers, because I couldn't measure the old wheel's
+  rim or the track. If the old wheel had a groove that rode on a raised rail, tell
+  me and I'll add the groove.
+questions: []
+params:
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 OD, re-measured with flat jaws
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bearing_inner_land_d:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: approx. inner ring OD of a 608; spacer must stay under this
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  seat_d:
+    value: 22.3
+    unit: mm
+    kind: design
+    source: design
+    note: 'coupon: 22.0 wouldn''t go in, 22.3 is a snug press that holds upside down'
+  web_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: lip between the bearings; gives 7+2+7 = 16 mm overall width
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel 'about 50 mm'
+  tread_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od/2\n    c = p.tread_chamfer\n    rb = p.seat_d/2\n\
+    \    rh = rb - p.web_t\n    bw = p.bearing_w\n    W = 2*bw + p.web_t\n    pts\
+    \ = [(rb,0),(R-c,0),(R,c),(R,W-c),(R-c,W),(rb,W),(rb,W-bw),(rh,W-bw),(rb,bw)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().revolve(360,(0,0,0),(0,1,0))"
+  print_orientation: flat, axis vertical, either face on the bed
+  use_orientation: axis horizontal on the M8 bolt, tread rolling on the track
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_id/2).extrude(p.web_t)"
+  print_orientation: flat on the bed
+  use_orientation: on the bolt between the two bearings' inner rings
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: door roller bracket side plates (axle holes about 8 mm)
+criteria:
+- id: seat_fit
+  part: wheel
+  feature: bearing seats
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - seat_d
+  - bearing_od
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 22.3 mm ring held a 608 snugly and upside down
+- id: spacer_clear
+  part: spacer
+  feature: outer diameter
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  - bearing_inner_land_d
+  check:
+    method: measure
+    ref: null
+    description: 'the spacer touches only the inner rings: spin the wheel with the
+      nut tight and it should turn freely'
+- id: width_fit
+  part: wheel
+  feature: overall width plus washers
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - web_t
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: 16 mm wheel + 2 x 1.6 mm washers = 19.2 mm; check this against the
+      gap between the bracket plates
+manual:
+- n: '1'
+  text: Print the wheel lying flat with no supports, and print the spacer ring. Use
+    4+ walls and 40%+ infill on the wheel so the tread stays round under the door's
+    weight.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one of your 608 skateboard bearings into a face of the wheel until it
+    stops against the inner lip. A vise or a flat board pressed by hand works. Push
+    only on the bearing's outer ring.
+  parts:
+  - wheel
+  hardware: []
+  tool: vise or flat board
+- n: '3'
+  text: Flip the wheel over and drop the spacer ring into the middle so it sits on
+    the first bearing's inner ring. Press the second 608 bearing into the other face.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '4'
+  text: Push the M8x35 bolt through one bracket plate, then a washer, the wheel, the
+    second washer and the other plate. Measure the gap between the plates first. If
+    it's under about 19 mm, leave out one or both washers. If the bolt is too short
+    to get through the lock nut completely, use a longer M8 bolt.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  tool: 6 mm hex key
+- n: '5'
+  text: Thread on the M8 lock nut and tighten until it's snug, so it clamps the bearings'
+    inner rings. Check that the wheel still spins freely. If it drags, back the nut
+    off a little.
+  parts: []
+  hardware:
+  - locknut
+  tool: 13 mm spanner

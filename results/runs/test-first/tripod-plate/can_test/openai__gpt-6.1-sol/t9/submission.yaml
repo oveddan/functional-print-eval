@@ -1,0 +1,337 @@
+task: tripod-plate
+note: UNVERIFIED FIT-CHECK PROTOTYPE, not an approved camera support. A 38 mm knob-operated
+  angled-jaw clamp suggests but does not confirm an Arca-compatible interface. User
+  printed a profile coupon but supplied no fit outcome. Edge geometry remains provisional;
+  camera mass and safe socket engagement are unknown. Do not mount a camera until
+  all manual gates pass. Use the available metal bolt; no printed camera screw is
+  supplied. No positive anti-slide safety stops are included because the receiver
+  geometry is unknown. Obtain the original or manufacturer-compatible plate for normal
+  use.
+questions:
+- text: Does the profile sit flat, clear the jaws, and remain captured without rocking,
+    sliding or lifting after gentle tightening?
+  answer: null
+- text: What camera and lens are being used, and what is their combined mass?
+  answer: null
+- text: What screw protrusion does the camera manufacturer permit?
+  answer: null
+- text: What is the tripod head model and specified plate profile?
+  answer: null
+params:
+  plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported width of plate accepted by tripod.
+  camera_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal major diameter of 1/4-20 thread; camera thread reported as 1/4-20.
+  camera_thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length reported by user; verify before use.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate head diameter; verify actual clearance including any handle.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate height; verify fully recessed.
+  camera_safe_engagement:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Must obtain permitted insertion range from camera instructions before assembly.
+  camera_mass:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: No load rating established for this prototype.
+  receiver_lip_height:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  plate_length:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_length:
+    value: 45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  dovetail_height:
+    value: 5
+    unit: mm
+    kind: design
+    source: guessed
+    note: Provisional profile, not a measured receiver dimension.
+  edge_inset:
+    value: 5
+    unit: mm
+    kind: design
+    source: guessed
+    note: Provisional 45-degree taper, narrowing toward top.
+  neck_height:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  deck_width:
+    value: 44
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  deck_thickness:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height 11.5; roof above head recess 6 mm.
+  coupon_deck_thickness:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Replicates previously printed profile test.
+  head_radial_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_recess_allowance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  screw_diametral_clearance:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: temporary_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w=p.plate_width; h=p.dovetail_height; i=p.edge_inset\n\
+    \    z=h+p.neck_height; top=z+p.deck_thickness\n    profile=[(-w/2,0),(w/2,0),(w/2-i,h),(w/2-i,z),(p.deck_width/2,z),(p.deck_width/2,top),(-p.deck_width/2,top),(-p.deck_width/2,z),(-w/2+i,z),(-w/2+i,h)]\n\
+    \    body=cq.Workplane('XZ').polyline(profile).close().extrude(p.plate_length/2,both=True)\n\
+    \    recess_depth=p.bolt_head_h+p.head_recess_allowance\n    recess=cq.Workplane('XY').circle(p.bolt_head_d/2+p.head_radial_clearance).extrude(recess_depth)\n\
+    \    bore=cq.Workplane('XY').circle((p.camera_thread_d+p.screw_diametral_clearance)/2).extrude(top)\n\
+    \    return body.cut(recess).cut(bore)\n"
+  print_orientation: Wide dovetail bottom at z=0 on bed. Head recess opens onto bed;
+    its 16.2 mm roof bridge is below the reported 50 mm clean bridge span. Deck has
+    8 mm lateral overhangs; inspect their quality before use.
+  use_orientation: Dovetail down in clamp; flat deck toward camera; bolt inserted
+    from underside, tip upward.
+- id: clamp_fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w=p.plate_width; h=p.dovetail_height; i=p.edge_inset;\
+    \ z=h+p.neck_height; t=p.coupon_deck_thickness\n    profile=[(-w/2,0),(w/2,0),(w/2-i,h),(w/2-i,z),(p.deck_width/2,z),(p.deck_width/2,z+t),(-p.deck_width/2,z+t),(-p.deck_width/2,z),(-w/2+i,z),(-w/2+i,h)]\n\
+    \    return cq.Workplane('XZ').polyline(profile).close().extrude(p.coupon_length/2,both=True)\n"
+  print_orientation: Wide dovetail bottom at z=0; no supports.
+  use_orientation: Dovetail down in empty tripod receiver; never attach camera to
+    coupon.
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_attachment
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: temporary_plate
+    feature: Central bottom recess roof is the bolt's under-head bearing seat; central
+      bore clears shank.
+    role: head_seat
+  - part: temporary_plate
+    feature: Central 6.8 mm nominal through bore
+    role: clearance
+  nut: null
+  external: Camera 1/4-20 socket, only after manufacturer-permitted insertion and
+    base clearance are verified.
+criteria:
+- id: receiver_fit
+  part: temporary_plate
+  feature: 38 mm bottom dovetail with provisional 45-degree edges and 2 mm neck clearance
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - dovetail_height
+  - edge_inset
+  - neck_height
+  - receiver_lip_height
+  check:
+    method: coupon
+    ref: clamp_fit_coupon
+    description: 'UNRESOLVED. Empty-clamp test: sits on floor, deck clears jaws, both
+      sides captured, no rocking or lift-out or sliding under firm hand force. Confirm
+      final plate separately; no camera during checks.'
+- id: head_recess
+  part: temporary_plate
+  feature: 16.2 mm diameter by 5.5 mm deep underside counterbore
+  relation: contains
+  hardware: camera_bolt
+  clearance_mm: 0.6
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_radial_clearance
+  - head_recess_allowance
+  check:
+    method: measure
+    ref: null
+    description: Actual head fits freely and seats flat against roof, at least 0.5
+      mm above bottom surface. Inspect bridge roof for sagging, delamination or cracking.
+- id: camera_engagement
+  part: temporary_plate
+  feature: 6 mm nominal material between bolt bearing seat and camera-facing deck;
+    approximately 4 mm exposed thread
+  relation: engages
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - bolt_head_h
+  - head_recess_allowance
+  - dovetail_height
+  - neck_height
+  - deck_thickness
+  - camera_safe_engagement
+  - camera_thread_pitch
+  check:
+    method: measure
+    ref: null
+    description: Measure actual exposed thread with head firmly seated. Verify it
+      lies within camera manufacturer's permitted range, provides at least three complete
+      turns of engagement, and cannot bottom out before the base seats. Unknown permitted
+      range means do not assemble.
+- id: base_contact
+  part: temporary_plate
+  feature: 44 x 50 mm flat top deck
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - deck_width
+  - plate_length
+  check:
+    method: template
+    ref: null
+    description: Before threading, hold plate against camera base. Ensure stable broad
+      flat contact, no lens interference, protrusions, controls, battery doors or
+      unsupported rocking. Camera geometry has not been supplied.
+manual:
+- n: '1'
+  text: Treat this as an unverified prototype. Do not print a PLA camera screw. If
+    you need to use the tripod now without further checks, obtain the correct replacement
+    plate instead.
+  parts:
+  - temporary_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print clamp_fit_coupon first (the previous coupon can be reused). Use 0.2
+    mm layers, 5 walls and at least 6 top/bottom layers; no supports. In the EMPTY
+    receiver confirm flat seating, top-deck clearance, capture on both angled edges,
+    and no rocking, sliding or lift-out with gentle knob tightening and firm hand
+    pulling. If any check fails or is uncertain, STOP; do not force the clamp or use
+    the plate.
+  parts:
+  - clamp_fit_coupon
+  hardware: []
+  tool: null
+- n: '3'
+  text: Only after profile checks pass, print temporary_plate wide bottom down at
+    0.2 mm layers, 6 walls, 8 top/bottom layers and 100% infill. No supports. Remove
+    brim/stringing without altering dovetail faces. Reject any cracks, layer splits,
+    warped surfaces or defective recess bridging. Print strength is not a load certification.
+  parts:
+  - temporary_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'Away from the camera, insert the metal bolt from below. It must turn freely,
+    seat flat, and remain completely recessed. Measure the thread above the top deck
+    with the head seated: nominally 4 mm, but the reported bolt dimensions were approximate.
+    Obtain the camera''s permitted insertion range and verify both adequate engagement
+    (at least three complete turns) and no bottoming. Do not use if either cannot
+    be verified; do not add unlisted spacers or improvise printed threads.'
+  parts:
+  - temporary_plate
+  hardware:
+  - camera_bolt
+  tool: Calipers or depth gauge; camera instructions
+- n: '5'
+  text: 'Repeat empty-receiver grip and clearance checks with the final plate and
+    recessed bolt. The bolt head must not touch the receiver floor. This design has
+    no positive anti-slide stops: do not use if your receiver requires these, if clamp
+    travel is exhausted, or if firm hand pulling causes any movement.'
+  parts:
+  - temporary_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '6'
+  text: Only after every check passes, support the camera by hand on a padded surface
+    and check its base contact. Remove the plate from the tripod and attach it to
+    the camera with the metal bolt, hand-snug only. Stop if resistance occurs before
+    the camera base contacts the deck, if it rocks, or if tightening causes cracking
+    or distortion. Do not force a bottomed-out screw.
+  parts:
+  - temporary_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '7'
+  text: For any supervised temporary trial, keep the tripod low over a padded surface
+    and keep a hand supporting the camera; gently check for rotation and clamp movement.
+    No load capacity has been established. Never use unattended, overhead, with a
+    long/heavy lens, in heat or sun, or while carrying the tripod. Release the camera
+    before loosening the clamp. Replace with the correct original/compatible plate
+    for normal use.
+  parts:
+  - temporary_plate
+  hardware:
+  - camera_bolt
+  tool: null

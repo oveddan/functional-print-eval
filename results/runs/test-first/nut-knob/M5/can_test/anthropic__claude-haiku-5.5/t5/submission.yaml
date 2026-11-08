@@ -1,0 +1,150 @@
+task: nut-knob/M5
+note: ''
+questions:
+- text: Test print returned no readings. Does the 7.7 mm pocket let the nut press
+    in by hand and hold when inverted? If it is too tight, try 7.9 mm; if too loose,
+    try 7.5 mm.
+  answer: null
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: knob outer diameter
+  knob_h:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: knob height
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  pocket_af:
+    value: 7.7
+    unit: mm
+    kind: design
+    source: design
+    note: 'press-fit pocket across flats, about 0.3 mm interference. Not verified:
+      test print returned no readings'
+  pocket_depth:
+    value: 4.7
+    unit: mm
+    kind: design
+    source: design
+    note: equal to nut height so the nut sits flush with the bottom face
+  bolt_clear:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for M5 bolt through the top
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 bolt nominal diameter
+parts:
+- id: knob
+  role: final
+  material: PLA black
+  code: "def build(p):\n    k = cq.Workplane('XY').circle(p.knob_d / 2).extrude(p.knob_h)\n\
+    \    k = k.faces('>Z').edges().chamfer(1.5)\n    for i in range(8):\n        a\
+    \ = i * 45.0\n        import math\n        x = (p.knob_d / 2) * math.cos(math.radians(a))\n\
+    \        y = (p.knob_d / 2) * math.sin(math.radians(a))\n        g = cq.Workplane('XY').center(x,\
+    \ y).circle(1.5).extrude(p.knob_h - 3).translate((0, 0, 3))\n        k = k.cut(g)\n\
+    \    pocket = cq.Workplane('XY').polygon(6, p.pocket_af * 1.1547).extrude(p.pocket_depth)\n\
+    \    k = k.cut(pocket)\n    bore = cq.Workplane('XY').circle(p.bolt_clear / 2).extrude(p.knob_h)\n\
+    \    k = k.cut(bore)\n    return k\n"
+  print_orientation: bottom face (nut opening) on the bed, knob top up
+  use_orientation: bottom face down, nut pocket at the base, bolt through the centre
+hardware:
+- id: nut1
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_pocket
+  part: knob
+  feature: hex nut pocket, 7.7 mm across flats, 4.7 mm deep, open at the bottom face
+  relation: contains
+  hardware: nut1
+  clearance_mm: 0.3
+  params:
+  - pocket_af
+  - pocket_depth
+  - nut_af
+  - nut_h
+  check:
+    method: coupon
+    ref: null
+    description: 'Print the pocket; the nut should press in by hand and stay in when
+      the knob is inverted. Not yet verified: the test print returned no readings.'
+- id: nut_retained
+  part: knob
+  feature: ceiling above the nut pocket
+  relation: contains
+  hardware: nut1
+  clearance_mm: null
+  params:
+  - knob_h
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Ceiling is 11.3 mm thick above the 4.7 mm pocket, so the nut cannot
+      be pushed out through the top.
+- id: bolt_bore
+  part: knob
+  feature: 5.5 mm bore through the full knob height
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_clear
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Bore clears the M5 bolt through the full height.
+manual:
+- n: '1'
+  text: Print the knob with the flat bottom face on the bed (nut opening down). No
+    supports needed.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Check the hex pocket with the nut: it should start by hand. If it is loose
+    or too tight, the pocket size is the thing to change.'
+  parts:
+  - knob
+  hardware:
+  - nut1
+  tool: null
+- n: '3'
+  text: Press the M5 hex nut into the hex pocket from the bottom face until it sits
+    flush. It is held by friction and the ceiling above it stops it going further
+    up. No glue.
+  parts:
+  - knob
+  hardware:
+  - nut1
+  tool: null
+- n: '4'
+  text: Thread the M5 bolt up through the knob's centre bore, into the nut, and out
+    through the top. Turn the knob by hand to tighten.
+  parts: []
+  hardware: []
+  tool: null

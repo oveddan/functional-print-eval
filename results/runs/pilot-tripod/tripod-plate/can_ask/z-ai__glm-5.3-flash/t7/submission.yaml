@@ -1,0 +1,291 @@
+task: tripod-plate
+note: 'Temporary quick-release plate (Arca-style 38 mm dovetail) + your salvaged metal
+  1/4"-20 bolt as the camera screw. The bolt hole is a 20 mm sliding slot so the plate
+  aligns with the camera''s socket without needing its exact position, and printed
+  shims absorb any gap if the bolt bottoms out. Print the coupon first to verify clamp
+  and bolt fit before committing to the full plate. PLA is a temporary stand-in for
+  the aluminium original: hand-tight only.'
+questions:
+- text: How deep is the camera's tripod socket (toothpick test)? Design assumes about
+    7 mm; printed shims cover anything shallower.
+  answer: null
+- text: How deep is the tripod clamp's groove? Design assumes about 8 mm; if it is
+    shallower, sand the plate's flat base slightly.
+  answer: null
+params:
+  bolt_shank_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam-mount bolt, length of threaded shank under the head
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam-mount bolt head, across
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam-mount bolt head height
+  shank_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 nominal major diameter
+  thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 pitch
+  clamp_plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes
+  flank_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: design
+    note: standard Arca-style dovetail angle; clamp described as 'jaws with angled
+      lips'
+  plate_top_width:
+    value: 37.5
+    unit: mm
+    kind: design
+    source: design
+    note: 38 minus 0.5 clearance so it drops into the groove and the knob can grip
+  plate_depth:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: dovetail depth; fits typical ~8 mm groove; sand the base if your groove
+      is shallower
+  plate_length:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_width:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: 6.35 shank + 0.85 clearance; head (15 mm) cannot pass, so the bolt is retained
+  slot_length:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: slide range to align the bolt with the camera socket without knowing its
+      exact position
+  pocket_width:
+    value: 16.4
+    unit: mm
+    kind: design
+    source: design
+    note: 15 mm head + 1.4 clearance
+  pocket_length:
+    value: 37
+    unit: mm
+    kind: design
+    source: design
+    note: head must be able to sit under the shank anywhere along the 20 mm slot
+  pocket_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: equals the 5 mm head height so the head sits flush with the plate underside
+      and nothing protrudes below the dovetail base
+  target_engagement:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: thread into camera = bolt_shank_len - (plate_depth - pocket_depth) = 7 mm;
+      camera sockets are typically 5.5-8 mm deep
+  coupon_length:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shim_d:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shim1_t:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: place between plate and camera if a gap appears
+  shim2_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: qr-plate
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    L = p.plate_length\n    Wt = p.plate_top_width\n    D\
+    \ = p.plate_depth\n    Wb = Wt - 2.0 * D  # groove-floor face, 45 deg flanks\n\
+    \n    body = (\n        cq.Workplane(\"XZ\")\n        .polyline([(-Wt / 2.0, 0.0),\
+    \ (Wt / 2.0, 0.0), (Wb / 2.0, D), (-Wb / 2.0, D)])\n        .close()\n       \
+    \ .extrude(L / 2.0, both=True)\n    )\n\n    # through slot for the bolt shank\
+    \ (head cannot pass through: bolt stays captive)\n    body = body.cut(\n     \
+    \   cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n        .slot2D(p.slot_length,\
+    \ p.slot_width, 0)\n        .extrude(D + 2.0)\n    )\n\n    # bolt-head pocket\
+    \ on the tripod-side face, so nothing protrudes below the dovetail base\n    body\
+    \ = body.cut(\n        cq.Workplane(\"XY\")\n        .workplane(offset=D - p.pocket_depth)\n\
+    \        .slot2D(p.pocket_length, p.pocket_width, 0)\n        .extrude(p.pocket_depth\
+    \ + 1.0)\n    )\n    return body"
+  print_orientation: camera face down on the bed (the wide 37.5 mm face, z=0); 45
+    deg flanks rise inwards, no supports needed
+  use_orientation: wide face up against the camera bottom, dovetail base down into
+    the clamp; slot running along the camera's long axis
+- id: fit-coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    L = p.coupon_length\n    Wt = p.plate_top_width\n    D\
+    \ = p.plate_depth\n    Wb = Wt - 2.0 * D\n\n    body = (\n        cq.Workplane(\"\
+    XZ\")\n        .polyline([(-Wt / 2.0, 0.0), (Wt / 2.0, 0.0), (Wb / 2.0, D), (-Wb\
+    \ / 2.0, D)])\n        .close()\n        .extrude(L / 2.0, both=True)\n    )\n\
+    \n    body = body.cut(\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n\
+    \        .slot2D(L - 4.0, p.slot_width, 0)\n        .extrude(D + 2.0)\n    )\n\
+    \n    body = body.cut(\n        cq.Workplane(\"XY\")\n        .workplane(offset=D\
+    \ - p.pocket_depth)\n        .circle(p.pocket_width / 2.0)\n        .extrude(p.pocket_depth\
+    \ + 1.0)\n    )\n    return body"
+  print_orientation: camera face down on the bed (wide face, z=0)
+  use_orientation: same as qr-plate, for fit testing only
+- id: shim-1mm
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    return cq.Workplane(\"XY\").circle(p.shim_d / 2.0).extrude(p.shim1_t)"
+  print_orientation: flat on the bed, z=0
+  use_orientation: laid on top of the plate under the camera
+- id: shim-2mm
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    return cq.Workplane(\"XY\").circle(p.shim_d / 2.0).extrude(p.shim2_t)"
+  print_orientation: flat on the bed, z=0
+  use_orientation: laid on top of the plate under the camera
+hardware:
+- id: webcam-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-mount
+  fastener: webcam-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: qr-plate
+    feature: head_pocket
+    role: head_seat
+  - part: qr-plate
+    feature: screw_slot
+    role: clearance
+  nut: null
+  external: camera 1/4"-20 tripod socket (the bolt threads into it)
+criteria:
+- id: dovetail-fit
+  part: qr-plate
+  feature: dovetail flanks
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_top_width
+  - plate_depth
+  - flank_angle
+  - clamp_plate_width
+  check:
+    method: coupon
+    ref: null
+    description: 'Drop the coupon into the tripod clamp and close the knob: it should
+      slide in with light resistance and grip firmly; sand the 45 deg flanks lightly
+      if too tight'
+- id: head-pocket-fit
+  part: qr-plate
+  feature: head_pocket
+  relation: seats
+  hardware: webcam-bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - pocket_width
+  - pocket_depth
+  check:
+    method: coupon
+    ref: webcam-bolt
+    description: Bolt head drops into the pocket and sits flush with the plate underside,
+      head fully inside the plate
+- id: shank-clearance
+  part: qr-plate
+  feature: screw_slot
+  relation: clears
+  hardware: webcam-bolt
+  clearance_mm: 0.85
+  params:
+  - slot_width
+  - shank_d
+  check:
+    method: coupon
+    ref: webcam-bolt
+    description: Threaded shank passes freely through the slot while the head is stopped
+      by it
+- id: socket-engagement
+  part: qr-plate
+  feature: screw_slot
+  relation: engages
+  hardware: webcam-bolt
+  clearance_mm: null
+  params:
+  - bolt_shank_len
+  - plate_depth
+  - pocket_depth
+  - shim1_t
+  - shim2_t
+  check:
+    method: measure
+    ref: webcam-bolt
+    description: After mounting, the camera should rest on the plate (or on a shim)
+      with no wobble; if the bolt bottoms out leaving a gap, add shims
+- id: shim-gap-fill
+  part: shim-1mm
+  feature: top face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - shim1_t
+  - shim2_t
+  - shim_d
+  check:
+    method: none
+    ref: null
+    description: If the bolt bottoms out before the camera seats on the plate, stack
+      shims (1 mm, 2 mm or both) between plate and camera to take up the gap
+manual: []

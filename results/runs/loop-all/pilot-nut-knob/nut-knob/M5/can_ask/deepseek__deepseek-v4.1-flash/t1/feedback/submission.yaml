@@ -1,0 +1,375 @@
+task: nut-knob/M5
+note: 'Revision after your test print. Your 8.00 mm coupon pocket — the one with no
+  designed interference at all — already came out "push to insert, tight" and held
+  the nut when you turned it over and shook it. That tells me the printer''s hex pockets
+  close up a little, so my 7.90 mm pocket was stacking 0.10 mm of designed interference
+  on top of that shrink, which is why you couldn''t get a feel for it (or the nut
+  in). I have moved the knob''s pocket to the value you proved works: 8.00 mm across
+  flats.
+
+
+  Nothing else changed. The knob is still one printed piece, ~30 mm across and 12
+  mm tall with 12 finger flutes, a 5.0 mm deep hex pocket (nut ends up 0.3 mm below
+  the rim, fully inside), a 45-degree lead-in at the mouth, and a 5.5 mm bolt hole
+  out the closed end so the M5 bolt passes through and out the far side while the
+  8.0 mm nut cannot follow.
+
+
+  The coupon is re-centred on 8.00 mm: left 8.10 (loose reference), middle 8.00 (identical
+  to the knob), right 7.90 (tight reference). If you print the knob without the coupon
+  that is fine now — you have already tested 8.00 on the previous coupon and it is
+  exactly what the knob uses.
+
+
+  Two things I still could not pin down without calipers: whether your nut reads the
+  full 8.0 mm across flats, and how much your printer shrinks the pocket. Both are
+  baked in as catalog/design values rather than measurements.'
+questions:
+- text: Was the 7.90 or 7.80 coupon pocket impossible to press in by hand, or did
+    you just not try it?
+  answer: null
+- text: If you get calipers later, what does your nut read across the flats?
+  answer: null
+params:
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: nominal major diameter of the M5 bolt the knob is made for.
+  bore_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt clearance hole through the closed end = bolt_d + 0.5 mm. At 5.5 mm
+      it stays well under the 8.0 mm nut across-flats, so the nut cannot be pushed
+      out the far side.
+  coupon_af_fit:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: middle coupon pocket; identical to the knob's pocket_af. This is the pocket
+      you tested as a tight hand push that retained the nut inverted.
+  coupon_af_loose:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: left coupon pocket, loose reference (0.10 mm clearance).
+  coupon_af_tight:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: right coupon pocket, tight reference (the value that was too tight to judge
+      on the first print).
+  floor_t:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: thickness of the closed end that carries the 5.5 mm bolt hole and stops
+      the nut.
+  flute_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: radius of each fluting cutter; cuts 2.5 mm deep scallops into the 30 mm
+      rim.
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: knob outside diameter, the requested ~30 mm across.
+  knob_h:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: = floor_t + pocket_depth. Overall knob height, sized for a comfortable hand
+      grip.
+  n_flutes:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: number of finger flutes around the rim.
+  nut_ac:
+    value: 9.24
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: across the corners = nut_af / cos(30 deg) = 8.0 / 0.8660. Derived from the
+      catalog across-flats; used to size the pocket geometry.
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut, distance across the flats (s = 8 mm). Not measured;
+      catalog value used.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height. Not measured.
+  pocket_af:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: measured
+    note: 'changed from 7.90 to 8.00 after the test print: the 8.00 mm coupon pocket
+      (no designed interference) already felt like a firm hand push and retained the
+      nut when inverted, so it is used directly for the knob. Source is your reported
+      result on the coupon.'
+  pocket_depth:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: = nut_h + 0.3 mm, so the nut finishes 0.3 mm below the rim and is fully
+      inside.
+  pocket_lead:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree lead-in at the pocket mouth; the mouth opens to 10.00 mm across
+      flats to start the nut squarely.
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed, black), 0.4 mm nozzle, 0.2 mm layers
+  code: "import math\n\ndef _hex_pts(af):\n    ac = af / math.cos(math.pi / 6.0)\n\
+    \    r = ac / 2.0\n    return [(r * math.cos(math.radians(60.0 * i)),\n      \
+    \       r * math.sin(math.radians(60.0 * i))) for i in range(6)]\n\ndef _hex_wire(af,\
+    \ z):\n    return (cq.Workplane(\"XY\").polyline(_hex_pts(af)).close()\n     \
+    \       .translate(cq.Vector(0.0, 0.0, z)).val())\n\ndef build(p):\n    R = p.knob_d\
+    \ / 2.0\n    H = p.knob_h\n\n    # body\n    body = cq.Workplane(\"XY\").circle(R).extrude(H)\n\
+    \n    # finger flutes around the rim\n    n = int(round(p.n_flutes))\n    for\
+    \ i in range(n):\n        a = 2.0 * math.pi * i / n\n        cut = (cq.Workplane(\"\
+    XY\")\n               .center(R * math.cos(a), R * math.sin(a))\n            \
+    \   .circle(p.flute_r)\n               .extrude(H + 2.0)\n               .translate(cq.Vector(0.0,\
+    \ 0.0, -1.0)))\n        body = body.cut(cut)\n\n    # bolt clearance hole out\
+    \ the closed end (z = 0)\n    body = body.cut(cq.Workplane(\"XY\").circle(p.bore_d\
+    \ / 2.0)\n                    .extrude(p.floor_t + 2.0)\n                    .translate(cq.Vector(0.0,\
+    \ 0.0, -1.0)))\n\n    # hex nut pocket, opening at z = H, floor at z = floor_t,\
+    \ with 45 deg lead-in\n    pocket = cq.Solid.makeLoft(\n        [_hex_wire(p.pocket_af\
+    \ + 2.0 * p.pocket_lead, H + 1.0),\n         _hex_wire(p.pocket_af, H - p.pocket_lead),\n\
+    \         _hex_wire(p.pocket_af, p.floor_t)],\n        ruled=True)\n    body =\
+    \ body.cut(pocket)\n\n    return body\n"
+  print_orientation: 'As modelled, z = 0 is the bed: the closed end (the end with
+    the 5.5 mm bolt hole) lies on the bed and the hex nut pocket opens upward. All
+    walls are vertical, so no supports and no bridges.'
+  use_orientation: Hex nut pocket opening faces down (toward the part the bolt comes
+    out of). The nut is pressed in from that opening; the M5 bolt enters the pocket
+    from the same side, threads through the captured nut and exits the 5.5 mm hole
+    in the closed end.
+- id: coupon
+  role: coupon
+  material: PLA (high-speed, black), 0.4 mm nozzle, 0.2 mm layers
+  code: "import math\n\ndef _hex_pts(af):\n    ac = af / math.cos(math.pi / 6.0)\n\
+    \    r = ac / 2.0\n    return [(r * math.cos(math.radians(60.0 * i)),\n      \
+    \       r * math.sin(math.radians(60.0 * i))) for i in range(6)]\n\ndef _hex_wire(af,\
+    \ z):\n    return (cq.Workplane(\"XY\").polyline(_hex_pts(af)).close()\n     \
+    \       .translate(cq.Vector(0.0, 0.0, z)).val())\n\ndef build(p):\n    fl = 2.5\
+    \                        # pocket floor thickness\n    pd = p.pocket_depth   \
+    \          # same pocket depth as the knob\n    H = fl + pd\n\n    plate = cq.Workplane(\"\
+    XY\").box(60.0, 26.0, H, centered=(True, True, False))\n\n    afs = [p.coupon_af_loose,\
+    \ p.coupon_af_fit, p.coupon_af_tight]\n    for i, af in enumerate(afs):\n    \
+    \    x = (i - 1) * 19.0\n\n        pocket = cq.Solid.makeLoft(\n            [_hex_wire(af\
+    \ + 2.0 * p.pocket_lead, H + 1.0),\n             _hex_wire(af, H - p.pocket_lead),\n\
+    \             _hex_wire(af, fl)],\n            ruled=True).translate(cq.Vector(x,\
+    \ 0.0, 0.0))\n        plate = plate.cut(pocket)\n\n        plate = plate.cut(cq.Workplane(\"\
+    XY\").center(x, 0.0)\n                          .circle(p.bore_d / 2.0).extrude(fl\
+    \ + 2.0)\n                          .translate(cq.Vector(0.0, 0.0, -1.0)))\n\n\
+    \    return plate\n"
+  print_orientation: 'As modelled, z = 0 is the bed: the solid face lies on the bed
+    and the three hex pockets open upward. Same pocket orientation as the knob, so
+    the fit it shows is the fit the knob will give.'
+  use_orientation: Fit test only. Press the nut into each pocket, then turn it pocket-down
+    and shake; the middle pocket is identical to the knob's pocket and is the one
+    to judge.
+hardware:
+- id: nutM5
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: j_nut
+  fastener: nutM5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: hex nut pocket, 8.00 mm across flats x 5.0 mm deep
+    role: nut_pocket
+  nut: null
+  external: null
+- id: j_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: 5.5 mm bolt clearance hole through the closed end
+    role: clearance
+  nut: null
+  external: threads into the captured ISO 4032 M5 nut sitting in the knob's pocket
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket (across flats 8.00, depth 5.0)
+  relation: contains
+  hardware: nutM5
+  clearance_mm: null
+  params:
+  - pocket_af
+  - pocket_depth
+  - nut_af
+  - nut_h
+  check:
+    method: coupon
+    ref: coupon
+    description: The 4.7 mm tall nut sits in a 5.0 mm deep pocket, so it ends up 0.3
+      mm below the mouth and is fully inside the knob.
+- id: c2
+  part: knob
+  feature: hex nut pocket flats
+  relation: engages
+  hardware: nutM5
+  clearance_mm: 0.0
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: coupon
+    description: 'Nominal pocket size equals the nut across-flats; the press comes
+      from the printed pocket closing up slightly. Confirmed on the previous print:
+      the same-size coupon pocket pushed in by hand and held the nut when inverted,
+      which is the retention this knob needs. No glue.'
+- id: c3
+  part: knob
+  feature: pocket floor at z = 7.0 with the 5.5 mm bolt hole
+  relation: supports
+  hardware: nutM5
+  clearance_mm: null
+  params:
+  - floor_t
+  - bore_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The floor stops the nut at the right depth, and the 5.5 mm hole is
+      smaller than the 8.0 mm across-flats nut, so the nut cannot be pushed out through
+      the far side.
+- id: c4
+  part: knob
+  feature: 5.5 mm bolt clearance hole through the closed end
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.5
+  params:
+  - bore_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Your M5 bolt should slide/turn freely through the 5.5 mm hole and
+      stick out of the closed end.
+- id: c5
+  part: coupon
+  feature: middle hex pocket, 8.00 mm across flats
+  relation: engages
+  hardware: nutM5
+  clearance_mm: 0.0
+  params:
+  - coupon_af_fit
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: coupon
+    description: The middle pocket matches the knob's pocket_af exactly and is the
+      pocket you already tested as a tight hand push that retained the nut; 8.10 and
+      7.90 bracket it as loose and tight references.
+manual:
+- n: '1'
+  text: 'You have already tested the key number: the 8.00 mm pocket on the first coupon
+    pushed in by hand and held the nut when inverted. The knob now uses exactly that
+    pocket, so you can go straight to printing the knob. (The coupon is reprinted
+    only if you want the loose/tight brackets again: left 8.10, middle 8.00, right
+    7.90.)'
+  parts:
+  - coupon
+  hardware:
+  - nutM5
+  tool: null
+- n: '2'
+  text: 'Print the knob as modelled: the closed end (the small 5.5 mm hole) on the
+    bed and the hex pocket opening upward. No supports and no bridges are needed.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M5 hex nut into the knob's pocket, hex-to-hex and flat side first,
+    until it rests on the pocket floor. Firm hand push, no tools. It should finish
+    about 0.3 mm below the rim — fully inside the knob. No glue.
+  parts:
+  - knob
+  hardware:
+  - nutM5
+  tool: null
+- n: '4'
+  text: Turn the knob upside down (pocket facing the floor) and give it a shake. The
+    nut must stay in.
+  parts:
+  - knob
+  hardware:
+  - nutM5
+  tool: null
+- n: '5'
+  text: 'Look down the 5.5 mm hole in the closed end: you should see the back of the
+    nut. The nut is wider than the hole, so it cannot be pushed out that way.'
+  parts:
+  - knob
+  hardware:
+  - nutM5
+  tool: null
+- n: '6'
+  text: Start your M5 bolt into the nut from the pocket side and keep turning. The
+    bolt runs through the nut and out of the 5.5 mm hole in the closed end.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  tool: null
+- n: '7'
+  text: Fit the knob onto your bolt and tighten by hand on the fluted rim. No tools.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  tool: null

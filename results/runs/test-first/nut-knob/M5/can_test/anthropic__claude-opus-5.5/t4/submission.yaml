@@ -1,0 +1,145 @@
+task: nut-knob/M5
+note: The pocket is 8.00 mm across the flats, which held the nut on the coupon. If
+  the nut ever gets loose, reprint with pocket_af = 7.95.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  pocket_af:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'tested on coupon: tight push-in, nut held when upside down and shaken'
+  pocket_depth:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.3, so the nut sits fully below the top face
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: M5 clearance, smaller than the nut so it can't push through
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: radius of finger scallops
+  n_grips:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R=p.knob_d/2\n    k=cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    pts=[(R*math.cos(2*math.pi*i/p.n_grips), R*math.sin(2*math.pi*i/p.n_grips))\
+    \ for i in range(int(p.n_grips))]\n    k=k.cut(cq.Workplane('XY').pushPoints(pts).circle(p.grip_r).extrude(p.knob_h))\n\
+    \    k=k.faces('>Z').edges().chamfer(0.8)\n    k=k.faces('<Z').edges().chamfer(0.4)\n\
+    \    d=p.pocket_af/0.8660254\n    k=k.cut(cq.Workplane('XY').workplane(offset=p.knob_h-p.pocket_depth).polygon(6,d).extrude(p.pocket_depth+1))\n\
+    \    k=k.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(p.knob_h))\n\
+    \    return k\n"
+  print_orientation: flat bottom face on bed, hex pocket opening upward
+  use_orientation: pocket side faces away from the clamped work; bolt enters through
+    the bottom face, goes through the nut and out of the pocket side
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_fit
+  part: knob
+  feature: hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: '8.00 mm pocket: tight push fit, held upside down'
+- id: nut_recessed
+  part: knob
+  feature: hex pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.3
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: none
+    ref: null
+    description: nut top sits 0.3 mm below knob face
+- id: nut_stop
+  part: knob
+  feature: pocket floor with bolt hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: 5.5 mm hole is smaller than the nut, so the nut can't go through
+manual:
+- n: '1'
+  text: Print the knob flat on its bottom face, with the hex pocket facing up. It
+    needs no supports. Use 4 walls and 40% infill or more so the grip and the pocket
+    are strong.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Line up the M5 nut's flats with the hex pocket and press it in with your thumb,
+    or push it against the table. Keep going until it is below the top face. It's
+    a tight fit, like the 8.00 mm pocket on your test piece.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down and shake it to check the nut stays in. Then thread
+    your M5 bolt in from the bottom face, through the nut, and out past the pocket
+    side.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

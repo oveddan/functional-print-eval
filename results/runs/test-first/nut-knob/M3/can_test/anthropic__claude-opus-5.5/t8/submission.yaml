@@ -1,0 +1,150 @@
+task: nut-knob/M3
+note: If the nut won't go in by hand, raise pocket_fit to 0.15. If it falls out, lower
+  it to 0.05. Testing pockets 2 and 3 on the coupon you already printed would settle
+  this.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  pocket_fit:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'Pocket is 5.60 across flats. The 5.45 test pocket was too tight; 5.55 to
+      5.85 were untested, so 5.60 is a judgement call: just above the fit that failed'
+  pocket_extra_depth:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits 0.4 below the face
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_n:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R=p.knob_d/2.0\n    k=cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    for i in range(int(p.scallop_n)):\n        a=2*math.pi*i/p.scallop_n\n  \
+    \      k=k.cut(cq.Workplane('XY').center((R+0.8)*math.cos(a),(R+0.8)*math.sin(a)).circle(p.scallop_r).extrude(p.knob_h))\n\
+    \    k=k.cut(cq.Workplane('XY').circle(p.bolt_clear_d/2.0).extrude(p.knob_h))\n\
+    \    depth=p.nut_h+p.pocket_extra_depth\n    d=(p.nut_af+p.pocket_fit)/math.cos(math.radians(30))\n\
+    \    k=k.cut(cq.Workplane('XY').workplane(offset=p.knob_h-depth).polygon(6,d).extrude(depth))\n\
+    \    lead=cq.Workplane('XY').workplane(offset=p.knob_h-0.4).polygon(6,d).workplane(offset=0.4).polygon(6,d+0.6).loft()\n\
+    \    k=k.cut(lead)\n    return k\n"
+  print_orientation: Closed (outer) face on the bed, nut pocket open facing up. The
+    pocket's floor is a ledge that faces up, so it needs no bridge and no supports
+  use_orientation: The pocket face goes against the work and the closed face points
+    outward, so tightening pulls the nut against the solid floor
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_retained
+  part: knob
+  feature: hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_fit
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: The nut goes in by thumb pressure and stays in when the knob is turned
+      upside down
+- id: nut_recessed
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_extra_depth
+  check:
+    method: measure
+    ref: null
+    description: The nut's face sits about 0.4 mm below the knob face
+- id: nut_stopped
+  part: knob
+  feature: pocket floor with 3.4 hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The 3.4 mm hole is smaller than the nut's 5.5 mm across-flats, so
+      the nut can't go through the floor
+manual:
+- n: '1'
+  text: Print the knob with the pocket facing up, at 0.2 mm layers, with no supports.
+    Use 4 walls so there is solid plastic around the pocket.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Line the M3 nut up with the hex pocket and press it in with your thumb until
+    it bottoms out. It should sit just below the face. Turn the knob upside down to
+    check it stays.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Put the pocket face against the work, thread the knob onto your M3 bolt and
+    tighten by hand. The bolt passes through the nut and out through the hole in the
+    closed face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

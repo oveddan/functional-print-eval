@@ -1,0 +1,251 @@
+task: tripod-plate
+note: This is unchanged from the first version. You said the plate fits the clamp
+  and the bolt head fits its recess, so I made no changes. I couldn't confirm anything
+  from the coupon result. The one thing still unchecked is whether the bolt's 5.5
+  mm of protrusion suits your camera's socket depth. If the camera won't sit flat
+  on the plate, tell me and I'll change the plate thickness.
+questions:
+- text: What angle are the tripod clamp's jaw faces, and how deep is the slot?
+  answer: No answer. I assumed 45 degrees with a 3 mm sloped edge. The printed plate
+    fit your clamp, so the assumption worked.
+- text: How deep is the camera's 1/4-20 socket?
+  answer: No answer. The bolt sticks out about 5.5 mm.
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp accepts (Arca-Swiss style)
+  fit_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: total width taken off the plate for an easy slide fit
+  plate_l:
+    value: 55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: chosen so the 10 mm bolt sticks out only ~5.5 mm above the plate
+  bevel_h:
+    value: 3
+    unit: mm
+    kind: world
+    source: guessed
+    note: height of 45 degree sloped edge; clamp jaw geometry not measured. The printed
+      plate fit the clamp, so this is confirmed in practice
+  bevel_in:
+    value: 3
+    unit: mm
+    kind: world
+    source: guessed
+    note: horizontal inset of the slope (45 deg). The printed plate fit the clamp
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt head across, approx
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: webcam bolt head height, approx
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under head, approx
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 nominal major diameter
+  shank_clear:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_clear:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_recess_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: head_h plus 0.5 mm
+  slot_travel:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: how far the bolt can slide along the plate to centre over the camera socket
+  coupon_l:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cam_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: not measured; typical 1/4-20 sockets are about 5-6 mm. Bolt sticks out about
+      bolt_len minus floor thickness = 5.5 mm
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = p.plate_w - p.fit_clear\n    hw = w/2\n    prof =\
+    \ [(-hw,0),(hw,0),(hw,p.plate_t-p.bevel_h),(hw-p.bevel_in,p.plate_t),(-hw+p.bevel_in,p.plate_t),(-hw,p.plate_t-p.bevel_h)]\n\
+    \    body = cq.Workplane('XZ').polyline(prof).close().extrude(p.plate_l).translate((0,p.plate_l/2,0))\n\
+    \    floor_t = p.plate_t - p.head_recess_depth\n    sw = p.bolt_d + p.shank_clear\n\
+    \    slot = cq.Workplane('XY').slot2D(sw + p.slot_travel, sw, 90).extrude(floor_t\
+    \ + 0.01)\n    hw2 = p.head_d + p.head_clear\n    hrec = cq.Workplane('XY').workplane(offset=floor_t).slot2D(hw2\
+    \ + p.slot_travel, hw2, 90).extrude(p.head_recess_depth + 1)\n    return body.cut(slot).cut(hrec)\n"
+  print_orientation: camera-side top face flat on the bed (z=0); the sloped dovetail
+    edges and bolt-head recess face up
+  use_orientation: 'flipped over: camera sits on the flat face, dovetail edges down
+    in the tripod clamp'
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w = p.plate_w - p.fit_clear\n    hw = w/2\n    prof =\
+    \ [(-hw,0),(hw,0),(hw,p.plate_t-p.bevel_h),(hw-p.bevel_in,p.plate_t),(-hw+p.bevel_in,p.plate_t),(-hw,p.plate_t-p.bevel_h)]\n\
+    \    return cq.Workplane('XZ').polyline(prof).close().extrude(p.coupon_l).translate((0,p.coupon_l/2,0))\n"
+  print_orientation: flat face on the bed, same as the plate
+  use_orientation: slid into the tripod clamp to test the fit
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: head_recess
+    role: head_seat
+  - part: plate
+    feature: bolt_slot
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: c-dovetail
+  part: coupon
+  feature: sloped edges
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - fit_clear
+  - bevel_h
+  - bevel_in
+  check:
+    method: coupon
+    ref: coupon
+    description: Slide the coupon into the tripod clamp and tighten. It should slide
+      in with light force and be gripped by the jaws without wobble.
+- id: c-head
+  part: plate
+  feature: head_recess
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  - head_clear
+  - head_recess_depth
+  check:
+    method: measure
+    ref: null
+    description: Bolt head drops fully into the recess below the clamp-side face.
+- id: c-shank
+  part: plate
+  feature: bolt_slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.35
+  params:
+  - bolt_d
+  - shank_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt shank slides freely along the slot.
+- id: c-protrusion
+  part: plate
+  feature: camera face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - plate_t
+  - head_recess_depth
+  - cam_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: About 5.5 mm of bolt thread stands above the camera face. It must
+      be no longer than the camera socket is deep, so the camera sits flat.
+manual:
+- n: '1'
+  text: Print the plate with the flat camera face on the bed. Use 4 or more walls
+    and 25% or more infill. The clamp squeezes the sloped edges, so the walls matter.
+    The coupon is optional now, since the plate has already fit your clamp.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the webcam bolt into the recess from the sloped side. The head sits on
+    the floor of the recess and the thread comes up through the slot.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Turn the camera onto the bolt by hand, as if you were screwing it onto the
+    tripod. Slide the bolt along the slot first if you need to centre the camera.
+    Tighten until the camera sits flat on the plate. If the camera stops with a gap,
+    the socket is shallower than the bolt sticks out. Stop there and tell me.
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Slide the plate into the tripod clamp from the end and tighten the clamp.
+    Keep a hand on the camera the first time, because this is a temporary print.
+  parts: []
+  hardware: []
+  tool: null

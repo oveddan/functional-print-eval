@@ -1,0 +1,203 @@
+task: nut-knob/M5
+note: One-piece, 30 mm hand knob using the tested 8.00 mm across-flats pocket. Your
+  coupon required a firm hand push and retained the nut when inverted and shaken.
+  The pocket opens upward during printing; a solid bottom shoulder traps the nut while
+  a central hole lets an M5 bolt pass through. Friction retention is based on your
+  tested printer/material combination.
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats; nominal-size pocket validated by print test.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal bolt diameter.
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_h:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_af_extra:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_cut_radius:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_center_radius:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    h = p.floor + p.pocket_depth\n    body\
+    \ = cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n    for i in range(int(p.grip_count)):\n\
+    \        a = 2*math.pi*i/p.grip_count\n        x = p.grip_cut_center_radius*math.cos(a)\n\
+    \        y = p.grip_cut_center_radius*math.sin(a)\n        cutter = cq.Workplane('XY').center(x,y).circle(p.grip_cut_radius).extrude(h)\n\
+    \        body = body.cut(cutter)\n    bore = cq.Workplane('XY').circle(p.bore_d/2).extrude(h)\n\
+    \    body = body.cut(bore)\n    hex_d = p.nut_af/(math.sqrt(3)/2)\n    pocket\
+    \ = cq.Workplane('XY').workplane(offset=p.floor).polygon(6,hex_d).extrude(p.pocket_depth)\n\
+    \    body = body.cut(pocket)\n    lead = (cq.Workplane('XY').workplane(offset=h-p.lead_h)\n\
+    \            .polygon(6,hex_d).workplane(offset=p.lead_h)\n            .polygon(6,(p.nut_af+p.lead_af_extra)/(math.sqrt(3)/2)).loft())\n\
+    \    return body.cut(lead)"
+  print_orientation: Flat face with the small round bolt hole on the bed at z=0; hexagonal
+    nut pocket faces upward. No supports.
+  use_orientation: Nut enters the upward-facing hex pocket and seats on its bottom
+    shoulder. Bolt follows the central axis and can exit through the opposite round
+    hole.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: hand_press_retention
+  part: hand_knob
+  feature: 8.00 mm across-flats hex pocket with lead-in
+  relation: engages
+  hardware: m5_nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - lead_h
+  - lead_af_extra
+  check:
+    method: coupon
+    ref: null
+    description: 'Completed nut_fit_coupon test: 8.00 mm pocket needed a push to insert,
+      was tight, and retained the nut when inverted and shaken. Final pocket uses
+      the same cross-section, floor, depth and lead-in.'
+- id: nut_recess
+  part: hand_knob
+  feature: 5 mm deep pocket above the floor
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: 0.3
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: After seating, verify the entire nut lies below the knob's upper
+      face; nominal recess is 0.3 mm.
+- id: nut_stop
+  part: hand_knob
+  feature: 2 mm bottom shoulder surrounding the 5.6 mm bolt bore
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - floor
+  - bore_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Check that the nut sits flat on the shoulder and cannot pass through
+      the round exit hole.
+- id: bolt_passage
+  part: hand_knob
+  feature: Central through-bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.6
+  params:
+  - bore_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Verify an M5 bolt passes freely through the printed round bore and
+      threads through the seated nut.
+manual:
+- n: '1'
+  text: Print hand_knob in the stated orientation, at 0.2 mm layer height with a 0.4
+    mm nozzle. Use 4 walls, 5 top and bottom layers, and 40% infill. Do not enable
+    supports. Keep the nut-pocket dimensions and scale unchanged.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove any brim or loose strands. Align the M5 nut with the hex pocket, then
+    press it in squarely by hand until it rests on the bottom shoulder. Its top should
+    be about 0.3 mm below the knob face. Do not hammer it in; if it will not seat
+    by hand, stop rather than cracking the knob.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down and shake it over a tray. The nut must stay seated,
+    as it did in your 8.00 mm coupon. If it falls out, do not rely on this print for
+    captive retention.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '4'
+  text: Thread the knob onto your M5 bolt by hand. The bolt passes through the nut
+    and can protrude through the opposite round hole. Confirm free thread travel without
+    cross-threading. Use for light hand tightening only; do not use pliers or a wrench
+    on the knob. When clamping against a surface, place the closed, round-hole face
+    toward that surface.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null

@@ -1,0 +1,427 @@
+task: nut-knob/M3
+note: 'Single printed part: a Ø20 x 10 mm scalloped hand knob with a captive M3 hex
+  nut. The nut presses into a 5.60 mm across-flats socket in the bottom face, with
+  six 1.0 x 0.15 mm crush ribs giving about 0.10 mm/side interference on a nominal
+  ISO 4032 M3 nut (5.5 mm). The socket is 3.2 mm deep, so the nut bottoms out on the
+  roof and sits 0.8 mm inside the mouth - fully enclosed, and unable to pass the roof,
+  which is solid except for a Ø3.4 mm bolt clearance hole. The bolt threads through
+  the nut and leaves through that hole into a Ø12.5 x 3 mm dish in the top face. Prints
+  bottom-face-down with no supports. Because the nut''s across-flats could not be
+  measured (calipers declined) and the standard range is 5.32-5.50 mm, a three-socket
+  coupon is included: the middle socket matches the knob, and the manual says which
+  way to nudge rib_h or pocket_af if your nut or your printer''s holes differ.'
+questions:
+- text: Your M3 nut's width across flats could not be measured, so I designed to the
+    ISO 4032 nominal 5.5 mm (the standard allows about 5.32-5.50). If your nut is
+    at the small end, the middle coupon socket will feel loose - re-slice the knob
+    with rib_h = 0.20 (or pocket_af = 5.50). If it is a snug nut and the print runs
+    tight, go the other way. What did your nut actually measure?
+  answer: null
+- text: The knob is 10 mm tall with a 3.8 mm roof over the nut, so the bolt needs
+    roughly 4 mm of thread past the nut to emerge from the top. How long is your M3
+    bolt, and does it clear that?
+  answer: null
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut, width across flats (nominal). Not measured - the standard
+      allows roughly 5.32-5.50, which is why the fit is verified with the coupon.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut thickness.
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt shank diameter.
+  knob_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: User asked for about 20 mm across.
+  knob_h:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height; the grip length.
+  pocket_af:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Drawn hex socket flat-to-flat = nut_af + 0.10 mm allowance for print variation.
+      Tune +/-0.10 with the coupon.
+  rib_h:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Crush-rib protrusion on each flat. Effective across-flats = pocket_af -
+      2*rib_h = 5.30 mm, i.e. 0.10 mm/side interference on a nominal nut.
+  rib_w:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Rib width along each flat.
+  seat_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h (2.4) + 0.8 recess, so the nut ends up fully inside and stops against
+      the roof.
+  mouth_cham:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45 degree countersink lead-in at the socket mouth.
+  roof_hole_d:
+    value: 3.4
+    unit: mm
+    kind: hardware
+    source: design
+    note: Bolt clearance hole = bolt_d (3.0) + 0.4. Smaller than the nut, so the nut
+      cannot pass it.
+  dish_d:
+    value: 12.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of the dished top face.
+  dish_depth:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the dish; leaves 3.8 mm of roof over the nut.
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger scallops.
+  grip_pos:
+    value: 17.0
+    unit: mm
+    kind: design
+    source: design
+    note: Scallop cutter centre distance from the axis.
+  grip_dia:
+    value: 16.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'Scallop cutter diameter: gives 1.0 mm deep grooves.'
+  coupon_h:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon block height; 4.2 mm of floor under each socket.
+  rib_h_lo:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon's loose socket (left).
+  rib_h_hi:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon's tight socket (right).
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\n\ndef _hexpts(af, ang0=30.0):\n   \
+    \ # hexagon whose flat normals are at 0, 60, ... 300 deg\n    rc = (af / 2.0)\
+    \ / math.cos(math.radians(30.0))\n    return [(rc * math.cos(math.radians(ang0\
+    \ + 60.0 * k)),\n             rc * math.sin(math.radians(ang0 + 60.0 * k))) for\
+    \ k in range(6)]\n\n\ndef _seat(p, af, rib_h, z0):\n    # hex nut socket with\
+    \ six crush ribs on the flats, from z0 upward\n    seat = (cq.Workplane(\"XY\"\
+    ).polyline(_hexpts(af)).close()\n            .extrude(p.seat_depth).translate((0.0,\
+    \ 0.0, z0)))\n    for k in range(6):\n        rib = (cq.Workplane(\"XY\")\n  \
+    \             .box(3.0, p.rib_w, p.seat_depth + 0.02, centered=(False, True, False))\n\
+    \               .translate((af / 2.0 - rib_h, 0.0, z0))\n               .rotate((0.0,\
+    \ 0.0, 0.0), (0.0, 0.0, 1.0), 60.0 * k))\n        seat = seat.cut(rib)\n    return\
+    \ seat\n\n\ndef _cone(r0, z_base):\n    # 45 deg cone, base disc at z_base, apex\
+    \ up\n    w = (cq.Workplane(\"XZ\").moveTo(0.0, 0.0).lineTo(r0, 0.0)\n       \
+    \  .lineTo(0.0, r0).close())\n    return w.revolve(360.0, (0.0, 0.0, 0.0), (0.0,\
+    \ 0.0, 1.0)).translate((0.0, 0.0, z_base))\n\n\ndef build(p):\n    body = cq.Workplane(\"\
+    XY\").circle(p.knob_d / 2.0).extrude(p.knob_h)\n\n    # finger scallops in the\
+    \ grip\n    n = int(p.grip_count)\n    for i in range(n):\n        a = 2.0 * math.pi\
+    \ * i / n\n        cut = (cq.Workplane(\"XY\")\n               .center(p.grip_pos\
+    \ * math.cos(a), p.grip_pos * math.sin(a))\n               .circle(p.grip_dia\
+    \ / 2.0)\n               .extrude(p.knob_h + 2.0)\n               .translate((0.0,\
+    \ 0.0, -1.0)))\n        body = body.cut(cut)\n\n    # hex nut socket with crush\
+    \ ribs, opening in the bottom face\n    body = body.cut(_seat(p, p.pocket_af,\
+    \ p.rib_h, 0.0))\n\n    # lead-in countersink at the mouth\n    r0 = (p.pocket_af\
+    \ / 2.0) / math.cos(math.radians(30.0)) + p.mouth_cham\n    body = body.cut(_cone(r0,\
+    \ 0.0))\n\n    # bolt clearance hole through the roof\n    body = body.cut(cq.Workplane(\"\
+    XY\").circle(p.roof_hole_d / 2.0)\n                    .extrude(p.knob_h + 2.0)\n\
+    \                    .translate((0.0, 0.0, -1.0)))\n\n    # dished top face\n\
+    \    body = body.cut(cq.Workplane(\"XY\").circle(p.dish_d / 2.0)\n           \
+    \         .extrude(p.dish_depth + 1.0)\n                    .translate((0.0, 0.0,\
+    \ p.knob_h - p.dish_depth)))\n\n    return body\n"
+  print_orientation: z = 0 is the plain bottom face (the mouth of the hex socket).
+    Knob axis vertical, dished top face up, scallops vertical. No supports, no bridges
+    wider than the 3.4 mm bolt hole.
+  use_orientation: Bottom face (socket mouth) against the workpiece, dished top face
+    away from it. The bolt shank enters through the socket mouth and its threaded
+    tip leaves through the 3.4 mm hole in the dished top. The scalloped rim is the
+    hand grip.
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\n\ndef _hexpts(af, ang0=30.0):\n   \
+    \ rc = (af / 2.0) / math.cos(math.radians(30.0))\n    return [(rc * math.cos(math.radians(ang0\
+    \ + 60.0 * k)),\n             rc * math.sin(math.radians(ang0 + 60.0 * k))) for\
+    \ k in range(6)]\n\n\ndef _seat(p, af, rib_h, z0):\n    seat = (cq.Workplane(\"\
+    XY\").polyline(_hexpts(af)).close()\n            .extrude(p.seat_depth).translate((0.0,\
+    \ 0.0, z0)))\n    for k in range(6):\n        rib = (cq.Workplane(\"XY\")\n  \
+    \             .box(3.0, p.rib_w, p.seat_depth + 0.02, centered=(False, True, False))\n\
+    \               .translate((af / 2.0 - rib_h, 0.0, z0))\n               .rotate((0.0,\
+    \ 0.0, 0.0), (0.0, 0.0, 1.0), 60.0 * k))\n        seat = seat.cut(rib)\n    return\
+    \ seat\n\n\ndef _cone_down(r0, z_base):\n    # 45 deg cone, base disc at z_base,\
+    \ apex down\n    w = (cq.Workplane(\"XZ\").moveTo(0.0, 0.0).lineTo(r0, 0.0)\n\
+    \         .lineTo(0.0, -r0).close())\n    return w.revolve(360.0, (0.0, 0.0, 0.0),\
+    \ (0.0, 0.0, 1.0)).translate((0.0, 0.0, z_base))\n\n\ndef build(p):\n    plate\
+    \ = cq.Workplane(\"XY\").box(44.0, 16.0, p.coupon_h,\n                       \
+    \              centered=(True, True, False))\n    z_bot = p.coupon_h - p.mouth_cham\
+    \ - p.seat_depth\n    r0 = (p.pocket_af / 2.0) / math.cos(math.radians(30.0))\
+    \ + p.mouth_cham\n\n    ribs = [p.rib_h_lo, p.rib_h, p.rib_h_hi]\n    for i in\
+    \ range(3):\n        cx = -13.0 + 13.0 * i\n        plate = plate.cut(_seat(p,\
+    \ p.pocket_af, ribs[i], z_bot)\n                          .translate((cx, 0.0,\
+    \ 0.0)))\n        plate = plate.cut(_cone_down(r0, p.coupon_h)\n             \
+    \             .translate((cx, 0.0, 0.0)))\n        plate = plate.cut(cq.Workplane(\"\
+    XY\").circle(p.roof_hole_d / 2.0)\n                          .extrude(p.coupon_h\
+    \ + 2.0)\n                          .translate((cx, 0.0, -1.0)))\n    return plate\n"
+  print_orientation: z = 0 is the block's flat bottom face; the three socket mouths
+    face up. No supports.
+  use_orientation: Lies flat, sockets up. Left socket = 0.10 mm ribs (loose), middle
+    = 0.15 mm (identical to the knob), right = 0.20 mm (tight).
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: j1
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -3.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: roof clearance hole
+    role: clearance
+  - part: knob
+    feature: hex nut socket
+    role: nut_pocket
+  nut: nut
+  external: null
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut socket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: coupon
+    description: 'The socket (5.60 mm across flats, 0.15 mm crush ribs -> 5.30 mm
+      effective) holds a nominal 5.5 mm nut with about 0.10 mm/side interference.
+      Press it into the coupon''s middle socket: it must go in with thumb pressure.'
+- id: c2
+  part: knob
+  feature: crush ribs
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - rib_h
+  - rib_w
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: coupon
+    description: 'Six 1.0 x 0.15 mm ribs crush against the nut''s flats and grip it.
+      Invert the coupon and shake: the nut must stay in. Compare the 0.10 and 0.20
+      mm sockets to decide which way to tune rib_h.'
+- id: c3
+  part: knob
+  feature: socket ceiling (roof underside) above the nut seat
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - seat_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: 'Socket depth 3.2 mm vs nut 2.4 mm: the nut bottoms out on the roof
+      and its outer face ends up fully inside, 0.8 mm recessed from the knob''s bottom
+      face.'
+- id: c4
+  part: knob
+  feature: roof clearance hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - roof_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: 3.4 mm hole clears an M3 shank, and is far smaller than the nut,
+      so the nut cannot be pushed out through the far side.
+- id: c5
+  part: knob
+  feature: dished top face around the bolt hole exit
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - dish_d
+  - dish_depth
+  - knob_h
+  - seat_depth
+  check:
+    method: measure
+    ref: null
+    description: Roof over the nut is 3.8 mm thick, so about 4 mm of thread past the
+      nut lets the bolt emerge, and about 7 mm reaches the top face. The dish clears
+      the protruding thread.
+- id: c6
+  part: coupon
+  feature: three test sockets
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - rib_h
+  - rib_h_lo
+  - rib_h_hi
+  check:
+    method: coupon
+    ref: coupon
+    description: The coupon's sockets are the knob's socket to within the rib height,
+      so the press-in and the inverted-shake test predict the finished knob.
+manual:
+- n: '1'
+  text: 'Print the coupon (part coupon) first: PLA, 0.2 mm layers, no supports. It
+    is a 44 x 16 x 8 mm block whose three sockets open upward.'
+  parts:
+  - coupon
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: 'Press your M3 hex nut (nut) into the MIDDLE socket with your thumb until
+    it bottoms out (its outer face ends up just inside the socket). The three sockets
+    differ only in rib height: left 0.10 mm, middle 0.15 mm (same as the knob), right
+    0.20 mm.'
+  parts:
+  - coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the coupon upside down and shake it. The nut must not fall out. Also
+    try the left and right sockets to see how the grip changes.
+  parts:
+  - coupon
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: 'Tune only if you need to: if the middle socket is too tight to press in by
+    thumb, re-slice the knob with rib_h = 0.10 (or pocket_af = 5.70); if the nut falls
+    out of the middle socket, re-slice with rib_h = 0.20 (or pocket_af = 5.50). Nothing
+    else changes.'
+  parts:
+  - knob
+  - coupon
+  hardware:
+  - nut
+  tool: slicer
+- n: '5'
+  text: 'Print the knob (part knob): PLA, 0.2 mm layers, no supports, bottom face
+    on the bed so the hex socket''s mouth is face down and the dished top faces up.'
+  parts:
+  - knob
+  hardware: []
+  tool: 3D printer
+- n: '6'
+  text: 'Press the M3 hex nut (nut) into the knob''s socket from the open bottom face,
+    thumb pressure, until it stops against the roof. It sits fully inside: its outer
+    face is 0.8 mm recessed from the knob''s bottom face, so it never touches your
+    workpiece.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '7'
+  text: 'Check the retention: turn the knob upside down - the nut stays in. Push the
+    nut from the mouth side - the roof above it (with only a 3.4 mm hole) stops it
+    from going out the far side.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '8'
+  text: Pass your M3 bolt (bolt) through your workpiece and thread its tip into the
+    nut through the knob's open bottom face, until the tip comes out of the 3.4 mm
+    hole in the dished top. About 4 mm of thread past the nut lets it emerge; about
+    7 mm reaches the top face.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  tool: null
+- n: '9'
+  text: Tighten by hand with the scalloped rim. Loosen and tighten as often as you
+    like - the nut is captive, so nothing falls out and no tool is needed.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '10'
+  text: 'To remove the nut: push it back out through the mouth with the bolt or your
+    thumb (a firm push, the ribs release).'
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

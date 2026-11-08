@@ -1,0 +1,374 @@
+task: nut-knob/M5
+note: 'A 30 mm hand knob with a captive M5 nut. The nut drops into a hex pocket in
+  a thin, slotted collar that stands inside a hollow knob. Three 0.8 mm slots turn
+  the collar into three flexible tabs, and the mouth of the pocket has a 0.15 mm lip.
+  The nut pushes the tabs out, clicks past the lip, and the tabs spring back behind
+  the nut''s face — so it is held by a snap, not by a precise interference. That matters
+  because you couldn''t measure the nut: a pure press fit would be a coin toss at
+  FDM tolerance, while a sprung lip still works if the pocket prints 0.1 mm over or
+  under. The nut bottoms on a 7 mm shoulder with only a 5.6 mm bolt hole through it,
+  so it cannot be pushed out the far side. Print the coupon first — it is the same
+  pocket, collar, lip and slots in a 22 mm puck, and it is the go/no-go for the fit
+  before you commit to the knob. If the nut is too tight or too loose, change lip_af
+  by ±0.05 mm and reprint the coupon. Hand-tight only: the nut bears on a small PLA
+  annulus, so don''t lean on it. Bolt length is yours to pick — the shank needs to
+  be at least (workpiece thickness + 12 mm) so the tip comes out of the 5.6 mm hole.'
+questions: []
+params:
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: across the flutes' outer circle; you asked for about 30 mm
+  far_t:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: thickness of the shoulder the nut bears on; also the depth of the 5.6 mm
+      bolt hole
+  inner_d:
+    value: 24.0
+    unit: mm
+    kind: design
+    source: design
+    note: hollow core, leaves a 3.0 mm outer wall
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats; you could not measure yours
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  nut_recess:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: how far the nut's outer face sits below the mouth; must exceed lip_h so
+      the lip catches it
+  pocket_depth:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + nut_recess
+  pocket_af:
+    value: 7.95
+    unit: mm
+    kind: design
+    source: design
+    note: 0.05 mm under the nut across flats; the tabs absorb the difference
+  lip_af:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: mouth lip, 0.15 mm per side inside the pocket; this is the retention feature
+  lip_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: height of the lip band at the mouth
+  collar_outer_af:
+    value: 10.35
+    unit: mm
+    kind: design
+    source: design
+    note: gives the collar a 1.2 mm wall
+  slot_w:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: width of the three slots that free the tabs
+  slot_r_in:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: inner end of the slot, inside the pocket void
+  slot_r_out:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: outer end of the slot, clear of the collar wall
+  bolt_clear_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: M5 clearance through the shoulder; smaller than the nut across corners so
+      the nut cannot pass
+  flute_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: grip scallops around the rim
+  flute_r:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: scallop cutter radius
+  flute_center_r:
+    value: 16.0
+    unit: mm
+    kind: design
+    source: design
+    note: gives a 1.2 mm deep scallop and leaves 1.8 mm of wall behind it
+  top_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: outer edge of the mouth face
+  bot_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: bed-side edge, for elephant-foot
+  coupon_d:
+    value: 22.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon puck diameter
+  coupon_inner_d:
+    value: 16.0
+    unit: mm
+    kind: design
+    source: design
+    note: coupon hollow core, same 3.0 mm wall
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef _hexp(af, z0, z1):\n    r = af / 2.0 / math.cos(math.pi\
+    \ / 6.0)\n    pts = [(r * math.cos(i * math.pi / 3.0), r * math.sin(i * math.pi\
+    \ / 3.0)) for i in range(6)]\n    return (cq.Workplane(\"XY\").workplane(offset=z0)\n\
+    \            .polyline(pts).close().extrude(z1 - z0))\n\n\ndef build(p):\n   \
+    \ R = p.knob_d / 2.0\n    H = p.far_t + p.pocket_depth\n\n    body = cq.Workplane(\"\
+    XY\").circle(R).extrude(H)\n    body = body.faces(\">Z\").edges().chamfer(p.top_chamfer)\n\
+    \    body = body.faces(\"<Z\").edges().chamfer(p.bot_chamfer)\n\n    pts = [(p.flute_center_r\
+    \ * math.cos(2.0 * math.pi * i / p.flute_count),\n            p.flute_center_r\
+    \ * math.sin(2.0 * math.pi * i / p.flute_count))\n           for i in range(p.flute_count)]\n\
+    \    body = body.cut(cq.Workplane(\"XY\").pushPoints(pts).circle(p.flute_r)\n\
+    \                    .extrude(H + 2.0).translate((0, 0, -1.0)))\n\n    body =\
+    \ body.cut(cq.Workplane(\"XY\").workplane(offset=p.far_t)\n                  \
+    \  .circle(p.inner_d / 2.0).extrude(p.pocket_depth + 1.0))\n\n    body = body.union(_hexp(p.collar_outer_af,\
+    \ p.far_t, H))\n\n    body = body.cut(_hexp(p.lip_af, p.far_t, H + 1.0))\n   \
+    \ body = body.cut(_hexp(p.pocket_af, p.far_t, H - p.lip_h))\n\n    L = p.slot_r_out\
+    \ - p.slot_r_in\n    for k in range(3):\n        body = body.cut(\n          \
+    \  cq.Workplane(\"XY\")\n            .box(L, p.slot_w, p.pocket_depth + 2.0, centered=(True,\
+    \ True, False))\n            .translate(((p.slot_r_in + p.slot_r_out) / 2.0, 0.0,\
+    \ p.far_t))\n            .rotate((0, 0, 0), (0, 0, 1), 120.0 * k))\n\n    body\
+    \ = body.cut(cq.Workplane(\"XY\").workplane(offset=-1.0)\n                   \
+    \ .circle(p.bolt_clear_d / 2.0).extrude(p.far_t + 2.0))\n    return body"
+  print_orientation: 'Closed shoulder face on the bed (z = 0): the flat 30 mm disc
+    with the 5.6 mm bolt hole in the middle. The hex pocket, the slotted collar and
+    the hollow core all open upward, so nothing overhangs and no supports are needed.'
+  use_orientation: 'Flipped from the print: the hex pocket and the hollow core face
+    down toward the workpiece, and the 5.6 mm bolt hole is on top. The nut is pressed
+    in from below and the bolt comes up from below through it.'
+- id: coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef _hexp(af, z0, z1):\n    r = af / 2.0 / math.cos(math.pi\
+    \ / 6.0)\n    pts = [(r * math.cos(i * math.pi / 3.0), r * math.sin(i * math.pi\
+    \ / 3.0)) for i in range(6)]\n    return (cq.Workplane(\"XY\").workplane(offset=z0)\n\
+    \            .polyline(pts).close().extrude(z1 - z0))\n\n\ndef build(p):\n   \
+    \ R = p.coupon_d / 2.0\n    H = p.far_t + p.pocket_depth\n\n    body = cq.Workplane(\"\
+    XY\").circle(R).extrude(H)\n    body = body.faces(\">Z\").edges().chamfer(p.top_chamfer)\n\
+    \    body = body.faces(\"<Z\").edges().chamfer(p.bot_chamfer)\n\n    body = body.cut(cq.Workplane(\"\
+    XY\").workplane(offset=p.far_t)\n                    .circle(p.coupon_inner_d\
+    \ / 2.0).extrude(p.pocket_depth + 1.0))\n\n    body = body.union(_hexp(p.collar_outer_af,\
+    \ p.far_t, H))\n\n    body = body.cut(_hexp(p.lip_af, p.far_t, H + 1.0))\n   \
+    \ body = body.cut(_hexp(p.pocket_af, p.far_t, H - p.lip_h))\n\n    L = p.slot_r_out\
+    \ - p.slot_r_in\n    for k in range(3):\n        body = body.cut(\n          \
+    \  cq.Workplane(\"XY\")\n            .box(L, p.slot_w, p.pocket_depth + 2.0, centered=(True,\
+    \ True, False))\n            .translate(((p.slot_r_in + p.slot_r_out) / 2.0, 0.0,\
+    \ p.far_t))\n            .rotate((0, 0, 0), (0, 0, 1), 120.0 * k))\n\n    body\
+    \ = body.cut(cq.Workplane(\"XY\").workplane(offset=-1.0)\n                   \
+    \ .circle(p.bolt_clear_d / 2.0).extrude(p.far_t + 2.0))\n    return body"
+  print_orientation: 'Same as the knob: closed shoulder face on the bed, hex pocket
+    and hollow core opening upward.'
+  use_orientation: Held in the hand. Nut pressed into the hex pocket from the open
+    face, then the coupon is turned over to check the nut stays.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x20
+  qty: 1
+joints:
+- id: J1
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bolt_clearance_hole
+    role: clearance
+  nut: nut
+  external: the bolt head bears on the far side of the workpiece, outside this design
+criteria:
+- id: C1
+  part: knob
+  feature: hex_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.05
+  params:
+  - pocket_af
+  - nut_af
+  - pocket_depth
+  - nut_h
+  check:
+    method: coupon
+    ref: coupon
+    description: Nut presses into the pocket by hand and seats on the shoulder.
+- id: C2
+  part: knob
+  feature: retention_lip
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - lip_af
+  - lip_h
+  - nut_recess
+  check:
+    method: coupon
+    ref: coupon
+    description: Nut clicks past the lip and the tabs spring back behind its face;
+      nut stays when the part is inverted.
+- id: C3
+  part: knob
+  feature: nut_shoulder
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - far_t
+  - nut_h
+  check:
+    method: none
+    ref: null
+    description: Shoulder is solid above the nut, so the nut cannot be pushed out
+      the far side.
+- id: C4
+  part: knob
+  feature: bolt_clearance_hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.3
+  params:
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: Bolt passes through the nut and out the 5.6 mm hole in the far face.
+- id: C5
+  part: coupon
+  feature: hex_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.05
+  params:
+  - pocket_af
+  - lip_af
+  - slot_w
+  check:
+    method: coupon
+    ref: coupon
+    description: Coupon reproduces the knob's pocket, collar, lip and slots so the
+      fit can be proven before printing the knob.
+manual:
+- n: '1'
+  text: Print the coupon in PLA at 0.2 mm layers, no supports, closed face on the
+    bed. It is a 22 mm puck with the same hex pocket, slotted collar and lip as the
+    knob.
+  parts:
+  - coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M5 nut into the coupon's hex pocket from the open face, flats lined
+    up with the pocket flats. Push with your thumb until it stops on the shoulder.
+    It should pass the lip with a firm push and you should feel it click.
+  parts:
+  - coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the coupon over so the pocket faces down and tap it on the bench. The
+    nut must stay in. If it falls out the lip is too loose; if you cannot press it
+    in at all it is too tight. Either way, change lip_af by 0.05 mm in the code and
+    reprint the coupon before going further.
+  parts:
+  - coupon
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Print the knob in PLA at 0.2 mm layers, no supports, closed shoulder face
+    on the bed. The hex pocket and hollow core open upward.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: Press the M5 nut into the knob's hex pocket from the open face (the face with
+    the hex opening and the hollow ring around it, opposite the small bolt hole).
+    Push until it seats on the shoulder, 1 mm below the mouth.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '6'
+  text: Turn the knob upside down and shake it. The nut must stay in the pocket with
+    no glue.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '7'
+  text: Offer the knob, open face first, onto the M5 bolt protruding from your workpiece,
+    and turn it on by hand. The bolt threads through the captive nut and its tip comes
+    out of the 5.6 mm hole in the far face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '8'
+  text: Tighten by hand only. The nut bears on a small PLA shoulder, so do not use
+    a tool or lean your weight on it.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

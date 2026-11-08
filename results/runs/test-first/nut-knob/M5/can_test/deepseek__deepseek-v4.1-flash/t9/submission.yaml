@@ -1,0 +1,344 @@
+task: nut-knob/M5
+note: 'A one-piece lobed hand knob, 30 mm across, with a captured M5 nut.
+
+
+  How the nut is held (no glue):
+
+  - Hex pocket across flats 7.95 mm against a nominal 8.00 mm nut: a light press on
+  a nominal nut, and because printed hex holes come out a little small, it stays a
+  press for a nut anywhere in the 7.78-8.00 mm tolerance band.
+
+  - A 0.5 mm tall lip across flats 7.70 mm sits just above the pocket (with a 45 deg
+  lead-in funnel above it and a 45 deg relief chamfer below it). The nut has to pass
+  that lip to go in, and the lip is what keeps the nut in the knob when you turn it
+  upside down. The lip''s underside is chamfered at 27 deg from vertical and the funnel
+  widens upward, so the whole part prints with no supports.
+
+  - The pocket floor (6.15 mm of material) is the "far side": the nut lands flat on
+  it and cannot be pushed out that way, and the 5.5 mm bolt hole through it lets the
+  bolt pass right through and out the open top.
+
+
+  Print it as modelled: shoulder face on the bed, hex pocket opening upward. Everything
+  is vertical or widens upward, so no supports.
+
+
+  Known soft spot: I could not measure your nut and could not get feedback from the
+  fit coupon, so the insertion force is a judgement call. Press it in with firm thumb
+  pressure on a table; if it is stubborn, a light tap with a mallet handle will seat
+  it. If it goes in too easily, tell me and I will take the lip down another 0.1 mm
+  across flats.'
+questions: []
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut, width across flats; real nuts run 7.78-8.00 mm
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut height
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: across the lobes; the size asked for
+  knob_h:
+    value: 13.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  n_lobes:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: grip scallops around the rim
+  lobe_r:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: scallop cutter radius
+  lobe_c_r:
+    value: 18.0
+    unit: mm
+    kind: design
+    source: design
+    note: scallop cutter centre distance; gives a 2 mm deep scallop
+  rim_cham:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg chamfer on both rims
+  clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: M5 clearance hole through the shoulder
+  pocket_af:
+    value: 7.95
+    unit: mm
+    kind: design
+    source: design
+    note: hex pocket across flats; 0.05 mm per side under a nominal nut
+  lip_af:
+    value: 7.7
+    unit: mm
+    kind: design
+    source: design
+    note: retention lip across flats; below the smallest nut in the tolerance band
+      so it always grips
+  lip_h:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_cham:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg relief under the lip so it prints unsupported
+  lead_h:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg lead-in funnel above the lip
+  pocket_extra:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: clearance between the seated nut's top face and the lip
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef hexd(af):\n    return af / math.cos(math.radians(30.0))\n\
+    \ndef hprism(z0, z1, af):\n    return (cq.Workplane(\"XY\").workplane(offset=z0)\n\
+    \            .polygon(6, hexd(af)).extrude(z1 - z0))\n\ndef cone(z0, r0, z1, r1):\n\
+    \    return cq.Workplane(\"XY\").add(\n        cq.Solid.makeCone(r0, r1, z1 -\
+    \ z0,\n                          cq.Vector(0.0, 0.0, z0), cq.Vector(0.0, 0.0,\
+    \ 1.0)))\n\ndef build(p):\n    R = p.knob_d / 2.0\n    H = p.knob_h\n\n    # lobed\
+    \ grip body: a cylinder with 6 shallow scallops\n    body = cq.Workplane(\"XY\"\
+    ).circle(R).extrude(H)\n    for i in range(int(p.n_lobes)):\n        a = 2.0 *\
+    \ math.pi * i / p.n_lobes\n        body = body.cut(cq.Workplane(\"XY\")\n    \
+    \                    .center(p.lobe_c_r * math.cos(a), p.lobe_c_r * math.sin(a))\n\
+    \                        .circle(p.lobe_r).extrude(H))\n\n    # chamfer both rims:\
+    \ keep only what fits inside a barrel with 45 deg ends\n    zc = p.rim_cham +\
+    \ 0.5\n    keep = cone(0.0, R - p.rim_cham, zc, R + 0.5)\n    keep = keep.union(cq.Workplane(\"\
+    XY\").workplane(offset=zc)\n                      .circle(R + 0.5).extrude(H -\
+    \ 2.0 * zc))\n    keep = keep.union(cone(H - zc, R + 0.5, H, R - p.rim_cham))\n\
+    \    body = body.intersect(keep)\n\n    # axial void, bottom to top: bolt clearance\
+    \ hole, hex pocket, lip, lead-in\n    z_lead = H - p.lead_h\n    z_lip = z_lead\
+    \ - p.lip_h\n    z_ch = z_lip - p.lip_cham\n    z_floor = z_ch - (p.nut_h + p.pocket_extra)\n\
+    \n    void = hprism(z_floor, z_ch, p.pocket_af)\n    void = void.union(cone(z_ch,\
+    \ p.pocket_af / 2.0, z_lip, p.lip_af / 2.0))\n    void = void.union(hprism(z_lip,\
+    \ z_lead, p.lip_af))\n    void = void.union(cone(z_lead, p.lip_af / 2.0, H, p.lip_af\
+    \ / 2.0 + p.lead_h))\n    void = void.union(cq.Workplane(\"XY\").workplane(offset=-1.0)\n\
+    \                      .circle(p.clear_d / 2.0).extrude(z_floor + 1.0))\n\n  \
+    \  return body.cut(void)\n"
+  print_orientation: 'Flat on the bed: the shoulder face (z = 0, the plain face with
+    the 5.5 mm hole) on the build plate, hex pocket opening upward. No supports -
+    pocket walls and scallops are vertical, the lip''s underside is chamfered at 27
+    deg from vertical, and the lead-in funnel widens upward. A 1 mm 45 deg chamfer
+    at each rim is within normal overhang limits.'
+  use_orientation: Shoulder face (z = 0) flat against the workpiece/bracket; hex pocket
+    opening faces away from the workpiece, upward. The M5 bolt comes up through the
+    5.5 mm hole in the shoulder, threads into the nut resting on the pocket floor,
+    and its threaded end leaves through the open top face.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: bolt_through_knob
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: 5.5 mm clearance hole through the shoulder
+    role: clearance
+  - part: knob
+    feature: hex nut pocket with lip (nut sits on the pocket floor)
+    role: nut_pocket
+  nut: m5_nut
+  external: the user's workpiece/bracket - the M5 bolt clamps it between its head
+    and the knob's shoulder face. Any M5 bolt long enough to cross the workpiece,
+    the 6.15 mm shoulder and the 4.7 mm nut will do; the listed M5x30 is a representative
+    length.
+criteria:
+- id: c1
+  part: knob
+  feature: hex pocket across flats (7.95 mm), 5.1 mm deep above the floor
+  relation: engages
+  hardware: m5_nut
+  clearance_mm: -0.05
+  params:
+  - pocket_af
+  - nut_af
+  - nut_h
+  - pocket_extra
+  check:
+    method: coupon
+    ref: fit_coupon pockets 1-3 (8.00 / 7.90 / 7.80 mm across flats)
+    description: Nut presses into the pocket by hand and stays put; pocket holds a
+      nut anywhere in the 7.78-8.00 mm across-flats tolerance band. Could not be confirmed
+      - the person could not report the coupon result.
+- id: c2
+  part: knob
+  feature: retention lip across flats (7.70 mm), 0.5 mm tall, with 45 deg funnel above
+    and 45 deg relief below
+  relation: engages
+  hardware: m5_nut
+  clearance_mm: -0.3
+  params:
+  - lip_af
+  - nut_af
+  - lip_h
+  - lip_cham
+  - lead_h
+  check:
+    method: coupon
+    ref: fit_coupon pocket 4 (8.10 mm pocket with 7.60 mm lip)
+    description: Nut snaps past the lip and is then held by it; knob turned upside
+      down and tapped, nut does not fall out. Could not be confirmed - the person
+      could not report the coupon result.
+- id: c3
+  part: knob
+  feature: pocket floor (shoulder) 6.15 mm thick under the nut
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_extra
+  - knob_h
+  - lip_h
+  - lip_cham
+  - lead_h
+  check:
+    method: none
+    ref: null
+    description: The nut lands flat on the pocket floor and cannot be pushed out through
+      the far side; the floor hole is 5.5 mm, far smaller than the nut's 8 mm across
+      flats.
+- id: c4
+  part: knob
+  feature: 5.5 mm clearance hole through the shoulder, 6.15 mm long
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.5
+  params:
+  - clear_d
+  check:
+    method: none
+    ref: null
+    description: An M5 bolt (5.0 mm major diameter) passes freely and reaches the
+      nut.
+- id: c5
+  part: knob
+  feature: nut fully enclosed inside the 13 mm tall knob
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: 2.15
+  params:
+  - knob_h
+  - nut_h
+  - pocket_extra
+  - lip_h
+  - lip_cham
+  - lead_h
+  check:
+    method: none
+    ref: null
+    description: Seated nut spans z = 6.15 to 10.85 mm inside a 13 mm tall knob, so
+      no part of the nut protrudes.
+- id: c6
+  part: knob
+  feature: hex pocket and lip cross-section
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - lip_cham
+  - lip_h
+  - lead_h
+  - pocket_af
+  - lip_af
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Lip underside relief prints clean at 0.25 mm over 0.25 mm and the
+      funnel opens upward, so no supports are needed.
+manual:
+- n: '1'
+  text: 'Print the knob (part ''knob'') in PLA at 0.2 mm layers. Place it as modelled:
+    the plain face with the small hole (the shoulder) down on the bed, hex pocket
+    opening up. No supports and no brim.'
+  parts:
+  - knob
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Press an ISO 4032 M5 hex nut into the hex pocket in the open top face, flats
+    lined up with the pocket's flats. Firm thumb pressure on a table - the nut cams
+    past the small lip and lands flat on the pocket floor with its top face about
+    0.4 mm below the lip. If it is stubborn, a light tap with a mallet handle seats
+    it.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: 'Retention check: turn the knob upside down and tap the rim. The nut must
+    stay in - the lip grips it, and the pocket floor behind it means it cannot come
+    out the far side.'
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '4'
+  text: 'Bolt check: push an M5 bolt up through the 5.5 mm hole in the knob''s flat
+    shoulder face. It slides in freely, threads into the nut and its threaded end
+    comes out of the open top face.'
+  parts:
+  - knob
+  hardware:
+  - m5_bolt
+  - m5_nut
+  tool: null
+- n: '5'
+  text: 'Assembly: pass the bolt through your bracket or workpiece, start it into
+    the nut by hand, then turn the knob to tighten. Tightening pulls the nut down
+    onto the shoulder, so the nut can never be pushed out through the far side, and
+    the lip keeps it in the knob whenever you take the knob off.'
+  parts:
+  - knob
+  hardware:
+  - m5_bolt
+  - m5_nut
+  tool: null

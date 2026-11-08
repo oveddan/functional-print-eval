@@ -1,0 +1,401 @@
+task: tripod-plate
+note: 'PLATE (flat part) + SHIM, with your salvaged 1/4-20 bolt as the screw. Geometry
+  is driven by the bolt: 10 mm of thread under a 5 mm-tall, 15 mm head. To get ~5
+  mm of thread standing proud of the plate (about 4 threads in the camera''s socket)
+  while hiding the head inside the plate so nothing pokes into the clamp, the plate
+  comes out 11 mm thick: 5 mm of web the thread passes through + a 6 mm pocket for
+  the head. It prints flat, no supports. The one unverified number is the clamp''s
+  grip height - slide the printed gauge steps into the jaws; if your clamp tops out
+  under 11 mm, sand the pocket-side face flat (up to 1 mm is safe: the head just becomes
+  flush and the screw still stands 5 mm proud). The bolt''s head is deliberately a
+  loose fit in the pocket so it can''t jam; its head is pinched against the pocket''s
+  ceiling when you tighten, so turn the plate and the camera winds down onto it. A
+  printed 1/4-20 screw was not used: a 0.2 mm-layer PLA thread in a metal socket is
+  rough, weak, and can seize or strip the camera''s socket - the metal bolt is the
+  right part for that job.'
+questions:
+- text: How thick a plate do the clamp's jaws take (floor-to-lip depth), and does
+    the plate rest on a floor or hang between the jaws? The gauge steps 8-12 mm answer
+    this.
+  answer: null
+- text: Is the salvaged bolt's head a hex, a knurled knob, or round - and was the
+    15 mm across the flats or across the corners?
+  answer: null
+- text: How deep is the camera's tripod socket (screw the bolt in gently until it
+    stops, then measure what is left of the 10 mm)?
+  answer: null
+params:
+  clamp_plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: 'friend''s clamp: width of plate that fits between the angled jaws'
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 'salvaged webcam-mount bolt: thread length under the head'
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head across
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head height
+  screw_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 UNC nominal major diameter
+  plate_w:
+    value: 37.5
+    unit: mm
+    kind: design
+    source: design
+    note: 38 mm clamp less 0.5 mm total clearance
+  plate_l:
+    value: 48.0
+    unit: mm
+    kind: design
+    source: design
+    note: long enough to be gripped, shorter than most camera bases
+  plate_t:
+    value: 11.0
+    unit: mm
+    kind: design
+    source: design
+    note: = web 5 + head pocket 6; forced by bolt (thread 10 - 5 proud + pocket 6)
+  head_pocket_d:
+    value: 18.0
+    unit: mm
+    kind: design
+    source: design
+    note: head 15 + 3 total clearance; loose so the head cannot jam
+  head_pocket_c:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: head 5 + 1 clearance, measured from the flat clamp-side face
+  web_w:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: material the thread passes through = thread 10 - 5 mm proud
+  shank_hole_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: clearance hole for 6.35 mm thread
+  screw_protrusion:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: thread standing proud of the camera face when tightened
+  corner_r:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: vertical corner radius so it drops into the jaws
+  chamfer_clamp:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on the clamp-side face perimeter, gives the angled lips something
+      to bite
+  chamfer_cam:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: chamfer on the camera-face perimeter
+  shim_od:
+    value: 14.0
+    unit: mm
+    kind: design
+    source: design
+    note: shim sits under the 15 mm head, inside the 18 mm pocket
+  shim_id:
+    value: 6.7
+    unit: mm
+    kind: design
+    source: design
+    note: slips over 6.35 mm thread
+  shim_t:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: trims the screw's protrusion from 5 mm to 4 mm if it bottoms out in the
+      socket
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    body = cq.Workplane(\"XY\").box(p.plate_l, p.plate_w,\
+    \ p.plate_t, centered=(True, True, False))\n    body = body.edges(\"|Z\").fillet(p.corner_r)\n\
+    \    body = body.faces(\">Z\").edges().chamfer(p.chamfer_clamp)\n    body = body.faces(\"\
+    <Z\").edges().chamfer(p.chamfer_cam)\n    # head pocket, opening at the clamp-side\
+    \ face (z = plate_t)\n    body = body.faces(\">Z\").workplane().circle(p.head_pocket_d\
+    \ / 2).cutBlind(-p.head_pocket_c)\n    # clearance hole through the web, breaking\
+    \ out of the camera face (z = 0)\n    body = body.faces(\"<Z\").workplane().circle(p.shank_hole_d\
+    \ / 2).cutBlind(-p.web_w)\n    return body\n"
+  print_orientation: camera-contact face on the bed (z = 0); the 18 mm head pocket
+    opens upward, so the seat and the through hole print as a flat annulus and a vertical
+    hole - no supports, no bridging
+  use_orientation: 'flipped over: the face that was on the bed presses against the
+    camera''s base, and the face with the 18 mm pocket opening points down into the
+    tripod clamp; the bolt is inserted head-first through that opening'
+- id: shim
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane(\"XY\").circle(p.shim_od / 2).circle(p.shim_id\
+    \ / 2).extrude(p.shim_t)\n"
+  print_orientation: flat annulus on the bed (z = 0)
+  use_orientation: slips down the bolt thread and rests on top of the bolt head, inside
+    the plate's pocket; only needed if the screw bottoms out in the camera's socket
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: head pocket ceiling (seat at z = 5, the annulus around the 6.8 mm hole)
+    role: head_seat
+  - part: plate
+    feature: 6.8 mm shank hole through the 5 mm web
+    role: clearance
+  nut: null
+  external: the camera's 1/4-20 tripod socket (tip stands 5 mm proud of the camera
+    face)
+- id: shim_seat
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: shim
+    feature: 6.7 mm bore
+    role: clearance
+  - part: plate
+    feature: head pocket (shim sits between the bolt head and the pocket ceiling)
+    role: washer
+  nut: null
+  external: null
+criteria:
+- id: CR1
+  part: plate
+  feature: 18 mm head pocket
+  relation: contains
+  hardware: bolt
+  clearance_mm: 3.0
+  params:
+  - head_pocket_d
+  - bolt_head_d
+  check:
+    method: coupon
+    ref: fitcup
+    description: the salvaged head must drop fully into the 18 mm pocket of the printed
+      fit-cup (head measured 15 mm across)
+- id: CR2
+  part: plate
+  feature: head pocket depth
+  relation: contains
+  hardware: bolt
+  clearance_mm: 1.0
+  params:
+  - head_pocket_c
+  - bolt_head_h
+  check:
+    method: coupon
+    ref: fitcup
+    description: the 5 mm-tall head must sit inside the 6 mm pocket with its face
+      flush with, or above, the plate's clamp-side face
+- id: CR3
+  part: plate
+  feature: 6.8 mm shank hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.45
+  params:
+  - shank_hole_d
+  - screw_thread_d
+  check:
+    method: coupon
+    ref: fitcup
+    description: the thread must pass through freely and stand ~5 mm proud of the
+      camera face
+- id: CR4
+  part: plate
+  feature: pocket ceiling (seat)
+  relation: seats
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - web_w
+  - bolt_len
+  - screw_protrusion
+  check:
+    method: coupon
+    ref: fitcup
+    description: bolt head bears on the pocket ceiling, so the thread stands 5 mm
+      proud above the camera face
+- id: CR5
+  part: plate
+  feature: camera-contact face
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  - web_w
+  check:
+    method: measure
+    ref: null
+    description: flat bed-printed face; 5 mm of material between the camera and the
+      bolt head
+- id: CR6
+  part: plate
+  feature: side walls between the clamp jaws
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - plate_w
+  - clamp_plate_w
+  check:
+    method: measure
+    ref: null
+    description: 37.5 mm plate into the friend's 38 mm clamp opening
+- id: CR7
+  part: plate
+  feature: overall thickness in the clamp jaws
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  check:
+    method: coupon
+    ref: gauge
+    description: 'unverified: the gauge''s 8-12 mm steps tell you the thickest plate
+      the jaws take; 11 mm assumed - sanding the pocket-side face up to 1 mm is the
+      fallback'
+- id: CR8
+  part: shim
+  feature: 6.7 mm bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.35
+  params:
+  - shim_id
+  - screw_thread_d
+  check:
+    method: coupon
+    ref: shim_fit
+    description: the 1 mm shim must slip over the thread and rest on the bolt head
+      inside the pocket
+manual:
+- n: '1'
+  text: 'Print the plate on its flat camera-contact face: the smooth face down on
+    the bed, the 18 mm round pocket opening upward. 0.2 mm layers, 4 perimeters, 35%
+    infill, no supports needed.'
+  parts:
+  - plate
+  hardware: []
+  tool: printer
+- n: '2'
+  text: Print the shim only if step 6 tells you to (it is a 1 mm ring).
+  parts:
+  - shim
+  hardware: []
+  tool: printer
+- n: '3'
+  text: 'Check the bolt in the plate: drop the salvaged bolt head-first into the 18
+    mm pocket from the pocket side and let the thread come out of the smooth camera
+    face. The head should sit fully inside, and about 4-5 mm of thread should stand
+    proud. Nothing should stick out of the pocket-side face.'
+  parts: []
+  hardware:
+  - bolt
+  tool: ruler
+- n: '4'
+  text: If the bolt head pokes out of the pocket-side face, stop and tell me - the
+    pocket is 6 mm deep for a 5 mm head.
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: 'Fit the camera: set the camera on the smooth face with the thread against
+    its socket, start the thread by hand, then hold the camera and turn the plate
+    (press the camera onto the plate as you do). The head is pinched against the pocket
+    ceiling so the screw turns with the plate and the camera winds down onto it. Snug
+    only - it is PLA, and the camera''s socket is metal.'
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: 'If the camera will not come down onto the plate (it stays loose and spins
+    easily), the thread is bottoming out in the socket: slide the shim over the thread
+    so it rests on the bolt head, refit, and retry. That trims the thread from 5 mm
+    to 4 mm proud.'
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '7'
+  text: Drop the whole assembly into the tripod clamp from above - it is 37.5 mm wide
+    for the 38 mm gap - and tighten the clamp's knob.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '8'
+  text: 'If the plate will not sit down into the clamp (it stands proud of the jaws),
+    sand the pocket-side face flat. Up to 1 mm is safe: the head simply becomes flush
+    with that face and the thread still stands 5 mm proud.'
+  parts:
+  - plate
+  hardware: []
+  tool: sandpaper
+- n: '9'
+  text: 'Before each use: screw snug, clamp tight, and no heavy lens or swinging the
+    rig by the camera. One 1/4-20 screw on a flat PLA face relies on friction, so
+    re-check tightness.'
+  parts:
+  - plate
+  - shim
+  hardware:
+  - bolt
+  tool: null

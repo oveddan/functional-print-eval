@@ -1,0 +1,250 @@
+task: tripod-plate
+note: 'v2: the slot roof is now two stepped bridge layers (sacrificial-bridge trick)
+  instead of a bridge with a hole in it, which made loose loops and a part-closed
+  hole.'
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: plate width the clamp takes (38 mm, Arca-Swiss style)
+  fit_clr:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: per side
+  plate_l:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  land:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bevel:
+    value: 4
+    unit: mm
+    kind: design
+    source: guessed
+    note: 45 deg dovetail depth
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  bolt_clr:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  head_clr:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: the head fit; confirmed good
+  thread_engage:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_travel:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  layer_h:
+    value: 0.2
+    unit: mm
+    kind: world
+    source: asked
+    note: printer layer height; sets the two stepped bridge layers
+  coupon_l:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W = p.plate_w - 2*p.fit_clr\n    b = p.bevel\n    T =\
+    \ p.bolt_head_h + p.head_clr + (p.bolt_len - p.thread_engage)\n    pts = [(-W/2,0),(W/2,0),(W/2,p.land),(W/2-b,p.land+b),(W/2-b,T),(-W/2+b,T),(-W/2+b,p.land+b),(-W/2,p.land)]\n\
+    \    body = cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_l/2, both=True)\n\
+    \    d = p.bolt_d + p.bolt_clr\n    hd = p.bolt_head_d + 2*p.head_clr\n    H =\
+    \ p.bolt_head_h + p.head_clr\n    Lcb = p.slot_travel + hd\n    Ls = p.slot_travel\
+    \ + d\n    lh = p.layer_h\n    cb = cq.Workplane('XY').slot2D(Lcb, hd, 90).extrude(H\
+    \ + 1).translate((0,0,-1))\n    # stepped bridge layer 1: open strip d wide along\
+    \ the full recess length (two side strips bridge along Y)\n    s1 = cq.Workplane('XY').box(d,\
+    \ Lcb, lh + 0.02, centered=(True,True,False)).translate((0,0,H-0.01))\n    s1\
+    \ = s1.intersect(cq.Workplane('XY').slot2D(Lcb, hd, 90).extrude(lh + 0.02).translate((0,0,H-0.01)))\n\
+    \    # layer 2: open only a rectangle the size of the slot (ends bridge across\
+    \ X)\n    s2 = cq.Workplane('XY').box(d, Ls, lh + 0.02, centered=(True,True,False)).translate((0,0,H+lh-0.01))\n\
+    \    slot = cq.Workplane('XY').slot2D(Ls, d, 90).extrude(T + 1).translate((0,0,H+2*lh-0.01))\n\
+    \    return body.cut(cb).cut(s1).cut(s2).cut(slot)\n"
+  print_orientation: flat bottom on the bed; head recess opens at the bed
+  use_orientation: bottom in the tripod clamp, camera on top
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    W = p.plate_w - 2*p.fit_clr\n    b = p.bevel\n    T =\
+    \ p.bolt_head_h + p.head_clr + (p.bolt_len - p.thread_engage)\n    pts = [(-W/2,0),(W/2,0),(W/2,p.land),(W/2-b,p.land+b),(W/2-b,T),(-W/2+b,T),(-W/2+b,p.land+b),(-W/2,p.land)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().extrude(p.coupon_l/2, both=True)\n"
+  print_orientation: flat bottom on the bed
+  use_orientation: dropped into the tripod clamp to test the fit
+hardware:
+- id: cam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: cam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: head recess slot (underside)
+    role: head_seat
+  - part: plate
+    feature: through slot
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: dovetail_fit
+  part: plate
+  feature: 38 mm dovetail edges
+  relation: engages
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - plate_w
+  - fit_clr
+  - bevel
+  - land
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Coupon drops into the open clamp and locks with no rocking once the
+      knob is tight
+- id: slot_roof
+  part: plate
+  feature: stepped bridge roof over head recess
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - layer_h
+  - bolt_d
+  - bolt_clr
+  - slot_travel
+  check:
+    method: measure
+    ref: null
+    description: Slot is clean and open. The bolt slides along its full length with
+      no strings
+- id: head_recess
+  part: plate
+  feature: head recess
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_clr
+  check:
+    method: measure
+    ref: null
+    description: Bolt head sits flush or below the bottom face
+- id: bolt_protrusion
+  part: plate
+  feature: top face at the bolt
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - bolt_head_h
+  - head_clr
+  - thread_engage
+  check:
+    method: measure
+    ref: null
+    description: Bolt sticks out about 5 mm above the top
+manual:
+- n: '1'
+  text: If you haven't already, drop fit_coupon into the open clamp and tighten the
+    knob. It should lock solidly. If it's too loose, lower fit_clr to 0.1. If it won't
+    go in, raise it to 0.5.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the plate flat side down with 4 walls and 40%+ infill. No supports.
+    The roof over the head recess now steps up in two thin layers so each layer bridges
+    between solid edges. Leave bridge detection on in Bambu Studio (the default).
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the webcam bolt up through the slot from underneath so its head sits
+    in the recess.
+  parts:
+  - plate
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '4'
+  text: Screw the bolt into the camera's tripod socket by hand until it's snug. Don't
+    crank it.
+  parts:
+  - plate
+  hardware:
+  - cam_bolt
+  tool: fingers
+- n: '5'
+  text: 'Drop the plate into the clamp and tighten the knob. Before you let go, tug
+    the camera: there are no end-stop pins.'
+  parts:
+  - plate
+  hardware: []
+  tool: null

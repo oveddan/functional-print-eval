@@ -1,0 +1,204 @@
+task: nut-knob/M3
+note: 'One-piece, approximately 20 mm scalloped hand knob with a recessed M3 nut pocket,
+  entry chamfer, and through-hole. The solid floor prevents the nut passing through
+  the opposite side. Retention is NOT yet verified: 5.35 and 5.45 mm pockets were
+  too tight; results for 5.55 and 5.65 mm were unavailable. The design uses 5.55 mm
+  as an unverified fit candidate, not a confirmed press fit. Check retention before
+  use; do not use glue or force the nut in with tools.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  pocket_af:
+    value: 5.55
+    unit: mm
+    kind: design
+    source: design
+    note: Unverified fit candidate. Smaller tested pockets would not accept the nut
+      by hand.
+  pocket_depth:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 6.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance above nominal M3 diameter.
+  entry_h:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_af_extra:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 11.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(p.knob_h)\n\
+    \    for i in range(int(p.scallop_count)):\n        a = 2*math.pi*i/p.scallop_count\n\
+    \        x = p.scallop_center_r*math.cos(a)\n        y = p.scallop_center_r*math.sin(a)\n\
+    \        cutter = cq.Workplane('XY').center(x,y).circle(p.scallop_r).extrude(p.knob_h)\n\
+    \        body = body.cut(cutter)\n    floor = p.knob_h-p.pocket_depth\n    pocket\
+    \ = cq.Workplane('XY').workplane(offset=floor).polygon(6,p.pocket_af/math.cos(math.pi/6)).extrude(p.pocket_depth)\n\
+    \    entry = cq.Workplane('XY').workplane(offset=p.knob_h-p.entry_h).polygon(6,p.pocket_af/math.cos(math.pi/6)).workplane(offset=p.entry_h).polygon(6,(p.pocket_af+p.entry_af_extra)/math.cos(math.pi/6)).loft()\n\
+    \    bore = cq.Workplane('XY').circle((p.bolt_d+p.bore_clearance)/2).extrude(p.knob_h)\n\
+    \    return body.cut(pocket).cut(entry).cut(bore)"
+  print_orientation: Flat closed face on bed at z=0; hex nut pocket faces upward.
+    No supports.
+  use_orientation: Axis of the bolt aligns with Z. For clamping, put the closed face
+    against the work and leave the nut-pocket face outward.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: hand_fit_retention
+  part: hand_knob
+  feature: Hex pocket
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - pocket_depth
+  - entry_h
+  check:
+    method: measure
+    ref: null
+    description: Unverified. Nut must seat with thumb pressure only, resist turning,
+      and stay in place when the knob is inverted and gently tapped. If any check
+      fails, the fit needs revision before use.
+- id: recess
+  part: hand_knob
+  feature: Nut pocket floor 2.8 mm below top
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: With the nut fully seated, its upper face should be approximately
+      0.4 mm below the knob top.
+- id: captive_floor
+  part: hand_knob
+  feature: 3.6 mm solid floor around the 3.5 mm through-bore
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - pocket_depth
+  - nut_af
+  - bolt_d
+  - bore_clearance
+  check:
+    method: measure
+    ref: null
+    description: Confirm the nut bears on the pocket floor and cannot pass through
+      the bolt hole.
+manual:
+- n: '1'
+  text: Print hand_knob with the pocket upward, using the 0.4 mm nozzle and 0.2 mm
+    layers. Use 4 walls and 100% infill; no supports.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Remove any loose burrs or strings from the through-hole and pocket entrance.
+    Do not enlarge the hex flats: they provide retention.'
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Align the M3 nut with the hex pocket and press it down squarely using thumb
+    pressure only. It must seat on the floor with its top fully recessed. Stop if
+    it will not seat; do not hammer it or pull it in using a bolt.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '4'
+  text: Turn the knob pocket-down over a tray and gently tap it. The nut must remain
+    seated. Also check that the nut cannot rotate inside the pocket. This fit is unverified;
+    if it falls out, spins, or cannot be inserted by hand, do not use the knob until
+    the pocket fit is revised.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '5'
+  text: Use with your M3 bolt as a hand-tightened threaded knob. Place the closed
+    face toward the work and thread the bolt through the central hole and nut; the
+    bolt can emerge through the open pocket face. Choose bolt length for your workpiece,
+    allow full nut engagement, and tighten lightly by hand only. This captures a nut,
+    not the head of a bolt.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null

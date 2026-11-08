@@ -1,0 +1,289 @@
+task: nut-knob/M3
+note: Single-piece fluted M3 hand knob (20 mm outer grip diameter, 12 mm total height)
+  with an internal blind-floored hex pocket and 6 vertical crush ribs for tool-free
+  hand press-fit retention of an ISO 4032 M3 nut.
+questions: []
+params:
+  boss_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of bottom clamping boss
+  flute_offset:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from center to flute cutter axis
+  coupon_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of test coupon
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-bore diameter for M3 bolt clearance; much smaller than 5.5 mm nut
+      AF so the nut cannot push through the far side
+  m3_pitch:
+    value: 0.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 thread pitch
+  m3_nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut width across flats
+  coupon_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of test coupon
+  flute_r:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each finger flute cutout
+  taper_h:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of 45-degree supportless transition from boss_od to knob_od
+  rib_width:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Width of each vertical crush rib along the hex flat
+  rib_protrusion:
+    value: 0.12
+    unit: mm
+    kind: design
+    source: design
+    note: Radial inward protrusion of each crush rib on the 6 hex flats for hand press-fit
+      retention
+  nut_af_clearance:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance added to nominal nut AF for the base hex walls so corners do not
+      bind
+  m3_nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut thickness/height
+  boss_h:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of bottom clamping boss cylinder
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height of the hand knob
+  nut_pocket_depth:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: Total depth of hex pocket from top face (3.6 mm > 2.4 mm nut height so nut
+      sits fully inside)
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip flutes around perimeter
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the hand knob (~20 mm requested)
+  lead_in_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of top chamfer on hex pocket to guide the nut in by hand
+  m3_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal thread diameter of M3 bolt
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    # 1. Bottom boss cylinder (z = 0 to p.boss_h)\n\
+    \    boss = cq.Workplane(\"XY\").circle(p.boss_od / 2.0).extrude(p.boss_h)\n\n\
+    \    # 2. Supportless 45-deg conical transition (z = p.boss_h to p.boss_h + p.taper_h)\n\
+    \    taper = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=p.boss_h)\n\
+    \        .circle(p.boss_od / 2.0)\n        .workplane(offset=p.taper_h)\n    \
+    \    .circle(p.knob_od / 2.0)\n        .loft(combine=False)\n    )\n\n    # 3.\
+    \ Upper grip cylinder (z = p.boss_h + p.taper_h to p.knob_h)\n    grip_h = p.knob_h\
+    \ - p.boss_h - p.taper_h\n    grip = (\n        cq.Workplane(\"XY\")\n       \
+    \ .workplane(offset=p.boss_h + p.taper_h)\n        .circle(p.knob_od / 2.0)\n\
+    \        .extrude(grip_h)\n    )\n\n    body = boss.union(taper).union(grip)\n\
+    \n    # Cut finger flutes around the outer perimeter\n    for i in range(int(p.flute_count)):\n\
+    \        angle = 2.0 * math.pi * i / p.flute_count\n        fx = p.flute_offset\
+    \ * math.cos(angle)\n        fy = p.flute_offset * math.sin(angle)\n        flute\
+    \ = (\n            cq.Workplane(\"XY\")\n            .center(fx, fy)\n       \
+    \     .circle(p.flute_r)\n            .extrude(p.knob_h)\n        )\n        body\
+    \ = body.cut(flute)\n\n    # Coaxial through-bore for the M3 bolt\n    bolt_hole\
+    \ = (\n        cq.Workplane(\"XY\")\n        .circle(p.bolt_clearance_d / 2.0)\n\
+    \        .extrude(p.knob_h)\n    )\n    body = body.cut(bolt_hole)\n\n    # Recessed\
+    \ hexagonal pocket from top face with solid bottom floor at z = p.knob_h - p.nut_pocket_depth\n\
+    \    pocket_z0 = p.knob_h - p.nut_pocket_depth\n    pocket_af = p.m3_nut_af +\
+    \ p.nut_af_clearance\n    pocket_ac = pocket_af / math.cos(math.pi / 6.0)\n  \
+    \  hex_pocket = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=pocket_z0)\n\
+    \        .polygon(6, pocket_ac)\n        .extrude(p.nut_pocket_depth)\n    )\n\
+    \    body = body.cut(hex_pocket)\n\n    # Top lead-in chamfer on the hex pocket\
+    \ so the nut aligns and starts by hand\n    lead_in_ac = (pocket_af + 0.6) / math.cos(math.pi\
+    \ / 6.0)\n    lead_in = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=p.knob_h\
+    \ - p.lead_in_h)\n        .polygon(6, pocket_ac)\n        .workplane(offset=p.lead_in_h)\n\
+    \        .polygon(6, lead_in_ac)\n        .loft(combine=False)\n    )\n    body\
+    \ = body.cut(lead_in)\n\n    # 6 vertical crush ribs centered on the flats of\
+    \ the hex pocket for hand press-fit retention\n    rib_h = p.nut_pocket_depth\
+    \ - p.lead_in_h\n    for i in range(6):\n        angle_deg = 30.0 + 60.0 * i\n\
+    \        rad = math.radians(angle_deg)\n        dist = pocket_af / 2.0\n     \
+    \   rx = dist * math.cos(rad)\n        ry = dist * math.sin(rad)\n        rib\
+    \ = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=pocket_z0)\n\
+    \            .transformed(offset=(rx, ry, 0), rotate=(0, 0, angle_deg))\n    \
+    \        .box(p.rib_protrusion * 2.0, p.rib_width, rib_h, centered=(True, True,\
+    \ False))\n        )\n        body = body.union(rib)\n\n    return body\n"
+  print_orientation: Bottom boss face flat on the print bed (z = 0), hex nut pocket
+    opening upward at z = 12 mm; prints completely without supports.
+  use_orientation: Coaxial with the M3 bolt; bolt passes through the captured M3 nut
+    and out the far side.
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.coupon_od\
+    \ / 2.0).extrude(p.coupon_h)\n\n    bolt_hole = (\n        cq.Workplane(\"XY\"\
+    )\n        .circle(p.bolt_clearance_d / 2.0)\n        .extrude(p.coupon_h)\n \
+    \   )\n    body = body.cut(bolt_hole)\n\n    pocket_z0 = p.coupon_h - p.nut_pocket_depth\n\
+    \    pocket_af = p.m3_nut_af + p.nut_af_clearance\n    pocket_ac = pocket_af /\
+    \ math.cos(math.pi / 6.0)\n    hex_pocket = (\n        cq.Workplane(\"XY\")\n\
+    \        .workplane(offset=pocket_z0)\n        .polygon(6, pocket_ac)\n      \
+    \  .extrude(p.nut_pocket_depth)\n    )\n    body = body.cut(hex_pocket)\n\n  \
+    \  lead_in_ac = (pocket_af + 0.6) / math.cos(math.pi / 6.0)\n    lead_in = (\n\
+    \        cq.Workplane(\"XY\")\n        .workplane(offset=p.coupon_h - p.lead_in_h)\n\
+    \        .polygon(6, pocket_ac)\n        .workplane(offset=p.lead_in_h)\n    \
+    \    .polygon(6, lead_in_ac)\n        .loft(combine=False)\n    )\n    body =\
+    \ body.cut(lead_in)\n\n    rib_h = p.nut_pocket_depth - p.lead_in_h\n    for i\
+    \ in range(6):\n        angle_deg = 30.0 + 60.0 * i\n        rad = math.radians(angle_deg)\n\
+    \        dist = pocket_af / 2.0\n        rx = dist * math.cos(rad)\n        ry\
+    \ = dist * math.sin(rad)\n        rib = (\n            cq.Workplane(\"XY\")\n\
+    \            .workplane(offset=pocket_z0)\n            .transformed(offset=(rx,\
+    \ ry, 0), rotate=(0, 0, angle_deg))\n            .box(p.rib_protrusion * 2.0,\
+    \ p.rib_width, rib_h, centered=(True, True, False))\n        )\n        body =\
+    \ body.union(rib)\n\n    return body\n"
+  print_orientation: Flat bottom face on the print bed (z = 0), hex pocket opening
+    upward.
+  use_orientation: Test coupon for checking hand press-fit and upside-down retention
+    of the ISO 4032 M3 nut.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: knob_m3_joint
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_clearance_bore
+    role: clearance
+  nut: m3_nut
+  external: null
+criteria:
+- id: nut_press_fit_retention
+  part: knob
+  feature: hex_nut_pocket
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: -0.09
+  params:
+  - m3_nut_af
+  - m3_nut_h
+  - nut_af_clearance
+  - rib_protrusion
+  - rib_width
+  - nut_pocket_depth
+  - lead_in_h
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Press the ISO 4032 M3 nut into the hex pocket by hand; verify it
+      seats on the internal floor below the top rim and does not fall out when inverted.
+- id: bolt_through_clearance
+  part: knob
+  feature: bolt_clearance_bore
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - m3_d
+  - bolt_clearance_d
+  - knob_h
+  - nut_pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Pass the M3 bolt through the nut and through the bottom clearance
+      bore; verify the bolt passes freely out the far side while the solid pocket
+      floor prevents the nut from pushing through.
+manual:
+- n: '1'
+  text: (Optional) Test-fit the ISO 4032 M3 hex nut into the nut_fit_coupon first
+    to feel the crush-rib hand press-fit. Then align the M3 nut with the top chamfered
+    hex opening of the knob and press it firmly all the way down by hand (or against
+    a flat tabletop) until it seats on the internal floor, recessed 1.2 mm inside
+    the knob. Turn the knob upside down to confirm the crush ribs hold the nut in
+    place.
+  parts:
+  - nut_fit_coupon
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '2'
+  text: Thread the M3 bolt through the captured nut so the bolt passes out the other
+    side of the knob. The internal floor beneath the hex pocket prevents the nut from
+    being pushed out the far side.
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  tool: null

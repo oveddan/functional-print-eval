@@ -1,0 +1,220 @@
+task: bearing-wheel
+note: Wheel is 50 mm OD x 16 mm wide with a flat tread and 1 mm chamfers. I assumed
+  a flat tread because I couldn't get the old wheel's rim profile. If your track is
+  grooved, the tread needs changing. The bracket gap and the bolt length are also
+  unknown. I listed an M8x50 bolt as a placeholder, so use your own bolt as long as
+  it clears the bracket and nut. The wheel plus washers is about 19.2 mm wide. If
+  the bracket gap is smaller than that, drop the washers and use the sleeve length
+  to space things instead. Bearing pockets are 22.2 mm, tested on a coupon.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD nominal; user reading about 22
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 width nominal
+  bearing_fit:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'pocket oversize; coupon: 0.19 holds upside down, 0.09 snug, 0.0 won''t
+      go in'
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: shank about 8 mm
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: sleeve bore clearance on bolt
+  web_hole_d:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: hole in centre web; clears sleeve and lets inner races sit clear
+  sleeve_od:
+    value: 10.6
+    unit: mm
+    kind: design
+    source: design
+    note: fits web hole with 0.2 radial gap; smaller than inner race OD (~12)
+  sleeve_extra:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: sleeve longer than web so inner races bear on it
+  tread_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  mouth_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in/elephant-foot relief at pocket mouth
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    r=p.wheel_od/2\n    w=p.wheel_w\n    web=w-2*p.bearing_w\n\
+    \    body=cq.Workplane('XY').circle(r).extrude(w).edges().chamfer(p.tread_chamfer)\n\
+    \    pr=(p.bearing_od+p.bearing_fit)/2\n    # bottom pocket\n    body=body.cut(cq.Workplane('XY').circle(pr).extrude(p.bearing_w))\n\
+    \    # top pocket\n    body=body.cut(cq.Workplane('XY').workplane(offset=w-p.bearing_w).circle(pr).extrude(p.bearing_w))\n\
+    \    # web hole\n    body=body.cut(cq.Workplane('XY').circle(p.web_hole_d/2).extrude(w))\n\
+    \    # relief at bottom mouth\n    cone=cq.Solid.makeCone(pr+p.mouth_chamfer,pr,p.mouth_chamfer)\n\
+    \    body=body.cut(cq.Workplane('XY').add(cone))\n    cone2=cq.Solid.makeCone(pr,pr+p.mouth_chamfer,p.mouth_chamfer,pnt=cq.Vector(0,0,w-p.mouth_chamfer))\n\
+    \    body=body.cut(cq.Workplane('XY').add(cone2))\n    return body\n"
+  print_orientation: one flat face on the bed (axis vertical); bearing pockets open
+    at bottom and top
+  use_orientation: axis horizontal, running on the door track
+- id: sleeve
+  role: final
+  material: PLA
+  code: "def build(p):\n    web=p.wheel_w-2*p.bearing_w\n    h=web+p.sleeve_extra\n\
+    \    return cq.Workplane('XY').circle(p.sleeve_od/2).circle((p.bolt_d+p.bolt_clear)/2).extrude(h)\n"
+  print_orientation: flat end on the bed, standing as a short tube
+  use_orientation: sits in the wheel's centre web hole between the two bearings, bolt
+    through it
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: nut
+  ref: ISO 10511 M8
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: wheel
+  feature: bottom and top bearing pockets
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - bearing_fit
+  - bearing_w
+  check:
+    method: coupon
+    ref: pocket-coupon
+    description: Pocket oversize 0.2 mm gave a bearing that goes in and holds upside
+      down
+- id: c2
+  part: wheel
+  feature: centre web seat
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: Web is 2 mm; each bearing seats flat on it
+- id: c3
+  part: sleeve
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: measure
+    ref: null
+    description: M8 bolt slides through the sleeve
+- id: c4
+  part: sleeve
+  feature: outer diameter in web hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - sleeve_od
+  - web_hole_d
+  check:
+    method: measure
+    ref: null
+    description: Sleeve drops into the web hole
+manual:
+- n: '1'
+  text: Print the wheel flat on the bed and the sleeve standing on end. No supports
+    needed.
+  parts:
+  - wheel
+  - sleeve
+  hardware: []
+  tool: null
+- n: '2'
+  text: Drop the sleeve into the centre hole of the wheel.
+  parts:
+  - wheel
+  - sleeve
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608 bearing into each side of the wheel until it bottoms on the
+    centre web. Press it in squarely with your thumbs or a vise using the flat of
+    a board. Don't hammer on the inner race.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '4'
+  text: Slide the M8 bolt through a washer, then through the first bearing, the sleeve
+    and the second bearing, then a second washer. Each washer should touch only the
+    inner race of its bearing.
+  parts: []
+  hardware:
+  - bolt
+  - washer
+  - bearing
+  tool: null
+- n: '5'
+  text: Mount the assembly in the door bracket and tighten the nut. The wheel should
+    spin freely. If it drags, check that the washers aren't touching the outer race
+    or the wheel face. The wheel plus both washers is about 19 mm wide, so check it
+    fits the bracket gap.
+  parts: []
+  hardware:
+  - nut
+  - bolt
+  tool: null

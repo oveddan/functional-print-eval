@@ -1,0 +1,258 @@
+task: nut-knob/M5
+note: The knob is 30 mm across and 10 mm tall, with 8 finger scallops around the edge.
+  The M5 nut press-fits into a hex pocket 5.0 mm deep, so it sits 0.3 mm below the
+  face. Under it is a 5 mm floor with a 5.6 mm hole for the bolt. The hole is smaller
+  than the nut, so the nut can't come out the far side. Because the pocket opens upward,
+  the print has no bridges or overhangs. The coupon lets you set the press-fit size.
+questions: []
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal
+  bolt_clear_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: free clearance for M5 through the floor; smaller than the nut so the nut
+      can't pass through
+  nut_pocket_af:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: press-fit hex pocket, across flats. Replace with the coupon size that pressed
+      in by hand and held when inverted
+  nut_recess:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits this far below the top face so it is fully inside
+  pocket_depth:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + nut_recess
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: about 30 mm across, as requested
+  knob_h:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: leaves a 5 mm floor under the nut
+  edge_chamfer:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_r:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: radius of the finger scallops
+  c_af1:
+    value: 7.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c_af2:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c_af3:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c_af4:
+    value: 8.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c_af5:
+    value: 8.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_floor:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pitch:
+    value: 14.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: pocket_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    sizes=[p.c_af1,p.c_af2,p.c_af3,p.c_af4,p.c_af5]\n\
+    \    n=len(sizes)\n    L=n*p.coupon_pitch\n    W=16.0\n    H=p.coupon_floor+p.pocket_depth\n\
+    \    c=cq.Workplane('XY').box(L,W,H,centered=(True,True,False))\n    for i,af\
+    \ in enumerate(sizes):\n        x=-L/2+p.coupon_pitch*(i+0.5)\n        d=af/math.cos(math.radians(30))\n\
+    \        pk=cq.Workplane('XY').workplane(offset=p.coupon_floor).center(x,1.5).polygon(6,d).extrude(p.pocket_depth+1)\n\
+    \        c=c.cut(pk)\n        h=cq.Workplane('XY').center(x,1.5).circle(p.bolt_clear_d/2).extrude(H)\n\
+    \        c=c.cut(h)\n        for j in range(i+1):\n            dx=x+(j-i/2.0)*1.8\n\
+    \            dot=cq.Workplane('XY').workplane(offset=H-0.6).center(dx,-W/2+1.6).circle(0.5).extrude(1)\n\
+    \            c=c.cut(dot)\n    return c\n"
+  print_orientation: flat underside on the bed, pocket openings facing up (same as
+    the knob)
+  use_orientation: test only
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R=p.knob_d/2\n    k=cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    k=k.edges().chamfer(p.edge_chamfer)\n    n=int(p.grip_count)\n    off=R+p.grip_r*0.4\n\
+    \    for i in range(n):\n        a=2*math.pi*i/n\n        s=cq.Workplane('XY').center(off*math.cos(a),off*math.sin(a)).circle(p.grip_r).extrude(p.knob_h)\n\
+    \        k=k.cut(s)\n    d=p.nut_pocket_af/math.cos(math.radians(30))\n    pk=cq.Workplane('XY').workplane(offset=p.knob_h-p.pocket_depth).polygon(6,d).extrude(p.pocket_depth+1)\n\
+    \    k=k.cut(pk)\n    h=cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(p.knob_h)\n\
+    \    k=k.cut(h)\n    return k\n"
+  print_orientation: flat bottom (solid floor with bolt hole) on the bed, nut pocket
+    opening facing up; no supports or bridges
+  use_orientation: nut pocket faces the bolt head side or the work, either way; the
+    bolt passes through nut and floor
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: pocket_coupon
+    description: Nut presses in by thumb and does not fall out when the coupon is
+      shaken upside down
+- id: c2
+  part: knob
+  feature: hex nut pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Nut top is flush or just below the knob face
+- id: c3
+  part: knob
+  feature: floor under the pocket
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: 5.6 mm hole is smaller than the nut, so the nut can't be pushed out
+      through the far side
+- id: c4
+  part: knob
+  feature: bolt clearance hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.6
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: coupon
+    ref: pocket_coupon
+    description: M5 bolt slides through the floor hole
+manual:
+- n: '1'
+  text: Print pocket_coupon flat, with the openings facing up. The pockets go from
+    7.9 to 8.3 mm across flats, left to right, and the dots at the front edge count
+    1 to 5.
+  parts:
+  - pocket_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M5 nut into each pocket with your thumb. Pick the smallest pocket
+    where the nut goes all the way down by hand and stays in when you hold the coupon
+    upside down and shake it. If that isn't pocket 3 (8.1 mm), set nut_pocket_af to
+    that pocket's size. Check that an M5 bolt passes through the hole in the floor.
+  parts:
+  - pocket_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Print the knob with its flat solid bottom on the bed and the hex pocket facing
+    up. You don't need supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '4'
+  text: Line the nut's flats up with the pocket and press it in by hand until it bottoms
+    out. It should end up flush with the top face or slightly below it. If it's tight,
+    press it against a table edge, or warm the pocket briefly with a hair dryer.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread your M5 bolt through the nut and out through the hole in the floor.
+    The floor holds the nut when you tighten from the pocket side. Turn the knob by
+    hand.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

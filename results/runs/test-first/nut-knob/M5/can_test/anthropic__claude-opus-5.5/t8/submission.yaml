@@ -1,0 +1,224 @@
+task: nut-knob/M5
+note: The press fit uses crush ribs instead of a tight hex. The pocket is 8.15 mm
+  across the flats, and ribs on three of the flats bring it to 7.90 mm, so the fit
+  doesn't depend on getting the hole size exactly right. The flat clamping face takes
+  the load when you tighten, so the nut gets pushed into the floor and never pulled
+  out of the pocket.
+questions:
+- text: If the nut is too loose, raise rib_protrude to 0.35. If it's too hard to press
+    in, lower it to 0.15.
+  answer: null
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_clear:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: pocket af = nut_af + this; the ribs give the grip
+  rib_protrude:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: crush rib height on 3 alternating flats -> 7.90 mm interference across the
+      ribs
+  rib_w:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: clamping face, the nut bears on this
+  nut_recess:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: nut top sits below the knob top
+  lead_in:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallops:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d/2\n    H = p.knob_h\n    body\
+    \ = cq.Workplane('XY').circle(R).extrude(H)\n    body = body.faces('>Z').edges().chamfer(1.0)\n\
+    \    body = body.faces('<Z').edges().chamfer(0.4)\n    n = int(p.scallops)\n \
+    \   for i in range(n):\n        a = 2*math.pi*i/n\n        cut = cq.Workplane('XY').center(R*math.cos(a),\
+    \ R*math.sin(a)).circle(p.scallop_r).extrude(H)\n        body = body.cut(cut)\n\
+    \    depth = p.nut_h + p.nut_recess\n    z0 = H - depth\n    af = p.nut_af + p.pocket_clear\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=z0).polygon(6, af*2/math.sqrt(3)).extrude(depth\
+    \ + 1)\n    body = body.cut(pocket)\n    mouth = cq.Workplane('XY').workplane(offset=H\
+    \ - p.lead_in).polygon(6, (af + 2*p.lead_in*0.6)*2/math.sqrt(3)).extrude(p.lead_in\
+    \ + 1)\n    body = body.cut(mouth)\n    rib_len = depth - p.lead_in - 0.3\n  \
+    \  for k in range(3):\n        ang = 30 + 120*k\n        rib = (cq.Workplane('XY').workplane(offset=z0)\n\
+    \               .center(af/2, 0).rect(2*p.rib_protrude, p.rib_w).extrude(rib_len)\n\
+    \               .rotate((0,0,0), (0,0,1), ang))\n        body = body.union(rib)\n\
+    \    hole = cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(H + 1)\n    body\
+    \ = body.cut(hole)\n    return body\n"
+  print_orientation: Clamping face (closed floor) on the bed, nut pocket open upward.
+    No bridges or overhangs.
+  use_orientation: Floor/clamping face toward the workpiece. The bolt comes in through
+    the floor hole, through the nut, and out the top.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: bolt_through_knob
+  fastener: nut
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: hex pocket with crush ribs
+    role: nut_pocket
+  - part: knob
+    feature: 5.6 mm floor hole
+    role: clearance
+  nut: null
+  external: the user's M5 bolt, which enters through the floor and threads through
+    the nut
+criteria:
+- id: nut_retained
+  part: knob
+  feature: hex pocket crush ribs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_clear
+  - rib_protrude
+  check:
+    method: none
+    ref: null
+    description: Press the nut in by hand and turn the knob upside down. It should
+      stay in.
+- id: nut_below_top
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Once seated, the top of the nut sits about 0.5 mm below the knob's
+      top face.
+- id: floor_stops_nut
+  part: knob
+  feature: floor
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: The 5.6 mm hole is smaller than the nut, so the nut can't pass through
+      the floor.
+manual:
+- n: '1'
+  text: Print the knob in PLA with the flat, closed face on the bed. It needs no supports.
+    Use 4 walls and at least 30% infill so the ribs and floor are solid.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Line the M5 nut up with the hex pocket on the open (top) side. Press it in
+    firmly with your thumb, or push it against the table, until it sits on the floor
+    of the pocket just below the top surface. The three small ribs in the pocket will
+    squash a little. That is what holds the nut.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: If you can't press it in by hand, put the bolt through the floor hole from
+    the flat side, thread it into the nut and turn the knob. This pulls the nut down
+    into its seat. Then take the bolt out.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Turn the knob upside down to check that the nut stays in. To use the knob,
+    put the flat face toward your workpiece and thread it onto the bolt so the bolt
+    goes in through the floor and comes out the top through the nut.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

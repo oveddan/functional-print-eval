@@ -1,0 +1,267 @@
+task: nut-knob/M3
+note: Single-piece 20 mm 6-lobed ergonomic hand knob for an M3 hex nut (ISO 4032)
+  and through-bolt. Features an internal solid shoulder stop, round lead-in recess,
+  and 3 subtle crush ribs for a secure hand press-fit that holds upside down without
+  glue. Prints cleanly without any supports.
+questions: []
+params:
+  nut_af_nominal:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut across-flats nominal
+  scallop_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of scallop finger cuts
+  pocket_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Total depth of the nut pocket from top face
+  rib_r:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of cylindrical crush rib
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter across knob lobes
+  scallop_offset:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance to center of each scallop cut
+  lead_in_d:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of top circular lead-in recess
+  lead_in_h:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of circular lead-in recess
+  pocket_af:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats dimension of the hex pocket
+  rib_protrusion:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Inward protrusion of each crush rib from the pocket flat
+  num_lobes:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger scallops around the perimeter
+  knob_h:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: Total axial thickness of the knob
+  clearance_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 through-hole clearance diameter
+  nut_h_nominal:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut nominal height
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal shank diameter for M3 bolt
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    knob_od = p.knob_od\n\
+    \    knob_h = p.knob_h\n    num_lobes = int(p.num_lobes)\n    scallop_r = p.scallop_r\n\
+    \    scallop_offset = p.scallop_offset\n\n    hole_d = p.clearance_hole_d\n  \
+    \  pocket_depth = p.pocket_depth\n    af = p.pocket_af\n    lead_in_d = p.lead_in_d\n\
+    \    lead_in_h = p.lead_in_h\n\n    rib_r = p.rib_r\n    rib_protrusion = p.rib_protrusion\n\
+    \n    # 1. Base cylindrical body\n    knob = cq.Workplane(\"XY\").circle(knob_od\
+    \ / 2.0).extrude(knob_h)\n\n    # 2. Cut 6 scallops around perimeter for ergonomic\
+    \ hand grip\n    for i in range(num_lobes):\n        angle = math.radians(i *\
+    \ (360.0 / num_lobes))\n        cx = scallop_offset * math.cos(angle)\n      \
+    \  cy = scallop_offset * math.sin(angle)\n        scallop = (\n            cq.Workplane(\"\
+    XY\")\n            .moveTo(cx, cy)\n            .circle(scallop_r)\n         \
+    \   .extrude(knob_h * 2)\n            .translate((0, 0, -1))\n        )\n    \
+    \    knob = knob.cut(scallop)\n\n    # 3. Through-hole for M3 bolt shank\n   \
+    \ bolt_hole = (\n        cq.Workplane(\"XY\")\n        .circle(hole_d / 2.0)\n\
+    \        .extrude(knob_h * 2)\n        .translate((0, 0, -1))\n    )\n    knob\
+    \ = knob.cut(bolt_hole)\n\n    # 4. Circular lead-in recess on top face\n    lead_in\
+    \ = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=knob_h - lead_in_h)\n\
+    \        .circle(lead_in_d / 2.0)\n        .extrude(lead_in_h * 2)\n    )\n  \
+    \  knob = knob.cut(lead_in)\n\n    # 5. Hex nut pocket\n    R_hex = (af / 2.0)\
+    \ / math.cos(math.radians(30))\n    hex_pts = [\n        (R_hex * math.cos(math.radians(30\
+    \ + 60 * i)),\n         R_hex * math.sin(math.radians(30 + 60 * i)))\n       \
+    \ for i in range(6)\n    ]\n    hex_cut = (\n        cq.Workplane(\"XY\")\n  \
+    \      .workplane(offset=knob_h - pocket_depth)\n        .moveTo(hex_pts[0][0],\
+    \ hex_pts[0][1])\n        .polyline(hex_pts[1:])\n        .close()\n        .extrude(pocket_depth\
+    \ * 2)\n    )\n    knob = knob.cut(hex_cut)\n\n    # 6. Add 3 retention crush\
+    \ ribs on alternating flats (0, 120, 240 deg)\n    r_center = (af / 2.0) - rib_protrusion\
+    \ + rib_r\n    rib_z_bottom = knob_h - pocket_depth\n    rib_h = pocket_depth\
+    \ - lead_in_h\n\n    for i in range(3):\n        angle = math.radians(120.0 *\
+    \ i)\n        rx = r_center * math.cos(angle)\n        ry = r_center * math.sin(angle)\n\
+    \        rib = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=rib_z_bottom)\n\
+    \            .moveTo(rx, ry)\n            .circle(rib_r)\n            .extrude(rib_h)\n\
+    \        )\n        knob = knob.union(rib)\n\n    return knob\n"
+  print_orientation: Flat bottom face on print bed (Z=0), nut pocket opening facing
+    upward (+Z)
+  use_orientation: Bottom face against the clamped part; outer scalloped lobes gripped
+    by thumb and fingers
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: knob_bolt_joint
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: clearance_hole
+    role: clearance
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  nut: m3_nut
+  external: null
+criteria:
+- id: criterion_nut_pocket
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: 0.1
+  params:
+  - pocket_af
+  - pocket_depth
+  - nut_af_nominal
+  - nut_h_nominal
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: M3 hex nut pocket fit with lead-in and crush ribs
+- id: criterion_nut_retention
+  part: knob
+  feature: retention_ribs
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: -0.09
+  params:
+  - rib_r
+  - rib_protrusion
+  - pocket_af
+  - nut_af_nominal
+  check:
+    method: none
+    ref: null
+    description: Crush ribs provide thumb-press interference fit so nut stays in when
+      upside down
+- id: criterion_shoulder_stop
+  part: knob
+  feature: shoulder
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: 0.0
+  params:
+  - clearance_hole_d
+  - nut_af_nominal
+  - knob_h
+  - pocket_depth
+  check:
+    method: none
+    ref: null
+    description: Internal solid shoulder prevents nut from being pushed out far side
+- id: criterion_bolt_clearance
+  part: knob
+  feature: clearance_hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - clearance_hole_d
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: Through-hole allows M3 bolt to pass completely through nut and out
+      far side
+manual:
+- n: '1'
+  text: Inspect the printed knob. Ensure the central 3.4 mm hole and the nut pocket
+    are clean and free of any debris.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align an ISO 4032 M3 hex nut over the pocket on the top face of the knob.
+    The shallow circular lead-in recess centers and aligns the nut.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Press the nut firmly into the hex pocket using your thumb until it sits flat
+    against the bottom internal shoulder. The three internal crush ribs will deform
+    slightly to hold the nut firmly.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '4'
+  text: Turn the knob upside down to confirm the nut remains securely seated without
+    falling out.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '5'
+  text: Screw the knob onto your M3 bolt. The bolt threads through the nut, passes
+    through the clearance hole, and can exit out the far side.
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  - m3_nut
+  tool: null

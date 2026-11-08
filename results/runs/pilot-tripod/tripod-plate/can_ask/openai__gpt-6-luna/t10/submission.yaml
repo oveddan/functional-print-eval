@@ -1,0 +1,228 @@
+task: tripod-plate
+note: 'Temporary adapter based on the reported 38 mm clamp width, assuming the tripod
+  uses a common Arca-style 38 mm dovetail clamp. That width alone does not identify
+  the clamp profile: print and test the plate in the empty tripod clamp before attaching
+  a camera. If the jaws do not seat securely along both angled sides, do not use it.
+  The camera screw is the listed metal 1/4-20 webcam bolt, not a printed thread. This
+  PLA adapter is temporary; use low tightening torque and do not rely on it over people,
+  valuable equipment, or where a dropped camera could cause injury.'
+questions: []
+params:
+  clamp_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: User reported the tripod clamp takes a plate 38 mm wide.
+  fit_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Total reduction from measured clamp width to printed plate width.
+  plate_length:
+    value: 55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  dovetail_run:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: Horizontal inset of each sloped side; makes an approximate 45-degree Arca-style
+      dovetail.
+  dovetail_height:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_thickness:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Overall thickness from dovetail bed face to camera-contact face.
+  bolt_head_diameter:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User measured webcam bolt head across.
+  bolt_head_height:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User measured webcam bolt head height.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User measured from underside of head to tip.
+  bolt_thread_diameter:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal major diameter for listed 1/4-20 bolt.
+  camera_thread_diameter:
+    value: 6.35
+    unit: mm
+    kind: world
+    source: guessed
+    note: Assumes the camera has the common 1/4-20 tripod socket; verify before use.
+  screw_clearance_diameter:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance passage for the metal 1/4-20 bolt.
+  head_pocket_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_recess_depth:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Leaves about 1 mm of the 5 mm tall head exposed below the plate for finger
+      access.
+parts:
+- id: arca_adapter
+  role: final
+  material: PLA (high-speed PLA)
+  code: "def build(p):\n    # Extruded approximate Arca-style dovetail. The wide,\
+    \ flat face is on the bed.\n    half_base = (p.clamp_width - p.fit_clearance)\
+    \ / 2.0\n    half_top = half_base - p.dovetail_run\n    z_shoulder = p.dovetail_height\n\
+    \    points = [(-half_base, 0), (half_base, 0), (half_top, z_shoulder),\n    \
+    \          (half_top, p.plate_thickness), (-half_top, p.plate_thickness),\n  \
+    \            (-half_top, z_shoulder)]\n    part = cq.Workplane('XZ').polyline(points).close().extrude(p.plate_length)\n\
+    \    # XZ extrusion runs toward -Y; center the plate along Y.\n    part = part.translate((0,\
+    \ p.plate_length / 2.0, 0))\n    # Head counterbore opens on the dovetail/bed\
+    \ face; the axial passage opens\n    # through the camera-contact face. Both are\
+    \ centered along the plate.\n    pocket_d = p.bolt_head_diameter + p.head_pocket_clearance\n\
+    \    pocket = cq.Workplane('XY').circle(pocket_d / 2.0).extrude(p.head_recess_depth)\n\
+    \    passage = cq.Workplane('XY').circle(p.screw_clearance_diameter / 2.0).extrude(p.plate_thickness\
+    \ + 0.2)\n    part = part.cut(pocket).cut(passage)\n    return part"
+  print_orientation: Print with the broad, flat dovetail face (z=0) on the bed; camera-contact
+    face points up. No supports should be needed.
+  use_orientation: Dovetail face down in the tripod clamp, sloped sides engaged by
+    the jaws; flat face up against camera. Pass the metal bolt from the dovetail side
+    upward into the camera socket.
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_mount_screw
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: arca_adapter
+    feature: underside circular counterbore; bolt head bears on the counterbore ceiling
+    role: head_seat
+  - part: arca_adapter
+    feature: centered 6.8 mm axial passage
+    role: clearance
+  nut: null
+  external: Camera's assumed 1/4-20 tripod socket
+criteria:
+- id: clamp_fit
+  part: arca_adapter
+  feature: 38 mm nominal Arca-style dovetail profile and 55 mm length
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_width
+  - fit_clearance
+  - dovetail_run
+  - dovetail_height
+  - plate_length
+  check:
+    method: template
+    ref: null
+    description: Test the printed adapter in the empty tripod clamp. Both angled sides
+      must seat fully and the clamp must lock without rocking or sliding; do not attach
+      the camera if fit is uncertain.
+- id: bolt_passage
+  part: arca_adapter
+  feature: centered axial passage
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: 0.225
+  params:
+  - screw_clearance_diameter
+  - bolt_thread_diameter
+  check:
+    method: none
+    ref: null
+    description: The measured metal bolt passes through the printed clearance hole;
+      its head sits in the underside counterbore.
+- id: camera_socket
+  part: arca_adapter
+  feature: camera bolt engagement
+  relation: engages
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - plate_thickness
+  - head_recess_depth
+  - camera_thread_diameter
+  check:
+    method: measure
+    ref: null
+    description: Confirm the camera socket is 1/4-20. Check bolt engagement gently
+      by hand; stop if it bottoms out or binds. Do not force it.
+manual:
+- n: '1'
+  text: Print the adapter in PLA with the broad dovetail face on the bed. Inspect
+    the screw passage and counterbore; remove only loose strings, and do not enlarge
+    the clamp profile by eye.
+  parts:
+  - arca_adapter
+  hardware: []
+  tool: null
+- n: '2'
+  text: Before attaching a camera, place the adapter in the empty tripod clamp and
+    close the clamp gently. Confirm both angled sides seat, the plate cannot rock,
+    and it cannot slide out. If the profile does not fit securely, do not use the
+    adapter.
+  parts:
+  - arca_adapter
+  hardware: []
+  tool: null
+- n: '3'
+  text: Check that the camera has a 1/4-20 tripod socket. Put the webcam-mount bolt
+    through the adapter from the dovetail side, with its head in the counterbore,
+    then hand-start it into the camera. Tighten gently by turning the bolt head; stop
+    if it binds or bottoms out.
+  parts:
+  - arca_adapter
+  hardware:
+  - camera_bolt
+  tool: Fingers
+- n: '4'
+  text: Fit the assembled camera and adapter into the tripod clamp and lock it. Check
+    for movement before use. Treat this as a temporary, low-load adapter only; support
+    the camera while handling it and keep it away from people and valuable equipment.
+  parts:
+  - arca_adapter
+  hardware:
+  - camera_bolt
+  tool: null

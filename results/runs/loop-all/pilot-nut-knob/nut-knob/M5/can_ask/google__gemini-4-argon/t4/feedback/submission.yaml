@@ -1,0 +1,250 @@
+task: nut-knob/M5
+note: Single-piece 30 mm fluted M5 hand knob with an 8.05 mm across-flats recessed
+  hex pocket, internal bottom stop shoulder, and 5.4 mm M5 bolt through-hole, accompanied
+  by a 5-step fit test coupon (7.95 to 8.15 mm AF).
+questions: []
+params:
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut thickness/height
+  pocket_depth:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the hex nut pocket (> nut_h so the nut sits 1.8 mm recessed inside)
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the hand knob (~30 mm across)
+  coupon_w:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Width of the test coupon bar
+  coupon_step_af:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats increment between adjacent pockets on the 5-pocket test coupon
+  pocket_clearance_af:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance added to nut_af across flats for hand press-fit retention in PLA
+  flute_cut_r:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each perimeter grip scallop
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip scallops around perimeter
+  coupon_stop_t:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom stop wall thickness on the test coupon
+  coupon_pitch:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: Center-to-center spacing between test pockets on the coupon
+  bolt_clearance_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole diameter clearing the M5 bolt shaft and threads
+  stop_wall_t:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the solid far-side stop wall beneath the nut pocket
+  flute_ring_r:
+    value: 17.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radial center distance of scallop cutouts from knob axis
+  knob_h:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the hand knob (stop wall + pocket depth)
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of M5 bolt
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut width across flats
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    af = p.nut_af + p.pocket_clearance_af\n\
+    \    r_circum = af / math.sqrt(3.0)\n    total_h = p.stop_wall_t + p.pocket_depth\n\
+    \    z_seat = p.stop_wall_t\n\n    # Outer cylindrical body with top and bottom\
+    \ chamfers\n    body = (\n        cq.Workplane(\"XY\")\n        .circle(p.knob_od\
+    \ / 2.0)\n        .extrude(total_h)\n        .edges()\n        .chamfer(1.0)\n\
+    \    )\n\n    # Subtract perimeter finger flutes for grip\n    for i in range(int(p.flute_count)):\n\
+    \        ang = math.radians(i * 360.0 / p.flute_count)\n        fx = p.flute_ring_r\
+    \ * math.cos(ang)\n        fy = p.flute_ring_r * math.sin(ang)\n        flute\
+    \ = (\n            cq.Workplane(\"XY\")\n            .center(fx, fy)\n       \
+    \     .circle(p.flute_cut_r)\n            .extrude(total_h)\n        )\n     \
+    \   body = body.cut(flute)\n\n    # Subtract M5 bolt through-hole all the way\
+    \ through\n    bolt_hole = (\n        cq.Workplane(\"XY\")\n        .circle(p.bolt_clearance_d\
+    \ / 2.0)\n        .extrude(total_h)\n    )\n    body = body.cut(bolt_hole)\n\n\
+    \    # Subtract recessed hex nut pocket from z_seat to top\n    hex_pocket = (\n\
+    \        cq.Workplane(\"XY\")\n        .workplane(offset=z_seat)\n        .polygon(6,\
+    \ 2.0 * r_circum)\n        .extrude(p.pocket_depth)\n    )\n    body = body.cut(hex_pocket)\n\
+    \n    return body\n"
+  print_orientation: Flat bottom stop face on the bed (z = 0), hex nut pocket opening
+    upward (+Z) so no bridges or supports are required.
+  use_orientation: Held by the fluted outer rim and turned by hand; M5 bolt passes
+    through the captured internal nut and exits the z = 0 stop face.
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    z_seat = p.coupon_stop_t\n    total_h =\
+    \ z_seat + p.pocket_depth\n    n_pockets = 5\n    bar_l = n_pockets * p.coupon_pitch\
+    \ + 4.0\n\n    body = (\n        cq.Workplane(\"XY\")\n        .box(bar_l, p.coupon_w,\
+    \ total_h, centered=(True, True, False))\n    )\n\n    for i in range(n_pockets):\n\
+    \        offset_idx = i - 2  # -2, -1, 0, +1, +2\n        af_i = p.nut_af + p.pocket_clearance_af\
+    \ + offset_idx * p.coupon_step_af\n        r_circum_i = af_i / math.sqrt(3.0)\n\
+    \        x_pos = offset_idx * p.coupon_pitch\n\n        bolt_hole = (\n      \
+    \      cq.Workplane(\"XY\")\n            .center(x_pos, 0)\n            .circle(p.bolt_clearance_d\
+    \ / 2.0)\n            .extrude(total_h)\n        )\n        body = body.cut(bolt_hole)\n\
+    \n        hex_pocket = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=z_seat)\n\
+    \            .center(x_pos, 0)\n            .polygon(6, 2.0 * r_circum_i)\n  \
+    \          .extrude(p.pocket_depth)\n        )\n        body = body.cut(hex_pocket)\n\
+    \n    return body\n"
+  print_orientation: Flat bottom face on the bed (z = 0), hex pockets opening upward
+    (+Z).
+  use_orientation: 5-pocket test coupon (7.95, 8.00, 8.05, 8.10, 8.15 mm across flats)
+    to verify M5 nut hand press-fit and retention.
+hardware:
+- id: nut_m5
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt_m5
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: knob_m5_joint
+  fastener: bolt_m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 15.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_through_hole
+    role: clearance
+  nut: nut_m5
+  external: null
+criteria:
+- id: nut_press_fit_and_retention
+  part: knob
+  feature: hex_nut_pocket
+  relation: contains
+  hardware: nut_m5
+  clearance_mm: 0.05
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clearance_af
+  - pocket_depth
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Print the nut_fit_coupon first and press the ISO 4032 M5 nut in by
+      hand; verify it seats against the bottom stop, sits fully below the rim, and
+      does not fall out when inverted.
+- id: nut_bottom_stop
+  part: knob
+  feature: nut_seat_shoulder
+  relation: seats
+  hardware: nut_m5
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - bolt_d
+  - bolt_clearance_d
+  - stop_wall_t
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Verify the M5 nut stops firmly against the internal shoulder at z
+      = stop_wall_t and cannot pass through the bolt hole on the far side.
+- id: bolt_through_clearance
+  part: knob
+  feature: bolt_through_hole
+  relation: clears
+  hardware: bolt_m5
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Pass the M5 bolt all the way through the nut and out the far side
+      clearance hole without thread interference on the plastic bore.
+manual:
+- n: '1'
+  text: Print the nut_fit_coupon first and test-press your ISO 4032 M5 hex nut into
+    the test pockets by hand to verify a snug hand press-fit that retains the nut
+    when turned upside down.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut_m5
+  tool: null
+- n: '2'
+  text: Print the knob with its flat stop face on the build plate (z = 0). Align the
+    M5 hex nut with the top hex pocket and press it firmly by hand all the way down
+    until it seats against the internal stop shoulder below the rim.
+  parts:
+  - knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '3'
+  text: Thread your M5 bolt through the captured nut so the bolt passes through the
+    nut and exits out the far side through-hole.
+  parts:
+  - knob
+  hardware:
+  - bolt_m5
+  - nut_m5
+  tool: null

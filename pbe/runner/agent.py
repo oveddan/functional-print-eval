@@ -6,11 +6,14 @@ report_limitation (changes nothing; records what the model wanted to use but cou
 and what stopped it, so a failure caused by the eval's constraints shows as one).
 In the can_run_code condition the model also has run_python (pbe/runner/python_tool.py), and
 submit_design builds every part before accepting the design, sending build errors back to
-fix (pbe/runner/build_on_submit.py). The other conditions' prompt and tools are exactly as
-they were before either existed.
+fix (pbe/runner/build_on_submit.py). In the can_test condition the model also has print_test: it may ask the
+person to print test pieces before handing in the final design, and hears how each came out, from the recorded
+test prints only (pbe/runner/coupon_loop.py's readings). Whether to test, and what, is the model's call. The other
+conditions' prompt and tools are exactly as they were before either existed.
 """
 import json
 import re
+import tempfile
 import time
 from functools import cache
 from pathlib import Path
@@ -29,9 +32,10 @@ from pbe.runner.tasks import TaskFormat
 from pbe.runner.trial_record import BuildOnSubmit, ModelCall, Settings, TrialRecord
 
 ROOT = Path(__file__).resolve().parents[2]
-CONDITIONS = ("can_ask", "all_given", python_tool.CONDITION)
-# each code run takes a turn, so a model that can run code gets more of them
-DEFAULT_MAX_TURNS = {"can_ask": 8, "all_given": 8, python_tool.CONDITION: 20}
+TEST_CONDITION = "can_test"
+CONDITIONS = ("can_ask", "all_given", python_tool.CONDITION, TEST_CONDITION)
+# each code run or test print takes a turn, so a model that can do either gets more of them
+DEFAULT_MAX_TURNS = {"can_ask": 8, "all_given": 8, python_tool.CONDITION: 20, TEST_CONDITION: 12}
 
 SYSTEM = """You're designing a part for someone to 3D print at home. They'll print it on their own printer, use only the hardware listed below, and put it together by following your manual.
 
@@ -109,6 +113,15 @@ SUBMIT_BUILDS_FIRST = ("Hand in the finished design. Every part is built first: 
                        "Building uses run_python's shared code time; once that's used up, the design is handed in "
                        "without being built.")
 SUBMIT_LINE = "- submit_design(...): hand in the finished design. This ends the conversation."
+# can_test: the tool, and its line in the system prompt, just under measure's
+PRINT_TEST = ("Optional. If you need to know whether something is going to work but you're not sure, ask the person to "
+              "print a test of it before you hand in the final design, so you both save time and filament. They print "
+              "it and tell you how each piece came out.")
+PRINT_TEST_LINE = ("- print_test(params, parts): optional. If you need to know whether something is going to work but you're "
+                   "not sure, ask the person to print a test of it before you hand in the final design, so you both save "
+                   "time and filament. They print it and tell you how each piece came out.")
+NO_SUPPORTS = "- Supports: none. Every part has to print without them."  # can_test: under the setup's last line
+MEASURE_LINE = "- measure(item, what): ask the person to measure one of their own things"
 SUBMIT_LINE_BUILDS_FIRST = ("- submit_design(...): hand in the finished design. Every part is built first: if one doesn't "
                             "build, you get its error back to fix. A design whose parts all build ends the conversation.")
 
@@ -148,7 +161,15 @@ def tools(condition="can_ask", assembly=False):
                "blocked_by": {"type": "string", "description": "What stopped you, e.g. not in the hardware list, no such tool, the submission format"},
                "why": {"type": "string", "description": "Why you wanted it"}},
             "required": ["wanted", "blocked_by", "why"]}),
-    ] + ([python_tool.spec()] if condition == python_tool.CONDITION else [])
+    ] + ([python_tool.spec()] if condition == python_tool.CONDITION else []) + (
+        [function_tool("print_test", PRINT_TEST, test_print_schema(design))] if condition == TEST_CONDITION else [])
+
+
+def test_print_schema(design):
+    """print_test's parameters: the params and parts of submit_design's schema, nothing else."""
+    return {"type": "object", "properties": {"params": design["properties"]["params"],
+                                             "parts": {**design["properties"]["parts"], "description": "The test pieces to print"}},
+            "required": ["params", "parts"]}
 
 
 def first_message(task, condition, person):
@@ -240,6 +261,7 @@ def grade(task, sub, out_dir):
 
 # the model's message as the transcript keeps it and the next request sends it back. Reasoning
 # goes back unchanged: some providers need it to continue a tool-use turn
+TEST_PRINTED = "I printed the test pieces. Here's how they came out:"
 KEPT_FROM_REPLY = ("role", "content", "tool_calls", "reasoning", "reasoning_details")
 USE_YOUR_TOOLS = "Please use your tools: measure to ask me for a measurement, submit_design to hand in the design."
 
@@ -263,10 +285,12 @@ class TrialTools:
     """The model's tools (three, and run_python where it can run code), and what its calls
     to them collect over one trial."""
 
-    def __init__(self, task, person, python: PythonTool | None = None):
+    def __init__(self, task, person, python: PythonTool | None = None, can_test: bool = False):
         self.task = task
         self.person = person
         self.python = python
+        self.can_test = can_test
+        self.test_prints = []  # can_test: each print_test call that was printed, and what the person said
         self.limitations = []  # whatever the model passed to report_limitation
         self.repairs = 0  # submit_design calls sent back to be fixed
         self.sent_back_unbuilt = []  # can_run_code: per call sent back for a build error, the parts that didn't build
@@ -278,6 +302,8 @@ class TrialTools:
         tools_by_name = {"measure": self.measure, "report_limitation": self.report_limitation, "submit_design": self.submit_design}
         if self.python is not None:
             tools_by_name["run_python"] = self.run_python
+        if self.can_test:
+            tools_by_name["print_test"] = self.print_test
         try:
             arguments = read_arguments(call)
         except UnreadableArguments as e:
@@ -294,6 +320,27 @@ class TrialTools:
 
     def run_python(self, arguments):
         return self.python.run(str(arguments.get("code", "")))
+
+    def print_test(self, arguments):
+        """Print the test pieces and say how each came out: the same readings the person gives in the test-print
+        loop (a pocket's fit, a seat's fit, a holed roof), from the recorded prints only, with no cause or fix."""
+        from pbe.runner import coupon_loop  # it imports this module
+        parts = [{**part, "role": "coupon"} if isinstance(part, dict) else part for part in arguments.get("parts") or []]
+        try:
+            pieces = Submission.model_validate({"task": self.task.id, "params": arguments.get("params") or {}, "parts": parts})
+        except ValidationError as e:
+            return f"I can't print that yet. Fix these and call print_test again:\n{e}"
+        if not pieces.parts:
+            return "There's nothing to print: send at least one part."
+        with tempfile.TemporaryDirectory() as out:
+            built = build_parts(pieces, Path(out) / "parts")
+            report = coupon_loop.printed_parts_report(self.task, pieces, built)
+        reply = TEST_PRINTED + "\n" + "\n".join(
+            f"{part_id}:\n" + "\n".join(f"- {line.text}" for line in lines) for part_id, lines in report.items())
+        self.test_prints.append({"params": arguments.get("params"), "parts": [part.id for part in pieces.parts],
+                                 "reply": {part_id: [{"text": line.text, "basis": line.basis} for line in lines]
+                                           for part_id, lines in report.items()}})
+        return reply
 
     def report_limitation(self, arguments):
         self.limitations.append(arguments)
@@ -372,9 +419,16 @@ def _with_task_format(text, task_format: TaskFormat | None):
     return text
 
 
-def system_prompt(max_turns, python: PythonTool | None = None, task_format: TaskFormat | None = None):
+def system_prompt(max_turns, python: PythonTool | None = None, task_format: TaskFormat | None = None, can_test=False):
     text = SYSTEM.format(setup=setup_text(), hardware=hardware_text(), max_turns=max_turns)
     text = _with_task_format(text, task_format)
+    if can_test:
+        bridge = text.index("- Longest bridge seen to print cleanly")
+        bridge_end = text.index("\n", bridge)
+        text = text[:bridge_end + 1] + NO_SUPPORTS + "\n" + text[bridge_end + 1:]
+        start = text.index(MEASURE_LINE)
+        end = text.index("\n", start)
+        text = text[:end + 1] + PRINT_TEST_LINE + "\n" + text[end + 1:]
     if python is None:
         return text
     assert text.count(SUBMIT_LINE) == 1
@@ -385,7 +439,7 @@ def system_prompt(max_turns, python: PythonTool | None = None, task_format: Task
 
 
 def opening_messages(task, condition, person, max_turns, python: PythonTool | None = None):
-    system = system_prompt(max_turns, python, task.format)
+    system = system_prompt(max_turns, python, task.format, can_test=condition == TEST_CONDITION)
     return [{"role": "system", "content": system}, {"role": "user", "content": first_message(task, condition, person)}]
 
 
@@ -425,7 +479,7 @@ def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, c
     run_python's working folder, in the condition that has it."""
     person = Person(task.hidden_facts)
     python = code_tool(task, condition, workdir)
-    trial_tools = TrialTools(task, person, python)
+    trial_tools = TrialTools(task, person, python, can_test=condition == TEST_CONDITION)
     messages = opening_messages(task, condition, person, max_turns, python)
     calls, error = [], None
     started = time.monotonic()
@@ -453,6 +507,30 @@ def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, c
         limitations=trial_tools.limitations, cost_usd=round(sum(call.cost_usd for call in calls), 6),
         elapsed_s=round(time.monotonic() - started, 1),
         settings=trial_settings(model, max_turns, max_tokens, python),
-        calls=calls,
+        calls=calls, test_prints=trial_tools.test_prints,
     )
     return record, messages, trial_tools.submission
+
+
+def asked_test_prints(task_id, messages) -> list[Submission]:
+    """can_test: the test pieces the model asked the person to print, one design per print_test call that the person
+    printed (a call sent back to fix isn't one), from a saved transcript. For slicing what the trial printed."""
+    replies = {message.get("tool_call_id"): message.get("content", "") for message in messages if message.get("role") == "tool"}
+    pieces = []
+    for message in messages:
+        for call in message.get("tool_calls") or []:
+            if call["function"]["name"] != "print_test" or not replies.get(call["id"], "").startswith(TEST_PRINTED):
+                continue
+            arguments = json.loads(call["function"]["arguments"] or "{}")
+            parts = [{**part, "role": "coupon"} for part in arguments.get("parts") or []]
+            pieces.append(Submission.model_validate({"task": task_id, "params": arguments.get("params") or {}, "parts": parts}))
+    return pieces
+
+
+def graded_design(condition, sub):
+    """The design the checks grade. In can_test the person has printed whatever tests the model asked for, so the
+    final design is graded without any test pieces it still lists: it has to land on a size that worked, as a
+    second turn in the test-print loop does (coupon_loop.without_coupons)."""
+    if condition != TEST_CONDITION:
+        return sub
+    return sub.model_copy(update={"parts": [part for part in sub.parts if part.role != "coupon"]})

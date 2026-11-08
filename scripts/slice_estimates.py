@@ -32,6 +32,7 @@ import trimesh
 
 from pbe.parts import submission
 from pbe.parts.build import build_parts
+from pbe.runner import agent
 from pbe.runner.trial_record import TrialRecord
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -314,26 +315,36 @@ def slice_part(job_and_presets) -> PartEstimate:
 def built_parts(folder: Path, sub) -> dict[str, str]:
     """Build the design's parts into folder/parts unless they're there (parts/ isn't committed), the way the
     results page does. Returns each part's build error, empty for a part that built."""
-    parts = folder / "parts"
+    return built_parts_in(folder / "parts", sub)
+
+
+def built_parts_in(parts: Path, sub) -> dict[str, str]:
     if all((parts / f"{part.id}.stl").exists() for part in sub.parts):
         return {part.id: "" for part in sub.parts}
     return {part_id: built.error for part_id, built in build_parts(sub, parts).items()}
 
 
 def jobs_for_trial(run: str, folder: Path, record) -> list[PartJob]:
-    """One job per part of the trial's saved design; none when there's no design."""
+    """One job per part of the trial's saved design; none when there's no design. A can_test trial also prints
+    each test the model asked for before its final design, and its final design's own test pieces aren't printed
+    again (agent.graded_design)."""
     sub_path = folder / "submission.yaml"
     if not sub_path.exists():
         return []
-    sub = submission.load(sub_path)
-    errors = built_parts(folder, sub)
+    designs = [(folder / "parts", "", agent.graded_design(record.condition, submission.load(sub_path)))]
+    if record.condition == agent.TEST_CONDITION:
+        messages = json.loads((folder / "transcript.json").read_text())
+        designs += [(folder / "parts" / f"test{number}", f"test{number}/", pieces)
+                    for number, pieces in enumerate(agent.asked_test_prints(record.task, messages), 1)]
     jobs = []
-    for part in sub.parts:
-        stl = folder / "parts" / f"{part.id}.stl"
-        error = errors.get(part.id, "") or ("" if stl.exists() else "no mesh")
-        jobs.append(PartJob(run=run, folder=folder, task=record.task, condition=record.condition, model=record.model,
-                            trial=record.trial, verdict=record.verdict if record.outcome == "submitted" else "error",
-                            part=part.id, role=part.role, stl=None if error else stl, build_error=error))
+    for parts_dir, prefix, sub in designs:
+        errors = built_parts_in(parts_dir, sub)
+        for part in sub.parts:
+            stl = parts_dir / f"{part.id}.stl"
+            error = errors.get(part.id, "") or ("" if stl.exists() else "no mesh")
+            jobs.append(PartJob(run=run, folder=folder, task=record.task, condition=record.condition, model=record.model,
+                                trial=record.trial, verdict=record.verdict if record.outcome == "submitted" else "error",
+                                part=prefix + part.id, role=part.role, stl=None if error else stl, build_error=error))
     return jobs
 
 

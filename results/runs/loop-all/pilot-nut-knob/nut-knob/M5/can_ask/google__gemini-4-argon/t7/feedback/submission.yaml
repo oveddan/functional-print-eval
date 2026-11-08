@@ -1,0 +1,309 @@
+task: nut-knob/M5
+note: Single-piece 30 mm ergonomic M5 hand knob with a clean hex nut pocket and test
+  coupons spanning 8.00 mm to 8.20 mm across flats in 0.05 mm steps to verify the
+  exact hand-press fit on this printer.
+questions: []
+params:
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of the hand knob (~30 mm requested)
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M5 screw thread diameter
+  coupon_od:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the quick-print nut fit test coupon
+  coupon_af_810:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: 8.10 mm across-flats test coupon pocket
+  coupon_af_805:
+    value: 8.05
+    unit: mm
+    kind: design
+    source: design
+    note: 8.05 mm across-flats test coupon pocket
+  coupon_af_820:
+    value: 8.2
+    unit: mm
+    kind: design
+    source: design
+    note: 8.20 mm across-flats test coupon pocket
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut height/thickness
+  outer_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Top and bottom outer edge chamfer for comfort and elephant-foot relief
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip scallops around the knob perimeter
+  flute_r:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each finger grip scallop cutter
+  floor_t:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the solid floor under the hex nut pocket stopping the nut from
+      pushing through
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut width across flats
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob (floor_t + pocket_depth)
+  coupon_af_800:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: 8.00 mm across-flats test coupon pocket
+  pocket_clearance:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance added to nut_af for the hex pocket across flats
+  pocket_depth:
+    value: 6.5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of hex nut pocket (> 4.7 mm nut_h so nut sits 1.8 mm recessed inside)
+  coupon_af_815:
+    value: 8.15
+    unit: mm
+    kind: design
+    source: design
+    note: 8.15 mm across-flats test coupon pocket
+  flute_offset:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radial offset of scallop cutter center outside the knob radius
+  bolt_clearance_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for M5 bolt to pass freely through the far side
+parts:
+- id: m5_hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = (\n        cq.Workplane(\"XY\")\n\
+    \        .circle(p.knob_od / 2.0)\n        .extrude(p.knob_h)\n        .faces(\"\
+    <Z or >Z\")\n        .edges()\n        .chamfer(p.outer_chamfer)\n    )\n\n  \
+    \  flute_rad = (p.knob_od / 2.0) + p.flute_offset\n    for i in range(int(p.flute_count)):\n\
+    \        ang = 2.0 * math.pi * i / p.flute_count\n        fx = flute_rad * math.cos(ang)\n\
+    \        fy = flute_rad * math.sin(ang)\n        cutter = (\n            cq.Workplane(\"\
+    XY\")\n            .center(fx, fy)\n            .circle(p.flute_r)\n         \
+    \   .extrude(p.knob_h)\n        )\n        body = body.cut(cutter)\n\n    bolt_hole\
+    \ = (\n        cq.Workplane(\"XY\")\n        .circle(p.bolt_clearance_d / 2.0)\n\
+    \        .extrude(p.knob_h)\n    )\n    body = body.cut(bolt_hole)\n\n    af =\
+    \ p.nut_af + p.pocket_clearance\n    circum_r = af / math.sqrt(3.0)\n    hex_pts\
+    \ = [\n        (circum_r * math.cos(k * math.pi / 3.0), circum_r * math.sin(k\
+    \ * math.pi / 3.0))\n        for k in range(6)\n    ]\n    hex_pocket = (\n  \
+    \      cq.Workplane(\"XY\")\n        .workplane(offset=p.floor_t)\n        .polyline(hex_pts)\n\
+    \        .close()\n        .extrude(p.pocket_depth)\n    )\n    body = body.cut(hex_pocket)\n\
+    \    return body\n"
+  print_orientation: Bottom closed face (bolt exit side) flat on the print bed at
+    z = 0; hex nut pocket opens upward at z = 12 mm so it prints with zero overhangs
+    or bridges.
+  use_orientation: Held by the fluted outer rim with the captured M5 nut inside; bolt
+    threads through the nut and exits the closed base face.
+- id: coupon_8_00
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.coupon_od\
+    \ / 2.0).extrude(p.knob_h)\n    bolt_hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(p.knob_h)\n    body = body.cut(bolt_hole)\n    af = p.coupon_af_800\n\
+    \    circum_r = af / math.sqrt(3.0)\n    hex_pts = [(circum_r * math.cos(k * math.pi\
+    \ / 3.0), circum_r * math.sin(k * math.pi / 3.0)) for k in range(6)]\n    hex_pocket\
+    \ = cq.Workplane(\"XY\").workplane(offset=p.floor_t).polyline(hex_pts).close().extrude(p.pocket_depth)\n\
+    \    return body.cut(hex_pocket)\n"
+  print_orientation: Bottom closed face flat on the bed at z = 0.
+  use_orientation: Test coupon for 8.00 mm across-flats hex nut pocket.
+- id: coupon_8_05
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.coupon_od\
+    \ / 2.0).extrude(p.knob_h)\n    bolt_hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(p.knob_h)\n    body = body.cut(bolt_hole)\n    af = p.coupon_af_805\n\
+    \    circum_r = af / math.sqrt(3.0)\n    hex_pts = [(circum_r * math.cos(k * math.pi\
+    \ / 3.0), circum_r * math.sin(k * math.pi / 3.0)) for k in range(6)]\n    hex_pocket\
+    \ = cq.Workplane(\"XY\").workplane(offset=p.floor_t).polyline(hex_pts).close().extrude(p.pocket_depth)\n\
+    \    return body.cut(hex_pocket)\n"
+  print_orientation: Bottom closed face flat on the bed at z = 0.
+  use_orientation: Test coupon for 8.05 mm across-flats hex nut pocket.
+- id: coupon_8_10
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.coupon_od\
+    \ / 2.0).extrude(p.knob_h)\n    bolt_hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(p.knob_h)\n    body = body.cut(bolt_hole)\n    af = p.coupon_af_810\n\
+    \    circum_r = af / math.sqrt(3.0)\n    hex_pts = [(circum_r * math.cos(k * math.pi\
+    \ / 3.0), circum_r * math.sin(k * math.pi / 3.0)) for k in range(6)]\n    hex_pocket\
+    \ = cq.Workplane(\"XY\").workplane(offset=p.floor_t).polyline(hex_pts).close().extrude(p.pocket_depth)\n\
+    \    return body.cut(hex_pocket)\n"
+  print_orientation: Bottom closed face flat on the bed at z = 0.
+  use_orientation: Test coupon for 8.10 mm across-flats hex nut pocket.
+- id: coupon_8_15
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.coupon_od\
+    \ / 2.0).extrude(p.knob_h)\n    bolt_hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(p.knob_h)\n    body = body.cut(bolt_hole)\n    af = p.coupon_af_815\n\
+    \    circum_r = af / math.sqrt(3.0)\n    hex_pts = [(circum_r * math.cos(k * math.pi\
+    \ / 3.0), circum_r * math.sin(k * math.pi / 3.0)) for k in range(6)]\n    hex_pocket\
+    \ = cq.Workplane(\"XY\").workplane(offset=p.floor_t).polyline(hex_pts).close().extrude(p.pocket_depth)\n\
+    \    return body.cut(hex_pocket)\n"
+  print_orientation: Bottom closed face flat on the bed at z = 0.
+  use_orientation: Test coupon for 8.15 mm across-flats hex nut pocket.
+- id: coupon_8_20
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    body = cq.Workplane(\"XY\").circle(p.coupon_od\
+    \ / 2.0).extrude(p.knob_h)\n    bolt_hole = cq.Workplane(\"XY\").circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(p.knob_h)\n    body = body.cut(bolt_hole)\n    af = p.coupon_af_820\n\
+    \    circum_r = af / math.sqrt(3.0)\n    hex_pts = [(circum_r * math.cos(k * math.pi\
+    \ / 3.0), circum_r * math.sin(k * math.pi / 3.0)) for k in range(6)]\n    hex_pocket\
+    \ = cq.Workplane(\"XY\").workplane(offset=p.floor_t).polyline(hex_pts).close().extrude(p.pocket_depth)\n\
+    \    return body.cut(hex_pocket)\n"
+  print_orientation: Bottom closed face flat on the bed at z = 0.
+  use_orientation: Test coupon for 8.20 mm across-flats hex nut pocket.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: knob_nut_joint
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: m5_hand_knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  - part: m5_hand_knob
+    feature: bolt_thru_hole
+    role: clearance
+  nut: m5_nut
+  external: null
+criteria:
+- id: nut_press_fit_retention
+  part: m5_hand_knob
+  feature: hex_nut_pocket
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: 0.05
+  params:
+  - nut_af
+  - nut_h
+  - pocket_clearance
+  - pocket_depth
+  check:
+    method: coupon
+    ref: coupon_8_05
+    description: Press the ISO 4032 M5 hex nut into the hex pocket by hand, confirm
+      it seats against the internal floor below the top rim, and turn it upside down
+      to verify it stays retained without glue.
+- id: nut_axial_stop
+  part: m5_hand_knob
+  feature: pocket_floor
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - bolt_clearance_d
+  - floor_t
+  check:
+    method: coupon
+    ref: coupon_8_05
+    description: Verify the M5 nut bottoms out on the internal floor and cannot pass
+      through the far side.
+- id: bolt_passes_through
+  part: m5_hand_knob
+  feature: bolt_thru_hole
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Pass the M5 bolt through the nut and out the through-hole on the
+      far side of the knob.
+manual:
+- n: '1'
+  text: Test the ISO 4032 M5 hex nut in the test coupons to verify which across-flats
+    pocket size presses in by hand and stays retained when turned upside down.
+  parts:
+  - coupon_8_00
+  - coupon_8_05
+  - coupon_8_10
+  - coupon_8_15
+  - coupon_8_20
+  hardware:
+  - m5_nut
+  tool: null
+- n: '2'
+  text: Press the ISO 4032 M5 hex nut into the hex pocket on the top face of the m5_hand_knob
+    by hand until it seats against the internal floor, recessed below the top face.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Thread the M5 bolt through the captured nut so the bolt passes out the clearance
+    hole on the far side of the knob, and tighten by hand.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_bolt
+  tool: null

@@ -1,0 +1,205 @@
+task: tripod-plate
+note: Arca-style 38 mm plate. Both long edges are bevelled at 45°, top and bottom,
+  so it works whichever way the jaw lips grip. The 1/4-20 screw comes from the salvaged
+  webcam bolt rather than being printed, because a printed PLA thread would strip.
+  Lip depth and camera socket depth weren't measured (guessed).
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Width of plate the clamp takes (Arca-style jaws)
+  bevel_low_h:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: 45° bevel on the lower edge (works with jaws that grip low)
+  side_flat_h:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: Top bevel = plate_t - bevel_low_h - side_flat_h = 4 mm at 45°, for lips
+      that hook over the top
+  plate_l:
+    value: 55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about 15
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about 5
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under the head
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  bolt_clear:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_clear:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cbore_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Head sits 0.5 mm below the bottom face. Floor = 10.5-5.5 = 5 mm, so 5 mm
+      of thread sticks up into the camera
+  cam_socket_depth:
+    value: 5.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Not measured. Typical is 5.5 mm or more, and the bolt sticks up 5 mm
+parts:
+- id: qr_plate
+  role: final
+  material: PLA, 100% infill or 6 walls
+  code: "def build(p):\n    W=p.plate_w; b1=p.bevel_low_h; v=p.side_flat_h; t=p.plate_t\n\
+    \    wb=W-2*b1\n    wt=W-2*(t-b1-v)\n    pts=[(-wb/2,0),(wb/2,0),(W/2,b1),(W/2,b1+v),(wt/2,t),(-wt/2,t),(-W/2,b1+v),(-W/2,b1)]\n\
+    \    body=cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_l/2,both=True)\n\
+    \    cb=cq.Workplane('XY').circle((p.bolt_head_d+p.head_clear)/2).extrude(p.cbore_depth)\n\
+    \    th=cq.Workplane('XY').circle((p.bolt_d+p.bolt_clear)/2).extrude(t+1)\n  \
+    \  return body.cut(cb).cut(th)\n"
+  print_orientation: Bottom face (the side with the head recess) on the bed, length
+    along Y
+  use_orientation: Recess side down in the tripod clamp, flat top face against the
+    camera
+hardware:
+- id: cam_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: j_cam
+  fastener: cam_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: head counterbore
+    role: head_seat
+  - part: qr_plate
+    feature: through hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c_clamp
+  part: qr_plate
+  feature: dovetail edges
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - bevel_low_h
+  - side_flat_h
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: 'Plate drops into the open clamp, and the jaws grip a bevel when
+      you tighten the knob. Tug it: it doesn''t lift out'
+- id: c_head
+  part: qr_plate
+  feature: head counterbore
+  relation: contains
+  hardware: cam_bolt
+  clearance_mm: 0.8
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - cbore_depth
+  check:
+    method: measure
+    ref: null
+    description: Bolt head sits at or below the bottom face
+- id: c_protrude
+  part: qr_plate
+  feature: through hole
+  relation: clears
+  hardware: cam_bolt
+  clearance_mm: null
+  params:
+  - bolt_len
+  - plate_t
+  - cbore_depth
+  - cam_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: About 5 mm of thread sticks up. The camera snugs down flat on the
+      plate before the bolt bottoms out
+manual:
+- n: '1'
+  text: Print qr_plate with the recessed side down, no supports, 100% infill (or 6
+    walls and 40% infill) so the edges don't crush in the clamp.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Push the webcam bolt up through the plate from underneath, so its head sits
+    in the round recess and the thread sticks out of the top.
+  parts:
+  - qr_plate
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '3'
+  text: Put the bolt into the camera's tripod socket and turn the bolt head from underneath
+    until the camera is snug against the plate. Hand-tight only, because PLA will
+    crack if you crank it.
+  parts:
+  - qr_plate
+  hardware:
+  - cam_bolt
+  tool: null
+- n: '4'
+  text: Open the tripod clamp, drop the plate in, and tighten the knob. Check that
+    it doesn't lift or slide before you let go of the camera. It's temporary, so don't
+    leave a heavy camera hanging over the edge, or out in a hot car.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null

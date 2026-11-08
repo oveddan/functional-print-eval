@@ -27,10 +27,11 @@ from typing import Literal, Self
 
 import yaml
 from pydantic import BaseModel, Field
+from shapely.geometry import Polygon
 
-from pbe.graders import nuts, requirements, wheel
+from pbe.graders import assumed, nuts, requirements, wheel
 from pbe.graders.bridges import is_holed_roof, overhangs
-from pbe.graders.sections import clear_width, holes_by_layer
+from pbe.graders.sections import clear_circle, clear_width, holes_by_layer, section_at
 from pbe.parts import catalog
 from pbe.runner import agent, llm
 from pbe.runner.measure import Person
@@ -119,25 +120,28 @@ def _requirement_args(task, grader):
 
 
 def _pocket_line(found, af, label) -> ReportLine:
+    """What the person says about one pocket: what coupon B's pocket at that size did, or, within the assumption
+    tolerance (graders/assumed.py), what the nearest printed pocket did."""
     size = f"{found.across:.2f} mm pocket"
-    if not found.plain:  # coupon B only printed plain hexagons
+    if not found.plain:  # coupon B only printed plain hexagons; crush ribs or clips are a different thing
         return ReportLine(f"{size}: {CANT_TELL}", "no record")
     clearance = found.across - af
-    printed = [pocket for pocket in printed_pockets() if pocket.label == label and abs(clearance - pocket.clearance) <= nuts.TOL]
-    if not printed:
-        return _tighter_pocket_line(size, clearance, label)
-    pocket = printed[0]
-    if pocket.outcome == "holds":
-        return ReportLine(f"{size}: {pocket.said}. The nut stayed in when I turned it over and shook it.", "coupon B record")
-    return ReportLine(f"{size}: {pocket.said}.", "coupon B record")
-
-
-def _tighter_pocket_line(size, clearance, label) -> ReportLine:
-    """A pocket tighter than the tightest one printed, if that one wouldn't take the nut; else no answer."""
-    tightest = min((pocket for pocket in printed_pockets() if pocket.label == label), key=lambda pocket: pocket.clearance)
-    if tightest.outcome == "won't go in" and clearance < tightest.clearance - nuts.TOL:
-        return ReportLine(f"{size}: won't go in.", "tighter than a record")
-    return ReportLine(f"{size}: {CANT_TELL}", "no record")
+    outcome, assumed_from = nuts.reading(label, clearance)
+    if outcome is None:
+        return ReportLine(f"{size}: {CANT_TELL}", "no record")
+    if assumed_from is None:
+        printed = [pocket for pocket in printed_pockets() if pocket.label == label and abs(clearance - pocket.clearance) <= nuts.TOL]
+        if not printed:  # settled by the trend: tighter than one that wouldn't go in, or looser than a loose one
+            return ReportLine(f"{size}: {outcome}.", "tighter than a record")
+        said = printed[0].said
+        outcome = printed[0].outcome  # Dan's own coding for that pocket: "holds" only where he turned it over
+    else:
+        nearest = next(pocket for pocket in printed_pockets() if pocket.label == label and abs(pocket.clearance - assumed_from) <= nuts.TOL)
+        size = f"{found.across:.2f} mm pocket (I printed {af + nearest.clearance:.2f} mm, the nearest size)"
+        said = nearest.said
+    if outcome == "holds":
+        return ReportLine(f"{size}: {said}. The nut stayed in when I turned it over and shook it.", "coupon B record")
+    return ReportLine(f"{size}: {said}.", "coupon B record")
 
 
 def nut_lines(mesh, nut, label) -> list[ReportLine]:
@@ -175,6 +179,7 @@ def seats_on(mesh, seat_range) -> list[CouponSeat]:
 
 
 def _seat_line(seat: CouponSeat) -> ReportLine:
+    """What coupon E's seat at that size did, or the nearest printed seat within the assumption tolerance."""
     size = f"{seat.across:.2f} mm seat"
     if not seat.plain:  # coupon E only printed plain round seats
         return ReportLine(f"{size}: {CANT_TELL}", "no record")
@@ -184,6 +189,9 @@ def _seat_line(seat: CouponSeat) -> ReportLine:
     tightest = min(printed_seats(), key=lambda printed: printed.seat_d)
     if tightest.outcome == "won't go in" and seat.across < tightest.seat_d - wheel.TOL:
         return ReportLine(f"{size}: won't go in.", "tighter than a record")
+    close = assumed.nearest(seat.across, [(printed.seat_d, printed) for printed in printed_seats()])
+    if close:
+        return ReportLine(f"{size} (I printed {close[0]:.2f} mm, the nearest size): {close[1].outcome}.", "coupon E record")
     return ReportLine(f"{size}: {CANT_TELL}", "no record")
 
 
@@ -192,11 +200,118 @@ def seat_lines(mesh, seat_range) -> list[ReportLine]:
 
 
 def roof_lines(mesh) -> list[ReportLine]:
-    """The bridge check's prediction for a roof with a hole through it, in the words cell H was recorded in."""
-    holed = [found for found in overhangs(mesh) if not found.ok and not found.narrow and len(found.region.interiors)]
-    if not holed:
-        return []
-    return [ReportLine(f"the roof over the pocket: {ROOF_NOTE}.", "bridge check prediction")]
+    """The bridge check's prediction for the piece's roofs: a roof with a hole through it in the words cell H was
+    recorded in, a roof over air as loose strands, and every roof bridging as a clean print."""
+    found = overhangs(mesh)
+    failed = [overhang for overhang in found if not overhang.ok and not overhang.narrow]
+    holed = [overhang for overhang in failed if len(overhang.region.interiors)]
+    if holed:
+        return [ReportLine(f"the roof over the pocket: {ROOF_NOTE}.", "bridge check prediction")]
+    if failed:
+        return [ReportLine(f"a roof about {failed[0].longest:.0f} mm across printed over air: loose strands hanging under it.",
+                           "bridge check prediction")]
+    return []
+
+
+# --- Estoa's test pieces, answered from the same records the checks use (tasks/estoa-light/requirements.yaml) ---
+DISK_HOLE_CENTRES = (33.2, 34.22)  # mm apart: Dan's calipers, 2 x 16.6 to 2 x 17.11 (30.2 between the holes' edges + 3.3)
+DISK_SCREW_PLAY = 0.15  # mm a side: a 3.0 mm screw in the disk's 3.3 mm holes
+USB_SEATED = (14.0, 8.5)  # the opening a plug seated through
+USB_STOPPED_W = 11.5  # the opening width that stopped the plug's boot
+KEYHOLE_HUNG = {"entry": 10.5, "slot": (4.5, 6.0), "travel": 12.0,  # the keyhole that hung the piece
+                "entry_fails_under": 8.0, "slot_fails_under": 4.17}  # smaller than the heads bought; narrower than a #8 thread
+WALL_SCREW_STANDOFF = 3.5  # mm the wall screws stand out
+INSERT_HOLE = (4.3, 1.85)  # the hole inserts were set in, and the post wall that held at 20% infill
+FLAT_PIECE = 6.0  # mm: a piece no thicker than this is read as a plate, so its thickness is the plastic at a keyhole
+KEYHOLE_ENTRY = (7.0, 14.0)  # mm: an entry a #8 round head could be meant for
+KEYHOLE_SLOT = (3.0, 7.5)  # mm: a slot a #8 screw could be meant to ride in
+
+
+def _piece_holes(mesh):
+    """The holes right through a flat test piece, at half its thickness: (hole, the plastic around it)."""
+    axis = int(mesh.extents.argmin())
+    middle = (mesh.bounds[0][axis] + mesh.bounds[1][axis]) / 2
+    return [(Polygon(ring).buffer(0), polygon) for polygon in section_at(mesh, axis, middle) for ring in polygon.interiors], \
+        float(mesh.extents[axis])
+
+
+def _keyhole_line(found, thickness) -> ReportLine:
+    """Against the keyhole that hung (10.5 mm entry, 4.5 to 6 mm slot, 12 mm run) and the limits the checks use."""
+    _, entry, slot, _, travel = found
+    tol = assumed.ASSUMED_WITHIN
+    problems = []
+    if entry < KEYHOLE_HUNG["entry_fails_under"] - tol:
+        problems.append(f"the screw head doesn't go through the {entry:.1f} mm entry")
+    if slot < KEYHOLE_HUNG["slot_fails_under"] - tol:
+        problems.append(f"the {slot:.1f} mm slot is narrower than the screw")
+    if WALL_SCREW_STANDOFF <= thickness <= FLAT_PIECE:  # a flat piece is that thick at its slot too
+        problems.append(f"the plastic is {thickness:.1f} mm thick, more than the screw stands out of the wall, so the head can't hook behind it")
+    if problems:
+        return ReportLine(f"keyhole: {'; '.join(problems)}.", "Estoa record")
+    low, high = KEYHOLE_HUNG["slot"]
+    if entry >= KEYHOLE_HUNG["entry"] - tol and low - tol <= slot <= high + tol and travel >= KEYHOLE_HUNG["travel"] - tol:
+        return ReportLine(f"keyhole: the screw head goes in the {entry:.1f} mm entry, slides up the {slot:.1f} mm slot and holds.",
+                          "Estoa record")
+    return ReportLine(f"keyhole: {CANT_TELL}", "no record")
+
+
+def _usb_line(hole) -> ReportLine:
+    """Against the 14 x 8.5 mm opening a plug seated through and the 11.5 mm one that stopped it, within the tolerance."""
+    from pbe.graders.enclosure import _fits_somewhere, _stadium
+    tol = assumed.ASSUMED_WITHIN
+    if _fits_somewhere(_stadium(USB_SEATED[0] - tol, USB_SEATED[1] - tol).buffer(-0.01), hole):
+        return ReportLine("the USB-C opening: the plug goes through and seats fully.", "Estoa record")
+    if not _fits_somewhere(_stadium(USB_STOPPED_W + tol, USB_SEATED[1] - tol).buffer(-0.01), hole):
+        return ReportLine("the USB-C opening: the plug's boot stops at it and the plug doesn't reach.", "Estoa record")
+    return ReportLine(f"the USB-C opening: {CANT_TELL}", "no record")
+
+
+def _insert_line(hole, plastic) -> ReportLine:
+    """Against the 4.3 mm holes inserts were set in and the 1.85 mm walls that held, within the tolerance."""
+    from pbe.graders.enclosure import _thinnest_wall
+    _, width = clear_circle(hole)
+    wall = _thinnest_wall(hole, plastic)
+    tol = assumed.ASSUMED_WITHIN
+    if abs(width - INSERT_HOLE[0]) <= tol and wall >= INSERT_HOLE[1] - tol:
+        return ReportLine(f"the {width:.1f} mm insert hole: the insert went in straight and holds.", "Estoa record")
+    return ReportLine(f"the {width:.1f} mm insert hole: {CANT_TELL}", "no record")
+
+
+def _disk_hole_line(first, second) -> ReportLine:
+    """Against Dan's caliper readings of the disk's holes, with the screws' play in them."""
+    apart = first.centroid.distance(second.centroid)
+    low, high = DISK_HOLE_CENTRES[0] - DISK_SCREW_PLAY * 2, DISK_HOLE_CENTRES[1] + DISK_SCREW_PLAY * 2
+    if low <= apart <= high:
+        return ReportLine(f"holes {apart:.1f} mm apart: I held it against the disk and both screws go through its holes.", "Dan's calipers")
+    off = low - apart if apart < low else apart - high
+    if off > assumed.ASSUMED_WITHIN:
+        return ReportLine(f"holes {apart:.1f} mm apart: against the disk, they're about {off:.1f} mm off its holes, so both "
+                          "screws won't go in.", "Dan's calipers")
+    return ReportLine(f"holes {apart:.1f} mm apart: {CANT_TELL}", "no record")
+
+
+def estoa_piece_lines(mesh) -> list[ReportLine]:
+    """What the person says about an Estoa test piece: its keyholes, USB-C openings, insert holes and any pair of
+    disk-screw holes, from the records the checks use."""
+    from pbe.graders.enclosure import _keyhole
+    holes, thickness = _piece_holes(mesh)
+    lines, small = [], []
+    for hole, plastic in holes:
+        _, width = clear_circle(hole)
+        length = max(hole.minimum_rotated_rectangle.exterior.length / 2 - width, width)
+        found = _keyhole(hole)
+        if found is not None and KEYHOLE_ENTRY[0] <= found[1] <= KEYHOLE_ENTRY[1] and KEYHOLE_SLOT[0] <= found[2] <= KEYHOLE_SLOT[1]:
+            lines.append(_keyhole_line(found, thickness))
+        elif 9.0 <= length <= 22.0 and 5.0 <= width <= 13.0 and length > width + 1.5:
+            lines.append(_usb_line(hole))
+        elif 3.9 <= width <= 4.9 and hole.area >= 0.8 * math.pi * width * width / 4:
+            lines.append(_insert_line(hole, plastic))
+        elif 2.4 <= width <= 3.7:
+            small.append(hole)
+    pairs = [(a, b) for i, a in enumerate(small) for b in small[i + 1:] if 25.0 <= a.centroid.distance(b.centroid) <= 45.0]
+    if pairs:
+        lines.append(_disk_hole_line(*min(pairs, key=lambda pair: abs(pair[0].centroid.distance(pair[1].centroid) - 33.7))))
+    return lines
 
 
 def coupon_lines(task, mesh) -> list[ReportLine]:
@@ -207,8 +322,11 @@ def coupon_lines(task, mesh) -> list[ReportLine]:
     seat = _requirement_args(task, "wheel.fit")
     if seat:
         lines += seat_lines(mesh, seat["seat_range"])
+    if task.id == "estoa-light":
+        lines += estoa_piece_lines(mesh)
     lines += roof_lines(mesh)
-    return lines or [ReportLine("I printed it, but I can't tell you how it came out.", "no record")]
+    return lines or [ReportLine("it printed cleanly, but there's nothing on it I've printed before to tell you more.",
+                                "bridge check prediction")]
 
 
 def coupon_report(task, sub, built) -> dict[str, list[ReportLine]]:
@@ -217,6 +335,19 @@ def coupon_report(task, sub, built) -> dict[str, list[ReportLine]]:
     for part in sub.parts:
         if part.role != "coupon":
             continue
+        built_part = built.get(part.id)
+        if built_part is None or not built_part.ok:
+            report[part.id] = [ReportLine("it didn't come out: the file wouldn't open.", "build error")]
+        else:
+            report[part.id] = coupon_lines(task, built_part.mesh)
+    return report
+
+
+def printed_parts_report(task, sub, built) -> dict[str, list[ReportLine]]:
+    """The person's report on every part they printed, test prints and final parts alike (the loop on every trial,
+    `loop-all`): the same readings as a coupon's, a pocket's fit, a seat's fit and a holed roof, taken on each part."""
+    report = {}
+    for part in sub.parts:
         built_part = built.get(part.id)
         if built_part is None or not built_part.ok:
             report[part.id] = [ReportLine("it didn't come out: the file wouldn't open.", "build error")]

@@ -1,0 +1,321 @@
+task: nut-knob/M5
+note: One-piece, approximately 30 mm hand knob with a captive ISO 4032 M5 nut. Two
+  integral snap tabs retain the nut; the hex pocket transmits torque and a bottom
+  shoulder prevents push-through. The coupon is a separate fit test, not part of the
+  finished assembly. Fit is based on catalog nut dimensions and must be checked before
+  printing the final knob. Intended for hand tightening only; do not use for safety-critical
+  loads or hot environments.
+questions:
+- text: Actual nut width across flats?
+  answer: Could not measure; using catalog 8.0 mm.
+- text: Actual nut thickness?
+  answer: Could not measure; using catalog 4.7 mm.
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across flats; actual nut unmeasured.
+  nut_thickness:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_diameter:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_diameter:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_diameter:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_thickness:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af_allowance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance across flats, not interference. Snap tabs provide retention.
+  bore_allowance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_axial_play:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_ramp_height:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tab_thickness:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Radial thickness of each vertical cantilever.
+  tab_width:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tab_gap:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_projection:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: Retention throat is 7.5 mm across opposite lips with default dimensions.
+  scallop_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_radius:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_radius:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    af = p.nut_af + p.pocket_af_allowance\n\
+    \    f = af / 2\n    zseat = p.floor_thickness\n    zlatch = zseat + p.nut_thickness\
+    \ + p.nut_axial_play\n    h = zlatch + p.entry_ramp_height\n    body = cq.Workplane('XY').circle(p.knob_diameter/2).extrude(h)\n\
+    \    for i in range(int(p.scallop_count)):\n        a = 2*math.pi*i/p.scallop_count\n\
+    \        x = p.scallop_center_radius*math.cos(a)\n        y = p.scallop_center_radius*math.sin(a)\n\
+    \        cutter = cq.Workplane('XY').center(x,y).circle(p.scallop_radius).extrude(h)\n\
+    \        body = body.cut(cutter)\n    r = af / math.sqrt(3)\n    pts = [(r*math.cos(math.radians(30+60*i)),\
+    \ r*math.sin(math.radians(30+60*i))) for i in range(6)]\n    pocket = cq.Workplane('XY').workplane(offset=zseat).polyline(pts).close().extrude(h-zseat)\n\
+    \    body = body.cut(pocket)\n    body = body.cut(cq.Workplane('XY').circle((p.bolt_diameter+p.bore_allowance)/2).extrude(h))\n\
+    \    # Isolate two upright tabs with U-shaped slots. Their roots remain attached\
+    \ to the floor.\n    for s in (-1,1):\n        x0 = f-p.lip_projection\n     \
+    \   x1 = f+p.tab_thickness+p.tab_gap\n        for sy in (-1,1):\n            gap\
+    \ = cq.Workplane('XY').workplane(offset=zseat).center(s*(x0+x1)/2, sy*(p.tab_width/2+p.tab_gap/2)).rect(x1-x0,p.tab_gap).extrude(h-zseat)\n\
+    \            body = body.cut(gap)\n        back = cq.Workplane('XY').workplane(offset=zseat).center(s*(f+p.tab_thickness+p.tab_gap/2),0).rect(p.tab_gap,p.tab_width+2*p.tab_gap).extrude(h-zseat)\n\
+    \        body = body.cut(back)\n        # Horizontal retaining underside, sloping\
+    \ insertion face above it.\n        lip_pts = [(s*f,zlatch),(s*(f-p.lip_projection),zlatch),(s*f,h)]\n\
+    \        lip = cq.Workplane('XZ').polyline(lip_pts).close().extrude(p.tab_width/2,both=True)\n\
+    \        body = body.union(lip)\n    return body.clean()\n"
+  print_orientation: Flat circular bottom at z=0 on the bed; hex pocket and snap-tab
+    entry face upward. No supports in the pocket or tab slots.
+  use_orientation: Push the nut down from the open pocket side until it passes both
+    lips and rests against the floor. Bolt can enter through either side.
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    af = p.nut_af + p.pocket_af_allowance\n\
+    \    f = af/2\n    zseat = p.floor_thickness\n    zlatch = zseat+p.nut_thickness+p.nut_axial_play\n\
+    \    h = zlatch+p.entry_ramp_height\n    body = cq.Workplane('XY').circle(p.coupon_diameter/2).extrude(h)\n\
+    \    r = af/math.sqrt(3)\n    pts = [(r*math.cos(math.radians(30+60*i)),r*math.sin(math.radians(30+60*i)))\
+    \ for i in range(6)]\n    body = body.cut(cq.Workplane('XY').workplane(offset=zseat).polyline(pts).close().extrude(h-zseat))\n\
+    \    body = body.cut(cq.Workplane('XY').circle((p.bolt_diameter+p.bore_allowance)/2).extrude(h))\n\
+    \    for s in (-1,1):\n        x0 = f-p.lip_projection\n        x1 = f+p.tab_thickness+p.tab_gap\n\
+    \        for sy in (-1,1):\n            body = body.cut(cq.Workplane('XY').workplane(offset=zseat).center(s*(x0+x1)/2,sy*(p.tab_width/2+p.tab_gap/2)).rect(x1-x0,p.tab_gap).extrude(h-zseat))\n\
+    \        body = body.cut(cq.Workplane('XY').workplane(offset=zseat).center(s*(f+p.tab_thickness+p.tab_gap/2),0).rect(p.tab_gap,p.tab_width+2*p.tab_gap).extrude(h-zseat))\n\
+    \        lip_pts = [(s*f,zlatch),(s*(f-p.lip_projection),zlatch),(s*f,h)]\n  \
+    \      body = body.union(cq.Workplane('XZ').polyline(lip_pts).close().extrude(p.tab_width/2,both=True))\n\
+    \    return body.clean()\n"
+  print_orientation: Flat bottom at z=0 on bed, pocket upward; use the same settings
+    as knob. No supports.
+  use_orientation: Identical nut interface to knob; test hand insertion and inverted
+    retention before printing knob.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: test_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints: []
+criteria:
+- id: hex_fit
+  part: knob
+  feature: 8.4 mm across-flats hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.4
+  params:
+  - nut_af
+  - pocket_af_allowance
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Nut must enter with flats aligned, without tools, and must not spin
+      freely in the pocket. Specified clearance is total across flats.
+- id: snap_retention
+  part: knob
+  feature: Two opposing integral lips with 7.5 mm throat
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af_allowance
+  - lip_projection
+  - tab_thickness
+  - tab_width
+  - tab_gap
+  - entry_ramp_height
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: 'Press by thumb only. Both tabs must spring back without cracks or
+      whitening. Invert and gently shake over a tray: nut must remain captured.'
+- id: fully_recessed
+  part: knob
+  feature: Pocket floor below retaining lips
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_thickness
+  - nut_thickness
+  - nut_axial_play
+  - entry_ramp_height
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Nut must sit flat on the floor, wholly below the top face, with both
+      lips above its upper face.
+- id: bottom_stop
+  part: knob
+  feature: Solid floor shoulder surrounding bolt through-hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_thickness
+  - bolt_diameter
+  - bore_allowance
+  - nut_af
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: With nut seated, thumb pressure from the entry side must not push
+      it through the bottom.
+- id: bolt_passage
+  part: knob
+  feature: 5.6 mm axial through-hole
+  relation: clears
+  hardware: test_bolt
+  clearance_mm: 0.6
+  params:
+  - bolt_diameter
+  - bore_allowance
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: Thread bolt through nut by hand and verify its tip emerges through
+      the floor without rubbing or cross-threading. Clearance is diametral.
+manual:
+- n: '1'
+  text: 'Print nut_fit_coupon first in PLA: 0.4 mm nozzle, 0.2 mm layers, 4 walls,
+    5 top/bottom layers, 30% infill, supports off. Use the flat bottom on the bed.
+    Keep seam placement away from the two snap tabs. Let the print cool fully.'
+  parts:
+  - nut_fit_coupon
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Check the slots are open and remove only loose strings. Align the nut flats
+    with the pocket. With the coupon supported flat on a table, press the nut down
+    evenly using your thumb until it sits on the bottom shoulder and both tabs spring
+    back above it. Do not hammer it, force it with a bolt, or heat the tabs.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Check the nut is wholly recessed, cannot turn freely, and stays captured when
+    inverted and gently shaken over a tray. Thread the M5 bolt through by hand and
+    check it exits the floor hole. Reject any cracked or whitened tabs. This fit has
+    not been physically validated.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  - test_bolt
+  tool: null
+- n: '4'
+  text: If insertion requires excessive force, increase pocket_af_allowance by 0.1
+    mm and reprint the coupon. If the nut drops out after the tabs return, increase
+    lip_projection by 0.05 mm and retest. Change one setting at a time; stop if tabs
+    crack. If the nut cannot seat below the lips, increase nut_axial_play by 0.2 mm.
+    Keep the final knob parameters identical to the successful coupon.
+  parts:
+  - nut_fit_coupon
+  hardware: []
+  tool: null
+- n: '5'
+  text: Remove the test bolt. To recover the nut, gently hold both tabs outward with
+    fingernails while pushing the nut upward through the bottom hole with the unthreaded
+    tip end of the bolt. Do not lever against or pry apart the tabs with a tool. The
+    coupon may be sacrificed if necessary; do not reuse a damaged nut.
+  parts:
+  - nut_fit_coupon
+  hardware:
+  - nut
+  - test_bolt
+  tool: null
+- n: '6'
+  text: Print knob with the same orientation and settings as the passing coupon. Let
+    cool, inspect the slots, and press the nut in by hand exactly as tested. Repeat
+    the inversion and bolt-passage checks. No glue or additional printed retainers
+    are needed.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - test_bolt
+  tool: 3D printer
+- n: '7'
+  text: Thread the knob onto the exposed M5 bolt and turn the scalloped rim to tighten
+    by hand. The nut—not the plastic bore—provides the threads. Do not use pliers
+    or a wrench on the knob, and do not use the nut-retaining lips to carry pull-out
+    loads. Stop using the knob if the tabs or hex pocket crack or the nut starts rotating.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - test_bolt
+  tool: null

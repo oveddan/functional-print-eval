@@ -1,0 +1,230 @@
+task: bearing-wheel
+note: 'Plain 50 x 16 mm wheel with two 608 bearings pressed into opposite faces, separated
+  by a 2 mm central web. A 2 mm printed spacer sits between the inner races so tightening
+  the M8 bolt clamps only the inner races and the wheel spins freely. Assumptions:
+  flat tread (rail profile unknown), bracket gap fits a 16 mm wheel, and bolt length
+  is your own (M8x50 is a placeholder). The bearing pocket diameter (22.2 mm) comes
+  from a printed fit coupon. If the old wheel had a groove or flange, tell me and
+  I''ll add it.'
+questions:
+- text: What profile is the rail/track (flat, rounded, grooved) and how wide is the
+    gap in the bracket?
+  answer: Could not be measured; I assumed a plain flat tread 16 mm wide with 1 mm
+    chamfers and that the bracket gap fits a 16 mm wheel.
+params:
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal OD 22.000
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 nominal width 7
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bore 8
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: world
+    source: measured
+    note: user's bolt shank about 8 mm
+  press_allow:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'diametral allowance for bearing pocket; printed coupon: 22.19 seat held
+      upside down and went in; 22.09 was snug, 22.29 easy'
+  web_hole_d:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: hole through the central web, larger than spacer so the spacer and inner
+      races turn freely
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: less than the ~12 mm inner race OD so only the inner races are touched
+  spacer_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance of spacer bore over the bolt
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    web_t = p.wheel_w - 2*p.bearing_w\n    body = cq.Workplane('XY').circle(p.wheel_d/2).extrude(p.wheel_w)\n\
+    \    body = body.edges().chamfer(p.edge_chamfer)\n    pocket_d = p.bearing_od\
+    \ + p.press_allow\n    low = cq.Workplane('XY').circle(pocket_d/2).extrude(p.bearing_w)\n\
+    \    high = cq.Workplane('XY').workplane(offset=p.bearing_w + web_t).circle(pocket_d/2).extrude(p.bearing_w)\n\
+    \    hole = cq.Workplane('XY').circle(p.web_hole_d/2).extrude(p.wheel_w)\n   \
+    \ return body.cut(low).cut(high).cut(hole)"
+  print_orientation: flat face on the bed (axis vertical), both bearing pockets open
+    to top/bottom, no supports
+  use_orientation: axis horizontal, rolling on the track
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    web_t = p.wheel_w - 2*p.bearing_w\n    return (cq.Workplane('XY').circle(p.spacer_od/2).circle((p.bolt_d\
+    \ + p.spacer_clear)/2).extrude(web_t))"
+  print_orientation: flat on the bed
+  use_orientation: sits on the bolt in the web hole between the two bearing inner
+    races
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -30.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: bore
+    role: clearance
+  - part: wheel
+    feature: web_hole
+    role: clearance
+  nut: locknut
+  external: null
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets (both sides)
+  relation: contains
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bearing_od
+  - press_allow
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Pocket diameter 22.2 mm tested on coupon (22.19 seat held a bearing-size
+      part upside down)
+- id: c2
+  part: wheel
+  feature: web hole
+  relation: clears
+  hardware: null
+  clearance_mm: 1.0
+  params:
+  - web_hole_d
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Spacer drops through the web hole freely
+- id: c3
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - spacer_clear
+  check:
+    method: measure
+    ref: null
+    description: M8 bolt slides through spacer
+- id: c4
+  part: wheel
+  feature: central web
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: Both bearings sit flat against the web; with the spacer, inner races
+      stay clear of the wheel
+manual:
+- n: '1'
+  text: Print the wheel and the spacer flat on the bed in black PLA, no supports.
+    Use 4+ walls and about 30-40% infill so the rim is strong.
+  parts:
+  - wheel
+  - spacer
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608ZZ bearing into each pocket (top and bottom of the wheel) until
+    it sits flat against the central web. Press it in square, using a flat piece of
+    wood or the bolt head with a washer; do not hammer it.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: Drop the spacer into the web hole from one side, then slide the M8 bolt through
+    bearing, spacer and second bearing. The spacer should touch both inner races.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - bolt
+  - bearing
+  tool: null
+- n: '4'
+  text: Mount the bolt through the door bracket in the same arrangement as the old
+    wheel (reuse any washers or spacers that were there) and tighten the lock nut
+    until the bracket just grips the inner races, then check that the wheel spins
+    freely. Use a bolt long enough for bracket + 16 mm wheel + nut; the M8x50 listed
+    is only a placeholder for your own bolt.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - bolt
+  - locknut
+  tool: null

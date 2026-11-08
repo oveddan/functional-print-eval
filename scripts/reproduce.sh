@@ -55,7 +55,7 @@ diff -rq -x parts -x workspace results/runs "$copy/runs" | grep -c grades.json |
 step "5. the results page"
 uv run python scripts/results_page.py
 
-step "6. the README's results match the saved runs"
-uv run python scripts/results_table.py --check
+step "6. the README and reference tables match the saved runs"
+scripts/update_tables.sh --check
 
 step "done"

@@ -1,0 +1,216 @@
+task: nut-knob/M5
+note: The fit coupon was printed but you couldn't report how it came out, so the press-fit
+  size is my best guess. The pocket is 8.15 mm across the flats. Three 0.2 mm crush
+  ribs on alternate flats grip the nut. If the nut falls out, raise rib_h to 0.3.
+  If it won't go in even with the screw-pull method, lower it to 0.1.
+questions: []
+params:
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 height
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_clear_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: M5 clearance hole through the floor
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  floor_t:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: solid layer under the nut; stops it being pushed out the far side
+  pocket_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.8 so the nut sits fully below the top face
+  pocket_clear:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: guessed
+    note: the hex pocket is 8.15 AF, so the nut is only gripped by the ribs. The coupon
+      results never came back
+  rib_h:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: guessed
+    note: 'crush rib height on 3 flats: 7.95 mm across rib to opposite flat'
+  rib_w:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  leadin:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: rib-free, chamfered entry at the top of the pocket
+  n_scallops:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    H = p.floor_t + p.pocket_depth\n    R\
+    \ = p.knob_d / 2\n    body = cq.Workplane('XY').circle(R).extrude(H)\n    body\
+    \ = body.edges('<Z').chamfer(0.4)\n    off = R + p.scallop_r * 0.4\n    for i\
+    \ in range(int(p.n_scallops)):\n        a = 2 * math.pi * i / p.n_scallops\n \
+    \       body = body.cut(cq.Workplane('XY').circle(p.scallop_r).extrude(H + 2).translate((off\
+    \ * math.cos(a), off * math.sin(a), -1)))\n    af = p.nut_af + p.pocket_clear\n\
+    \    rc = af / math.sqrt(3)\n    pocket = cq.Workplane('XY').polygon(6, 2 * rc).extrude(p.pocket_depth\
+    \ + 1).translate((0, 0, p.floor_t))\n    for ang in (30, 150, 270):\n        rib\
+    \ = (cq.Workplane('XY')\n               .box(p.rib_h + 1, p.rib_w, p.pocket_depth\
+    \ - p.leadin, centered=(False, True, False))\n               .translate((af /\
+    \ 2 - p.rib_h, 0, 0))\n               .rotate((0, 0, 0), (0, 0, 1), ang)\n   \
+    \            .translate((0, 0, p.floor_t)))\n        pocket = pocket.cut(rib)\n\
+    \    body = body.cut(pocket)\n    cone = cq.Solid.makeCone(rc, rc + p.leadin,\
+    \ p.leadin, pnt=cq.Vector(0, 0, H - p.leadin), dir=cq.Vector(0, 0, 1))\n    body\
+    \ = body.cut(cq.Workplane('XY').add(cone))\n    body = body.cut(cq.Workplane('XY').circle(p.bolt_clear_d\
+    \ / 2).extrude(H + 2).translate((0, 0, -1)))\n    return body\n"
+  print_orientation: Flat solid face on the bed, nut pocket opening facing up. No
+    overhangs or bridges.
+  use_orientation: Pocket side faces away from the work (towards your hand). The bolt
+    comes in through the floor, goes through the nut and out the pocket side.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: washer
+  ref: ISO 7089 M5
+  qty: 1
+- id: pull_screw
+  ref: ISO 4762 M5x20
+  qty: 1
+joints: []
+criteria:
+- id: nut_retained
+  part: knob
+  feature: hex pocket with crush ribs
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_clear
+  - rib_h
+  check:
+    method: none
+    ref: null
+    description: Press the nut in, turn the knob upside down and shake it. The nut
+      should stay put.
+- id: nut_recessed
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: The nut's top should sit about 0.8 mm below the knob's top face
+- id: floor_stop
+  part: knob
+  feature: floor under nut
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The 5.6 mm floor hole is smaller than the nut, so the nut can't pass
+      through
+- id: bolt_clear
+  part: knob
+  feature: floor hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.6
+  params:
+  - bolt_d
+  - bolt_clear_d
+  check:
+    method: none
+    ref: null
+    description: ''
+manual:
+- n: '1'
+  text: Print the knob flat side down with the pocket facing up. Use the default settings
+    and no supports. 3 walls and 20% infill are fine.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Line the nut's flats up with the pocket's flats. Start it in the chamfered
+    entry, then press it down firmly with your thumb until it bottoms out on the floor.
+    The three small ribs should squeeze it. The nut ends up just below the top face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: 'If the nut is too stiff to push in by thumb, put the washer on the M5x20
+    screw. Feed the screw in through the bottom hole and thread it into the nut where
+    it sits at the pocket entry. Tighten it with a hex key: this pulls the nut down
+    into the pocket. Then remove the screw and washer.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  - washer
+  - pull_screw
+  tool: 4 mm hex key
+- n: '4'
+  text: 'Check: turn the knob upside down and shake it. The nut should stay in. To
+    use the knob, thread it onto your M5 bolt from the flat (floor) side. The bolt
+    runs through the nut and out the pocket side.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

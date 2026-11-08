@@ -1,0 +1,253 @@
+task: tripod-plate
+note: 'Rev 2: the only change is to the pocket roof. It now prints in two one-layer
+  bridging steps (a strip, then a square) before the round hole, so the roof doesn''t
+  print stringy loops. Clamp fit and head pocket are unchanged.'
+questions: []
+params:
+  clamp_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: plate width the tripod clamp takes; confirmed fits on first print
+  dt_h:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: 45 deg bevel height; plate fit the clamp on print 1
+  dt_land:
+    value: 1
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  dt_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: code assumes 45
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_l:
+    value: 15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_clear_d:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: clearance for 1/4in (6.35 mm)
+  pocket_d:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  channel_w:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  protrusion:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  layer_h:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: printer layer height; each bridging step is one layer thick
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W = p.clamp_w\n    L = p.plate_l\n    pd = p.bolt_head_h\
+    \ + p.pocket_extra\n    T = pd + (p.bolt_len - p.protrusion)\n    land = p.dt_land\n\
+    \    h = p.dt_h\n    tw = W - 2 * h\n    lh = p.layer_h\n    d = p.bolt_clear_d\n\
+    \    pts = [(-W/2, 0), (W/2, 0), (W/2, land), (tw/2, land + h), (tw/2, T), (-tw/2,\
+    \ T), (-tw/2, land + h), (-W/2, land)]\n    body = cq.Workplane('XZ').polyline(pts).close().extrude(L/2,\
+    \ both=True)\n    # head pocket and thumb channel\n    body = body.cut(cq.Workplane('XY').circle(p.pocket_d/2).extrude(pd))\n\
+    \    body = body.cut(cq.Workplane('XY').center(0, L/4 + 1).rect(p.channel_w, L/2\
+    \ + 2).extrude(pd))\n    # stepped bridging: layer 1 = strip as wide as the hole\
+    \ across the pocket,\n    # layer 2 = square of the hole size, then the round\
+    \ hole\n    body = body.cut(cq.Workplane('XY').workplane(offset=pd).rect(d, p.pocket_d).extrude(lh))\n\
+    \    body = body.cut(cq.Workplane('XY').workplane(offset=pd + lh).rect(d, d).extrude(lh))\n\
+    \    body = body.cut(cq.Workplane('XY').workplane(offset=pd + 2*lh).circle(d/2).extrude(T))\n\
+    \    return body\n"
+  print_orientation: underside (widest, 38 mm face) on the bed
+  use_orientation: 'same as printed: underside down in the tripod clamp, camera on
+    top'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    W = p.clamp_w\n    L = p.coupon_l\n    T = p.bolt_head_h\
+    \ + p.pocket_extra + (p.bolt_len - p.protrusion)\n    land = p.dt_land\n    h\
+    \ = p.dt_h\n    tw = W - 2 * h\n    pts = [(-W/2, 0), (W/2, 0), (W/2, land), (tw/2,\
+    \ land + h), (tw/2, T), (-tw/2, T), (-tw/2, land + h), (-W/2, land)]\n    return\
+    \ cq.Workplane('XZ').polyline(pts).close().extrude(L/2, both=True)\n"
+  print_orientation: underside on the bed
+  use_orientation: dropped into the tripod clamp
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: head pocket
+    role: head_seat
+  - part: plate
+    feature: centre hole
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: dovetail_fit
+  part: plate
+  feature: 38 mm dovetail edges
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_w
+  - dt_h
+  - dt_land
+  - dt_angle
+  check:
+    method: measure
+    ref: null
+    description: Locks in the clamp with no wobble (passed on print 1)
+- id: head_flush
+  part: plate
+  feature: head pocket
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_head_h
+  - bolt_head_d
+  - pocket_extra
+  - pocket_d
+  check:
+    method: measure
+    ref: null
+    description: Bolt head sits below the underside (passed on print 1)
+- id: roof_clean
+  part: plate
+  feature: pocket roof and centre hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - layer_h
+  - pocket_d
+  check:
+    method: measure
+    ref: null
+    description: Pocket roof is flat with no loose loops, and the bolt passes through
+      the hole freely by hand
+- id: no_bottoming
+  part: plate
+  feature: floor under head
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - protrusion
+  check:
+    method: measure
+    ref: null
+    description: The bolt sticks out about 4.5 mm on top, and the camera snugs down
+      before the bolt hits bottom
+manual:
+- n: '1'
+  text: You don't need to print fit_coupon again, because the plate already fits the
+    clamp.
+  parts:
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Print the plate with its wide flat face on the bed, at 0.2 mm layers (the
+    hole steps depend on this), 4 walls and 40% or more infill. Inside the pocket,
+    the roof is now built in steps: a strip the width of the hole, then a square,
+    then the round hole. Each layer bridges cleanly over the one below.'
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Pick any loose strands out of the pocket. Push the webcam bolt up through
+    the centre hole from underneath, so the head sits in the round pocket. If the
+    hole is tight, twist the bolt through it once to clear it.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Set the camera on the plate and thread the bolt into its socket. Turn the
+    head with your thumb through the open channel and tighten firmly by hand. Stop
+    if it gets stiff before the camera is snug.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: 'Put the plate into the clamp, underside down, and tighten the knob. Tug on
+    the camera to check it''s locked. This is a temporary PLA part: support heavy
+    lenses, and keep it out of hot cars.'
+  parts:
+  - plate
+  hardware: []
+  tool: null

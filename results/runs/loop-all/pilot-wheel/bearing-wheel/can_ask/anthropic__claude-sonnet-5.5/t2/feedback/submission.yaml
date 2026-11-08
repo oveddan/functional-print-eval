@@ -1,0 +1,284 @@
+task: bearing-wheel
+note: 'Change from last round: the wheel''s bed-side pocket roof was a ring around
+  a 12.5 mm hole, which printed as loose loops and partly closed the hole. It is now
+  a solid disc with a 0.4 mm skin you punch out after printing. The bearing seat (22.09
+  mm, snug) is unchanged. The spacer is unchanged because I have no report on how
+  it printed. I still don''t know the bracket gap, so check that 16 mm plus washers
+  fits before relying on it. Use your own M8 bolt; M8x40 is a placeholder.'
+questions:
+- text: How did the spacer come out, and does it slide freely on the bolt?
+  answer: null
+- text: What is the gap inside the bracket where the wheel sits?
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user measured about 22; matches 608 nominal 22.0
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user measured about 7; 608 nominal 7
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bore 8.0
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M8 bolt
+  pocket_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Kept. Printed seat measured 22.09 mm; the bearing goes in snug and holds
+      upside down, so this fit is good.
+  web_bore:
+    value: 12.5
+    unit: mm
+    kind: design
+    source: design
+    note: hole through the centre web; clears the bearing inner race shoulders and
+      the spacer
+  membrane_t:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Thin skin left across the web bore on the bed-side pocket. The pocket roof
+      then bridges as one solid disc instead of a ring around a hole, which printed
+      badly last time. It is two layers thick and gets punched out after printing.
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: touches inner races only, stays inside web_bore
+  spacer_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance of spacer ID on the bolt
+  coupon_t:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: thickness of the fit test ring
+  coupon_od:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA (black), 4 walls, 25% gyroid infill
+  code: "def build(p):\n    pocket_d = p.bearing_od + p.pocket_clear\n    w = cq.Workplane('XY').circle(p.wheel_od/2).extrude(p.wheel_w)\n\
+    \    bottom = cq.Workplane('XY').circle(pocket_d/2).extrude(p.bearing_w)\n   \
+    \ top = cq.Workplane('XY').workplane(offset=p.wheel_w - p.bearing_w).circle(pocket_d/2).extrude(p.bearing_w)\n\
+    \    # bore starts membrane_t above the bottom pocket's roof, leaving a thin skin\
+    \ to bridge over\n    z0 = p.bearing_w + p.membrane_t\n    bore = cq.Workplane('XY').workplane(offset=z0).circle(p.web_bore/2).extrude(p.wheel_w\
+    \ - z0)\n    return w.cut(bottom).cut(top).cut(bore)\n"
+  print_orientation: flat, one flat face on the bed, axle axis vertical (z)
+  use_orientation: axle horizontal, rolling on the door track
+- id: spacer
+  role: final
+  material: PLA (black)
+  code: "def build(p):\n    web = p.wheel_w - 2*p.bearing_w\n    return (cq.Workplane('XY').circle(p.spacer_od/2).circle((p.bolt_d\
+    \ + p.spacer_clear)/2).extrude(web))\n"
+  print_orientation: flat on the bed, axis vertical
+  use_orientation: sits between the two bearing inner races on the bolt
+- id: fit_coupon
+  role: coupon
+  material: PLA (black)
+  code: "def build(p):\n    pocket_d = p.bearing_od + p.pocket_clear\n    return (cq.Workplane('XY').circle(p.coupon_od/2).circle(pocket_d/2).extrude(p.coupon_t))\n"
+  print_orientation: flat on the bed
+  use_orientation: 'test only: press one bearing in to check the fit'
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: washer_head
+  ref: ISO 7089 M8
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -1.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: bearing pockets and centre bore (bolt passes through bearing inner races)
+    role: clearance
+  - part: spacer
+    feature: bore
+    role: clearance
+  - part: wheel
+    feature: bolt head side face
+    role: washer
+  nut: locknut
+  external: null
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets (both)
+  relation: contains
+  hardware: null
+  clearance_mm: 0.1
+  params:
+  - bearing_od
+  - pocket_clear
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Already tested: the printed seat measured 22.09 mm and the bearing
+      is snug and holds upside down.'
+- id: c2
+  part: wheel
+  feature: bed-side pocket roof / web bore membrane
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - membrane_t
+  - web_bore
+  - bearing_od
+  - pocket_clear
+  check:
+    method: measure
+    ref: null
+    description: The roof over the first pocket prints as a solid disc (no loose loops).
+      After printing, the membrane is punched out and the bore is clean and round
+      at 12.5 mm.
+- id: c3
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - spacer_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt slides through the spacer freely.
+- id: c4
+  part: spacer
+  feature: outer surface
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  - web_bore
+  check:
+    method: measure
+    ref: null
+    description: Spacer sits inside the web bore without touching the wheel.
+- id: c5
+  part: spacer
+  feature: end faces
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  check:
+    method: measure
+    ref: null
+    description: Spacer length equals the web thickness (2 mm), so tightening the
+      nut clamps both inner races, not the wheel.
+manual:
+- n: '1'
+  text: Print the wheel flat on the bed, 4 walls, about 25% infill, no supports. The
+    pocket on the bed side now has a thin skin across its roof, so it prints as one
+    solid bridge. Slow the bridges down if your slicer lets you (for example, bridge
+    speed 20-30 mm/s).
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the spacer. It's a small 11 mm tube, 2 mm long. If it came out badly,
+    reprint it. It should slide freely on the bolt.
+  parts:
+  - spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: From the open side of the bed-side pocket, punch out the thin skin across
+    the middle with a screwdriver or the bolt tip. Clean up the edge of the 12.5 mm
+    hole with a knife. The bore must be clear before you fit any bearing.
+  parts:
+  - wheel
+  hardware: []
+  tool: screwdriver and craft knife
+- n: '4'
+  text: Press one bearing into each side of the wheel until it is flush with the face.
+    The fit was already snug, so use firm thumb pressure on the outer ring with a
+    flat block. Don't push on the inner race.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '5'
+  text: Slide the bolt through the washer, then through the first bearing, the spacer
+    and the second bearing. Check that the spacer sits between the two inner races.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - bolt
+  - washer_head
+  - bearing
+  tool: null
+- n: '6'
+  text: Mount the bolt through the door bracket and fit the lock nut. Tighten until
+    there is no side play but the wheel still spins freely. Spin it by hand to check,
+    then rehang the door.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - locknut
+  tool: 13 mm spanner and 6 mm hex key

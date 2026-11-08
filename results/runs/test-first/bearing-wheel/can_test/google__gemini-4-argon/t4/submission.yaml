@@ -1,0 +1,286 @@
+task: bearing-wheel
+note: The wheel prints flat on the bed with the 2 mm retaining lip at z = 0..2 mm
+  and the 14 mm dual-bearing bore from z = 2..16 mm, requiring zero supports or mid-air
+  bridges. Two inner-race spacers (11.2 mm OD, 8.2 mm ID) ensure clamping force goes
+  exclusively through the steel inner races of the two back-to-back 608ZZ bearings.
+questions:
+- text: What are the dimensions of the old roller wheel and bearings?
+  answer: 'bearing od: about 22 mm (outside); bearing width: about 7 mm'
+- text: What are the closet door track dimensions?
+  answer: I can't measure that. Use your best judgment.
+- text: What are the door roller bracket and M8 bolt dimensions?
+  answer: 'bolt across: about 8 mm (the shank)'
+params:
+  bearing_pocket_clearance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for 608ZZ press fit pocket, verified by test coupon
+      (printed 22.09 mm, snug fit)
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ width (7.0 mm nominal; user measured ~7 mm)
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Width of the original closet door roller wheel (~16 mm)
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Outer diameter of the original closet door roller wheel (~50 mm)
+  rim_chamfer:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree chamfer on top and bottom outer wheel edges for smooth track entry
+      and no elephant foot
+  spacer_od:
+    value: 11.2
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of inner-race spacers so they contact only the 608ZZ inner
+      race and clear the dust shield
+  standoff_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Axial clearance beyond the wheel faces provided by the inner-race spacers
+      so the bracket/nut never rubs the wheel
+  lip_h:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon retaining lip height
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ outer diameter (22.0 mm nominal; user measured ~22 mm)
+  lip_id:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: Inner diameter of the outer-race retaining lip at z = 0..2 mm
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608ZZ nominal bore diameter
+  bolt_clearance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for M8 bolt shank through inner-race spacers
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M8 bolt shank diameter measured by user
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    pocket_d = p.bearing_od + p.bearing_pocket_clearance\n\
+    \    part = (\n        cq.Workplane(\"XY\")\n        .circle(p.wheel_od / 2.0)\n\
+    \        .extrude(p.wheel_w)\n        .edges(\">Z or <Z\")\n        .chamfer(p.rim_chamfer)\n\
+    \        .faces(\"<Z\")\n        .workplane()\n        .hole(p.lip_id)\n     \
+    \   .faces(\">Z\")\n        .workplane()\n        .hole(pocket_d, depth=2.0 *\
+    \ p.bearing_w)\n    )\n    return part\n"
+  print_orientation: Flat on the bed with the retaining-lip face down at z = 0
+  use_orientation: Vertical in the closet door track, spinning on the horizontal M8
+    bolt axle
+- id: spacer_recessed
+  role: final
+  material: PLA
+  code: "def build(p):\n    lip_h = p.wheel_w - 2.0 * p.bearing_w\n    h = lip_h +\
+    \ p.standoff_h\n    bore_d = p.bolt_d + p.bolt_clearance\n    part = (\n     \
+    \   cq.Workplane(\"XY\")\n        .circle(p.spacer_od / 2.0)\n        .extrude(h)\n\
+    \        .faces(\">Z\")\n        .workplane()\n        .hole(bore_d)\n    )\n\
+    \    return part\n"
+  print_orientation: Flat on the bed at z = 0
+  use_orientation: On the M8 bolt on the lip side of the wheel, passing through the
+    18 mm lip opening to seat against the bearing inner race
+- id: spacer_flush
+  role: final
+  material: PLA
+  code: "def build(p):\n    bore_d = p.bolt_d + p.bolt_clearance\n    part = (\n \
+    \       cq.Workplane(\"XY\")\n        .circle(p.spacer_od / 2.0)\n        .extrude(p.standoff_h)\n\
+    \        .faces(\">Z\")\n        .workplane()\n        .hole(bore_d)\n    )\n\
+    \    return part\n"
+  print_orientation: Flat on the bed at z = 0
+  use_orientation: On the M8 bolt on the flush bearing side of the wheel, seating
+    against the bearing inner race
+- id: coupon_bearing_pocket
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    pocket_d = p.bearing_od + p.bearing_pocket_clearance\n\
+    \    outer_d = pocket_d + 6.0\n    total_h = p.lip_h + p.bearing_w\n    part =\
+    \ (\n        cq.Workplane(\"XY\")\n        .circle(outer_d / 2.0)\n        .extrude(total_h)\n\
+    \        .faces(\"<Z\")\n        .workplane()\n        .hole(p.lip_id)\n     \
+    \   .faces(\">Z\")\n        .workplane()\n        .hole(pocket_d, depth=p.bearing_w)\n\
+    \    )\n    return part\n"
+  print_orientation: Flat on the bed (z = 0 is the bottom face with the retaining
+    lip)
+  use_orientation: Test 608ZZ bearing press fit into pocket and seat against lip
+hardware:
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+- id: bolt_m8
+  ref: ISO 4762 M8x30
+  qty: 1
+- id: locknut_m8
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle_joint
+  fastener: bolt_m8
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer_recessed
+    feature: bore
+    role: clearance
+  - part: wheel
+    feature: bearing_pocket
+    role: clearance
+  - part: spacer_flush
+    feature: bore
+    role: clearance
+  nut: locknut_m8
+  external: null
+criteria:
+- id: wheel_bearing_fit
+  part: wheel
+  feature: bearing_pocket
+  relation: contains
+  hardware: bearing_608
+  clearance_mm: 0.1
+  params:
+  - bearing_od
+  - bearing_pocket_clearance
+  - bearing_w
+  check:
+    method: coupon
+    ref: coupon_bearing_pocket
+    description: 608ZZ bearings press snugly into the 22.1 mm bore and hold upside
+      down
+- id: wheel_lip_seat
+  part: wheel
+  feature: retaining_lip
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: null
+  params:
+  - lip_id
+  - wheel_w
+  - bearing_w
+  check:
+    method: coupon
+    ref: coupon_bearing_pocket
+    description: 2 mm bottom lip supports the 608ZZ outer race while clearing the
+      inner race spacer
+- id: wheel_envelope
+  part: wheel
+  feature: outer_rim
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_w
+  - rim_chamfer
+  check:
+    method: measure
+    ref: null
+    description: 50 mm outer diameter and 16 mm width match the original roller wheel
+      dimensions
+- id: spacer_recessed_fit
+  part: spacer_recessed
+  feature: spacer_bore_and_face
+  relation: clears
+  hardware: bolt_m8
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clearance
+  - spacer_od
+  - standoff_h
+  check:
+    method: measure
+    ref: null
+    description: 8.2 mm bore clears the 8 mm M8 bolt shank and 11.2 mm OD seats strictly
+      on the 608ZZ inner race
+- id: spacer_flush_fit
+  part: spacer_flush
+  feature: spacer_bore_and_face
+  relation: clears
+  hardware: bolt_m8
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clearance
+  - spacer_od
+  - standoff_h
+  check:
+    method: measure
+    ref: null
+    description: 8.2 mm bore clears the 8 mm M8 bolt shank and 11.2 mm OD seats strictly
+      on the 608ZZ inner race
+manual:
+- n: '1'
+  text: Press the first 608ZZ bearing into the open top side of the printed wheel
+    until it seats firmly against the internal 2 mm retaining lip at the bottom of
+    the bore.
+  parts:
+  - wheel
+  hardware:
+  - bearing_608
+  tool: null
+- n: '2'
+  text: Press the second 608ZZ bearing into the wheel right on top of the first bearing
+    until its outer face sits flush with the top face of the wheel.
+  parts:
+  - wheel
+  hardware:
+  - bearing_608
+  tool: null
+- n: '3'
+  text: Slide the M8 bolt through your door bracket, then place spacer_recessed (3
+    mm thick) into the recessed lip side of the wheel against the bearing inner race,
+    slide the wheel onto the bolt, place spacer_flush (1 mm thick) against the flush
+    bearing inner race on the other side, and secure the bolt to the bracket. The
+    two spacers clamp only the steel inner races of the two touching 608ZZ bearings
+    so the wheel cannot rub or bind when tightened.
+  parts:
+  - spacer_recessed
+  - wheel
+  - spacer_flush
+  hardware:
+  - bolt_m8
+  - bearing_608
+  - locknut_m8
+  tool: 6 mm hex key and 13 mm wrench

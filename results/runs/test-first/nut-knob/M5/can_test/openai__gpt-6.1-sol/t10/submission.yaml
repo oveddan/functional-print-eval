@@ -1,0 +1,271 @@
+task: nut-knob/M5
+note: 'One-piece, approximately 30 mm hand knob with a captive ISO 4032 M5 nut. Three
+  integral spring tabs retain the nut; the hex pocket transfers torque and the solid
+  bottom shoulder prevents push-through. Fit is unverified: the four interference-fit
+  coupons produced no usable fit observations, and the user could not measure the
+  nut. The compliant retention design below avoids relying on a full-perimeter interference
+  fit. Intended for light hand tightening, not high torque or safety-critical use.'
+questions:
+- text: Could the user confirm a hand-press, inverted-retention fit in any initial
+    coupon?
+  answer: No usable fit result was available.
+- text: Could the actual nut be measured?
+  answer: User could not measure it and requested best judgment.
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across flats.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: Solid shoulder beneath the nut except for the bolt bore.
+  pocket_af_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Total across-flats clearance; nominal pocket AF 8.3.
+  top_space:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: Overall height 7.8 mm; seated nut is fully below the top.
+  bore_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_t:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_width:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_gap:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_root:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Unslotted height above pocket floor.
+  lip_projection:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_above_nut:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_land:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_cut_radius:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_cut_offset:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    h = p.floor + p.nut_h + p.top_space\n\
+    \    a = (p.nut_af + p.pocket_af_clearance)/2\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \    for i in range(int(p.grip_count)):\n        t = 2*math.pi*i/p.grip_count\n\
+    \        r = p.knob_d/2 + p.grip_cut_offset\n        cut = cq.Workplane('XY').center(r*math.cos(t),r*math.sin(t)).circle(p.grip_cut_radius).extrude(h)\n\
+    \        body = body.cut(cut)\n    # Hex has flats normal to X, allowing tabs\
+    \ on alternate flats.\n    hexcut = cq.Workplane('XY').workplane(offset=p.floor).polygon(6,2*a/math.cos(math.pi/6)).extrude(h).rotate((0,0,0),(0,0,1),30)\n\
+    \    body = body.cut(hexcut)\n    bore = cq.Workplane('XY').circle((p.bolt_d+p.bore_clearance)/2).extrude(h)\n\
+    \    body = body.cut(bore)\n    z0 = p.floor+p.finger_root\n    w = p.finger_width\n\
+    \    t = p.finger_t\n    g = p.finger_gap\n    for angle in (0,120,240):\n   \
+    \     # Open-topped U slot frees a vertical cantilever, rooted at the floor.\n\
+    \        back = cq.Workplane('XY').box(g,w+2*g,h-z0,centered=(False,True,False)).translate((a+t,0,z0))\n\
+    \        side1 = cq.Workplane('XY').box(t+g,g,h-z0,centered=(False,False,False)).translate((a,w/2,z0))\n\
+    \        side2 = cq.Workplane('XY').box(t+g,g,h-z0,centered=(False,False,False)).translate((a,-w/2-g,z0))\n\
+    \        slots = back.union(side1).union(side2).rotate((0,0,0),(0,0,1),angle)\n\
+    \        body = body.cut(slots)\n        # Sloped underside prints without support;\
+    \ sloped entry spreads tabs.\n        zlip = p.floor+p.nut_h+p.lip_above_nut\n\
+    \        q = p.lip_projection\n        profile = [(a,zlip-q),(a-q,zlip),(a-q,zlip+p.lip_land),(a,h),(a+t,h),(a+t,zlip-q)]\n\
+    \        lip = cq.Workplane('XZ').polyline(profile).close().extrude(w/2,both=True).rotate((0,0,0),(0,0,1),angle)\n\
+    \        body = body.union(lip)\n    return body\n"
+  print_orientation: Broad closed shoulder face flat on the bed at z=0, nut pocket
+    and spring slots facing up. No supports.
+  use_orientation: Press nut into the upper hex pocket. Bolt can enter through the
+    bottom bore or through the nut face; leave clearance for any protruding bolt.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_recess
+  part: hand_knob
+  feature: Hex pocket above solid shoulder, depth 5.4 mm
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af_clearance
+  - floor
+  - top_space
+  check:
+    method: measure
+    ref: null
+    description: After hand insertion, verify the nut rests on the floor and its top
+      is below the knob's top surface.
+- id: retention
+  part: hand_knob
+  feature: Three integral cantilever retaining lips
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - finger_t
+  - finger_width
+  - finger_gap
+  - finger_root
+  - lip_projection
+  - lip_above_nut
+  - lip_land
+  check:
+    method: measure
+    ref: null
+    description: 'Unverified fit: press nut by hand, invert and gently shake over
+      a tray. Nut must remain captive. Reject the print if tabs crack, fail to recover,
+      or allow the nut to fall out.'
+- id: shoulder
+  part: hand_knob
+  feature: 2.4 mm bottom shoulder surrounding the 5.6 mm bolt bore
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor
+  - bolt_d
+  - bore_clearance
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Verify the nut cannot pass through the bottom bore and sits squarely
+      on the shoulder.
+- id: bolt_path
+  part: hand_knob
+  feature: Coaxial through bore under nut
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bore_clearance
+  check:
+    method: measure
+    ref: null
+    description: With the user's M5 bolt, verify it threads freely through the seated
+      nut and emerges through the opposite face without scraping the printed bore.
+manual:
+- n: '1'
+  text: Print hand_knob in black PLA, broad closed face on the bed and pocket upward.
+    Use a 0.4 mm nozzle, 0.2 mm layers, four wall loops, at least four top/bottom
+    layers and 30% infill. Disable supports. Keep the spring slots clear; use the
+    same PLA throughout.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove any strings from the pocket and spring slots. Check that all three
+    tabs are separate from the surrounding body above their roots. Do not pry them
+    outward.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Align the nut's flats with the hex pocket and press it straight in using thumb
+    pressure until it sits flat on the shoulder and the retaining tabs recover above
+    it. The nut must be fully below the top surface. Do not hammer it or pull it into
+    place with a bolt; stop if hand pressure is insufficient or any tab cracks.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Invert over a tray and gently shake. The nut must stay in place. If it falls
+    out, remains proud, or any tab breaks, do not use this print as a captive-nut
+    knob; the fit needs revision.
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: 'Thread your intended M5 bolt through the nut and verify that its end passes
+    freely through the opposite bore. This is a female-threaded hand knob: it travels
+    along the bolt, rather than gripping the bolt head. Use only gentle hand torque.
+    Avoid hot environments and stop if the nut starts rotating in the plastic.'
+  parts:
+  - hand_knob
+  hardware:
+  - nut
+  tool: null

@@ -1,0 +1,269 @@
+task: tripod-plate
+note: 'Rev 2: the dovetail and the head recess are unchanged, since both fit. The
+  roof over the recess now has two 0.2 mm sacrificial bridging steps, so the bridges
+  are never cut by the hole.'
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes (Arca-Swiss width); confirmed fits
+  dovetail_angle:
+    value: 45
+    unit: mm
+    kind: world
+    source: datasheet
+    note: Arca-Swiss flank angle; confirmed fits
+  edge_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bevel_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_len:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 major diameter
+  hole_d:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: confirmed fits recess
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  cb_w:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cb_depth:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_len:
+    value: 25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  layer_h:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: asked
+    note: printer layer height; sets the thickness of each sacrificial bridging step
+  cam_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  coupon_len:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    w=p.plate_w; L=p.plate_len; t=p.plate_t;\
+    \ e=p.edge_h; b=p.bevel_h\n    inset=b/math.tan(math.radians(p.dovetail_angle))\n\
+    \    pts=[(-w/2,0),(w/2,0),(w/2,e),(w/2-inset,e+b),(w/2-inset,t),(-w/2+inset,t),(-w/2+inset,e+b),(-w/2,e)]\n\
+    \    body=cq.Workplane('YZ').polyline(pts).close().extrude(L).translate((-L/2,0,0))\n\
+    \    cbL=p.slot_len+p.cb_w\n    hL=p.slot_len+p.hole_d\n    lh=p.layer_h\n   \
+    \ z1=p.cb_depth\n    cb=cq.Workplane('XY').slot2D(cbL,p.cb_w).extrude(z1)\n  \
+    \  # bridge step 1: open band hL long (X) across the full counterbore width (Y);\
+    \ the solid ends bridge 20 mm in Y\n    s1=cq.Workplane('XY').workplane(offset=z1).rect(hL,p.cb_w+2).extrude(lh)\n\
+    \    s1=s1.intersect(cq.Workplane('XY').workplane(offset=z1).slot2D(cbL,p.cb_w).extrude(lh))\n\
+    \    # bridge step 2: open rectangle hL x hole_d; the solid sides bridge in X\
+    \ over the band from step 1\n    s2=cq.Workplane('XY').workplane(offset=z1+lh).rect(hL,p.hole_d).extrude(lh)\n\
+    \    hole=cq.Workplane('XY').workplane(offset=z1).slot2D(hL,p.hole_d).extrude(t)\n\
+    \    body=body.cut(cb).cut(s1).cut(s2).cut(hole)\n    body=body.edges('|X and\
+    \ >Z').chamfer(0.6)\n    return body\n"
+  print_orientation: wide (tripod-side) face on the bed, no supports
+  use_orientation: 'same way up: bottom face in the tripod clamp, camera on top'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\ndef build(p):\n    w=p.plate_w; L=p.coupon_len; t=p.plate_t;\
+    \ e=p.edge_h; b=p.bevel_h\n    inset=b/math.tan(math.radians(p.dovetail_angle))\n\
+    \    pts=[(-w/2,0),(w/2,0),(w/2,e),(w/2-inset,e+b),(w/2-inset,t),(-w/2+inset,t),(-w/2+inset,e+b),(-w/2,e)]\n\
+    \    body=cq.Workplane('YZ').polyline(pts).close().extrude(L).translate((-L/2,0,0))\n\
+    \    lh=p.layer_h; z1=p.cb_depth\n    cb=cq.Workplane('XY').circle(p.cb_w/2).extrude(z1)\n\
+    \    s1=cq.Workplane('XY').workplane(offset=z1).rect(p.cb_w+2,p.hole_d).extrude(lh)\n\
+    \    s1=s1.intersect(cq.Workplane('XY').workplane(offset=z1).circle(p.cb_w/2).extrude(lh))\n\
+    \    s2=cq.Workplane('XY').workplane(offset=z1+lh).rect(p.hole_d,p.hole_d).extrude(lh)\n\
+    \    hole=cq.Workplane('XY').circle(p.hole_d/2).extrude(t)\n    return body.cut(cb).cut(s1).cut(s2).cut(hole)\n"
+  print_orientation: wide face on the bed
+  use_orientation: test the bridged hole and the bolt in the camera
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_screw
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: counterbore slot (head)
+    role: head_seat
+  - part: qr_plate
+    feature: bolt slot
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: bridge_roof
+  part: qr_plate
+  feature: roof over the counterbore, around the bolt slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - layer_h
+  - cb_depth
+  - hole_d
+  - cb_w
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Look up into the recess. The roof should be flat, stepped lines with
+      no loose loops, and the hole should be fully open
+- id: bolt_clear
+  part: qr_plate
+  feature: bolt slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.55
+  params:
+  - hole_d
+  - bolt_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The bolt drops through the hole freely with no trimming
+- id: dovetail_fit
+  part: qr_plate
+  feature: dovetail edges
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - dovetail_angle
+  - edge_h
+  - bevel_h
+  check:
+    method: none
+    ref: null
+    description: 'Already confirmed: it fits the clamp'
+- id: thread_len
+  part: qr_plate
+  feature: bolt protrusion into camera
+  relation: engages
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_len
+  - plate_t
+  - cb_depth
+  - cam_socket_depth
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Screw the camera on through the coupon. It should pull down flat
+      before the bolt bottoms out
+manual:
+- n: '1'
+  text: 'Print fit_coupon with the wide face down, no supports. Leave the slicer''s
+    bridge detection on. Look up into the recess: the roof should be two flat stepped
+    layers and the hole should be clean. Put the bolt through and screw the camera
+    on to check it pulls down flat.'
+  parts:
+  - fit_coupon
+  hardware:
+  - bolt
+  tool: null
+- n: '2'
+  text: 'Print qr_plate with the wide face down: 5 walls, 40%+ infill, no supports.
+    If any wisps are left in the hole, clear them with a 7 mm drill bit or a knife.'
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the bolt up through the slot from the bottom so its head sits in the
+    recess.
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Set the camera on top and press the bolt head up with your thumb while you
+    turn it (or turn the camera) until it's snug. Hand-tight only. Slide it along
+    the slot to balance the camera first.
+  parts:
+  - qr_plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Drop the plate into the open tripod clamp and tighten the knob. Tug on the
+    camera to check it's held before you let go. Keep it out of heat.
+  parts:
+  - qr_plate
+  hardware: []
+  tool: null

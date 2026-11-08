@@ -1,0 +1,256 @@
+task: nut-knob/M5
+note: Single-piece ergonomic 30 mm hand knob for an M5 bolt. Features a captive ISO
+  4032 M5 hex nut pocket with 6 sacrificial crush ribs for easy hand press-fit and
+  inverted retention without glue, a solid internal thrust shoulder to bear clamping
+  loads, and a through-clearance hole allowing the bolt to extend completely through.
+questions: []
+params:
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of M5 bolt
+  knob_height:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob for comfortable fingertip grip
+  rib_width:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Base width of triangular crush ribs on hex flats
+  scallop_radius:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of cylindrical finger grip cutouts
+  pocket_af_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Base clearance on pocket across-flats before ribs
+  scallop_center_radius:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from knob axis to scallop centers
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Thickness/height of ISO 4032 M5 hex nut
+  rib_protrusion:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Radial height of crush ribs on each flat for secure press-fit
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Width across flats of ISO 4032 M5 hex nut
+  entry_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Lead-in chamfer at pocket entrance for effortless hand alignment
+  shoulder_thickness:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of internal retaining shoulder to support clamping force
+  num_lobes:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of ergonomic finger scallops around perimeter
+  rim_bottom_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom edge chamfer to eliminate elephant's foot and sharp edges
+  knob_outer_diameter:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of the knob across lobe crests
+  bolt_clearance_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole clearance diameter for M5 bolt
+  rim_top_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Top outer rim chamfer for comfortable grip
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\n\ndef build(p):\n  # 1. Base cylindrical\
+    \ body of the knob\n  knob = (\n      cq.Workplane(\"XY\")\n      .circle(p.knob_outer_diameter\
+    \ / 2.0)\n      .extrude(p.knob_height)\n  )\n\n  # 2. Outer rim chamfers for\
+    \ comfortable hand grip and clean first layer\n  knob = knob.edges(\">Z\").chamfer(p.rim_top_chamfer)\n\
+    \  knob = knob.edges(\"<Z\").chamfer(p.rim_bottom_chamfer)\n\n  # 3. Cut finger\
+    \ scallops around perimeter to create 6 ergonomic grip lobes\n  for i in range(int(p.num_lobes)):\n\
+    \    angle = i * (2.0 * math.pi / p.num_lobes)\n    cx = p.scallop_center_radius\
+    \ * math.cos(angle)\n    cy = p.scallop_center_radius * math.sin(angle)\n    scallop\
+    \ = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n       \
+    \ .center(cx, cy)\n        .circle(p.scallop_radius)\n        .extrude(p.knob_height\
+    \ + 2.0)\n    )\n    knob = knob.cut(scallop)\n\n  # 4. Central clearance through-hole\
+    \ for M5 bolt\n  through_hole = (\n      cq.Workplane(\"XY\")\n      .workplane(offset=-1.0)\n\
+    \      .circle(p.bolt_clearance_d / 2.0)\n      .extrude(p.knob_height + 2.0)\n\
+    \  )\n  knob = knob.cut(through_hole)\n\n  # 5. Hexagonal nut pocket with 6 sacrificial\
+    \ crush ribs\n  af_pocket = p.nut_af + p.pocket_af_clearance\n  r_flat = af_pocket\
+    \ / 2.0\n  half_flat_len = r_flat / math.sqrt(3.0)\n  w_rib = p.rib_width\n  rib_h\
+    \ = p.rib_protrusion\n\n  pts = []\n  for i in range(6):\n    angle = i * (math.pi\
+    \ / 3.0)\n    nx = math.cos(angle)\n    ny = math.sin(angle)\n    tx = -math.sin(angle)\n\
+    \    ty = math.cos(angle)\n\n    p_corner = (\n        r_flat * nx - half_flat_len\
+    \ * tx,\n        r_flat * ny - half_flat_len * ty,\n    )\n    p_rib_start = (\n\
+    \        r_flat * nx - (w_rib / 2.0) * tx,\n        r_flat * ny - (w_rib / 2.0)\
+    \ * ty,\n    )\n    p_rib_tip = (\n        (r_flat - rib_h) * nx,\n        (r_flat\
+    \ - rib_h) * ny,\n    )\n    p_rib_end = (\n        r_flat * nx + (w_rib / 2.0)\
+    \ * tx,\n        r_flat * ny + (w_rib / 2.0) * ty,\n    )\n\n    pts.extend([p_corner,\
+    \ p_rib_start, p_rib_tip, p_rib_end])\n\n  pocket_depth = p.knob_height - p.shoulder_thickness\n\
+    \  pocket = (\n      cq.Workplane(\"XY\")\n      .workplane(offset=p.shoulder_thickness)\n\
+    \      .polyline(pts)\n      .close()\n      .extrude(pocket_depth + 1.0)\n  )\n\
+    \  knob = knob.cut(pocket)\n\n  # 6. Lead-in chamfer at the top of the hex pocket\n\
+    \  r_corner = r_flat / math.cos(math.pi / 6.0)\n  chamfer_cut = (\n      cq.Workplane(\"\
+    XY\")\n      .workplane(offset=p.knob_height - p.entry_chamfer)\n      .circle(r_corner)\n\
+    \      .workplane(offset=p.entry_chamfer + 0.5)\n      .circle(r_corner + p.entry_chamfer\
+    \ + 0.5)\n      .loft(combine=False)\n  )\n  knob = knob.cut(chamfer_cut)\n\n\
+    \  return knob\n"
+  print_orientation: Bottom clamping face flat on bed (Z=0), nut pocket facing upward
+    (+Z), no supports needed
+  use_orientation: Bottom face (Z=0) sits against clamped workpiece/washer; hex nut
+    pressed flush inside top pocket; gripped and rotated by hand
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x25
+  qty: 1
+joints:
+- id: knob_nut_bolted_joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: nut_pocket_fit_and_retention
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af_clearance
+  - rib_protrusion
+  - rib_width
+  - shoulder_thickness
+  - knob_height
+  check:
+    method: measure
+    ref: null
+    description: Press the M5 hex nut into the pocket; it must press in by hand and
+      seat firmly against the shoulder without falling out when inverted.
+- id: bolt_clearance_hole
+  part: knob
+  feature: bolt_hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Pass an M5 bolt through the central clearance hole to verify free
+      rotation and clearance.
+- id: knob_diameter_check
+  part: knob
+  feature: outer_profile
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_outer_diameter
+  check:
+    method: measure
+    ref: null
+    description: Verify outer diameter of knob across lobes is approximately 30 mm
+      for ergonomic hand tightening.
+manual:
+- n: '1'
+  text: Remove the printed knob from the build plate. Inspect the hexagonal nut pocket,
+    vertical crush ribs, and central through-hole to confirm clean bridging and no
+    stringing.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align an M5 hex nut (ISO 4032) with the hexagonal pocket at the top face of
+    the knob. Place the nut into the entry lead-in chamfer.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Press the nut firmly into the pocket using thumb pressure (or by inverting
+    the knob onto a table and pushing down) until the nut seats flat against the bottom
+    internal shoulder. The nut sits fully inside the pocket. Turn the knob upside
+    down to confirm the integrated crush ribs hold the nut securely in place without
+    glue.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Thread your M5 bolt through the knob. The bolt passes through the nut and
+    exits through the opposite clearance hole. Hand-tighten the knob via the 6 contoured
+    finger lobes without tools.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null

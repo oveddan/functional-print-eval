@@ -1,0 +1,205 @@
+task: nut-knob/M5
+note: 'A single-piece, six-lobed hand knob for an M5 threaded bolt. Press the ISO
+  4032 M5 nut into the hex pocket from the lobed/top face: the narrow, slotted throat
+  flexes during insertion, then retains the nut behind a shoulder. The opposite face
+  has an M5 clearance passage, so the bolt shank passes through the nut and exits
+  the knob. The example hardware includes an M5x30 screw; its head remains outside
+  the knob. Print with the flat z=0 face on the bed. The pocket floor is a short internal
+  bridge (about 9.6 mm corner-to-corner), well within the stated printer setup.'
+questions: []
+params:
+  knob_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: Overall knob thickness.
+  knob_core_r:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_r:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_pitch_r:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut across flats.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut thickness.
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M5 screw diameter.
+  pocket_af:
+    value: 8.3
+    unit: mm
+    kind: design
+    source: design
+    note: Hex nut chamber across flats, allowing print-fit clearance.
+  pocket_floor_z:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_clearance_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Extra chamber height above nut thickness.
+  throat_af:
+    value: 7.7
+    unit: mm
+    kind: design
+    source: design
+    note: Narrower than the nut AF to retain it; radial slots let the throat flex
+      for hand insertion.
+  bolt_clearance_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Through-passage for the M5 bolt shank.
+  slot_width:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_start_z:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_length:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_center_r:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA)
+  code: "import math\n\ndef build(p):\n    # Rounded six-lobe outline gives finger\
+    \ purchase while keeping the\n    # maximum diameter at approximately 30 mm.\n\
+    \    body = cq.Workplane('XY').circle(p.knob_core_r).extrude(p.knob_h)\n    for\
+    \ i in range(6):\n        a = math.radians(60 * i)\n        x = p.lobe_pitch_r\
+    \ * math.cos(a)\n        y = p.lobe_pitch_r * math.sin(a)\n        lobe = cq.Workplane('XY').center(x,\
+    \ y).circle(p.lobe_r).extrude(p.knob_h)\n        body = body.union(lobe)\n\n \
+    \   def hex_cut(af, z, height):\n        circum_d = 2.0 * af / math.sqrt(3.0)\n\
+    \        return cq.Workplane('XY').workplane(offset=z).polygon(6, circum_d).extrude(height)\n\
+    \n    # Nut chamber, with a narrower hex throat above it. The chamber has a\n\
+    \    # closed floor except for the bolt passage.\n    chamber_h = p.nut_h + p.pocket_clearance_h\n\
+    \    chamber_top = p.pocket_floor_z + chamber_h\n    body = body.cut(hex_cut(p.pocket_af,\
+    \ p.pocket_floor_z, chamber_h))\n    body = body.cut(hex_cut(p.throat_af, chamber_top,\
+    \ p.knob_h - chamber_top + 0.2))\n\n    # Axial clearance bore lets the bolt pass\
+    \ through the nut and out the\n    # far face of the knob.\n    bore = cq.Workplane('XY').workplane(offset=-0.2).circle(p.bolt_clearance_d\
+    \ / 2.0).extrude(p.knob_h + 0.4)\n    body = body.cut(bore)\n\n    # Six radial\
+    \ relief slots make the upper throat petals compliant for\n    # pressing the\
+    \ nut in by hand. They open at the perimeter and run down\n    # to just above\
+    \ the nut chamber.\n    for i in range(6):\n        slot = cq.Workplane('XY').box(p.slot_length,\
+    \ p.slot_width, p.knob_h - p.slot_start_z + 0.2,\n                           \
+    \           centered=(True, True, False))\n        slot = slot.translate((p.slot_center_r,\
+    \ 0, p.slot_start_z))\n        slot = slot.rotate((0, 0, 0), (0, 0, 1), 60 * i)\n\
+    \        body = body.cut(slot)\n    return body"
+  print_orientation: Place the flat z=0 face on the bed; the nut-entry throat faces
+    upward. No supports are intended.
+  use_orientation: Press the M5 nut into the slotted hex throat from the top/lobed
+    face. The M5 bolt enters from that same face, threads through the nut, and its
+    shank exits the z=0 face.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints: []
+criteria:
+- id: nut-retained
+  part: knob
+  feature: slotted hex throat and nut chamber
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - throat_af
+  - nut_h
+  - pocket_clearance_h
+  check:
+    method: measure
+    ref: null
+    description: The catalog nut is smaller than the chamber across flats and larger
+      than the throat across flats; the relief slots permit insertion, while the shoulder
+      and closed far-side floor retain it.
+- id: bolt-passage
+  part: knob
+  feature: axial through-bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.6
+  params:
+  - bolt_d
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Check that the M5 bolt shank passes freely through the printed 5.6
+      mm bore and emerges from the opposite face.
+manual:
+- n: '1'
+  text: Print the knob flat on its z=0 face, with the nut-entry throat upward. Do
+    not use supports. Let the print cool before fitting the nut.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M5 nut's flats with the hex throat. Press it straight down
+    by hand until it passes the flexible slotted lip and seats against the chamber
+    floor. The nut remains recessed inside the knob; do not force it at an angle.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Pass the M5 bolt shank through the throat and nut so it exits through the
+    opposite face. Turn the knob by hand to tighten it onto the bolt. The bolt head
+    stays outside the knob.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  tool: null

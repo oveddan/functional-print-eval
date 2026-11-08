@@ -1,0 +1,164 @@
+task: bearing-wheel
+note: ''
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel was about 50 mm across
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Old wheel was about 16 mm wide
+  bore_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Bolt shank measured 8 mm; 608 bearing bore nominal 8 mm
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: world
+    source: catalog
+    note: 608ZZ OD nominal 22.0 mm; the bearings are the user's own parts
+  bearing_width:
+    value: 7.0
+    unit: mm
+    kind: world
+    source: catalog
+    note: 608ZZ width nominal 7.0 mm
+  bearing_pocket_clearance:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance for press-fit bearing pocket, per side of diameter
+  bearing_pocket_depth:
+    value: 7.0
+    unit: mm
+    kind: world
+    source: catalog
+    note: Seat depth equals bearing width so each bearing is flush
+  axle_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance around bolt shank so wheel spins freely
+  center_boss_d:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: Raised center boss to space wheel from bracket
+  center_boss_h:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: Boss height, protrudes 1 mm each side
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA
+  code: "import cadquery as cq\n\ndef build(p):\n    od = p.wheel_od\n    w = p.wheel_width\n\
+    \    bore = p.bore_d\n    b_od = p.bearing_od\n    b_w = p.bearing_width\n   \
+    \ b_clr = p.bearing_pocket_clearance\n    axle_clr = p.axle_clearance\n    boss_d\
+    \ = p.center_boss_d\n    boss_h = p.center_boss_h\n\n    pr = b_od / 2.0 + b_clr\n\
+    \n    wheel = (\n        cq.Workplane('XY')\n        .circle(od / 2.0)\n     \
+    \   .extrude(w)\n    )\n\n    wheel = wheel.faces(\"<Z\").workplane().hole(2 *\
+    \ (bore + axle_clr), depth=w)\n\n    wheel = wheel.faces(\"<Z\").workplane().hole(2\
+    \ * pr, depth=b_w)\n    wheel = wheel.faces(\">Z\").workplane(offset=w).hole(2\
+    \ * pr, depth=b_w)\n\n    wheel = wheel.faces(\"<Z\").workplane().circle(boss_d\
+    \ / 2.0).extrude(boss_h)\n    wheel = wheel.faces(\">Z\").workplane(offset=w).circle(boss_d\
+    \ / 2.0).extrude(boss_h)\n\n    wheel = wheel.faces(\"<Z\").workplane(offset=-boss_h).hole(2\
+    \ * (bore + axle_clr), depth=w + 2 * boss_h)\n\n    return wheel"
+  print_orientation: Flat on its side; one flat face on the bed (z = 0), wheel axis
+    vertical
+  use_orientation: Wheel axis horizontal; bolt passes through the bore
+hardware:
+- id: axle_bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: axle_nut
+  ref: ISO 4032 M8
+  qty: 1
+joints:
+- id: axle_joint
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: roller_wheel
+    feature: bore
+    role: clearance
+  nut: axle_nut
+  external: null
+criteria:
+- id: bearing_fit
+  part: roller_wheel
+  feature: bearing_pocket
+  relation: contains
+  hardware: null
+  clearance_mm: null
+  params: []
+  check:
+    method: coupon
+    ref: null
+    description: Print a ring coupon with the bearing pocket diameter and depth; bearing
+      should press in snugly by hand, not fall out and not need a hammer
+- id: bore_clearance
+  part: roller_wheel
+  feature: bore
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: 0.4
+  params: []
+  check:
+    method: none
+    ref: null
+    description: Bolt shank passes through freely
+manual:
+- n: '1'
+  text: Press one 608 bearing into each pocket of the wheel (one from each side) until
+    it sits flush at the bottom of the pocket.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Slide the M8x50 bolt through the wheel bore from one side so the bolt head
+    sits against the wheel boss.
+  parts:
+  - roller_wheel
+  hardware:
+  - axle_bolt
+  tool: null
+- n: '3'
+  text: Thread the M8 nut onto the bolt's end finger-tight only — snug enough that
+    the nut won't fall off, but not compressing the wheel. The wheel should spin freely.
+  parts:
+  - roller_wheel
+  hardware:
+  - axle_nut
+  tool: null
+- n: '4'
+  text: Mount the wheel into your door bracket using the original axle. The raised
+    center bosses space the wheel so it doesn't rub the bracket sides.
+  parts:
+  - roller_wheel
+  hardware:
+  - axle_bolt
+  - axle_nut
+  tool: null

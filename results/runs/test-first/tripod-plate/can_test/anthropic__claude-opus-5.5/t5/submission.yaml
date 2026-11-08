@@ -1,0 +1,231 @@
+task: tripod-plate
+note: 'Temporary Arca-Swiss style quick-release plate (38 mm wide, 45° dovetail).
+  For the screw it uses the metal 1/4-20 webcam bolt rather than a printed PLA thread,
+  which would strip. Guesses: the 45° dovetail angle, and the camera socket depth
+  (the bolt sticks out 4.5 mm, which is short enough for typical sockets).'
+questions:
+- text: Is the clamp Arca-Swiss style (45° slanted jaws)? If the plate wobbles, tell
+    me the jaw angle and I can change the profile.
+  answer: null
+params:
+  clamp_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: asked
+    note: plate width the tripod clamp takes (Arca-Swiss style)
+  fit_under:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: print a bit narrow so it drops in; the knob takes up the gap
+  dovetail_deg:
+    value: 45
+    unit: mm
+    kind: world
+    source: guessed
+    note: Arca-Swiss standard flank angle
+  flank_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_t:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_l:
+    value: 60
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_l:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: centre-to-centre travel so the camera can be balanced
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20
+  bolt_clr:
+    value: 7.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under the head, about
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about
+  head_clr:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  protrude:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt sticking out of the top; camera socket depth unknown, most are >=5.5
+      mm
+  edge_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: elephant-foot relief on bed edge
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    W = p.clamp_w - p.fit_under\n    T = p.plate_t\n\
+    \    inset = p.flank_h / math.tan(math.radians(p.dovetail_deg))\n    c = p.edge_chamfer\n\
+    \    pts = [(-(W/2 - c), 0), (W/2 - c, 0), (W/2, c), (W/2, T - p.flank_h), (W/2\
+    \ - inset, T), (-(W/2 - inset), T), (-W/2, T - p.flank_h), (-W/2, c)]\n    body\
+    \ = cq.Workplane('XZ').polyline(pts).close().extrude(p.plate_l/2, both=True)\n\
+    \    web = p.bolt_len - p.protrude\n    cb_depth = T - web\n    hd = p.head_d\
+    \ + p.head_clr\n    slot = cq.Workplane('XY').slot2D(p.slot_l + p.bolt_clr, p.bolt_clr,\
+    \ 90).extrude(T)\n    cb = cq.Workplane('XY').workplane(offset=web).slot2D(p.slot_l\
+    \ + hd, hd, 90).extrude(cb_depth + 0.1)\n    return body.cut(slot).cut(cb)\n"
+  print_orientation: camera-side (wide, flat) face down on the bed; dovetail narrows
+    upward so no overhangs, the head recess opens at the top
+  use_orientation: 'flipped: wide face up against the camera, narrow dovetail face
+    down into the tripod clamp'
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 11.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: head recess slot (underside in use)
+    role: head_seat
+  - part: plate
+    feature: 7 mm through slot
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: fits_clamp
+  part: plate
+  feature: dovetail sides
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_w
+  - fit_under
+  - dovetail_deg
+  - flank_h
+  check:
+    method: measure
+    ref: null
+    description: Plate drops into the open clamp from above and is held firmly when
+      the knob is tightened; it can't lift out
+- id: head_recessed
+  part: plate
+  feature: head recess
+  relation: contains
+  hardware: null
+  clearance_mm: 1.0
+  params:
+  - head_d
+  - head_h
+  - plate_t
+  - bolt_len
+  - protrude
+  check:
+    method: measure
+    ref: null
+    description: Bolt head sits below the plate's underside (doesn't touch the clamp
+      base)
+- id: thread_length
+  part: plate
+  feature: top face
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - protrude
+  check:
+    method: measure
+    ref: null
+    description: About 4.5 mm of thread sticks out of the top; the camera tightens
+      down flat on the plate before the bolt bottoms out
+manual:
+- n: '1'
+  text: Print the plate in PLA, wide flat face on the bed, no supports. 4 walls and
+    40% infill or more makes it stiffer.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Open the tripod clamp and check the plate drops in. If it's too tight, sand
+    the slanted sides a little.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the webcam bolt up from the underside (the narrow side, with the big
+    recess) through the slot. The head sits in the recess.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: 'Screw the bolt into the camera''s tripod socket by hand until the camera
+    is snug on the plate. Slide the bolt along the slot first to balance the camera.
+    Don''t force it: if the camera won''t sit flat, the bolt is too long for the socket,
+    so stop.'
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Put the plate into the tripod clamp and tighten the knob firmly. Keep one
+    hand on the camera until you've tested it. Don't leave a heavy camera or lens
+    tilted sideways on it for long.
+  parts:
+  - plate
+  hardware: []
+  tool: null

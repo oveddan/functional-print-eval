@@ -1,0 +1,147 @@
+task: bearing-wheel
+note: ''
+questions:
+- text: Does the wheel fit between the bracket arms? The gap was not measured; the
+    design assumes 16 mm width.
+  answer: null
+- text: Does the 21.8 mm pocket hold the bearing snugly? The coupon result was not
+    reported.
+  answer: null
+- text: What is the length of your M8 bolt? The hardware entry assumes 40 mm; the
+    bolt must be long enough to pass through the bracket and the wheel.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: user said the old wheel was about 50 mm across
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: user said about 16 mm wide; the bracket gap was not measured, so confirm
+      it fits
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M8 bolt shank, about 8 mm across (user's own bolt)
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD nominal; a 21.22 reading was low from pinching
+  bearing_bore:
+    value: 7.94
+    unit: mm
+    kind: hardware
+    source: measured
+    note: measured bore; nominal 8.0
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  pocket_d:
+    value: 21.8
+    unit: mm
+    kind: design
+    source: design
+    note: 0.2 mm under bearing OD for a press fit in PLA; confirm with the coupon
+  axle_hole_d:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: clears the 8 mm bolt so the wheel turns on the bearings, not the bolt
+  web_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: 16 mm width minus two 7 mm bearings
+parts:
+- id: wheel
+  role: final
+  material: PLA high-speed black
+  code: "def build(p):\n    r = p.wheel_od / 2\n    h = p.wheel_width\n    body =\
+    \ cq.Workplane('XY').circle(r).extrude(h)\n    body = body.cut(cq.Workplane('XY').circle(p.axle_hole_d\
+    \ / 2).extrude(h))\n    top = cq.Workplane('XY').workplane(offset=h - p.bearing_width).circle(p.pocket_d\
+    \ / 2).extrude(p.bearing_width)\n    bot = cq.Workplane('XY').circle(p.pocket_d\
+    \ / 2).extrude(p.bearing_width)\n    return body.cut(top).cut(bot)\n"
+  print_orientation: flat on bed, axis vertical (z up)
+  use_orientation: axis horizontal, rolling on the door track, bolt through the centre
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+joints: []
+criteria:
+- id: bearing_pockets
+  part: wheel
+  feature: two 21.8 mm pockets, 7 mm deep, one at each face
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - pocket_d
+  - bearing_od
+  - bearing_width
+  check:
+    method: coupon
+    ref: null
+    description: Press a 608 bearing into the pocket; it should seat snugly without
+      cracking the PLA.
+- id: axle_clear
+  part: wheel
+  feature: 8.5 mm centre hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - axle_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Bolt slides through the centre hole with radial clearance.
+manual:
+- n: '1'
+  text: Print the wheel flat on the bed (axis vertical). No supports are needed.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into each end pocket of the wheel, pushing on the outer
+    ring only, until it sits flat against the web. A snug fit is expected; if it is
+    loose, the pocket is too large.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: Slide the wheel onto your M8 bolt through the bearings. The bearings should
+    turn freely. If the bolt binds in the bearing bores, lightly file or sand the
+    bolt shank.
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Mount the wheel in the door bracket with the bolt as the axle, as the old
+    wheel was mounted. Check the wheel fits between the bracket arms.
+  parts: []
+  hardware:
+  - bolt
+  tool: null

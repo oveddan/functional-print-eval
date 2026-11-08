@@ -106,10 +106,11 @@ def test_a_seat_at_the_edges_of_what_held_passes(tmp_path):
         assert not failed(findings) and not not_graded(findings), not_passing(findings)
 
 
-def test_a_seat_nobody_printed_isnt_graded(tmp_path):
-    for d in (22.05, 22.5):
-        findings = grade(design(seat=d), tmp_path / str(d))
-        assert not failed(findings) and not_graded(findings) == {"R3"}
+def test_a_seat_takes_the_nearest_print_within_the_tolerance_and_isnt_graded_beyond_it(tmp_path):
+    assert failed(grade(design(seat=22.05), tmp_path / "a")) == {"R3"}  # midway to 22.0, which wouldn't take it
+    assert not ({"R3"} & (failed(found := grade(design(seat=22.45), tmp_path / "b")) | not_graded(found)))  # near 22.3
+    findings = grade(design(seat=22.6), tmp_path / "c")
+    assert not failed(findings) and not_graded(findings) == {"R3"}
 
 
 def test_too_shallow_for_two_bearings_fails_room_only(tmp_path):
@@ -134,9 +135,9 @@ def test_bolt_hole_too_small_fails_only_that(tmp_path):
     assert failed(grade(design(relief=7.8), tmp_path)) == {"R4"}
 
 
-def test_bolt_hole_nobody_printed_isnt_graded(tmp_path):
-    findings = grade(design(relief=8.2), tmp_path)
-    assert not failed(findings) and not_graded(findings) == {"R4"}
+def test_a_bolt_hole_between_the_bolt_and_its_clearance_takes_the_nearest(tmp_path):
+    assert failed(grade(design(relief=8.1), tmp_path / "a")) == {"R4"}
+    assert "R4" not in failed(found := grade(design(relief=8.3), tmp_path / "b")) | not_graded(found)
 
 
 def test_ribs_arent_graded_on_fit(tmp_path):

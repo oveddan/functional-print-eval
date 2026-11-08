@@ -1,0 +1,288 @@
+task: nut-knob/M3
+note: 'One-piece M3 hand knob with an integral six-petal flex collet. The printed
+  nut is captive: it presses through the narrow top aperture, is blocked from the
+  far side by the small bolt bore, and stays in when inverted without glue. The outer
+  diameter is 20 mm.'
+questions: []
+params:
+  m3_nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across flats
+  m3_nut_corner_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Regular-hex across-corner distance for the M3 nut
+  m3_nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut thickness
+  m3_bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 nominal thread diameter
+  bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole clearance for M3 bolt
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  aperture_flat_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Capture bore is nut_af + this clearance, still smaller than nut corners
+  lead_in_flat_clearance:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  root_flat_clearance:
+    value: 1.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_corner_clearance:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_vertical_clearance:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_wall_t:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  chamber_gap:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Radial space for the flexure petals to move outward
+  lead_in_h:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  retention_h:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  wide_support_h:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  transition_h:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  transition_steps:
+    value: 4
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flex_slot_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flex_slot_w:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flex_slot_inner_relief:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flex_slot_outer_relief:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  far_bore_breakthrough:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    H = float(p.knob_h)\n    R = float(p.knob_od) / 2.0\n\
+    \    r_bolt = (float(p.m3_bolt_d) + float(p.bolt_clearance)) / 2.0\n    r_cham\
+    \ = (float(p.m3_nut_corner_d) + float(p.pocket_corner_clearance)) / 2.0\n    r_root\
+    \ = (float(p.m3_nut_af) + float(p.root_flat_clearance)) / 2.0\n    r_ret = (float(p.m3_nut_af)\
+    \ + float(p.aperture_flat_clearance)) / 2.0\n    r_lead = (float(p.m3_nut_af)\
+    \ + float(p.lead_in_flat_clearance)) / 2.0\n    r_col = r_ret + float(p.finger_wall_t)\n\
+    \    if r_col + float(p.chamber_gap) > r_cham:\n        r_cham = r_col + float(p.chamber_gap)\n\
+    \n    lead_h = float(p.lead_in_h)\n    ret_h = float(p.retention_h)\n    wide_h\
+    \ = float(p.wide_support_h)\n    trans_h = float(p.transition_h)\n    pocket_h\
+    \ = float(p.m3_nut_h) + float(p.pocket_vertical_clearance)\n\n    z_ret_top =\
+    \ H - lead_h\n    z_slot_bottom = z_ret_top - ret_h\n    z_root_top = z_slot_bottom\
+    \ - wide_h\n    z_trans_bottom = z_root_top - trans_h\n    z_pocket_bottom = z_trans_bottom\
+    \ - pocket_h\n\n    body = cq.Workplane('XY').circle(R).extrude(H)\n\n    body\
+    \ = body.cut(cq.Workplane('XY').workplane(offset=0).circle(r_bolt).extrude(z_pocket_bottom\
+    \ + float(p.far_bore_breakthrough)))\n    body = body.cut(cq.Workplane('XY').workplane(offset=z_pocket_bottom).circle(r_cham).extrude(z_trans_bottom\
+    \ - z_pocket_bottom))\n\n    trans_steps = int(p.transition_steps)\n    step_h\
+    \ = trans_h / float(trans_steps)\n    for i in range(trans_steps):\n        z\
+    \ = z_trans_bottom + float(i) * step_h\n        r = r_cham + (r_root - r_cham)\
+    \ * (float(i + 1) / float(trans_steps))\n        body = body.cut(cq.Workplane('XY').workplane(offset=z).circle(r).extrude(step_h))\n\
+    \n    body = body.cut(cq.Workplane('XY').workplane(offset=z_root_top).circle(r_root).extrude(z_slot_bottom\
+    \ - z_root_top))\n    body = body.cut(cq.Workplane('XY').workplane(offset=z_slot_bottom).circle(r_ret).extrude(ret_h))\n\
+    \    body = body.cut(cq.Workplane('XY').workplane(offset=z_ret_top).circle(r_lead).extrude(lead_h))\n\
+    \n    annulus_h = H - z_slot_bottom\n    outer_void = cq.Workplane('XY').workplane(offset=z_slot_bottom).circle(r_cham).extrude(annulus_h)\n\
+    \    inner_void = cq.Workplane('XY').workplane(offset=z_slot_bottom).circle(r_col).extrude(annulus_h)\n\
+    \    body = body.cut(outer_void.cut(inner_void))\n\n    slot_count = int(p.flex_slot_count)\n\
+    \    slot_w = float(p.flex_slot_w)\n    slot_bottom = z_slot_bottom\n    slot_depth\
+    \ = annulus_h\n    slot_start = r_ret - float(p.flex_slot_inner_relief)\n    slot_end\
+    \ = r_cham + float(p.flex_slot_outer_relief)\n    slot_len = slot_end - slot_start\n\
+    \    slot_x = (slot_start + slot_end) / 2.0\n    slot_center_z = slot_bottom +\
+    \ slot_depth / 2.0\n    for i in range(slot_count):\n        angle = 360.0 * float(i)\
+    \ / float(slot_count)\n        cutter = (\n            cq.Workplane('XY')\n  \
+    \          .transformed(rotate=(0, 0, angle))\n            .workplane(offset=slot_center_z)\n\
+    \            .center(slot_x, 0)\n            .box(slot_len, slot_w, slot_depth,\
+    \ centered=(True, True, True))\n        )\n        body = body.cut(cutter)\n\n\
+    \    return body\n"
+  print_orientation: 'Flat far-side face on the bed: the 3.4 mm bolt-exit hole is
+    the first layer; the slotted flexure aperture points up (+Z).'
+  use_orientation: Flexure end is the nut-insertion and bolt-entry side; the far-side
+    small bore is the bolt-exit side.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints: []
+criteria:
+- id: nut_retention
+  part: hand_knob
+  feature: flexure_aperture
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - m3_nut_af
+  - m3_nut_corner_d
+  - aperture_flat_clearance
+  - finger_wall_t
+  check:
+    method: measure
+    ref: null
+    description: With the nut inside and the petals relaxed, the capture bore is larger
+      than the nut across flats but smaller than the nut across corners, so the nut
+      cannot fall out when the knob is inverted.
+- id: bolt_clear
+  part: hand_knob
+  feature: bolt_exit_bore
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: null
+  params:
+  - m3_bolt_d
+  - bolt_clearance
+  check:
+    method: measure
+    ref: null
+    description: The far-side bore is about 3.4 mm, so an M3 bolt passes freely, but
+      the hex nut cannot pass through it.
+- id: nut_pocket
+  part: hand_knob
+  feature: nut_pocket
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - m3_nut_corner_d
+  - m3_nut_h
+  - pocket_corner_clearance
+  - pocket_vertical_clearance
+  check:
+    method: none
+    ref: null
+    description: The internal pocket clears the nut body and provides a floor behind
+      the nut so it stays fully inside the knob.
+manual:
+- n: '1'
+  text: Print hand_knob with the flat bottom face on the bed. The 3.4 mm bolt-exit
+    hole should be the first layer; the slotted flexure face should point up. Use
+    normal high-speed PLA settings; no supports are expected.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one M3 hex nut through the slotted top opening. The six printed petals
+    spread outward as the nut corners pass the narrow capture bore, then close behind
+    it. If it feels very stiff, gently flex the petals outward first; do not bend
+    them past their elastic limit.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Check the captive nut by turning the knob upside down and shaking it in both
+    orientations. The nut should stay inside and should not be able to be pushed out
+    through the small far-side bolt hole.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '4'
+  text: Insert an M3 bolt from the flexure end. It passes through the nut and exits
+    the far-side bore. Turn the knob by hand to tighten or loosen the bolt. The M3x16
+    length shown is an example; use your suitable M3 bolt length.
+  parts:
+  - hand_knob
+  hardware:
+  - m3_nut
+  - m3_bolt
+  tool: null

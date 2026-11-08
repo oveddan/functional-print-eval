@@ -1,0 +1,220 @@
+task: nut-knob/M3
+note: The test coupons gave no result, so the fit is untested. The pocket is 0.15
+  mm oversize with a 0.6 mm lip at the mouth, 0.1 mm under the nut's across-flats
+  size, which holds the nut by friction. If the nut is too tight or too loose, change
+  nut_clr or lip_interf. The knob prints with its far face on the bed and the pocket
+  opening upward, so it needs no supports and has no bridges.
+questions:
+- text: Did the nut press in by hand and stay in when upside down? The print test
+    came back with no results, so the pocket fit (5.65 mm body, 5.4 mm lip) is untested.
+  answer: null
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: requested ~20 mm across
+  knob_h:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  nut_clr:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: pocket body af oversize; not verified by a print test (test came back with
+      no result)
+  lip_interf:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: mouth lip af is this much smaller than nut af, gives the snap/friction retention
+  lip_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: total mouth lip height incl. entry chamfer
+  nut_recess:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: extra pocket depth beyond nut thickness
+  bolt_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance hole
+  groove_d:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: grip scallop diameter
+  groove_n:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  groove_inset:
+    value: 1.9
+    unit: mm
+    kind: design
+    source: design
+    note: scallop depth into rim
+  edge_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    r = p.knob_d/2\n    h = p.knob_h\n    k =\
+    \ cq.Workplane('XY').circle(r).extrude(h)\n    k = k.faces('<Z').chamfer(p.edge_chamfer).faces('>Z').chamfer(p.edge_chamfer*0.6)\n\
+    \    # scallops\n    cr = p.groove_d/2\n    rc = r - p.groove_inset + cr\n   \
+    \ for i in range(int(p.groove_n)):\n        a = 2*math.pi*i/p.groove_n\n     \
+    \   k = k.cut(cq.Workplane('XY').center(rc*math.cos(a), rc*math.sin(a)).circle(cr).extrude(h))\n\
+    \    # bolt hole through\n    k = k.cut(cq.Workplane('XY').circle(p.bolt_hole_d/2).extrude(h))\n\
+    \    # nut pocket, opening at the top (z = h)\n    k2c = 2/math.sqrt(3)\n    body_d\
+    \ = (p.nut_af + p.nut_clr)*k2c\n    lip_d = (p.nut_af - p.lip_interf)*k2c\n  \
+    \  mouth_d = (p.nut_af + 0.4)*k2c\n    body_h = p.nut_h + p.nut_recess\n    z0\
+    \ = h - body_h - p.lip_h\n    chamf_h = 0.3\n    straight_h = p.lip_h - chamf_h\n\
+    \    body = cq.Workplane('XY').workplane(offset=z0).polygon(6, body_d).extrude(body_h)\n\
+    \    lip = cq.Workplane('XY').workplane(offset=z0+body_h).polygon(6, lip_d).extrude(straight_h)\n\
+    \    cone = (cq.Workplane('XY').workplane(offset=z0+body_h+straight_h).polygon(6,\
+    \ lip_d)\n            .workplane(offset=chamf_h).polygon(6, mouth_d).loft(combine=True))\n\
+    \    k = k.cut(body).cut(lip).cut(cone)\n    return k"
+  print_orientation: flat far-side face (the face the bolt tip exits) on the bed;
+    nut pocket opens upward
+  use_orientation: nut pocket facing the bolt / workpiece side
+- id: nut-m3
+  role: final
+  material: n/a
+  code: "def build(p):\n    return cq.Workplane('XY').polygon(6, p.nut_af*2/3**0.5).circle(p.bolt_hole_d/2-0.2).extrude(p.nut_h)"
+  print_orientation: n/a (bought part, not printed)
+  use_orientation: n/a
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - nut_clr
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Nut must press fully into the pocket by thumb, sit below the knob
+      face, and not fall out when the knob is held upside down.
+- id: c2
+  part: knob
+  feature: mouth retention lip
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - lip_interf
+  - lip_h
+  check:
+    method: measure
+    ref: null
+    description: Lip af is slightly under the nut af so the nut snaps past it and
+      is held by friction.
+- id: c3
+  part: knob
+  feature: floor under nut
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_hole_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Solid floor with a 3.4 mm hole smaller than the nut, so the nut cannot
+      be pushed out the far side.
+- id: c4
+  part: knob
+  feature: bolt hole
+  relation: clears
+  hardware: nut
+  clearance_mm: 0.4
+  params:
+  - bolt_hole_d
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes through the nut and out the far-side hole.
+manual:
+- n: '1'
+  text: Print the knob with the flat far-side face on the bed and the hex pocket facing
+    up. No supports. Black PLA, 0.2 mm layers, at least 3 walls.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Remove any elephant-foot or stringing from the hex pocket with a small blade.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Line up the M3 nut with the hex pocket, flats against flats. Press it in with
+    your thumb on a flat surface until it bottoms on the floor. It snaps past the
+    lip at the mouth and sits about 0.8 mm below the face.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Turn the knob upside down and shake it to check the nut stays in. If it falls
+    out, tell the designer (pocket needs to be tighter). If it won't go in by hand,
+    ream the mouth lightly.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: Thread your M3 bolt through the pocket side, through the nut and out the hole
+    in the far side. Tighten by turning the knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

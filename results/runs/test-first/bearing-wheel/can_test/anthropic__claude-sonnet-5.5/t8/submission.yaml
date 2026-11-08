@@ -1,0 +1,206 @@
+task: bearing-wheel
+note: I couldn't get the bolt length, the bracket gap or the rail profile. I assumed
+  a flat tread 50 mm across and 16 mm wide, like the old wheel. The bolt length shown
+  (M8x50) is a placeholder for your own bolt. It needs to be at least 16 mm (wheel)
+  + 3.2 mm (two washers) + the bracket thickness, plus a nut or thread engagement.
+  If the rail has a V or round profile, the tread will need a groove, so tell me and
+  I'll change it. If the bracket gap is wider than about 20 mm, add washers. If it
+  is narrower, the wheel won't fit and the width needs to be reduced. The pocket diameter
+  (22.2 mm) comes from a test print.
+questions:
+- text: What shape is the rail the wheel runs on (flat, V-groove or round)?
+  answer: null
+- text: How long is your M8 bolt under the head, and how wide is the gap in the bracket?
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user measured about 22; matches 608 nominal 22.0
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user measured about 7; 608 nominal 7
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user's M8 shank about 8 mm; also fits 608 bore 8
+  pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'From coupon: 21.89 won''t go in, 22.19 goes in and holds upside down. Pocket
+      = 22.2 mm.'
+  web_hole_d:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: hole through the centre web, larger than the inner race so only the outer
+      races touch the wheel
+  entry_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: lead-in on pocket mouths; also offsets elephant foot on the bed side
+  tread_fillet:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = cq.Workplane('XY').circle(p.wheel_od / 2).extrude(p.wheel_w)\n\
+    \    w = w.edges().fillet(p.tread_fillet)\n    pd = p.bearing_od + p.pocket_clear\n\
+    \    bot = cq.Workplane('XY').circle(pd / 2).extrude(p.bearing_width)\n    top\
+    \ = (cq.Workplane('XY').workplane(offset=p.wheel_w - p.bearing_width)\n      \
+    \     .circle(pd / 2).extrude(p.bearing_width))\n    hole = cq.Workplane('XY').circle(p.web_hole_d\
+    \ / 2).extrude(p.wheel_w)\n    w = w.cut(bot).cut(top).cut(hole)\n    c = p.entry_chamfer\n\
+    \    cone_b = cq.Solid.makeCone(pd / 2 + c, pd / 2, c, cq.Vector(0, 0, 0), cq.Vector(0,\
+    \ 0, 1))\n    cone_t = cq.Solid.makeCone(pd / 2 + c, pd / 2, c, cq.Vector(0, 0,\
+    \ p.wheel_w), cq.Vector(0, 0, -1))\n    w = w.cut(cq.Workplane('XY').add(cone_b)).cut(cq.Workplane('XY').add(cone_t))\n\
+    \    return w\n"
+  print_orientation: one flat face on the bed (axis vertical, z = 0 is the bed face).
+    No supports needed.
+  use_orientation: axis horizontal, rolling on the rail on the tread
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -1.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: web_hole
+    role: clearance
+  nut: null
+  external: null
+criteria:
+- id: c-pocket-bottom
+  part: wheel
+  feature: bearing pocket (bed side)
+  relation: contains
+  hardware: bearing
+  clearance_mm: 0.2
+  params:
+  - bearing_od
+  - pocket_clear
+  - bearing_width
+  check:
+    method: coupon
+    ref: pocket-coupon
+    description: 22.19 mm pocket took a 608 and held it; 21.89 would not go in
+- id: c-pocket-top
+  part: wheel
+  feature: bearing pocket (top side)
+  relation: contains
+  hardware: bearing
+  clearance_mm: 0.2
+  params:
+  - bearing_od
+  - pocket_clear
+  - bearing_width
+  check:
+    method: coupon
+    ref: pocket-coupon
+    description: same pocket diameter as the coupon
+- id: c-web
+  part: wheel
+  feature: web hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - web_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: bolt and bearing inner races pass through the 14 mm web hole without
+      touching the wheel
+manual:
+- n: '1'
+  text: Print the wheel with one flat face on the bed, no supports. Use at least 4
+    walls and 30-40% infill so the tread is strong.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check each pocket is clean (remove any stringing or bed-side ridge). Press
+    one 608 bearing into each pocket until it sits flush with the wheel face. Press
+    on the outer race only, using a flat surface or a vice with a block of wood. Do
+    not push on the inner race.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: Thread the bolt through the bracket, then an M8 washer, then the wheel (through
+    both bearings), then the second M8 washer. Each washer must touch only the inner
+    race, not the wheel body or the outer race.
+  parts:
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  tool: null
+- n: '4'
+  text: Tighten the bolt in the bracket as the original was. Spin the wheel by hand.
+    It should turn freely with no rubbing on the bracket. If it rubs, add another
+    washer on the side that rubs.
+  parts: []
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Hang the door and check the wheel runs on the rail.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

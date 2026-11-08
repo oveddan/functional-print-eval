@@ -1,0 +1,248 @@
+task: bearing-wheel
+note: I chose a 22.1 mm bearing seat based on the fit coupon. The 2 mm ledge in the
+  middle touches only the bearings' outer rings, and the 2 mm printed spacer fills
+  the same gap between the inner rings, so tightening the nut doesn't side-load the
+  bearings.
+questions:
+- text: What shape is the rolling edge? I made it flat with small chamfers. If your
+    track is a raised rail or the old wheel had a groove, tell me and I'll change
+    the rim.
+  answer: null
+- text: How wide is the bracket gap and how thick is the plate? I chose M8x40. If
+    your stack is longer or shorter, use a different length.
+  answer: null
+params:
+  brg_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: 608 OD, re-measured with flat jaws
+  brg_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+  brg_fit:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: 'coupon: 22.09 snug, holds upside down'
+  brg_race_od:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 inner race OD ~12
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: ''
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: ''
+  lip_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: wheel_w - 2*brg_w
+  lip_id:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: touches outer race only
+  rim_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: under 608 inner race OD so it never touches the shields
+  outer_spacer_t:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    r = p.wheel_od/2\n    w = (cq.Workplane('XY').circle(r).extrude(p.wheel_w)\n\
+    \         .faces('>Z').edges().chamfer(p.rim_chamfer)\n         .faces('<Z').edges().chamfer(p.rim_chamfer))\n\
+    \    seat = (p.brg_od + p.brg_fit)/2\n    w = w.cut(cq.Workplane('XY').circle(seat).extrude(p.brg_w))\n\
+    \    w = w.cut(cq.Workplane('XY').workplane(offset=p.wheel_w - p.brg_w).circle(seat).extrude(p.brg_w))\n\
+    \    w = w.cut(cq.Workplane('XY').circle(p.lip_id/2).extrude(p.wheel_w))\n   \
+    \ # lead-in chamfers on the bearing seats\n    w = w.cut(cq.Workplane('XY').circle(seat\
+    \ + 0.5).workplane(offset=0.5).circle(seat).loft())\n    w = w.cut(cq.Workplane('XY').workplane(offset=p.wheel_w\
+    \ - 0.5).circle(seat).workplane(offset=0.5).circle(seat + 0.5).loft())\n    return\
+    \ w\n"
+  print_orientation: flat on one side face, axle vertical
+  use_orientation: axle horizontal, on the M8 bolt in the door bracket
+- id: inner_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.bolt_d/2\
+    \ + 0.2).extrude(p.lip_t)\n"
+  print_orientation: flat
+  use_orientation: on the bolt between the two bearings' inner races
+- id: outer_spacer_1
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.bolt_d/2\
+    \ + 0.2).extrude(p.outer_spacer_t)\n"
+  print_orientation: flat
+  use_orientation: on the bolt between a bearing inner race and the bracket
+- id: outer_spacer_2
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.bolt_d/2\
+    \ + 0.2).extrude(p.outer_spacer_t)\n"
+  print_orientation: flat
+  use_orientation: on the bolt between the other bearing inner race and the bracket
+hardware:
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: outer_spacer_1
+    feature: bore
+    role: clearance
+  - part: wheel
+    feature: bearing bores (via 608 inner races)
+    role: clearance
+  - part: inner_spacer
+    feature: bore
+    role: clearance
+  - part: outer_spacer_2
+    feature: bore
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: brg_fit
+  part: wheel
+  feature: bearing seats
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - brg_od
+  - brg_fit
+  check:
+    method: coupon
+    ref: bearing_fit_rings
+    description: 22.09 seat was snug and held the bearing upside down
+- id: spacer_race
+  part: inner_spacer
+  feature: outer diameter
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - spacer_od
+  - brg_race_od
+  check:
+    method: none
+    ref: null
+    description: spacer is smaller than the inner race so it doesn't rub the shields
+- id: bracket_fit
+  part: wheel
+  feature: width plus spacers
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_w
+  - outer_spacer_t
+  check:
+    method: measure
+    ref: null
+    description: wheel + 2 outer spacers = 19 mm must fit in the bracket gap; leave
+      out the outer spacers if it's tight
+manual:
+- n: '1'
+  text: Print the wheel lying flat with 4 walls and 40%+ infill (100% is fine too).
+    Print the three spacer rings flat. You don't need supports. The little 2 mm ledge
+    inside the bore prints as a short overhang.
+  parts:
+  - wheel
+  - inner_spacer
+  - outer_spacer_1
+  - outer_spacer_2
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608 bearing into a side of the wheel until it stops against the
+    inner ledge. Use a flat block or a vise so the bearing goes in straight. Push
+    only on the bearing's outer ring.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '3'
+  text: Drop the inner spacer into the wheel from the other side so it sits on the
+    first bearing's inner ring. Then press in the second bearing the same way.
+  parts:
+  - inner_spacer
+  - wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Slide the bolt through a washer, the bracket plate, an outer spacer, the wheel,
+    the other outer spacer, the other bracket plate (if your bracket has two), and
+    the last washer. If the bracket gap is narrower than 19 mm, leave out one or both
+    outer spacers.
+  parts:
+  - outer_spacer_1
+  - outer_spacer_2
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  tool: null
+- n: '5'
+  text: Screw on the lock nut and tighten it until it's snug. The bolt and the inner
+    rings get clamped and the wheel spins on the bearings. Spin it by hand to check
+    it turns freely and doesn't wobble.
+  parts: []
+  hardware:
+  - nut
+  tool: 6 mm hex key + 13 mm spanner

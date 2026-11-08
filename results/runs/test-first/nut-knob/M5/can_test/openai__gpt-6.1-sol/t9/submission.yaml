@@ -1,0 +1,270 @@
+task: nut-knob/M5
+note: 'One-piece, approximately 30 mm hand knob with six flexible nut-retaining tabs
+  and a solid bottom shoulder. The M5 nut is recessed entirely inside the knob; the
+  central hole lets the bolt pass through. Fit is NOT verified: both test prints were
+  made, but no usable fit feedback was available. Check hand insertion and retention
+  before using; do not force the nut or use a hammer. Intended for light hand tightening,
+  not structural or safety-critical loads.'
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M5 major diameter.
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hex cavity below retaining lips.
+  finger_outer_af:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  throat_af:
+    value: 7.7
+    unit: mm
+    kind: design
+    source: design
+    note: Flexible retaining throat, 0.15 mm nominal overlap on each nut flat.
+  mouth_af:
+    value: 8.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_w:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  capture_gap:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  ramp_h:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  moat_r:
+    value: 7.7
+    unit: mm
+    kind: design
+    source: design
+    note: Radial clearance separates flexible tabs from the outer grip.
+  scallop_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    import math\n    z=p.floor_t+p.nut_h+p.capture_gap\n \
+    \   h=z+p.ramp_h+p.lead_h\n    c=math.cos(math.pi/6)\n    base=cq.Workplane('XY').circle(p.knob_d/2).extrude(p.floor_t)\n\
+    \    grip=cq.Workplane('XY').workplane(offset=p.floor_t).circle(p.knob_d/2).circle(p.moat_r).extrude(h-p.floor_t)\n\
+    \    fingers=cq.Workplane('XY').workplane(offset=p.floor_t).polygon(6,p.finger_outer_af/c).extrude(h-p.floor_t)\n\
+    \    cavity=cq.Workplane('XY').workplane(offset=p.floor_t).polygon(6,p.pocket_af/c).extrude(z-p.floor_t)\n\
+    \    ramp=cq.Workplane('XY').workplane(offset=z).polygon(6,p.pocket_af/c).workplane(offset=p.ramp_h).polygon(6,p.throat_af/c).loft()\n\
+    \    lead=cq.Workplane('XY').workplane(offset=z+p.ramp_h).polygon(6,p.throat_af/c).workplane(offset=p.lead_h).polygon(6,p.mouth_af/c).loft()\n\
+    \    fingers=fingers.cut(cavity).cut(ramp).cut(lead)\n    for a in range(0,360,60):\n\
+    \        slot=cq.Workplane('XY').box(p.knob_d/2,p.slot_w,h-p.floor_t+1,centered=(False,True,False)).translate((0,0,p.floor_t)).rotate((0,0,0),(0,0,1),a)\n\
+    \        fingers=fingers.cut(slot)\n    result=base.union(grip).union(fingers)\n\
+    \    for i in range(int(p.scallop_count)):\n        a=2*math.pi*i/p.scallop_count\n\
+    \        x=p.scallop_center_r*math.cos(a)\n        y=p.scallop_center_r*math.sin(a)\n\
+    \        cutter=cq.Workplane('XY').center(x,y).circle(p.scallop_r).extrude(h+1)\n\
+    \        result=result.cut(cutter)\n    return result.cut(cq.Workplane('XY').circle(p.bore_d/2).extrude(h+1))"
+  print_orientation: Broad flat bottom at z=0 on the bed; hex socket and flexible
+    fingers open upward. No supports. Use 0.2 mm layers, three wall loops, five bottom
+    layers and 30% infill. Do not fill the annular clearance or slots with supports.
+  use_orientation: Nut enters from the open top; bolt enters through the small hole
+    in the opposite flat face. Nut rests on the internal floor beneath the retaining
+    lips. Outer scalloped ring is the hand grip.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: hand_snap_fit
+  part: hand_knob
+  feature: Six slotted fingers, flared entry and retaining throat
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - throat_af
+  - mouth_af
+  - finger_outer_af
+  - slot_w
+  - ramp_h
+  - lead_h
+  check:
+    method: measure
+    ref: null
+    description: Unverified fit. With the hex flats aligned, press the nut in using
+      fingers only. All tabs must remain intact and recover after insertion. Nut must
+      remain captured when inverted and gently shaken; reject if loose or cracked.
+- id: nut_recess
+  part: hand_knob
+  feature: Nut cavity above solid floor, below retaining lips
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - nut_h
+  - capture_gap
+  - ramp_h
+  - lead_h
+  check:
+    method: measure
+    ref: null
+    description: Confirm the nut rests flat on the floor, is fully below the knob's
+      top surface, and cannot fall out of either face.
+- id: bolt_clearance
+  part: hand_knob
+  feature: Axial through-hole in bottom shoulder
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - bore_d
+  check:
+    method: measure
+    ref: null
+    description: Using your M5 bolt, verify that it passes freely through the printed
+      bore, threads into the nut by hand and emerges from the top. Never force a cross-threaded
+      bolt.
+- id: anti_rotation
+  part: hand_knob
+  feature: Hex flats of the six retaining fingers
+  relation: engages
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - finger_outer_af
+  check:
+    method: measure
+    ref: null
+    description: During light hand tightening on your bolt, confirm the nut does not
+      turn independently of the knob. Stop if tabs spread, whiten or crack.
+manual:
+- n: '1'
+  text: Print hand_knob with its broad flat bottom on the bed and socket upward, using
+    the settings in its print orientation. Let it cool fully before removing it.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: 3D printer
+- n: '2'
+  text: Remove any brim or strings. Inspect the six fingers and make sure all slots
+    and the annular clearance are free. Do not trim off the inward-facing retaining
+    lips.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Align the M5 nut's flats with the socket. Press it straight down with your
+    fingers until it passes the retaining lips and sits flat on the bottom shoulder.
+    Do not hammer or use pliers; if it will not seat by hand, stop. The nut should
+    now be completely below the top surface.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '4'
+  text: Invert and gently shake the knob over a table. The nut must stay captured.
+    Inspect for cracked or whitened fingers; reject the print if retention fails.
+    Fit remains unverified until this check passes.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '5'
+  text: Feed your M5 bolt through the small hole in the flat bottom, then turn the
+    knob gently to engage the nut. Confirm the bolt emerges through the open top and
+    the nut cannot rotate independently. This is a captive-nut knob, used like a large
+    hand-operated nut on a bolt or stud, not a cap fitted over a bolt head.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '6'
+  text: In use, place the flat bottom toward the object being clamped so tightening
+    pulls the nut against the solid bottom shoulder. Tighten lightly by hand only.
+    Keep fingers clear of a protruding bolt tip. Avoid heat, repeated nut removal
+    and high torque; replace the knob if the tabs crack or the nut becomes loose.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null

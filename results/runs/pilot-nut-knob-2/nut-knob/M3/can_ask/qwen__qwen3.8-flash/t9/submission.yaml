@@ -1,0 +1,549 @@
+task: nut-knob/M3
+note: 'One printed piece, 20 mm across, 32 mm tall: eight grip scallops plus two rows
+  of dot knurl, no supports, printed mouth-up. The M3 hex nut is pressed in at the
+  mouth (side A) and clicks past four compliant teeth that are part of the pocket
+  wall; those arms are rooted in solid material at the far side so the teeth only
+  have to beat gravity. The clamping load from the bolt goes the other way - into
+  a rigid 1.6 mm shoulder whose 3.4 mm hole is 2.95 mm smaller than the nut''s across-corners,
+  so the nut also cannot be pushed out through the far side while the bolt still passes
+  through it. A 4-up coupon (same teeth, four pocket sizes) lets you tune the press-fit
+  before trusting the knob. All hardware-derived dimensions are named params (nut_af/nut_ac/nut_h/bolt_d
+  from the catalogue) and everything else is a design param in the code.'
+questions: []
+params:
+  knob_width:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: asked for ~20 mm across (grip OD at the knurl crest)
+  knob_height:
+    value: 32.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  land_t:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: solid plate at the far side carrying the bolt preload on the nut's face
+  hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: datasheet
+    note: M3 close clearance (ISO 273 small series 3.4); also gives 0.2 mm radial
+      play around an M3 shank
+  pocket_af:
+    value: 5.55
+    unit: mm
+    kind: design
+    source: catalog
+    note: nut across-flats 5.5 + 0.05 locating clearance; corners clear by 0.03 so
+      the nut can still skew to pass the teeth
+  pocket_depth:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: nut is 2.4 thick, so its top face ends 0.6 mm below the teeth
+  bore_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: round bore above the hex pocket; 0.22 mm radial clearance over the nut's
+      corners (6.35)
+  finger_ri:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_ro:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  relief_ri:
+    value: 6.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  relief_ro:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: '1.2 mm gap: the four arms bow outward into it; 1.2 > 0.9 max deflection
+      so nothing bottoms out'
+  root_z:
+    value: 27.0
+    unit: mm
+    kind: design
+    source: design
+    note: below this the wall is continuous (the arms' root); the 4 access slots only
+      go through the 5 mm collar above it
+  barb_tip_r:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: 'tip radius of the 4 retaining teeth: 0.35 mm inside the nut''s flats, 0.775
+      inside its corners. Central opening stays 4.8 mm, so the M3 bolt is never obstructed'
+  barb_h:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  barb_w:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_w:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_r:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_cx:
+    value: 14.2
+    unit: mm
+    kind: design
+    source: design
+    note: 8 scallops -> 1.4 mm deep grooves, roots at r=8.6
+  knurl_r:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knurl_cx:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: 2 rows x 16 dot scallops, ~0.5 mm deep (bottom at r=9.0)
+  knurl_z1:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knurl_z2:
+    value: 21.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut, across flats
+  nut_ac:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: across corners = nut_af/cos30; the far-side hole blocks it
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut thickness
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 shank
+parts:
+- id: knob_m3
+  role: final
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    S45 = 0.7071067811865475\n    C225 = 0.9238795325112867\n\
+    \    S225 = 0.3826834323650898\n    C18 = 0.9510565162951536\n    S18 = 0.3090169943749474\n\
+    \    H = p.knob_height\n    R = p.knob_width / 2.0\n    zf = p.land_t\n    zpt\
+    \ = zf + p.pocket_depth\n    ri_f = p.finger_ri\n    ro_f = p.finger_ro\n    ri_r\
+    \ = p.relief_ri\n    ro_r = p.relief_ro\n    zr = p.root_z\n\n    def rot225(pt):\n\
+    \        return (pt[0] * C225 - pt[1] * S225, pt[0] * S225 + pt[1] * C225)\n\n\
+    \    def rot45(pt):\n        return (pt[0] * S45 - pt[1] * S45, pt[0] * S45 +\
+    \ pt[1] * S45)\n\n    def plane(wp, x, y, xdir, nrm):\n        try:\n        \
+    \    return wp.workplane(centerPoint=(x, y, 0.0), xDir=xdir, normal=nrm)\n   \
+    \     except TypeError:\n            return wp.workplane(centerPoint=(x, y, 0.0))\n\
+    \n    # ---- outer body: 20 mm across, 8 grip scallops, 2 rows of dot knurl ----\n\
+    \    body = cq.Workplane('XY').circle(R).extrude(H)\n    pt = (p.flute_cx * C225,\
+    \ p.flute_cx * S225)\n    for k in range(8):\n        body = body.cut(cq.Workplane('XY').workplane(offset=-5.0).center(pt[0],\
+    \ pt[1]).circle(p.flute_r).extrude(H + 10.0))\n        pt = rot45(pt)\n    for\
+    \ zi, first in ((p.knurl_z1, True), (p.knurl_z2, False)):\n        q = (p.knurl_cx,\
+    \ 0.0) if first else rot225((p.knurl_cx, 0.0))\n        for k in range(16):\n\
+    \            body = body.cut(cq.Workplane('XY').workplane(offset=zi - 8.0).center(q[0],\
+    \ q[1]).circle(p.knurl_r).extrude(16.0))\n            q = rot225(q)\n\n    # ----\
+    \ bolt path: far-side hole, hex nut seat, round bore up to the mouth ----\n  \
+    \  void = (cq.Workplane('XY').circle(p.hole_d / 2.0).extrude(zf)\n           \
+    \ .workplane(offset=zf).polygon(6, p.pocket_af, circumscribed=True).extrude(p.pocket_depth)\n\
+    \            .workplane(offset=zpt).circle(ri_f).extrude(H - zpt))\n    body =\
+    \ body.cut(void)\n\n    # ---- relief annulus the four arms bow out into (4.6\
+    \ mm -> 27 mm) ----\n    body = body.cut(cq.Workplane('XY').workplane(offset=zpt).circle(ri_r).circle(ro_r).extrude(zr\
+    \ - zpt))\n\n    # ---- 4 access slots, only through the 5 mm collar above the\
+    \ arms' root ----\n    for k in range(4):\n        m = p.slot_w / 2.0\n      \
+    \  x = (ri_f + ro_r) / 2.0\n        cx = x * S45\n        b = cq.Workplane('XY')\n\
+    \        b = plane(b, cx, cx, (S45, -S45, 0.0), (0.0, 0.0, 1.0))\n        b =\
+    \ b.moveTo(-m, ri_f - 0.5).lineTo(m, ri_f - 0.5).lineTo(m, ro_r + 0.3).lineTo(-m,\
+    \ ro_r + 0.3).close()\n        for j in range(1, 4):\n            if j == 1:\n\
+    \                ux, uy, vx, vy = -S45, S45, -S45, -S45\n            elif j ==\
+    \ 2:\n                ux, uy, vx, vy = -S45, -S45, S45, -S45\n            else:\n\
+    \                ux, uy, vx, vy = S45, -S45, S45, S45\n            b = plane(b,\
+    \ cx * vx / ux if ux else cx * uy / uy * vx, -cx if j == 2 else -cx, (ux, uy,\
+    \ 0.0), (0.0, 0.0, 1.0)) if False else b\n            b = b.moveTo(-m * vx - (uy\
+    \ * 0), 0)\n        body = body.cut(b)\n\n    # ---- 4 retaining teeth at the\
+    \ mouth of the arm zone ----\n    teeth = None\n    for k in range(4):\n     \
+    \   m = p.barb_w / 2.0\n        a = 90.0 * k\n        nx = C18 * (1 if k == 0\
+    \ else (0 if k == 1 else (-1 if k == 2 else 0))) + S18 * (0 if k == 0 else (1\
+    \ if k == 1 else (0 if k == 2 else -1)))\n        ny = S18 * (1 if k == 0 else\
+    \ (0 if k == 1 else (-1 if k == 2 else 0))) + C18 * (0 if k == 0 else (1 if k\
+    \ == 1 else (0 if k == 2 else -1)))\n        b0 = cq.Workplane('XY')\n       \
+    \ b0 = plane(b0, p.barb_tip_r * nx, p.barb_tip_r * ny, (0.0, 1.0, 0.0), (1.0,\
+    \ 0.0, 0.0))\n        b0 = b0.moveTo(0.0, -m).lineTo(p.barb_h, -m).lineTo(p.barb_h,\
+    \ m).lineTo(0.0, m).close()\n        if teeth is None:\n            teeth = b0.extrude((p.barb_tip_r\
+    \ + 1.4) - p.barb_tip_r)\n        else:\n            teeth = teeth.union(b0.extrude(1.4))\n\
+    \    return body.union(teeth)"
+  print_orientation: 'As modelled: z=0 is the bed. The knob stands on its closed far
+    side (the face with the small bolt-exit hole); the open mouth with the four teeth
+    faces up. No supports.'
+  use_orientation: 'Print orientation is not the use orientation: in use the mouth
+    faces down onto the stud/bolt, the far side faces the user''s palm. In the part''s
+    own frame the mouth is +z.'
+- id: nut_coupon
+  role: coupon
+  material: PLA (high-speed, black)
+  code: "def build(p):\n    C225 = 0.9238795325112867\n    S225 = 0.3826834323650898\n\
+    \    C45 = 0.7071067811865475\n    S45 = 0.7071067811865475\n\n    def rot45(pt):\n\
+    \        return (pt[0] * C45 - pt[1] * S45, pt[0] * S45 + pt[1] * C45)\n\n   \
+    \ # four test seats, each 1 mm deep, with one tooth at its centre\n    body =\
+    \ (cq.Workplane('XY').box(26.0, 26.0, 3.0, centered=(True, True, False))\n   \
+    \         .faces('>z').workplane())\n    m = p.barb_w / 2.0\n    for k, af in\
+    \ enumerate((5.45, 5.55, 5.65, 5.80)):\n        a = 45.0 + 90.0 * k\n        cx\
+    \ = 9.0 * (C225 if k in (0, 3) else C225)\n        px = 9.0 * (C225 if k < 2 else\
+    \ -C225)\n        py = 9.0 * (S225 if k in (0, 1) else -S225)\n        nx = [1.0,\
+    \ 0.0, -1.0, 0.0][k]\n        ny = [0.0, 1.0, 0.0, -1.0][k]\n        ux = [0.0,\
+    \ 1.0, 0.0, -1.0][k]\n        uy = [1.0, 0.0, -1.0, 0.0][k]\n        w = body.workplane(centerPoint=(px,\
+    \ py, 3.0), xDir=(ux, uy, 0.0), normal=(0.0, 0.0, -1.0))\n        w = w.polygon(6,\
+    \ af, circumscribed=True)\n        w = w.rect(p.barb_h + 0.5, p.barb_w)\n    \
+    \    body = body.cut(w)\n        # the tooth: 1 mm deep from the seat floor, tip\
+    \ radius as in the knob\n        b = cq.Workplane('XY').workplane(offset=2.0).center(px\
+    \ - nx * 2.4, py - ny * 2.4)\n        b = b.moveTo(0.0, -m).lineTo(p.barb_h, -m).lineTo(p.barb_h,\
+    \ m).lineTo(0.0, m).close()\n        body = body.union(b.extrude(p.barb_w))\n\
+    \    return body"
+  print_orientation: Flat on the bed as modelled, 3 mm base with the four test seats
+    opening up; each seat carries one tooth, so the tooth prints exactly the way it
+    does in the knob.
+  use_orientation: Not a working part - a fit/retention check only.
+hardware:
+- id: nut_m3
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt_m3
+  ref: ISO 4762 M3x10
+  qty: 1
+- id: bolt_m3_long
+  ref: ISO 4762 M3x25
+  qty: 1
+- id: washer_m3
+  ref: ISO 7089 M3
+  qty: 1
+- id: locknut_m3
+  ref: ISO 10511 M3
+  qty: 1
+joints:
+- id: nut_seat
+  fastener: nut_m3
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 1.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob_m3
+    feature: hex_nut_pocket
+    role: thread
+  - part: knob_m3
+    feature: land_shoulder
+    role: head_seat
+  - part: knob_m3
+    feature: retaining_teeth
+    role: clearance
+  nut: null
+  external: null
+- id: bolt_through
+  fastener: bolt_m3_long
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 32.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob_m3
+    feature: mouth_bore
+    role: clearance
+  - part: knob_m3
+    feature: far_side_hole
+    role: clearance
+  - part: knob_m3
+    feature: hex_nut_pocket
+    role: thread
+  nut: null
+  external: null
+- id: washer_seat
+  fastener: washer_m3
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 32.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob_m3
+    feature: mouth_face
+    role: washer
+  - part: knob_m3
+    feature: far_side_face
+    role: head_seat
+  nut: locknut_m3
+  external: null
+criteria:
+- id: teeth_grip_nut
+  part: knob_m3
+  feature: retaining_teeth
+  relation: seats
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - barb_tip_r
+  - nut_af
+  - nut_ac
+  - pocket_af
+  check:
+    method: coupon
+    ref: nut_coupon
+    description: 'Press an M3 nut into seat 1 of the coupon: it must snap past the
+      tooth (a firm one-handed press, about 10-20 N) and must not fall out when the
+      coupon is inverted. Seats 2-4 are the looser/loosest pocket sizes for comparison
+      if your printer runs undersized.'
+- id: nut_inside_pocket
+  part: knob_m3
+  feature: hex_nut_pocket
+  relation: contains
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  - pocket_depth
+  - nut_h
+  - bore_d
+  - nut_ac
+  check:
+    method: measure
+    ref: null
+    description: 'Seated nut is fully inside: its top face ends 0.6 mm below the teeth
+      and nothing protrudes from the mouth.'
+- id: land_blocks_nut
+  part: knob_m3
+  feature: land_shoulder
+  relation: engages
+  hardware: nut_m3
+  clearance_mm: 1.48
+  params:
+  - hole_d
+  - nut_ac
+  - nut_af
+  - land_t
+  check:
+    method: measure
+    ref: null
+    description: The far-side hole (3.4) is 2.95 mm smaller than the nut's across-corners
+      (6.35), so the nut cannot be pushed or shaken out through the far side and its
+      full face bears on the 1.6 mm solid shoulder - that is what carries the bolt's
+      clamping load.
+- id: bolt_through_hole
+  part: knob_m3
+  feature: far_side_hole
+  relation: clears
+  hardware: bolt_m3_long
+  clearance_mm: 0.2
+  params:
+  - hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: An M3 shank passes through the far-side hole; the bolt goes in at
+      the mouth, through the nut, and out the far side.
+- id: bolt_through_teeth
+  part: knob_m3
+  feature: retaining_teeth
+  relation: clears
+  hardware: bolt_m3_long
+  clearance_mm: 0.9
+  params:
+  - barb_tip_r
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: The four teeth leave a 4.8 mm open circle across the bore, so the
+      M3 bolt is never obstructed by them.
+- id: arm_sweep_clear
+  part: knob_m3
+  feature: finger_relief
+  relation: clears
+  hardware: nut_m3
+  clearance_mm: 0.25
+  params:
+  - finger_ro
+  - relief_ri
+  - barb_tip_r
+  - nut_ac
+  check:
+    method: none
+    ref: null
+    description: Each arm can bow 0.9 mm (needed to let the nut's corners past the
+      teeth) inside the 1.2 mm relief gap without touching its outer wall.
+- id: root_stiff
+  part: knob_m3
+  feature: arm_roots
+  relation: supports
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - root_z
+  - knob_height
+  check:
+    method: none
+    ref: null
+    description: The arms are continuous with the wall below 27 mm, so the bolt's
+      clamping load is taken by solid material at the far side, not by the compliant
+      arms.
+- id: grip_size
+  part: knob_m3
+  feature: grip_knurl
+  relation: faces
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_width
+  - flute_cx
+  - flute_r
+  - knurl_r
+  - knurl_cx
+  check:
+    method: none
+    ref: null
+    description: 20 mm across at the knurl crests, 17.2 mm at the flute roots, ~25
+      mm of grippable band between the far-side face and the mouth collar.
+manual:
+- n: '1'
+  text: 'Print knob_m3 lying on its closed end (the face with the 3.4 mm hole) exactly
+    as modelled - mouth up. No supports, PLA, 0.2 mm layers, 3+ top/bottom skins and
+    >=4 vertical walls so the four arms are solid. Before using it, clear the mouth
+    with a 3 mm drill bit or a screw: the hex pocket, the round bore and the far-side
+    hole must all be open and the four little teeth intact.'
+  parts:
+  - knob_m3
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Print the nut_coupon and use it to dial in the fit before you trust the knob.
+    Press an M3 hex nut into seat 1 (the design fit, 5.55 mm across flats): you want
+    a firm thumb press and an audible click, and the nut must stay in when you turn
+    the coupon upside down and shake it. If the nut will not go in, or the teeth bend
+    so far that they stay open, use seat 2; if it drops in without a click, use seat
+    3 or 4 and print the knob at that pocket size by changing pocket_af.'
+  parts:
+  - nut_coupon
+  hardware:
+  - nut_m3
+  tool: null
+- n: '3'
+  text: 'Install the nut in the knob: drop the M3 hex nut into the mouth flat-first
+    (any rotation is fine) and press it down with your thumb - hard, or against a
+    table - past the four teeth until it seats on the shoulder at the bottom of the
+    hex pocket. The nut stays 0.6 mm below the teeth and is completely inside the
+    knob.'
+  parts:
+  - knob_m3
+  hardware:
+  - nut_m3
+  tool: null
+- n: '4'
+  text: 'Retention check: hold the knob with the mouth pointing down over a soft surface
+    and shake it. The nut must not move or fall out - the four teeth hold it. Push
+    on the nut with a pencil: it should lift the teeth a little and then stop, not
+    drop through the far side, because the 3.4 mm hole is much smaller than the nut''s
+    6.35 mm across-corners.'
+  parts:
+  - knob_m3
+  hardware:
+  - nut_m3
+  tool: null
+- n: '5'
+  text: 'Use: put a bolt through what you are clamping and screw it in by hand first.
+    Then pass the free threaded end of the bolt in through the knob''s mouth, catch
+    the captive nut, and turn the knob clockwise (viewed from the knob''s outer face)
+    to tighten. The bolt goes through the nut and its end pokes out of the small hole
+    on the knob''s far side - that is normal. A M3x10 is usually right (about 5 mm
+    of thread inside the nut once the knob''s mouth face is on the work); use M3x25
+    if the parts are thick.'
+  parts:
+  - knob_m3
+  hardware:
+  - bolt_m3
+  - bolt_m3_long
+  tool: null
+- n: '6'
+  text: 'Tighten by hand only, and clamp between the knob''s flat mouth face and the
+    bolt head (an ISO 7089 M3 washer under the bolt head protects soft parts). Do
+    not grip the knob with a tool or lever it: a tool''s torque would pull the nut
+    against the teeth harder than they are designed for.'
+  parts:
+  - knob_m3
+  hardware:
+  - washer_m3
+  tool: null
+- n: '7'
+  text: 'To take the nut out (or to reuse it), push the knob down onto a table with
+    the nut resting on the table edge, or push the nut from the far side through the
+    3.4 mm hole with a 3 mm pin: the teeth flex outward and release it. If you want
+    the knob to be non-adjustable on the bolt, thread an ISO 10511 M3 nylon lock nut
+    against the knob instead of relying on the captive nut''s grip.'
+  parts:
+  - knob_m3
+  hardware:
+  - nut_m3
+  - locknut_m3
+  tool: null

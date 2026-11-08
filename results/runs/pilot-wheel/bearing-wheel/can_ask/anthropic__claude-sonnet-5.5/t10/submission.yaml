@@ -1,0 +1,320 @@
+task: bearing-wheel
+note: 'The assumptions are a flat tread, since the rail profile wasn''t measured,
+  and a bolt long enough for the stack. The stack between the washers is 20.2 mm:
+  16.2 mm of wheel plus bearings and center spacer, and 2 × 2 mm end spacers. PLA
+  can creep under a heavy door, so check the wheel after a few weeks. PETG or ASA
+  would be better if you can print them.'
+questions:
+- text: 'What profile is the track: flat, V, or a round groove? I assumed a plain
+    flat tread with chamfered edges, since you couldn''t measure it.'
+  answer: null
+- text: How wide is the free gap in the bracket, and how thick is the metal? I couldn't
+    get these, so I assumed a 50 mm M8 bolt and about 18 mm for the bracket.
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel about 16 mm wide
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: measured about 22; 608 nominal 22.000
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: measured about 7; 608 nominal 7
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: M8 shank measured about 8
+  pocket_clearance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance added to bearing OD for an interference-ish press fit
+      in PLA; verify with the coupon, which has -0.1/0/+0.1 around this
+  web_bore:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: hole through the 2 mm web; clears the 608 inner race shoulder (~12 mm) so
+      the wheel never rubs the inner race
+  center_spacer_len:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: web thickness (2) + 0.2 so inner races sit just off the web
+  center_spacer_od:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: fits inside the web bore and within the inner race face
+  end_spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: inside the inner race face so the washer/bracket touches only the inner
+      race, not the spinning outer race
+  end_spacer_len:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: holds washers/bracket 2 mm clear of the rotating wheel face
+  spacer_bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: added to bolt diameter for spacer ID
+  tread_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: edge chamfer on the rim
+  bolt_len:
+    value: 50
+    unit: mm
+    kind: hardware
+    source: guessed
+    note: bracket thickness/gap not measurable; stack is 20.2 mm + 2 washers 3.2 +
+      lock nut 8 = 31.4 mm, so M8x50 leaves ~18 mm for bracket. Use your own bolt
+      if long enough.
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M8
+  coupon_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: fit coupon plate thickness
+  coupon_pocket_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: fit coupon pocket depth
+parts:
+- id: wheel
+  role: final
+  material: PLA (black), 4 perimeters, 30% gyroid infill
+  code: "def build(p):\n    r = p.wheel_od/2\n    w = p.wheel_w\n    bw = p.bearing_w\n\
+    \    pd = p.bearing_od + p.pocket_clearance\n    body = cq.Workplane('XY').circle(r).extrude(w)\n\
+    \    body = body.edges().chamfer(p.tread_chamfer)\n    bot = cq.Workplane('XY').circle(pd/2).extrude(bw)\n\
+    \    top = cq.Workplane('XY').workplane(offset=w-bw).circle(pd/2).extrude(bw)\n\
+    \    bore = cq.Workplane('XY').circle(p.web_bore/2).extrude(w)\n    return body.cut(bot).cut(top).cut(bore)\n"
+  print_orientation: one flat face on the bed, axis vertical (z), so the bearing pockets
+    print as true circles
+  use_orientation: axis horizontal along the bolt; rim rolls on the track
+- id: spacer_center
+  role: final
+  material: PLA (black)
+  code: "def build(p):\n    return (cq.Workplane('XY').circle(p.center_spacer_od/2)\n\
+    \            .circle((p.bolt_d+p.spacer_bolt_clearance)/2).extrude(p.center_spacer_len))\n"
+  print_orientation: flat on bed, tube axis vertical
+  use_orientation: on the bolt between the two bearings' inner races, inside the wheel
+    web
+- id: spacer_end
+  role: final
+  material: PLA (black) - print 2 copies
+  code: "def build(p):\n    return (cq.Workplane('XY').circle(p.end_spacer_od/2)\n\
+    \            .circle((p.bolt_d+p.spacer_bolt_clearance)/2).extrude(p.end_spacer_len))\n"
+  print_orientation: flat on bed, tube axis vertical
+  use_orientation: on the bolt, one each side outside the bearings, against the inner
+    races
+- id: fit_coupon
+  role: coupon
+  material: PLA (black)
+  code: "def build(p):\n    pitch = p.bearing_od + 8\n    plate = (cq.Workplane('XY').rect(pitch*3,\
+    \ p.bearing_od+6).extrude(p.coupon_h))\n    for i, d in enumerate((-0.1, 0.0,\
+    \ 0.1)):\n        x = (i-1)*pitch\n        pk = (cq.Workplane('XY').workplane(offset=p.coupon_h-p.coupon_pocket_depth)\n\
+    \              .center(x, 0).circle((p.bearing_od+p.pocket_clearance+d)/2)\n \
+    \             .extrude(p.coupon_pocket_depth))\n        plate = plate.cut(pk)\n\
+    \        hole = cq.Workplane('XY').center(x, 0).circle(8).extrude(p.coupon_h)\n\
+    \    return plate\n"
+  print_orientation: flat on bed, pockets open upward
+  use_orientation: 'test piece only: press a 608 bearing into each pocket to choose
+    the fit'
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -8.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: web_bore
+    role: clearance
+  - part: spacer_center
+    feature: bore
+    role: clearance
+  - part: spacer_end
+    feature: bore
+    role: clearance
+  - part: spacer_end
+    feature: end_face
+    role: washer
+  nut: locknut
+  external: null
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing_pocket
+  relation: contains
+  hardware: bearing
+  clearance_mm: 0.1
+  params:
+  - bearing_od
+  - pocket_clearance
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Press a 608 into each coupon pocket; pick the one that needs firm
+      thumb pressure but no hammer. If none is right, change pocket_clearance.
+- id: c2
+  part: wheel
+  feature: web_bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - web_bore
+  check:
+    method: measure
+    ref: null
+    description: Bearing inner race shoulder (about 12 mm) must sit freely in the
+      13 mm web bore.
+- id: c3
+  part: spacer_end
+  feature: end_face
+  relation: supports
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - end_spacer_od
+  - end_spacer_len
+  check:
+    method: measure
+    ref: null
+    description: End spacers touch only the inner race; the wheel must spin freely
+      by hand after tightening.
+- id: c4
+  part: spacer_center
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - spacer_bolt_clearance
+  check:
+    method: measure
+    ref: null
+    description: M8 bolt slides through the spacer.
+manual:
+- n: '1'
+  text: Print the fit coupon first (about 10 minutes). Push a 608 bearing into each
+    of the three pockets. Choose the pocket that holds the bearing firmly by hand
+    pressure without cracking. If the middle one (the default) is right, go on. If
+    not, tell me or change pocket_clearance by the difference.
+  parts:
+  - fit_coupon
+  hardware:
+  - bearing
+  tool: null
+- n: '2'
+  text: Print the wheel flat on the bed (4 perimeters, about 30% infill). Print 1
+    center spacer and 2 end spacers, also flat.
+  parts:
+  - wheel
+  - spacer_center
+  - spacer_end
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one bearing into each side of the wheel until it bottoms out against
+    the web. Push with flat, even pressure, such as a vise or the bolt head with a
+    washer. Don't hammer on the inner race.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '4'
+  text: Slide the center spacer through the wheel so it sits in the web between the
+    two bearings' inner races. Slide the bolt through the whole stack to check that
+    it passes freely and the wheel spins.
+  parts:
+  - spacer_center
+  hardware:
+  - bolt
+  tool: null
+- n: '5'
+  text: Put an end spacer on each side of the wheel against the bearing inner races.
+    Then fit the bolt through the bracket with a washer on each side of the bracket,
+    with the wheel stack in the mounting position. Tighten the lock nut until the
+    stack is snug with no side play. The wheel should still spin freely by hand. Back
+    off a little if it drags.
+  parts:
+  - spacer_end
+  hardware:
+  - bolt
+  - washer
+  - locknut
+  tool: 13 mm spanner and 6 mm hex key
+- n: '6'
+  text: Hang the door and test it. If the wheel rubs the bracket, add a washer on
+    the bolt or reprint the end spacers a little longer.
+  parts: []
+  hardware: []
+  tool: null

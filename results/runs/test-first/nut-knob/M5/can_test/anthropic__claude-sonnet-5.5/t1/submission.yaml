@@ -1,0 +1,148 @@
+task: nut-knob/M5
+note: Nut pocket fit set from the coupon test. The bolt hole goes through the top,
+  so the bolt can pass out the far side. The nut cannot leave through the top because
+  the hole is smaller than the nut.
+questions: []
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: about 30 mm across
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  hole_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance for bolt through-hole
+  pocket_af_offset:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: measured
+    note: 'From the nutfit coupon: +0.0 tight but held, +0.1 snug and held, +0.2 loose.
+      0.05 chosen between the two that held.'
+  pocket_extra_depth:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits fully recessed
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_depth:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    R = p.knob_d / 2\n    body = cq.Workplane('XY').circle(R).extrude(p.knob_h)\n\
+    \    body = body.faces('>Z').edges().fillet(1.5)\n    body = body.faces('<Z').edges().chamfer(0.5)\n\
+    \    for i in range(int(p.scallop_n)):\n        a = 2 * math.pi * i / p.scallop_n\n\
+    \        cr = R - p.scallop_depth + p.scallop_r\n        c = cq.Workplane('XY').center(cr\
+    \ * math.cos(a), cr * math.sin(a)).circle(p.scallop_r).extrude(p.knob_h)\n   \
+    \     body = body.cut(c)\n    depth = p.nut_h + p.pocket_extra_depth\n    af =\
+    \ p.nut_af + p.pocket_af_offset\n    d = af / math.cos(math.radians(30))\n   \
+    \ pocket = cq.Workplane('XY').polygon(6, d).extrude(depth)\n    hole = cq.Workplane('XY').circle((p.bolt_d\
+    \ + p.hole_clear) / 2).extrude(p.knob_h)\n    return body.cut(pocket).cut(hole)"
+  print_orientation: flat face with the nut pocket opening on the bed (z=0), so the
+    pocket roof bridges about 9 mm
+  use_orientation: pocket face toward the work, grip side up
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af_offset
+  - pocket_extra_depth
+  check:
+    method: coupon
+    ref: nutfit
+    description: 'Press fit of M5 nut: 8.0 and 8.1 mm pockets held the nut when inverted.'
+- id: c2
+  part: knob
+  feature: bolt through-hole
+  relation: clears
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - hole_clear
+  check:
+    method: measure
+    ref: null
+    description: M5 bolt passes freely through the hole in the top wall and through
+      the nut.
+manual:
+- n: '1'
+  text: Print the knob with the hex pocket face on the bed, PLA, 0.2 mm layers, no
+    supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M5 nut's flats with the hex pocket in the flat bottom face. Press
+    it in by hand until it bottoms against the pocket roof. A flat surface or thumb
+    pressure works. It ends up slightly recessed.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Thread your M5 bolt through the nut from the pocket side until it comes out
+    the hole in the top. Turn the knob to tighten.
+  parts:
+  - knob
+  hardware: []
+  tool: null

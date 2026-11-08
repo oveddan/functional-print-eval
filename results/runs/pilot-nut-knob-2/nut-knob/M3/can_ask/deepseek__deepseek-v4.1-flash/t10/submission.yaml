@@ -1,0 +1,396 @@
+task: nut-knob/M3
+note: 'One printed knob, 20 mm across, with a fluted grip and a hex pocket that swallows
+  an ISO 4032 M3 hex nut.
+
+
+  How it holds: the hex pocket is sized 5.42 mm across the flats, i.e. 5.5 - 0.08
+  (0.04 mm per side interference against the catalog nut), so the nut goes in with
+  a firm hand press and the flats grip it with no glue. The nut drops in from the
+  wide open end and bottoms on the pocket ceiling, which is a 7 mm wall pierced only
+  by a 3.4 mm bolt hole - the nut (5.5 mm across flats, 6.35 mm across corners) can
+  never pass through it, and it sits 0.6 mm inside the mouth of the pocket, so it
+  is fully enclosed. A 0.5 mm deep relief at the mouth (0.35 mm bigger radially) lets
+  the nut start squarely before the tight section bites.
+
+
+  Bolt path: the bolt enters the flat face through a 3.4 mm countersunk hole, passes
+  through the nut, and exits out the wide hex opening. Insert it that way round -
+  tightening then pushes the nut into the ceiling, never out of the pocket. Use an
+  M3 screw of 12-25 mm (an M3x16 is ideal; it needs about 9.5 mm of thread below the
+  head).
+
+
+  Because the printed hole size depends on their printer, print the coupon first:
+  it carries the same pocket at 5.26 / 5.34 / 5.42 / 5.50 / 5.58 mm across flats.
+  If the best-holding pocket is not the middle one (5.42), set hex_pocket_af in the
+  knob''s code to that pocket''s value before printing the knob.
+
+
+  Bolt length caution: an M3x30 (b = 18 mm) has 12 mm of plain shank under the head
+  and will not reach the nut; keep to 12-25 mm.'
+questions:
+- text: After printing the coupon, which numbered pocket gave the best press fit -
+    firm to push in by hand, and it holds the nut when the plate is turned upside
+    down? (1 = 5.26, 2 = 5.34, 3 = 5.42, 4 = 5.50, 5 = 5.58 mm across flats)
+  answer: null
+- text: Did the nut, pressed into the knob, end up flush, proud or recessed at the
+    mouth of the pocket, and did it stay put when the knob was shaken upside down?
+  answer: null
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut, width across flats. Person could not measure it, so
+      the catalog value is used.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut thickness.
+  nut_ac:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nut width across corners = nut_af/cos(30) = 6.351. This is what the pocket
+      entrance relief must clear.
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 thread major diameter (ISO 4762 M3).
+  knob_od:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter at the flute crests - matches the ~20 mm across that was
+      asked for.
+  knob_h:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: Total knob height along the bolt axis.
+  hex_pocket_af:
+    value: 5.42
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket width across flats = nut_af - 0.08, i.e. 0.04 mm per side interference
+      for a hand press fit.
+  pocket_depth:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: Pocket depth = nut_h + 0.6, so the pressed-in nut sits 0.6 mm inside the
+      mouth of the pocket.
+  pocket_relief_depth:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the loose lead-in relief at the pocket mouth.
+  pocket_relief_radial:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Radial enlargement of the mouth relief, giving about 6.0 mm across flats
+      there so the nut starts easily.
+  bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Added to bolt_d, giving the 3.4 mm hole through the pocket ceiling and countersunk
+      entry.
+  bolt_lead_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: 45 degree countersink at the bolt entry face, 3.4 mm opening widening to
+      4.6 mm at the surface.
+  flute_depth:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: Radial depth of the eight finger flutes in the grip.
+  flute_cutter_r:
+    value: 4.0
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of the cylindrical cutter that forms each flute; with flute_depth
+      this sets the 1.5 mm wide crest ridges.
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger flutes around the grip.
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed, black), 0.4 mm nozzle, 0.2 mm layers
+  code: "import math\n\ndef build(p):\n    R = p.knob_od / 2.0\n    H = p.knob_h\n\
+    \    tw = H - p.pocket_depth            # pocket ceiling (shoulder) thickness\n\
+    \    hr = (p.bolt_d + p.bolt_clearance) / 2.0\n\n    # --- fluted grip body ---\n\
+    \    body = cq.Workplane(\"XY\").circle(R).extrude(H)\n\n    n = int(round(p.flute_count))\n\
+    \    rf = p.flute_cutter_r\n    rc = R + rf - p.flute_depth\n    cut_pts = [(rc\
+    \ * math.cos(2 * math.pi * i / n),\n                rc * math.sin(2 * math.pi\
+    \ * i / n)) for i in range(n)]\n    body = body.faces(\">Z\").workplane().pushPoints(cut_pts).circle(rf).cutThruAll()\n\
+    \n    # --- M3 clearance hole through the ceiling, from the bolt entry face ---\n\
+    \    body = body.cut(cq.Workplane(\"XY\").circle(hr).extrude(tw))\n\n    # ---\
+    \ 45 deg lead-in countersink at the bolt entry face ---\n    c1 = p.bolt_lead_chamfer\n\
+    \    sink = cq.Solid.makeCone(hr + c1, hr, c1, cq.Vector(0, 0, 0), cq.Vector(0,\
+    \ 0, 1))\n    body = body.cut(cq.Workplane(\"XY\").newObject([sink]))\n\n    #\
+    \ --- hex nut pocket, opening at z = H ---\n    Rh = p.hex_pocket_af / math.sqrt(3.0)\n\
+    \    hex1 = [(Rh * math.cos(math.radians(60 * k)),\n             Rh * math.sin(math.radians(60\
+    \ * k))) for k in range(6)]\n    body = body.cut(cq.Workplane(\"XY\").workplane(offset=tw)\n\
+    \                    .polyline(hex1).close().extrude(p.pocket_depth + 1.0))\n\n\
+    \    # --- loose relief at the mouth of the pocket, so the nut starts square ---\n\
+    \    Rh2 = Rh + p.pocket_relief_radial\n    hex2 = [(Rh2 * math.cos(math.radians(60\
+    \ * k)),\n             Rh2 * math.sin(math.radians(60 * k))) for k in range(6)]\n\
+    \    body = body.cut(cq.Workplane(\"XY\").workplane(offset=H - p.pocket_relief_depth)\n\
+    \                    .polyline(hex2).close().extrude(p.pocket_relief_depth + 1.0))\n\
+    \n    return body"
+  print_orientation: z = 0 on the bed is the flat bolt-entry face (the face carrying
+    the 3.4 mm countersunk hole). Knob axis vertical, fluted wall rises straight up,
+    open hex pocket faces up. No supports, no bridging.
+  use_orientation: Knob axis vertical. Flat countersunk face up - the bolt enters
+    there. The hex pocket opens downward; the nut is pressed in from below and is
+    stopped by the ceiling 0.6 mm in from the mouth.
+- id: coupon
+  role: coupon
+  material: PLA (high-speed, black), 0.4 mm nozzle, 0.2 mm layers
+  code: "import math\n\ndef build(p):\n    af0 = p.hex_pocket_af\n    offs = [-0.16,\
+    \ -0.08, 0.0, 0.08, 0.16]      # pockets 1..5\n    n = len(offs)\n    pitch =\
+    \ 14.0\n    L = pitch * (n - 1) + 12.0\n    W = 18.0\n    T = 5.0\n    tw = T\
+    \ - p.pocket_depth                     # shoulder under each pocket\n    hr =\
+    \ (p.bolt_d + p.bolt_clearance) / 2.0\n\n    plate = cq.Workplane(\"XY\").box(L,\
+    \ W, T, centered=(True, True, False))\n\n    marks = []\n    for i, o in enumerate(offs):\n\
+    \        x = (i - (n - 1) / 2.0) * pitch\n        Rh = (af0 + o) / math.sqrt(3.0)\n\
+    \        hx = [(x + Rh * math.cos(math.radians(60 * k)),\n               Rh *\
+    \ math.sin(math.radians(60 * k))) for k in range(6)]\n        plate = plate.cut(cq.Workplane(\"\
+    XY\").workplane(offset=tw)\n                          .polyline(hx).close().extrude(p.pocket_depth\
+    \ + 0.5))\n        plate = plate.cut(cq.Workplane(\"XY\").center(x, 0).circle(hr).extrude(tw\
+    \ + 0.5))\n        for j in range(i + 1):                   # 1..5 dots identify\
+    \ the pocket\n            marks.append((x - 3.0 + j * 1.5, -6.5))\n\n    plate\
+    \ = plate.faces(\">Z\").workplane().pushPoints(marks).circle(0.45).cutThruAll()\n\
+    \    return plate"
+  print_orientation: z = 0 on the bed is the bottom of the plate; pockets open upward.
+    Flat, no supports.
+  use_orientation: Flat on a table, pockets up. Press the M3 nut into a pocket from
+    above, then flip the plate over and check the nut stays put.
+hardware:
+- id: m3-nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3-bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: nut-press
+  fastener: m3-nut
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  nut: null
+  external: null
+- id: bolt-through
+  fastener: m3-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bolt_entry_hole_and_ceiling_hole
+    role: clearance
+  nut: m3-nut
+  external: null
+criteria:
+- id: c1
+  part: knob
+  feature: hex_nut_pocket_flats
+  relation: contains
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - hex_pocket_af
+  check:
+    method: coupon
+    ref: coupon
+    description: Pocket is 0.08 mm narrower across flats than the nut, so the nut
+      needs a firm hand press. Confirm on the coupon that the same size pocket (3
+      marks) grips the nut.
+- id: c2
+  part: knob
+  feature: pocket_ceiling
+  relation: supports
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: template
+    ref: null
+    description: Pocket depth 3.0 mm vs nut 2.4 mm, so the seated nut sits 0.6 mm
+      inside the mouth and cannot reach the far side.
+- id: c3
+  part: knob
+  feature: pocket_ceiling_hole
+  relation: clears
+  hardware: m3-bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: template
+    ref: null
+    description: 3.4 mm hole against a 3.0 mm thread, and far smaller than the nut's
+      5.5 mm across flats, so the bolt passes but the nut cannot.
+- id: c4
+  part: knob
+  feature: bolt_entry_hole
+  relation: clears
+  hardware: m3-bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clearance
+  - bolt_lead_chamfer
+  check:
+    method: template
+    ref: null
+    description: 3.4 mm hole with a 45 degree countersink for lead-in.
+- id: c5
+  part: knob
+  feature: pocket_mouth_relief
+  relation: clears
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - pocket_relief_radial
+  - pocket_relief_depth
+  - nut_ac
+  check:
+    method: template
+    ref: null
+    description: 0.5 mm deep mouth relief is about 6.0 mm across flats, wider than
+      the nut's 5.5 mm, so the nut drops in before meeting the tight section.
+- id: c6
+  part: coupon
+  feature: five_test_pockets
+  relation: contains
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - hex_pocket_af
+  - pocket_depth
+  check:
+    method: coupon
+    ref: coupon
+    description: Pockets at 5.26 / 5.34 / 5.42 / 5.50 / 5.58 mm across flats; pick
+      the one that presses in by hand and holds the nut when the plate is turned upside
+      down.
+manual:
+- n: '1'
+  text: Print the coupon flat on the bed, PLA, 0.2 mm layers, no supports. It is a
+    68 x 18 x 5 mm plate with five hex pockets along it; the rows of small dots alongside
+    tell you which pocket is which (1 dot = 5.26 mm, 2 = 5.34, 3 = 5.42, 4 = 5.50,
+    5 = 5.58 mm across the flats).
+  parts:
+  - coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press the M3 hex nut into pocket 1, then into 2, 3, 4 and 5. Note which pocket
+    takes a firm push of the thumb but still goes in by hand, and which one you cannot
+    push in at all.
+  parts: []
+  hardware:
+  - m3-nut
+  tool: null
+- n: '3'
+  text: Turn the plate upside down and tap it. The nut must stay in the pocket you
+    chose. Pocket 3 (5.42 mm) is the size built into the knob - if a different pocket
+    held best, change hex_pocket_af in the knob's code to that pocket's value before
+    step 4.
+  parts:
+  - coupon
+  hardware:
+  - m3-nut
+  tool: null
+- n: '4'
+  text: 'Print the knob. It is already modelled in its print orientation: the flat
+    countersunk face goes on the bed (z = 0) and the open hex pocket faces up. PLA,
+    0.2 mm layers, no supports, no brim needed.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '5'
+  text: Press the M3 hex nut into the wide hex opening of the knob (the end opposite
+    the flat countersunk face), pressing it flat with your thumb until it stops against
+    the ceiling. It should end up 0.6 mm below the mouth. If it is stiff, press evenly
+    with a bench vise or smooth-jawed pliers - never hammer it.
+  parts:
+  - knob
+  hardware:
+  - m3-nut
+  tool: null
+- n: '6'
+  text: 'Check the capture: hold the knob with the hex opening facing down and shake
+    it - the nut must not fall out. Then press the nut back the other way with a pencil
+    tip through the opening; it must stop on the ceiling and must never appear at
+    the countersunk face.'
+  parts:
+  - knob
+  hardware:
+  - m3-nut
+  tool: null
+- n: '7'
+  text: Take the M3 bolt (M3x16 is ideal; anything from M3x12 to M3x25 works) and
+    push it through the countersunk 3.4 mm hole in the flat face. Turn it into the
+    nut's thread and keep turning until the tip comes out of the nut and is visible
+    in the hex opening.
+  parts:
+  - knob
+  hardware:
+  - m3-bolt
+  - m3-nut
+  tool: null
+- n: '8'
+  text: 'Use it by turning the fluted body by hand. Always feed the bolt in through
+    the flat countersunk face: tightening then pushes the nut into the ceiling, so
+    the load never tries to pull the nut out of the pocket.'
+  parts:
+  - knob
+  hardware:
+  - m3-bolt
+  tool: null

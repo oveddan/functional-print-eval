@@ -1,0 +1,164 @@
+task: nut-knob/M3
+note: 'Pocket clearance chosen from the print test: 5.5 and 5.6 mm af were too tight,
+  5.7 mm was snug and held the nut when inverted. Bolt length isn''t fixed. Choose
+  one that goes through the nut and the knob''s 6.3 mm of material above the pocket.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_hole_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance
+  nut_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: measured
+    note: 'af clearance; coupon: 0 and 0.1 too tight, 0.2 snug and retained when inverted'
+  pocket_depth:
+    value: 2.7
+    unit: mm
+    kind: design
+    source: design
+    note: nut_h + 0.3 so the nut sits fully inside
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  n_scallops:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c0:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c1:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  c2:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    k = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2).extrude(p.knob_h)\n    k = k.faces('>Z').edges().chamfer(1.0)\n    for\
+    \ i in range(int(p.n_scallops)):\n        a = 2 * math.pi * i / p.n_scallops\n\
+    \        r = p.knob_d / 2 + 0.8\n        cut = cq.Workplane('XY').center(r * math.cos(a),\
+    \ r * math.sin(a)).circle(p.scallop_r).extrude(p.knob_h)\n        k = k.cut(cut)\n\
+    \    d = (p.nut_af + p.nut_clear) / math.cos(math.radians(30))\n    pocket = cq.Workplane('XY').polygon(6,\
+    \ d).extrude(p.pocket_depth)\n    hole = cq.Workplane('XY').circle(p.bolt_hole_d\
+    \ / 2).extrude(p.knob_h)\n    return k.cut(pocket).cut(hole)"
+  print_orientation: nut-pocket face flat on the bed, knob top up
+  use_orientation: pocket face toward the work, bolt head end away
+- id: nut-fit-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    import math\n    w = cq.Workplane('XY').box(36, 12, 5,\
+    \ centered=(True, True, False))\n    for i, c in enumerate([p.c0, p.c1, p.c2]):\n\
+    \        x = (i - 1) * 11\n        af = p.nut_af + c\n        d = af / math.cos(math.radians(30))\n\
+    \        pocket = cq.Workplane('XY').center(x, 0).polygon(6, d).extrude(p.pocket_depth)\n\
+    \        hole = cq.Workplane('XY').center(x, 0).circle(p.bolt_hole_d / 2).extrude(5)\n\
+    \        w = w.cut(pocket).cut(hole)\n    return w"
+  print_orientation: pocket-opening face flat on bed
+  use_orientation: same
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: c-nut-pocket
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: 0.2
+  params:
+  - nut_af
+  - nut_clear
+  - nut_h
+  - pocket_depth
+  check:
+    method: coupon
+    ref: nut-fit-coupon
+    description: 'Pocket af 5.7 mm: nut pushes in snug and stays when inverted and
+      shaken.'
+- id: c-bolt-hole
+  part: knob
+  feature: through hole above nut pocket
+  relation: clears
+  hardware: nut
+  clearance_mm: 0.4
+  params:
+  - bolt_hole_d
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes through the hole freely; hole is smaller than nut
+      so the nut cannot exit the far side.
+manual:
+- n: '1'
+  text: Print the knob with the flat pocket face on the bed, no supports. The hex
+    pocket ceiling bridges only about 6.6 mm.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M3 nut with the hex pocket in the flat face and press it in by hand
+    with your thumb until it sits fully recessed. It is a snug fit and stays in when
+    the knob is inverted.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Pass your M3 bolt through the part to clamp, then thread it into the nut through
+    the pocket opening. It exits through the hole in the knob's top. Turn the knob
+    to tighten.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

@@ -1,0 +1,250 @@
+task: nut-knob/M3
+note: 'One-piece 20 mm snap-retaining M3 nut knob. Two flexible lips retain the nut
+  independently of a tight hex-pocket fit. Fit remains UNVERIFIED: the reported tests
+  did not establish insertion or retention for this geometry. Print one and perform
+  the manual''s acceptance checks before use; no guaranteed fit is claimed. For light
+  hand tightening only; PLA is unsuitable for hot environments or safety-critical
+  clamping.'
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  height:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_length:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Example compatible bolt; required length depends on the application.
+  pocket_af:
+    value: 6.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  seat_z:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hole_d:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_w:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  finger_t:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  root_z:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_z:
+    value: 7.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lip_projection:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    b=cq.Workplane('XY').circle(p.knob_d/2).extrude(p.height)\n\
+    \    pts=[(p.pocket_af/math.sqrt(3)*math.cos(math.radians(60*k)),p.pocket_af/math.sqrt(3)*math.sin(math.radians(60*k)))\
+    \ for k in range(6)]\n    b=b.cut(cq.Workplane('XY').workplane(offset=p.seat_z).polyline(pts).close().extrude(p.height))\n\
+    \    b=b.cut(cq.Workplane('XY').circle(p.hole_d/2).extrude(p.height))\n    y=p.pocket_af/2\n\
+    \    for s in [-1,1]:\n        inner=y-p.slot\n        outer=y+p.finger_t+p.slot\n\
+    \        cut=cq.Workplane('XY').box(p.finger_w+2*p.slot,outer-inner,p.height,centered=(True,True,False)).translate((0,s*(inner+outer)/2,p.root_z))\n\
+    \        b=b.cut(cut)\n        beam=cq.Workplane('XY').box(p.finger_w,p.finger_t,p.lip_z-p.root_z,centered=(True,True,False)).translate((0,s*(y+p.finger_t/2),p.root_z))\n\
+    \        profile=[(s*y,p.lip_z-p.lip_projection),(s*(y-p.lip_projection),p.lip_z),(s*y,p.height),(s*(y+p.finger_t),p.height),(s*(y+p.finger_t),p.lip_z-p.lip_projection)]\n\
+    \        lip=cq.Workplane('YZ',origin=(-p.finger_w/2,0,0)).polyline(profile).close().extrude(p.finger_w)\n\
+    \        b=b.union(beam).union(lip)\n    return b"
+  print_orientation: Flat circular base at z=0 on bed; hex pocket and lips face upward.
+    No supports.
+  use_orientation: Nut pocket faces away from the clamped object; solid base faces
+    the object. Bolt enters the base, threads through the nut and exits the open pocket.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints: []
+criteria:
+- id: nut_inside
+  part: knob
+  feature: Hex cavity above the z=5 seating shoulder; nominal nut top z=7.4, below
+    z=8.5 rim
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af
+  - seat_z
+  - height
+  check:
+    method: measure
+    ref: null
+    description: Nut must seat flat and sit completely below the top rim.
+- id: retention
+  part: knob
+  feature: Opposed flexible lips over the nut flats
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - finger_w
+  - finger_t
+  - root_z
+  - lip_z
+  - lip_projection
+  - pocket_af
+  - nut_af
+  - nut_h
+  - seat_z
+  check:
+    method: measure
+    ref: null
+    description: Unverified. Nut must press in using fingers only, then remain seated
+      with the knob inverted and gently tapped, without a bolt installed. Reject cracked
+      or permanently bent fingers.
+- id: far_side_stop
+  part: knob
+  feature: Solid seating shoulder surrounding the axial clearance hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - seat_z
+  - hole_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Check that the seated nut cannot be pushed through the closed base
+      by finger pressure.
+- id: bolt_passage
+  part: knob
+  feature: Axial through-hole aligned with nut thread
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Bolt must pass through the base and thread through the seated nut
+      using fingers, without rubbing or cross-threading.
+manual:
+- n: '1'
+  text: 'Print knob in black PLA, flat base down and pocket up, at 0.2 mm layers with
+    four walls and at least 30% infill. Disable supports. Inspect the preview: both
+    thin fingers and their slots must remain distinct.'
+  parts:
+  - knob
+  hardware: []
+  tool: Slicer and printer
+- n: '2'
+  text: Let the print cool. Remove any loose strings from the pocket and slots. Do
+    not force or pry the flexible fingers.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: 'Align the M3 nut flats with the hex pocket and press it straight down with
+    fingers only. The lips should flex outward and return over the nut. The nut must
+    rest flat on the shoulder, fully below the rim. Do not use a hammer, pliers, heat
+    or glue. If finger pressure cannot seat it, stop: fit has not been validated.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Before installing a bolt, invert the knob and gently tap it. The nut must
+    stay seated. Check that it cannot be pushed through the base and that neither
+    finger has cracked or stayed bent. If any check fails, do not use this print.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Insert the M3 bolt through the solid-base side and turn the knob to engage
+    the nut. Confirm the bolt passes through the nut and exits the pocket. The listed
+    M3x16 is an example; account for your clamped object's thickness when choosing
+    an available bolt length. This is a nut-containing knob, not a bolt-head socket.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '6'
+  text: Use the solid base against the clamped object so tightening loads the nut
+    onto its shoulder, not against the retaining lips. Tighten lightly by hand, without
+    a wrench. Stop if the nut spins in the pocket or the plastic deforms.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

@@ -1,0 +1,161 @@
+task: bearing-wheel
+note: A printable, flat-tread replacement wheel with two 608 bearings press-fitted
+  from opposite sides. Since the track profile could not be measured, this is a best-judgment
+  cylindrical tread—not a confirmed match for a grooved or crowned track. Check that
+  the wheel clears the door bracket and that the existing M8 bolt is long enough for
+  the wheel and any original washers. Test the bearing fit with the coupon first;
+  PLA printer tolerances and bearing OD vary.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: User's approximate original wheel diameter.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: User's approximate original wheel width.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal 608 bearing outside diameter.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal width of each 608 bearing.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: Nominal 608 bore, for the user's M8 bolt.
+  seat_d:
+    value: 21.8
+    unit: mm
+    kind: design
+    source: design
+    note: Initial press-fit seat diameter; confirm with coupon and adjust if needed.
+  seat_depth:
+    value: 7.1
+    unit: mm
+    kind: design
+    source: design
+    note: Seat depth from each wheel side; leaves a central web.
+  axle_clearance:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Wheel's through-hole clears an M8 bolt; the bolt runs in the bearing inner
+      races.
+parts:
+- id: roller
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    w = p.wheel_width\n    r = p.wheel_od / 2.0\n    body\
+    \ = cq.Workplane('XY').circle(r).extrude(w)\n    axle = cq.Workplane('XY').circle(p.axle_clearance\
+    \ / 2.0).extrude(w)\n    lower = cq.Workplane('XY').circle(p.seat_d / 2.0).extrude(p.seat_depth)\n\
+    \    upper = cq.Workplane('XY').circle(p.seat_d / 2.0).extrude(p.seat_depth).translate((0,\
+    \ 0, w - p.seat_depth))\n    return body.cut(axle).cut(lower).cut(upper)"
+  print_orientation: Wheel axis vertical (Z); print flat on one side, with the bearing-seat
+    openings upward. No supports intended.
+  use_orientation: Wheel axis on the M8 bolt; flat cylindrical tread rolls on the
+    track.
+- id: bearing_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    # Small blind pocket to check the press fit before printing\
+    \ the full wheel.\n    base = cq.Workplane('XY').circle(14).extrude(3.0)\n   \
+    \ pocket = cq.Workplane('XY').circle(p.seat_d / 2.0).extrude(2.5).translate((0,\
+    \ 0, 0.5))\n    return base.cut(pocket)"
+  print_orientation: Flat base on the bed (z=0), pocket opening upward.
+  use_orientation: Trial-fit one 608 bearing in the pocket; use the printed fit to
+    judge whether the wheel seat needs adjustment.
+hardware: []
+joints: []
+criteria:
+- id: bearing_seat_fit
+  part: roller
+  feature: Opposed 22 mm nominal bearing seats; seat diameter is adjusted for a press
+    fit.
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - bearing_od
+  - seat_d
+  - seat_depth
+  check:
+    method: coupon
+    ref: bearing_coupon
+    description: Print the coupon and test a bearing. It should press in firmly without
+      cracking or requiring excessive force; tune seat_d if needed.
+- id: m8_axle
+  part: roller
+  feature: Through-hole for the M8 bolt through the bearing inner races.
+  relation: clears
+  hardware: null
+  clearance_mm: 0.4
+  params:
+  - bearing_bore
+  - axle_clearance
+  check:
+    method: measure
+    ref: null
+    description: Confirm the user's bolt passes through the wheel and both bearing
+      inner races, and that its length suits the door bracket.
+- id: track_contact
+  part: roller
+  feature: 50 mm diameter flat cylindrical tread, 16 mm overall width.
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_width
+  check:
+    method: measure
+    ref: null
+    description: Compare against the old wheel and verify the tread profile and width
+      suit the actual track; profile was not measurable here.
+manual:
+- n: '1'
+  text: Print the bearing_coupon flat on the bed. Press one 608 bearing into the pocket,
+    pushing on its outer race. If it is too tight or loose, adjust seat_d in the roller
+    and reprint the coupon.
+  parts:
+  - bearing_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the roller flat on one side, with its bearing-seat opening facing upward.
+    Check the wheel dimensions and track fit against the old wheel before installation.
+  parts:
+  - roller
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press one 608 bearing into each side's counterbore, supporting the wheel and
+    pressing only on each bearing's outer race. Seat each bearing against the bottom
+    of its pocket; do not force on the inner race or shields.
+  parts:
+  - roller
+  hardware: []
+  tool: null
+- n: '4'
+  text: Place the wheel between the original door-bracket supports and pass the existing
+    M8 bolt through the bearing inner races. Reuse the original retaining hardware,
+    tighten without clamping the wheel, and check that it spins freely and clears
+    the bracket.
+  parts:
+  - roller
+  hardware: []
+  tool: null

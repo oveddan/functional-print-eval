@@ -426,5 +426,5 @@ def test_can_ask_has_the_same_prompt_as_the_saved_trials():
     assert agent.system_prompt(8) == saved[0]["content"]
 
 
-def test_only_can_run_code_gets_more_turns():
-    assert agent.DEFAULT_MAX_TURNS == {"can_ask": 8, "all_given": 8, "can_run_code": 20}
+def test_only_can_run_code_and_can_test_get_more_turns():
+    assert agent.DEFAULT_MAX_TURNS == {"can_ask": 8, "all_given": 8, "can_run_code": 20, "can_test": 12}

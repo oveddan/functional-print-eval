@@ -1,0 +1,246 @@
+task: nut-knob/M5
+note: 'One-piece, approximately 30 mm six-lobed hand knob. An enclosed bottom shoulder
+  retains the nut axially; six small interference ribs grip its flats, and a flared
+  entrance aids hand insertion. Fit remains unverified: no usable coupon-fit result
+  or actual nut measurement was available. The selected rib fit is a best-judgment
+  starting point, not a guaranteed hand press fit. Do not use a loose-fitting nut
+  or force a tight one with tools.'
+questions:
+- text: Actual nut width across flats?
+  answer: Unable to measure; use best judgment.
+- text: Which coupon retained the nut while allowing hand insertion?
+  answer: No usable fit result was available for any of the three coupons.
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across flats; actual size unverified.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  body_radius:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_radius:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_offset:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: Nut sits 0.5 mm below top when seated.
+  pocket_af:
+    value: 8.25
+    unit: mm
+    kind: design
+    source: design
+    note: Main hex cavity; retention comes from ribs, not these walls.
+  rib_radius:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_intrusion:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Effective distance between opposing rib tips is 7.85 mm; unverified interference
+      fit.
+  bore_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_depth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_af:
+    value: 9.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: Black high-speed PLA
+  code: "import math\n\ndef build(p):\n    h = p.floor_t + p.pocket_depth\n    body\
+    \ = cq.Workplane('XY').circle(p.body_radius).extrude(h)\n    for j in range(int(p.lobe_count)):\n\
+    \        a = 2*math.pi*j/p.lobe_count\n        lobe = cq.Workplane('XY').center(p.lobe_offset*math.cos(a),\
+    \ p.lobe_offset*math.sin(a)).circle(p.lobe_radius).extrude(h)\n        body =\
+    \ body.union(lobe)\n    def hexpts(af):\n        r = af/math.sqrt(3)\n       \
+    \ return [(r*math.cos(math.radians(30+60*j)), r*math.sin(math.radians(30+60*j)))\
+    \ for j in range(6)]\n    pocket = cq.Workplane('XY').workplane(offset=p.floor_t).polyline(hexpts(p.pocket_af)).close().extrude(p.pocket_depth)\n\
+    \    body = body.cut(pocket)\n    for j in range(6):\n        a = math.radians(60*j)\n\
+    \        r = p.pocket_af/2 + p.rib_radius - p.rib_intrusion\n        rib = cq.Workplane('XY').workplane(offset=p.floor_t).center(r*math.cos(a),r*math.sin(a)).circle(p.rib_radius).extrude(p.pocket_depth)\n\
+    \        body = body.union(rib)\n    tip_af = p.pocket_af - 2*p.rib_intrusion\n\
+    \    entrance = (cq.Workplane('XY').workplane(offset=h-p.entry_depth)\n      \
+    \          .polyline(hexpts(tip_af)).close()\n                .workplane(offset=p.entry_depth).polyline(hexpts(p.entry_af)).close().loft())\n\
+    \    body = body.cut(entrance)\n    bore = cq.Workplane('XY').circle(p.bore_d/2).extrude(h)\n\
+    \    return body.cut(bore).clean()"
+  print_orientation: Broad flat bottom at z=0 on the bed; hex pocket opens upward.
+    No supports.
+  use_orientation: Nut enters the top hex pocket and rests on the bottom shoulder.
+    Bolt passes through the nut and the central bottom hole; either face may face
+    the workpiece as needed.
+hardware:
+- id: captive_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: retention
+  part: hand_knob
+  feature: Six interference ribs against the nut flats
+  relation: engages
+  hardware: captive_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - rib_radius
+  - rib_intrusion
+  - entry_depth
+  check:
+    method: measure
+    ref: null
+    description: Hand-insert the nut, invert the knob above a tray, and gently shake
+      it. Nut must remain seated. This fit is not yet validated; reject loose or excessively
+      tight results.
+- id: shoulder
+  part: hand_knob
+  feature: Bottom shoulder around the through-hole
+  relation: seats
+  hardware: captive_nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - bore_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Verify nut reaches the shoulder without cracking the knob and cannot
+      pass through the 5.6 mm hole.
+- id: recess
+  part: hand_knob
+  feature: Full-depth hex pocket
+  relation: contains
+  hardware: captive_nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - pocket_depth
+  - pocket_af
+  check:
+    method: measure
+    ref: null
+    description: Nut top must lie below the knob top, nominally 0.5 mm below.
+- id: bolt_passage
+  part: hand_knob
+  feature: Central through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - bore_d
+  check:
+    method: measure
+    ref: null
+    description: Using your intended M5 bolt, check that it threads through the nut
+      and exits the bottom without rubbing or binding.
+manual:
+- n: '1'
+  text: Slice hand_knob with the pocket upward, 0.2 mm layers, four walls and five
+    top/bottom layers, 30% infill. Use no supports. Keep the part in its modeled orientation.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: Bambu Lab X1C, 0.4 mm nozzle
+- n: '2'
+  text: Let the print cool. Remove any loose strings from the pocket and through-hole.
+    Do not enlarge the ribs before checking fit.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Align the nut flats with the hex pocket. Press the nut straight down with
+    your thumb until it seats on the shoulder. It should sit completely below the
+    upper face. Do not hammer, heat, or force it with pliers; stop if it needs more
+    than comfortable hand pressure or the PLA whitens or cracks.
+  parts:
+  - hand_knob
+  hardware:
+  - captive_nut
+  tool: null
+- n: '4'
+  text: 'Over a tray, invert the knob and gently shake it. The nut must stay in. If
+    loose, do not use this print: the unverified rib fit needs adjustment and a new
+    test. If too tight, likewise revise the fit rather than forcing insertion. No
+    glue is required for a successful fit.'
+  parts:
+  - hand_knob
+  hardware:
+  - captive_nut
+  tool: null
+- n: '5'
+  text: 'Thread your intended M5 bolt through the nut and out the opposite hole. Confirm
+    free thread travel and no nut rotation inside the knob. This makes a captive-nut
+    knob: it screws along the bolt like a hand nut; it does not capture the bolt head.'
+  parts:
+  - hand_knob
+  hardware:
+  - captive_nut
+  tool: null
+- n: '6'
+  text: Tighten by hand only. Do not use a wrench on the printed lobes. Keep away
+    from heat and inspect occasionally for cracks, looseness or creep; this PLA knob
+    is not for safety-critical clamping.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null

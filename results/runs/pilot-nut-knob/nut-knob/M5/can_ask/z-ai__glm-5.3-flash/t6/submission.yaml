@@ -1,0 +1,319 @@
+task: nut-knob/M5
+note: 'One-piece M5 hand knob, Ø30 × 10.5 mm. The nut is retained with no glue by
+  a printed spring cone above the hex pocket: its mouth (Ø8.8) is smaller than the
+  nut''s across-corners (~9.2), so pressing the nut in (use the bolt as a handle)
+  spreads the 0.6 mm thin wall ~0.2 mm/side; it springs back behind the corners and
+  traps the nut. The hex pocket (AF 8.2) carries the turning torque; the nut bottoms
+  on a 3.8 mm floor whose Ø5.6 hole passes the bolt tip but can never pass the nut.
+  Both spring dimensions derive from datasheet values (nut across-corners 9.2 nominal,
+  bolt Ø5.0) since the parts couldn''t be measured - that''s the main uncertainty.
+  If the press-in feels too stiff, raise lip_id by 0.1-0.2 mm; if the nut rattles
+  out when inverted, lower it by 0.1-0.2 mm and reprint.'
+questions: []
+params:
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: M5 nominal thread diameter; person could not measure
+  cone_base_id:
+    value: 9.4
+    unit: mm
+    kind: design
+    source: design
+    note: bore where the spring cone meets the pocket rim; ~0.1 mm/side corner clearance
+      so the nut passes the base during insertion
+  cone_h:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: tall thin cantilever keeps the spring force in the 10-50 N range (hand-pressable,
+      well above gravity)
+  flute_r:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: groove cutter radius = 0.9 mm deep grooves
+  flutes:
+    value: 16
+    unit: count
+    kind: design
+    source: design
+    note: grip grooves around the rim
+  floor_t:
+    value: 3.8
+    unit: mm
+    kind: design
+    source: design
+    note: solid floor under the nut; carries the clamping load
+  hole_clear:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: bolt clearance hole = 5.6; also small enough (well under the 9.2 nut) that
+      the nut can never be pushed out the far side
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: requested 'about 30 mm across'
+  knob_h:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: sets the nut's seating depth (~2 mm below the top face)
+  lip_id:
+    value: 8.8
+    unit: mm
+    kind: design
+    source: design
+    note: bore at the free mouth = nut_ac - 0.4, so the wall catches the nut's corners
+      ~0.2 mm/side and springs back behind them
+  nut_ac:
+    value: 9.2
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: across corners = s/cos30 = 9.24 nominal, typically 9.1-9.25; could not be
+      measured - main fit uncertainty
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 from the hardware list; person could not measure
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 from the hardware list; person could not measure
+  pocket_clear:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'pocket AF = 8.2: nut drops in by hand with ~0.1 mm/side play'
+  sleeve_clear:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: radial freedom between the cone's outer face and the top-face hole
+  sleeve_wall:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: thin wall = the spring
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    H = p.knob_h\n    floor_t = p.floor_t\n\
+    \    cone_h = p.cone_h\n    pocket_depth = H - floor_t - cone_h\n    z_rim = floor_t\
+    \ + pocket_depth          # hex pocket rim = spring cone base\n\n    pocket_af\
+    \ = p.nut_af + p.pocket_clear\n    hole_d = p.bolt_d + p.hole_clear\n    lip_id\
+    \ = p.lip_id\n    cone_base_id = p.cone_base_id\n    wall = p.sleeve_wall\n  \
+    \  face_hole_d = lip_id + 2.0 * (wall + p.sleeve_clear)\n\n    # body disc; z=0\
+    \ is the bottom face (the bolt-exit 'far side')\n    knob = cq.Workplane(\"XY\"\
+    ).circle(p.knob_d / 2.0).extrude(H)\n\n    # grip flutes around the rim\n    n\
+    \ = int(p.flutes)\n    pts = [(p.knob_d / 2.0 * math.cos(2.0 * math.pi * i / n),\n\
+    \            p.knob_d / 2.0 * math.sin(2.0 * math.pi * i / n)) for i in range(n)]\n\
+    \    knob = knob.cut(cq.Workplane(\"XY\").pushPoints(pts).circle(p.flute_r).extrude(H))\n\
+    \n    # bolt clearance hole, right through on the axis\n    knob = knob.cut(cq.Workplane(\"\
+    XY\").circle(hole_d / 2.0).extrude(H))\n\n    # hex nut pocket, open at the top:\
+    \ nut drops in and bottoms on the floor\n    ac = pocket_af / math.cos(math.pi\
+    \ / 6.0)\n    hex_pts = [(ac / 2.0 * math.cos(math.pi / 3.0 * i),\n          \
+    \      ac / 2.0 * math.sin(math.pi / 3.0 * i)) for i in range(6)]\n    pocket\
+    \ = (cq.Workplane(\"XY\").workplane(offset=floor_t)\n              .polyline(hex_pts).close().extrude(pocket_depth))\n\
+    \    knob = knob.cut(pocket)\n\n    # hole in the top face around the spring cone\
+    \ (gives the cone radial freedom)\n    mouth = (cq.Workplane(\"XY\").workplane(offset=z_rim)\n\
+    \             .circle(face_hole_d / 2.0).extrude(cone_h))\n    knob = knob.cut(mouth)\n\
+    \n    # spring cone: thin conical tube clamped at its base on the pocket rim,\n\
+    \    # free at the top edge. Bore narrows upward from cone_base_id to lip_id.\n\
+    \    # lip_id < nut across-corners, so the nut's corners spread the thin wall\n\
+    \    # while being pressed in, and the wall springs back behind them, trapping\n\
+    \    # the nut below the mouth. No glue needed.\n    cone_outer = (cq.Workplane(\"\
+    XY\").workplane(offset=z_rim)\n                  .circle(cone_base_id / 2.0 +\
+    \ wall)\n                  .workplane(offset=cone_h)\n                  .circle(lip_id\
+    \ / 2.0 + wall)\n                  .loft())\n    ext = 1.0\n    r_ext = lip_id\
+    \ / 2.0 - (cone_base_id - lip_id) / 2.0 / cone_h * ext\n    cone_inner = (cq.Workplane(\"\
+    XY\").workplane(offset=z_rim)\n                  .circle(cone_base_id / 2.0)\n\
+    \                  .workplane(offset=cone_h + ext)\n                  .circle(r_ext)\n\
+    \                  .loft())\n    knob = knob.union(cone_outer.cut(cone_inner))\n\
+    \n    return knob\n"
+  print_orientation: bottom face on the bed (z=0 is the flat face with the bolt exit
+    hole); spring mouth up
+  use_orientation: 'as printed: spring mouth up; the bolt is driven in from the top
+    and its tip exits the bottom hole'
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: bolt-through-captive-nut
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.5
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: spring cone bore (top opening, 8.8 mm)
+    role: clearance
+  - part: knob
+    feature: floor clearance hole (5.6 mm)
+    role: clearance
+  nut: null
+  external: the user's own M5 bolt threads into the captive ISO 4032 M5 nut (hardware
+    item 'nut') pressed into the knob's hex pocket; any M5 bolt works, the catalog
+    screw is the reference
+criteria:
+- id: pocket-fits-nut
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_clear
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: nut slides into the hex pocket by hand with light play (~0.1 mm/side)
+- id: cone-retains-nut
+  part: knob
+  feature: spring cone mouth
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_ac
+  - lip_id
+  - sleeve_wall
+  - cone_h
+  check:
+    method: measure
+    ref: null
+    description: nut presses through the spring mouth with firm thumb pressure and
+      does not fall out when the knob is inverted and tapped
+- id: floor-blocks-nut
+  part: knob
+  feature: floor with bolt clearance hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_ac
+  - bolt_d
+  - hole_clear
+  - floor_t
+  check:
+    method: none
+    ref: null
+    description: 5.6 mm hole is far smaller than the nut's ~9.2 mm across corners,
+      so the nut cannot be pushed out of the far side
+- id: bolt-path-clear
+  part: knob
+  feature: central bore (cone bore + floor hole)
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_d
+  - hole_clear
+  - lip_id
+  check:
+    method: measure
+    ref: null
+    description: bolt drops through the empty knob and its tip can exit the bottom
+      when screwed deep
+- id: hex-carries-torque
+  part: knob
+  feature: hex pocket walls
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_clear
+  - floor_t
+  - cone_h
+  check:
+    method: none
+    ref: null
+    description: hex walls overlap the nut's flank by ~2.5 mm so the knob turns the
+      nut without slipping
+manual:
+- n: '1'
+  text: Print the knob as oriented (flat bottom face on the bed), no supports. All
+    overhangs are gentle; the only bridges are hairline steps at the cone's base.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Fit check: drop the M5 nut into the top opening. It should rest on the spring
+    mouth without falling through. If it drops straight through, stop and reprint
+    with the mouth (lip_id) 0.2 mm smaller.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Screw the M5 bolt about 3 turns into the nut - this gives you a press handle.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '4'
+  text: 'Seat the nut: set the nut (bolt pointing up) into the mouth and press the
+    bolt straight down firmly until it stops. The nut bottoms on the pocket floor
+    and the spring mouth clicks past its corners. (Alternative: press the bare nut
+    with a 6 mm dowel or pen.)'
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '5'
+  text: 'Verify: turn the knob upside down and tap it - the nut stays in. Unscrew
+    the bolt and re-thread it to confirm smooth action.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '6'
+  text: 'Use: pass the bolt through your part, thread it into the knob''s nut from
+    the top, and turn the knob to tighten. The bolt''s tip passes through the nut
+    and out of the knob''s bottom hole when screwed deep. The nut never needs to come
+    out; if it ever must, push it out from the top through the mouth with the bolt
+    - the spring releases with a firm push.'
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null

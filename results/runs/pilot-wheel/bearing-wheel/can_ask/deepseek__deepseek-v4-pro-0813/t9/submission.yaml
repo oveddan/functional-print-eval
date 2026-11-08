@@ -1,0 +1,234 @@
+task: bearing-wheel
+note: 'Replacement closet-door roller wheel printed in PLA, rotating on two 608 bearings
+  with an M8 bolt axle. Assumptions: the original wheel was a plain (flat/cylindrical)
+  tread Ø50 x 16 mm, and the bracket axle holes are 8 mm (user measured ~8 mm). If
+  the original had a groove for a round rail, only the tread profile needs changing.
+  Bolt length M8x40 chosen with margin for typical 1.5-3 mm bracket arms; manual notes
+  using M8x45/M8x50 if arms are thicker. Washers (ISO 7089 M8, OD 16) sit inside the
+  22 mm bore, reaching the bearing inner rings (they cannot touch the wheel, whose
+  material is outside r=11), so tightening clamps only the inner rings and the wheel
+  spins freely on the bearings.'
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: User said the old wheel was about 50 mm across.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: User said the old wheel was about 16 mm wide.
+  bearing_od:
+    value: 22.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing outside diameter, nominal 22.000 mm.
+  bearing_bore:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing bore, nominal 8.000 mm.
+  bearing_width:
+    value: 7.0
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 bearing width, nominal 7.0 mm; two stacked = 14 mm.
+  pocket_d:
+    value: 22.2
+    unit: mm
+    kind: design
+    source: design
+    note: Bearing pocket diameter = bearing_od + 0.2 mm allowance. Home FDM holes
+      print slightly small; this gives a near-line fit. If loose, use small dots of
+      superglue on the outer race; if tight, sand lightly.
+  coupon_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the bearing-fit test coupon.
+  washer_od:
+    value: 16.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 washer OD; smaller than the 22 mm bore, so it clears the wheel
+      and clamps only the bearing inner rings.
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 7089 M8 washer thickness.
+  bolt_d:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M8 nominal diameter; matches the 608 bearing bore.
+  nut_af:
+    value: 13.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 10511 M8 lock nut across flats, for context only.
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    tire = cq.Workplane('XY').circle(p.wheel_od / 2.0).extrude(p.wheel_width)\n\
+    \    bore = cq.Workplane('XY').circle(p.pocket_d / 2.0).extrude(p.wheel_width\
+    \ + 1.0)\n    return tire.cut(bore)\n"
+  print_orientation: Flat on one side face; the bore axis is vertical and z = 0 is
+    the bed. No supports needed.
+  use_orientation: Bore axis horizontal inside the door bracket. The two 608 bearings
+    press in from each side; the M8 bolt passes through the bearing inner rings.
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    body = cq.Workplane('XY').circle(p.coupon_od / 2.0).extrude(p.wheel_width)\n\
+    \    bore = cq.Workplane('XY').circle(p.pocket_d / 2.0).extrude(p.wheel_width\
+    \ + 1.0)\n    return body.cut(bore)\n"
+  print_orientation: Flat on one side face; bore axis vertical and z = 0 is the bed.
+    No supports needed.
+  use_orientation: 'Test piece: press both 608 bearings in from each side to verify
+    the pocket diameter and depth before printing the full wheel.'
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: axle_bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 4
+- id: axle_nut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: wheel
+    feature: centre bore (through the two 608 bearing inner rings)
+    role: clearance
+  nut: axle_nut
+  external: door bracket axle holes (~8 mm)
+criteria:
+- id: bearing_pocket_fit
+  part: wheel
+  feature: bearing pocket (22.2 mm through-bore, 16 mm deep)
+  relation: seats
+  hardware: bearing
+  clearance_mm: 0.2
+  params:
+  - pocket_d
+  - bearing_od
+  - wheel_width
+  - bearing_width
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: Press both 608 bearings into the coupon from each side. If too tight,
+      sand the bore lightly; if loose, add small dots of superglue to the outer races.
+      The wheel uses the identical pocket dimension.
+- id: axle_bolt_clearance
+  part: wheel
+  feature: centre bore
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: null
+  params:
+  - bearing_bore
+  - bolt_d
+  check:
+    method: none
+    ref: null
+    description: The bolt rides in the 8.0 mm bearing bores (hardware-defined), not
+      printed material.
+- id: tread_matches_original
+  part: wheel
+  feature: plain cylindrical tread
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_width
+  check:
+    method: none
+    ref: null
+    description: OD 50 mm and width 16 mm set from the user's description of the snapped
+      wheel.
+manual:
+- n: '1'
+  text: Print the bearing_fit_coupon first (flat, no supports).
+  parts:
+  - bearing_fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press both 608ZZ bearings into the coupon from opposite sides. If they are
+    hard to press, sand the bore lightly; if they drop in loosely, put small dots
+    of superglue on each outer race. Remember what you did - the wheel uses the same
+    bore size.
+  parts: []
+  hardware:
+  - bearing
+  tool: vise with soft jaws or a block of wood + hammer
+- n: '3'
+  text: Print the wheel flat (one side face on the bed, no supports).
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '4'
+  text: Press the two 608ZZ bearings into the wheel, one from each side, until they
+    meet in the middle (they will each sit ~1 mm inside the face).
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: vise with soft jaws or block of wood + hammer
+- n: '5'
+  text: 'Assemble the axle: M8x40 socket head screw -> ISO 7089 M8 washer -> one bracket
+    arm -> washer -> wheel -> washer -> other bracket arm -> washer -> ISO 10511 M8
+    lock nut.'
+  parts:
+  - wheel
+  hardware:
+  - axle_bolt
+  - washer
+  - axle_nut
+  tool: 5 mm hex key and 13 mm spanner/socket
+- n: '6'
+  text: Tighten the lock nut just enough that the wheel spins freely with no side-to-side
+    slop. Do not overtighten; the nut clamps only the bearing inner rings. If the
+    bolt is too short or too long for your bracket arms, use ISO 4762 M8x45 or M8x50
+    instead.
+  parts: []
+  hardware:
+  - axle_nut
+  tool: 5 mm hex key and 13 mm spanner/socket
+- n: '7'
+  text: Refit the door and check it rolls freely on the track.
+  parts:
+  - wheel
+  hardware: []
+  tool: null

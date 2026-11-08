@@ -1,0 +1,218 @@
+task: nut-knob/M3
+note: One-piece captive-nut hand knob, 20 mm maximum diameter and 5 mm thick. The
+  5.70 mm hex pocket reproduces test_E_570, which accepted the nut with pushing and
+  retained it during inversion and shaking. This is a nut-driven knob, not a bolt-head
+  grip. Print and use at room temperature; PLA is not intended for high clamp loads
+  or heat. No glue, supports, or additional printed retainers.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  pocket_allowance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Produces 5.70 mm across flats; validated by test_E_570 with user's nut and
+      printer.
+  floor:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Nut top is 0.4 mm below knob top when seated.
+  lead:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: 3.5 mm bolt clearance hole.
+  scallop_r:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 10.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "def build(p):\n    import math\n    h=p.floor+p.nut_h+p.recess\n    af=p.nut_af+p.pocket_allowance\n\
+    \    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n    for i in range(int(p.scallop_count)):\n\
+    \        angle=2*math.pi*i/p.scallop_count\n        x=p.scallop_center_r*math.cos(angle)\n\
+    \        y=p.scallop_center_r*math.sin(angle)\n        cutter=cq.Workplane('XY').center(x,y).circle(p.scallop_r).extrude(h)\n\
+    \        body=body.cut(cutter)\n    pocket=cq.Workplane('XY').workplane(offset=p.floor).polygon(6,af/math.cos(math.pi/6)).extrude(h-p.floor+1)\n\
+    \    lead=cq.Workplane('XY').workplane(offset=h-p.lead).polygon(6,af/math.cos(math.pi/6)).workplane(offset=p.lead).polygon(6,(af+2*p.lead)/math.cos(math.pi/6)).loft()\n\
+    \    hole=cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance)/2).extrude(h)\n\
+    \    return body.cut(pocket).cut(lead).cut(hole)"
+  print_orientation: Flat underside at z=0 on bed; hex pocket faces upward. No supports.
+  use_orientation: Bolt axis along Z. For clamping, flat underside faces the work
+    and open nut pocket faces away, so tightening loads the nut against the retaining
+    floor.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints: []
+criteria:
+- id: hand_press_and_retention
+  part: knob
+  feature: 5.70 mm across-flats hex pocket with 0.30 mm lead-in
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_allowance
+  - lead
+  check:
+    method: coupon
+    ref: test_E_570
+    description: User reported snug fit with pushing and retention when inverted and
+      shaken. Repeat with final knob before use.
+- id: fully_recessed
+  part: knob
+  feature: 2.8 mm deep nut pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - recess
+  check:
+    method: measure
+    ref: null
+    description: Confirm the nut is fully seated on the pocket floor and its upper
+      face is below the knob's upper face.
+- id: retaining_floor
+  part: knob
+  feature: 2.2 mm solid floor around the 3.5 mm through hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor
+  - bolt_d
+  - bolt_clearance
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Check the floor is intact and the nut cannot pass through the smaller
+      round bolt hole.
+- id: bolt_passage
+  part: knob
+  feature: Central 3.5 mm through hole coaxial with hex pocket
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: measure
+    ref: null
+    description: Before assembly confirm the M3 bolt passes through the round hole
+      freely. After seating the nut, thread the bolt through until its tip exits the
+      open pocket.
+manual:
+- n: '1'
+  text: Print knob flat-side down, pocket upward, at 0.2 mm layers with the 0.4 mm
+    nozzle. Use four walls, four top/bottom layers and 40% infill. Disable supports.
+    Use the same filament, scaling and fit compensation as the successful test_E_570
+    coupon.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Let the print cool. Clear any brim or loose strands without widening the hex
+    pocket. Align the nut flats with the pocket and press it straight down firmly
+    by hand until it rests on the floor. Its top face should sit 0.4 mm below the
+    knob top. Do not hammer it or use the bolt to force it into place.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down and shake gently over a tray. The nut must stay
+    seated. If it falls out or will not seat fully by hand, do not use the knob; the
+    final fit has not reproduced the successful coupon.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Pass the M3 bolt through the round hole from the flat underside and start
+    it into the nut by hand. Turn the knob to run it along the bolt; check that the
+    bolt passes completely through the nut and emerges from the pocket side without
+    binding. The listed M3x20 is suitable for this check; application bolt length
+    depends on the thickness being clamped.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null
+- n: '5'
+  text: For use, place the knob's flat underside toward the work, with the open pocket
+    facing away. Hold the bolt against rotation as required by your assembly and tighten
+    the knob with fingers only. The nut bears against the solid floor. Stop if the
+    knob cracks, the nut slips, or the PLA deforms; avoid excessive torque.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - bolt
+  tool: null

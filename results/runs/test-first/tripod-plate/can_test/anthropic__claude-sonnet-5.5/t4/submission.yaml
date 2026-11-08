@@ -1,0 +1,242 @@
+task: tripod-plate
+note: This is a temporary stand-in. I couldn't get the clamp slot thickness, the plate
+  length or the camera base size, so plate_t = 6 mm is a guess. Use the thickness-steps
+  coupon to confirm it. The salvaged 1/4-20 bolt is the part that screws in. A printed
+  1/4-20 thread would be weak, so I didn't print one. The bolt's dimensions are your
+  rough readings (15 mm head, 5 mm head height, 10 mm under the head). The first bolt-pocket
+  test came out with a failed bridge over the pocket, so I turned the plate over to
+  print. The pocket now opens upward and needs no bridging. The plate has no anti-twist
+  feature, so a heavy camera could rotate on it. Don't leave a good camera on it unattended.
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: width of plate the tripod clamp takes
+  clr:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: total side clearance so the printed plate slides in
+  plate_t:
+    value: 6
+    unit: mm
+    kind: world
+    source: guessed
+    note: plate edge thickness; clamp gap could not be measured. Check with the thickness-steps
+      coupon and edit
+  plate_l:
+    value: 55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: salvaged bolt head, 'about 15'
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: about
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: under head, about
+  shank_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4 inch
+  pocket_clr:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shank_clr:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  protrusion:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: how far the bolt sticks above the camera face; 1/4-20 sockets are typically
+      5-6 mm deep
+  t0:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  dt:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  step_len:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  n_steps:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: camera-plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = p.plate_w - p.clr\n    d = p.plate_t + p.protrusion\
+    \ - p.bolt_len\n    plate = cq.Workplane('XY').box(w, p.plate_l, p.plate_t, centered=(True,\
+    \ True, False))\n    plate = plate.edges('|Z').fillet(3)\n    pocket = cq.Workplane('XY').workplane(offset=p.plate_t\
+    \ - d).circle((p.head_d + p.pocket_clr)/2).extrude(d + 1)\n    hole = cq.Workplane('XY').circle((p.shank_d\
+    \ + p.shank_clr)/2).extrude(p.plate_t + 1)\n    return plate.cut(pocket).cut(hole)"
+  print_orientation: camera face (the face with only the small hole) flat on the bed;
+    the head pocket opens upward, so no bridging or supports
+  use_orientation: camera face up, plate edges in the tripod clamp, bolt head hanging
+    below
+- id: thickness-steps
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    w = p.plate_w - p.clr\n    res = None\n    for i in range(int(p.n_steps)):\n\
+    \        t = p.t0 + i*p.dt\n        b = cq.Workplane('XY').box(w, p.step_len,\
+    \ t, centered=(True, False, False)).translate((0, i*p.step_len, 0))\n        res\
+    \ = b if res is None else res.union(b)\n    return res"
+  print_orientation: flat on bed
+  use_orientation: slide each step edge-first into the tripod clamp, thinnest to thickest,
+    to find the thickest that slides in and grips
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: camera-plate
+    feature: head pocket on underside
+    role: head_seat
+  - part: camera-plate
+    feature: centre shank hole
+    role: clearance
+  nut: null
+  external: camera's 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: camera-plate
+  feature: plate edges in tripod clamp (width and thickness)
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - clr
+  - plate_t
+  check:
+    method: coupon
+    ref: thickness-steps
+    description: Slide the steps into the clamp; the thickest that goes in and grips
+      sets plate_t
+- id: c2
+  part: camera-plate
+  feature: head pocket
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - pocket_clr
+  - head_h
+  check:
+    method: measure
+    ref: null
+    description: Bolt head drops into the pocket and spins freely
+- id: c3
+  part: camera-plate
+  feature: shank hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - shank_d
+  - shank_clr
+  check:
+    method: measure
+    ref: null
+    description: Bolt shank passes through the hole with a little play
+- id: c4
+  part: camera-plate
+  feature: bolt protrusion above camera face
+  relation: engages
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_len
+  - protrusion
+  - plate_t
+  check:
+    method: measure
+    ref: null
+    description: 5 mm of thread sticks out and the camera seats on the plate without
+      bottoming out
+manual:
+- n: '1'
+  text: Print the thickness-steps coupon. Slide its steps into the tripod clamp. Find
+    the thickest step that slides in and gets gripped when the clamp is tightened.
+    If that isn't 6 mm, change plate_t to that value, with the thickness minus about
+    0.1 mm, before printing the plate.
+  parts:
+  - thickness-steps
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the camera plate with the flat camera face on the bed. It needs no supports.
+  parts:
+  - camera-plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Push the salvaged 1/4-20 bolt up from the underside, with the threads going
+    first. The head sits in the round pocket, and about 5 mm of thread comes out of
+    the camera face.
+  parts:
+  - camera-plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Slide the plate into the tripod clamp and tighten it. Turn the bolt head by
+    hand to screw it into the camera's tripod socket until the camera sits flat on
+    the plate. Don't over-tighten. Check the grip before you let go of the camera.
+  parts:
+  - camera-plate
+  hardware:
+  - bolt
+  tool: null

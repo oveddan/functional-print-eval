@@ -1,0 +1,327 @@
+task: tripod-plate
+note: 'UNVERIFIED FIT-CHECK PROTOTYPE, not approved for supporting a camera. The 38
+  mm width does not establish clamp compatibility; printed samples were not evaluated.
+  Do not print the camera screw: reuse the metal 1/4-20 webcam bolt only after checking
+  its dimensions and seating. For immediate camera use, obtain the correct replacement
+  plate and metal screw. PLA can crack and creep; this prototype has no verified load
+  rating or safety-stop compatibility.'
+questions:
+- text: Tripod/head make, model, jaw profile, lip height and support length?
+  answer: null
+- text: Which unloaded fit sample sits fully down and cannot rock, slide or lift out
+    when normally clamped?
+  answer: Samples printed, but no fit assessment available.
+- text: Camera/lens model, weight, base clearance and usable threaded socket depth?
+  answer: null
+- text: Does the salvaged bolt have a flat bearing underside and can its head be tightened
+    securely in the recess?
+  answer: null
+params:
+  clamp_plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported width of accepted plate; other clamp geometry unknown.
+  clamp_lip_height:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  clamp_support_length:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  camera_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  camera_thread_major:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4-20 nominal major diameter; user identified socket thread.
+  camera_thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate measurement; verify before use.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate measurement; verify before use.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate length under head; verify before use.
+  plate_length:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: Unverified against head support length and camera base.
+  bottom_land:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  dovetail_rise:
+    value: 4
+    unit: mm
+    kind: design
+    source: guessed
+    note: Unvalidated middle fit-sample profile, not a measured clamp dimension.
+  dovetail_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: guessed
+    note: Unconfirmed; slope is 1:1 in the code.
+  head_diam_clearance:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral allowance permits access to head; recess diameter 20 mm.
+  head_depth_clearance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shaft_diam_clearance:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  target_thread_projection:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Requires actual socket usable depth at least 5 mm; stop if not confirmed.
+  socket_tip_margin:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cut_overrun:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: prototype_plate
+  role: final
+  material: PLA (black high-speed PLA)
+  code: "def build(p):\n    # Unverified 45-degree dovetail. Geometry is for unloaded\
+    \ fitting only.\n    recess=p.bolt_head_h+p.head_depth_clearance\n    height=recess+p.bolt_length-p.target_thread_projection\n\
+    \    neck=p.clamp_plate_width-2*p.dovetail_rise\n    shoulder=p.bottom_land+p.dovetail_rise\n\
+    \    if height <= shoulder or neck <= p.bolt_head_d+p.head_diam_clearance:\n \
+    \       raise ValueError('Insufficient height or wall around head recess')\n \
+    \   base=cq.Workplane('XY').rect(p.clamp_plate_width,p.plate_length).extrude(p.bottom_land)\n\
+    \    slope=cq.Workplane('XY').workplane(offset=p.bottom_land).rect(p.clamp_plate_width,p.plate_length).workplane(offset=p.dovetail_rise).rect(neck,p.plate_length).loft()\n\
+    \    top=cq.Workplane('XY').workplane(offset=shoulder).rect(neck,p.plate_length).extrude(height-shoulder)\n\
+    \    body=base.union(slope).union(top)\n    pocket=cq.Workplane('XY').workplane(offset=-p.cut_overrun).circle((p.bolt_head_d+p.head_diam_clearance)/2).extrude(recess+p.cut_overrun)\n\
+    \    bore=cq.Workplane('XY').workplane(offset=-p.cut_overrun).circle((p.camera_thread_major+p.shaft_diam_clearance)/2).extrude(height+2*p.cut_overrun)\n\
+    \    return body.cut(pocket).cut(bore)\n"
+  print_orientation: Wide 38 x 40 mm bottom face on z=0. Head recess opens to bed;
+    no supports. Its ceiling bridges at most 20 mm, below the reported 50 mm capability.
+  use_orientation: Wide bottom rests on tripod clamp ledges, tapered sides face jaws,
+    narrow upper face faces camera. Metal screw enters from the underside; nominal
+    projection 4 mm.
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_attachment
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.2
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: prototype_plate
+    feature: Flat ceiling of underside 20 mm diameter head recess at nominal z=5.2;
+      underside of bolt head must bear fully here.
+    role: head_seat
+  - part: prototype_plate
+    feature: Central 6.90 mm through bore; no printed threads.
+    role: clearance
+  nut: null
+  external: Camera 1/4-20 socket; connection prohibited until socket depth, bolt projection
+    and fit checks pass.
+criteria:
+- id: jaw_fit
+  part: prototype_plate
+  feature: Wide lower land and two 45-degree tapered faces
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_plate_width
+  - clamp_lip_height
+  - clamp_support_length
+  - plate_length
+  - bottom_land
+  - dovetail_rise
+  - dovetail_angle
+  check:
+    method: template
+    ref: prototype_plate
+    description: 'UNRESOLVED: unloaded plate must rest flat on support ledges, have
+      firm contact at both jaws, and resist hand lift, rocking and sliding at normal
+      knob force. Reject if it bottoms on a wrong feature, needs excessive force or
+      has inadequate jaw overlap. Test through full intended head tilt without camera.'
+- id: bolt_head_fit
+  part: prototype_plate
+  feature: Underside head pocket and bearing ceiling
+  relation: seats
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_diam_clearance
+  - head_depth_clearance
+  check:
+    method: measure
+    ref: null
+    description: Confirm actual head dimensions, flat underside and full bearing contact.
+      Head must not project below plate or strike tripod head. Confirm a practical
+      way to tighten head without damaging it; otherwise stop.
+- id: bolt_shank_fit
+  part: prototype_plate
+  feature: Central through bore
+  relation: clears
+  hardware: camera_bolt
+  clearance_mm: 0.275
+  params:
+  - camera_thread_major
+  - shaft_diam_clearance
+  check:
+    method: template
+    ref: prototype_plate
+    description: Bolt must pass freely without threading into PLA.
+- id: thread_projection
+  part: prototype_plate
+  feature: Top face and projecting metal screw
+  relation: engages
+  hardware: camera_bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - bolt_head_h
+  - head_depth_clearance
+  - target_thread_projection
+  - camera_socket_depth
+  - socket_tip_margin
+  - camera_thread_pitch
+  check:
+    method: measure
+    ref: null
+    description: 'UNRESOLVED: measure actual projection with head fully seated. Target
+      4 mm, about 3.15 turns. Camera usable threaded depth must exceed projection
+      by at least 1 mm and comply with camera manufacturer''s screw-length requirement.
+      Never use screw bottoming as a tightening stop.'
+- id: camera_base
+  part: prototype_plate
+  feature: Narrow top bearing face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_length
+  - clamp_plate_width
+  - dovetail_rise
+  check:
+    method: measure
+    ref: null
+    description: 'UNRESOLVED: camera needs adequate flat base contact without interference
+      from battery doors, locating bosses or lens. No load capacity has been established.'
+manual:
+- n: '1'
+  text: Keep camera separate. This is a fit-check prototype, not a proven replacement
+    plate. Record tripod/head model and obtain the correct replacement for normal
+    use.
+  parts:
+  - prototype_plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print wide face down at 0.2 mm layers, 6 walls, 6 top/bottom layers and 100%
+    infill; no supports. Inspect for cracks, layer separation, warped base and sagging
+    at the recess ceiling. Remove loose strands without enlarging bearing surfaces.
+  parts:
+  - prototype_plate
+  hardware: []
+  tool: Slicer
+- n: '3'
+  text: With no camera or bolt, test the prototype in the clamp. It must sit flat
+    and grip both angled faces without rocking, sliding or lifting at normal knob
+    force. Check that the clamp is not at the end of its travel. No fit results were
+    supplied for the earlier samples; this check is mandatory. If uncertain, stop
+    and obtain the correct plate.
+  parts:
+  - prototype_plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: 'Remove plate from tripod. Verify metal bolt dimensions and flat under-head
+    bearing face. Insert from underside: it must pass freely, seat completely and
+    remain recessed beneath the base. Confirm you can hold/turn its head by hand;
+    no printed screwdriver or printed screw is supplied. Stop if the head cannot be
+    tightened properly.'
+  parts:
+  - prototype_plate
+  hardware:
+  - camera_bolt
+  tool: Calipers
+- n: '5'
+  text: Measure actual screw projection above the top with head fully seated. Measure
+    camera usable socket depth gently with a nonmetal probe and consult camera screw-length
+    specifications. Target projection is 4 mm, with at least 1 mm unused depth. If
+    depth is unknown, projection is unsuitable or the camera base cannot sit flat,
+    DO NOT attach the camera.
+  parts:
+  - prototype_plate
+  hardware:
+  - camera_bolt
+  tool: Calipers and nonmetal depth probe
+- n: '6'
+  text: Passing dimensional checks does not establish a safe camera load. Keep the
+    prototype for fit evaluation until retention and load suitability can be established
+    for the particular camera/head. Do not leave a camera supported by this unverified
+    plate, carry the tripod with it attached, or use it over people. Use a compatible
+    replacement plate with metal screw for photography.
+  parts:
+  - prototype_plate
+  hardware:
+  - camera_bolt
+  tool: null

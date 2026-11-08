@@ -1,0 +1,211 @@
+task: nut-knob/M5
+note: 'One-piece, vertically printed hand knob with a segmented snap-in nut retainer.
+  The M5 nut is inserted from the underside: a narrow hex throat and radial relief
+  slots let the PLA lip flex, then the nut seats in the larger internal hex pocket.
+  The pocket roof stops the nut going out the far side; a round bore continues through
+  the knob for the bolt. Fit is based on the catalog 8 mm nut width because the nut
+  could not be measured; press the nut in squarely and do not force it if the print
+  is visibly undersized or the lip is damaged.'
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  knob_h:
+    value: 12.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  core_r:
+    value: 12.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_r:
+    value: 11.8
+    unit: mm
+    kind: design
+    source: design
+    note: Radial position of the six grip lobes
+  lobe_r:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  seat_af:
+    value: 8.2
+    unit: mm
+    kind: design
+    source: design
+    note: Internal nut pocket across flats; slight clearance to nominal nut
+  seat_z:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: Nut is recessed behind the retaining lip
+  seat_depth:
+    value: 5.1
+    unit: mm
+    kind: design
+    source: design
+    note: Provides axial clearance around the catalog 4.7 mm nut
+  throat_af:
+    value: 7.8
+    unit: mm
+    kind: design
+    source: design
+    note: Undersized retaining throat; flex relief slots aid hand insertion
+  throat_h:
+    value: 1.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: M5 bolt clearance through-bore
+  slot_w:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_r0:
+    value: 3.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_r1:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_h:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: hand_knob
+  role: final
+  material: PLA (high-speed PLA)
+  code: "import math\n\ndef hex_prism(af, z, h):\n    # Regular hexagon with vertices\
+    \ on the x axis; AF = sqrt(3) * circumradius.\n    R = af / math.sqrt(3.0)\n \
+    \   pts = [(R*math.cos(math.radians(60*i)), R*math.sin(math.radians(60*i))) for\
+    \ i in range(6)]\n    return cq.Workplane('XY').polyline(pts).close().extrude(h).translate((0,\
+    \ 0, z))\n\ndef build(p):\n    body = cq.Workplane('XY').circle(p.core_r).extrude(p.knob_h)\n\
+    \    for i in range(6):\n        a = math.radians(i*60)\n        x, y = p.grip_r*math.cos(a),\
+    \ p.grip_r*math.sin(a)\n        lobe = cq.Workplane('XY').center(x, y).circle(p.lobe_r).extrude(p.knob_h)\n\
+    \        body = body.union(lobe)\n    # Hex nut seat and its smaller underside\
+    \ retaining throat.\n    body = body.cut(hex_prism(p.seat_af, p.seat_z, p.seat_depth))\n\
+    \    body = body.cut(hex_prism(p.throat_af, 0, p.throat_h))\n    # Six radial\
+    \ relief cuts split the shallow retaining lip into compliant sectors.\n    slot_len\
+    \ = p.slot_r1 - p.slot_r0\n    for i in range(6):\n        slot = cq.Workplane('XY').box(slot_len,\
+    \ p.slot_w, p.slot_h, centered=(False, True, False))\n        slot = slot.translate((p.slot_r0,\
+    \ 0, 0)).rotate((0,0,0), (0,0,1), i*60)\n        body = body.cut(slot)\n    #\
+    \ A continuous bolt passage through the nut pocket and the far side of the knob.\n\
+    \    bore = cq.Workplane('XY').circle(p.bore_d/2).extrude(p.knob_h)\n    body\
+    \ = body.cut(bore)\n    return body"
+  print_orientation: Flat underside on the build plate; knob axis vertical (Z). The
+    underside nut-entry opening faces the build plate.
+  use_orientation: Grip the six-lobed circumference. Press the M5 nut into the hex
+    opening on the underside, then thread an M5 bolt through the nut; its shank passes
+    through and exits the top bore.
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+joints:
+- id: nut_capture
+  fastener: m5_nut
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: hand_knob
+    feature: Underside hex throat and internal hex nut seat
+    role: nut_pocket
+  nut: null
+  external: null
+criteria:
+- id: nut_press_fit
+  part: hand_knob
+  feature: Underside throat and flex-relieved retaining lip
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - throat_af
+  - slot_w
+  - slot_h
+  check:
+    method: measure
+    ref: null
+    description: Press the nut into the underside by hand; confirm it snaps into the
+      larger seat and remains captured when the knob is inverted. Stop if insertion
+      would crack or visibly split the lip.
+- id: bolt_passage
+  part: hand_knob
+  feature: 5.6 mm axial through-bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bore_d
+  check:
+    method: measure
+    ref: null
+    description: Verify an M5 bolt shank passes through the bore and exits the far
+      side.
+manual:
+- n: '1'
+  text: Print the hand_knob with its flat underside on the build plate. Remove any
+    brim or stringing from the underside hex opening and bolt bore; do not enlarge
+    the retaining throat unless the nut cannot be pressed in safely.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M5 nut with the underside hex opening and press it straight
+    in by hand until it sits fully inside the recessed hex pocket. The relief slots
+    allow the lip to flex. Do not hammer it or force it if the lip begins to crack.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down briefly to check the nut stays captured. Thread
+    the M5 bolt into the nut; its shank should pass through the nut and continue through
+    the top bore.
+  parts:
+  - hand_knob
+  hardware:
+  - m5_nut
+  tool: null

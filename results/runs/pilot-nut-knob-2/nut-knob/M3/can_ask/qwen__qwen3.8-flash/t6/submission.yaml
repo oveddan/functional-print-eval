@@ -1,0 +1,415 @@
+task: nut-knob/M3
+note: 'One printed piece, Ø20 across the flute ridges, 20 mm tall, printed axis-vertical
+  with the work face on the bed: every hole is a straight vertical bore, so no supports
+  and no bridges.'
+questions:
+- text: You said M3 hex nut - I've assumed a standard ISO 4032 M3 (5.5 mm across flats,
+    2.4 mm thick). If yours is a thin jam nut or a flange nut, tell me and I'll re-size
+    the socket depth.
+  answer: Couldn't measure the nut when asked, so catalog ISO 4032 M3 dims were used
+    (af 5.5, h 2.4).
+- text: How long is the M3 bolt you tighten? If the tip would poke into your palm,
+    a deeper palm dimple or a taller knob is a one-line change.
+  answer: null
+params:
+  knob_od:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: asked
+    note: Ø across the flute ridges, as requested; roots are Ø18
+  knob_h:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  palm_chamfer:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg collar at the palm end -> Ø16 flat
+  bed_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_center_r:
+    value: 11.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_cut_r:
+    value: 2.0
+    unit: mm
+    kind: design
+    source: design
+    note: root Ø18, ridges stay at Ø20
+  flute_floor_z:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: plain bearing rim at the work face
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness
+  m3_major_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M3 thread major diameter
+  socket_af:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: 'nut_af - 0.10 -> ~0.05 mm interference per flat: hand-pressable, holds
+      the nut upside down, and the flats stop the nut spinning under torque. Tune
+      with the coupon.'
+  socket_floor_z:
+    value: 16.6
+    unit: mm
+    kind: design
+    source: design
+    note: knob_h - collar_depth - nut_h - socket_relief
+  socket_relief:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: gap so the nut bottoms below the collar
+  collar_af:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: free-fit lead-in at the mouth, so no plastic is shaved as the nut starts
+  collar_depth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance; also what stops the nut being pushed out through the work
+      face
+  coupon_l:
+    value: 30.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_w:
+    value: 14.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_t:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_pitch:
+    value: 9.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  test_af_1:
+    value: 5.3
+    unit: mm
+    kind: design
+    source: design
+    note: coupon pocket at the ribbed end - tight
+  test_af_2:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: coupon pocket in the middle - the size the knob is modelled at
+  test_af_3:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: coupon pocket at the plain end - slip fit
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "COS30 = 0.8660254037844386\n\ndef build(p):\n    r = p.knob_od / 2.0\n  \
+    \  H = p.knob_h\n    zf = p.socket_floor_z\n\n    # 1. blank: cylinder, 45 deg\
+    \ chamfer at the palm end, small chamfer at the bed face\n    s = cq.Workplane(\"\
+    XY\").circle(r).extrude(H)\n    s = s.edges(\">Z\").chamfer(p.palm_chamfer)\n\
+    \    s = s.edges(\"<Z\").chamfer(p.bed_chamfer)\n\n    # 2. finger flutes: vertical\
+    \ scallops, plain band left at the work face\n    flutes = (cq.Workplane(\"XY\"\
+    ).workplane(offset=p.flute_floor_z)\n              .polarArray(p.flute_center_r,\
+    \ 0, 360, int(p.flute_count))\n              .circle(p.flute_cut_r)\n        \
+    \      .extrude(H - p.flute_floor_z + 1.0))\n    s = s.cut(flutes)\n\n    # 3.\
+    \ nut socket: hexagon, across flats = socket_af, open at the palm face\n    sock\
+    \ = (cq.Workplane(\"XY\").workplane(offset=zf - 0.2)\n            .polygon(6,\
+    \ p.socket_af / COS30)\n            .extrude(H - zf + 2.0))\n    s = s.cut(sock)\n\
+    \n    # 4. free-fit collar at the mouth: lead-in, and the nut ends up below the\
+    \ surface\n    col = (cq.Workplane(\"XY\").workplane(offset=H - p.collar_depth\
+    \ - 0.2)\n           .polygon(6, p.collar_af / COS30)\n           .extrude(p.collar_depth\
+    \ + 0.6))\n    s = s.cut(col)\n\n    # 5. bolt bore: work face up to the socket\
+    \ floor, smaller than the nut\n    bore = (cq.Workplane(\"XY\").workplane(offset=-1.0)\n\
+    \            .circle(p.bore_d / 2.0)\n            .extrude(zf + 1.0))\n    s =\
+    \ s.cut(bore)\n    return s"
+  print_orientation: Axis vertical, z=0 (the flat work face, where the 3.4 mm bore
+    opens) down on the bed, palm face up. Bed contact is an 18.4 mm ring minus the
+    bore; every hole is a straight vertical bore, so no supports and no bridging.
+  use_orientation: 'As modelled: work face against the workpiece, bolt entering through
+    the bore from that side and coming out at the palm face; palm presses on the Ø16
+    face, fingers grip the 12 flutes.'
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "COS30 = 0.8660254037844386\n\ndef build(p):\n    t = p.coupon_t\n    zf =\
+    \ t - p.collar_depth - p.nut_h - p.socket_relief\n    b = cq.Workplane(\"XY\"\
+    ).box(p.coupon_l, p.coupon_w, t, centered=(True, True, False))\n\n    seats =\
+    \ [(-p.coupon_pitch, p.test_af_1), (0.0, p.test_af_2), (p.coupon_pitch, p.test_af_3)]\n\
+    \    for x, af in seats:\n        sock = (cq.Workplane(\"XY\").workplane(offset=zf\
+    \ - 0.2).center(x, 0)\n                .polygon(6, af / COS30).extrude(t - zf\
+    \ + 0.6))\n        b = b.cut(sock)\n        col = (cq.Workplane(\"XY\").workplane(offset=t\
+    \ - p.collar_depth - 0.2).center(x, 0)\n               .polygon(6, p.collar_af\
+    \ / COS30).extrude(p.collar_depth + 0.6))\n        b = b.cut(col)\n        bore\
+    \ = (cq.Workplane(\"XY\").workplane(offset=-1.0).center(x, 0)\n              \
+    \  .circle(p.bore_d / 2.0).extrude(zf + 1.0))\n        b = b.cut(bore)\n\n   \
+    \ # witness rib marks the tight (5.30) end\n    rib = (cq.Workplane(\"XY\").workplane(offset=t).center(-p.coupon_l\
+    \ / 2.0 + 1.4, 0)\n           .rect(1.6, p.coupon_w - 4.0).extrude(0.8))\n   \
+    \ b = b.union(rib)\n    return b"
+  print_orientation: Flat on its 30 x 14 mm face, z=0 down on the bed, the three pocket
+    mouths facing up - the same print direction as the knob's socket, so the fit it
+    shows is the fit the knob will have.
+  use_orientation: Test only; not part of the knob.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 2
+- id: m3_bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: nut_capture
+  fastener: m3_nut
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 20.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: nut_socket
+    role: nut_pocket
+  nut: null
+  external: null
+- id: bolt_through_knob
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bolt_bore
+    role: clearance
+  nut: m3_nut
+  external: null
+criteria:
+- id: press_fit_holds
+  part: knob
+  feature: nut_socket
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - socket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Press a nut into each coupon pocket (5.30 at the ribbed end, 5.40
+      middle, 5.50 plain end), turn the coupon upside down and shake. The pocket that
+      takes thumb pressure and then holds is the size to use; the knob is modelled
+      at 5.40.
+- id: flats_drive_nut
+  part: knob
+  feature: nut_socket
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - socket_af
+  - nut_af
+  - nut_h
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: The socket is a hexagon matched to the nut's flats, so turning the
+      knob winds the bolt instead of spinning the nut around.
+- id: nut_fully_inside
+  part: knob
+  feature: nut_socket
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - collar_depth
+  - socket_relief
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Once home, the nut's top face sits ~1.0 mm below the palm face (socket
+      floor 16.6, nut top at 19.0, collar mouth at 19.4, palm face at 20.0).
+- id: floor_blocks_nut
+  part: knob
+  feature: socket_floor
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - bore_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: The Ø3.4 bore at the far face is smaller than the nut's 5.5 mm across
+      flats, so the nut cannot be pushed out that side.
+- id: bolt_slides_in_bore
+  part: knob
+  feature: bolt_bore
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.2
+  params:
+  - bore_d
+  - m3_major_d
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Your M3 bolt must slide freely through the coupon's 3.4 mm bores.
+      If it binds, set bore_d to 3.6 and re-slice.
+- id: bolt_exits_palm
+  part: knob
+  feature: nut_socket
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: null
+  params:
+  - collar_af
+  - m3_major_d
+  check:
+    method: none
+    ref: null
+    description: The bolt passes through the nut and out the 5.6 mm mouth at the palm
+      face.
+manual:
+- n: '1'
+  text: 'Slice and print both parts, no supports, no brim: PLA, 0.2 mm layers, 100%
+    infill (the socket walls need solid material to grip the nut), 3+ perimeters.
+    Orient the knob with its flat work face (the one the small hole opens in) on the
+    bed and the palm face up; the coupon prints flat with its three pocket mouths
+    up. Print them in the same job so both see the same temperature and filament.'
+  parts:
+  - knob
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Find the right press fit on the coupon. The pockets are, from the end with
+    the raised rib: 5.30 (tightest), 5.40 (middle), 5.50 (slip fit). Press an M3 nut
+    into each with your thumb, then turn the coupon upside down over a soft surface
+    and shake it. You want a pocket where the nut needs firm thumb pressure and then
+    stays put. The knob is modelled at 5.40, i.e. the middle pocket.'
+  parts:
+  - fit_coupon
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: If the middle pocket is the one that works, go on. If only the ribbed-end
+    (5.30) pocket holds, re-slice the knob with socket_af = 5.30. If even 5.30 drops
+    out, use 5.20. Don't glue anything.
+  parts:
+  - knob
+  hardware: []
+  tool: slicer
+- n: '4'
+  text: 'Seat the nut: stand the knob on the bench palm-face up so the socket is a
+    vertical hole with its floor 16.6 mm down. Drop the M3 nut onto the mouth - the
+    0.6 mm oversize collar centres it and nothing gets shaved. Press it straight in
+    with your thumb (a flat steel bar or an M8 bolt shank helps if your thumb is tired)
+    until it stops on the socket floor. The nut''s top face ends about 1 mm below
+    the palm face, fully inside the knob.'
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '5'
+  text: 'Check it''s captive: hold the knob upside down and shake it hard, and push
+    on the nut with a screwdriver tip through the mouth. The nut must not move and
+    must not be able to go through into the 3.4 mm bore. Then check the drive: put
+    the nut-side up and try to spin the nut with a finger - the socket''s flats should
+    hold it dead.'
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: none
+- n: '6'
+  text: 'Use: slide the knob over the protruding M3 bolt so the bolt tip enters the
+    3.4 mm bore at the work face and finds the captive nut, then turn the knob clockwise
+    to tighten. The nut''s thread does the work and the bolt tip comes out at the
+    palm face - normal, and a sign the nut is fully threaded. The knob''s flat work
+    face bears on the workpiece.'
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  tool: null
+- n: '7'
+  text: To take the knob off a long stud, back it off; if the nut ever works loose
+    in the socket after heavy use, drive it out from the bore side with a 3 mm pin
+    and press in the spare nut, or re-slice the knob one step tighter from step 3.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null

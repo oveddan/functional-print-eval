@@ -1,0 +1,283 @@
+task: nut-knob/M3
+note: ''
+questions: []
+params:
+  bolt_clear:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance on the bolt shank; M3 bolt threads through and tip exits
+      the top
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: world
+    source: asked
+    note: User's own M3 bolt; nominal M3 shank/thread diameter
+  chamfer_bottom:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  chamfer_top:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: Test coupon diameter, same section stack as the knob
+  coupon_floor_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon floor thickness (knob uses 9.1; coupon just needs to hold the pocket)
+  flute_depth:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: Finger-grip depth
+  flute_n:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Number of finger flutes
+  flute_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: User asked for about 20 mm across
+  knob_h:
+    value: 13
+    unit: mm
+    kind: design
+    source: design
+    note: 'Nut fully inside: pocket floor 9.1, nut top at 11.5, lip top at 13'
+  lip_hole_d:
+    value: 6.1
+    unit: mm
+    kind: design
+    source: design
+    note: Must stay below the nut's across-corners (5.6/cos30 = 6.46) so the nut cannot
+      come back out; lip flexes ~0.15/side during insertion
+  lip_t:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Thin enough to flex on insertion, thick enough to retain
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats; person could not measure, nominal used
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness; nominal used
+  nut_seat_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Gap between pocket floor and lip underside so the nut top face does not
+      bind
+  pocket_af_clear:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance so the nut presses in by hand and still couples torque
+  slot_n:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Relief slots letting the lip flex
+  slot_r_out:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: Outer end of each relief slot
+  slot_w:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    H = p.knob_h\n    R = p.knob_d / 2.0\n\
+    \    cos30 = 0.86602540378\n\n    pocket_af = p.nut_af + p.pocket_af_clear\n \
+    \   pocket_ac = pocket_af / cos30\n    lip_z0 = H - p.lip_t                  \
+    \     # underside of the snap lip\n    floor_z = lip_z0 - (p.nut_h + p.nut_seat_clear)\
+    \   # pocket floor\n    hole_d = p.bolt_d + p.bolt_clear\n\n    body = cq.Workplane(\"\
+    XY\").circle(R).extrude(H)\n    body = body.edges(\"%CIRCLE\").edges(\">Z\").chamfer(p.chamfer_top)\n\
+    \    body = body.edges(\"%CIRCLE\").edges(\"<Z\").chamfer(p.chamfer_bottom)\n\n\
+    \    # finger flutes around the rim\n    rc = R + p.flute_r - p.flute_depth\n\
+    \    for i in range(int(p.flute_n)):\n        a = math.radians(360.0 * i / p.flute_n)\n\
+    \        cut = (cq.Workplane(\"XY\")\n               .center(rc * math.cos(a),\
+    \ rc * math.sin(a))\n               .circle(p.flute_r).extrude(H))\n        body\
+    \ = body.cut(cut)\n\n    # hex nut pocket: from floor_z up to the lip underside\n\
+    \    pocket = (cq.Workplane(\"XY\").workplane(offset=floor_z)\n              .polygon(6,\
+    \ pocket_ac).extrude(lip_z0 - floor_z))\n    body = body.cut(pocket)\n\n    #\
+    \ snap lip: top opening smaller than the nut across-corners\n    lip_hole = (cq.Workplane(\"\
+    XY\").workplane(offset=lip_z0)\n                .circle(p.lip_hole_d / 2.0).extrude(p.lip_t\
+    \ + 0.1))\n    body = body.cut(lip_hole)\n\n    # bolt clearance hole from the\
+    \ bottom face up to the pocket floor\n    body = body.cut(cq.Workplane(\"XY\"\
+    ).circle(hole_d / 2.0).extrude(floor_z))\n\n    # lead-in chamfer on the top opening\n\
+    \    lead = cq.Solid.makeCone(p.lip_hole_d / 2.0, p.lip_hole_d / 2.0 + 0.6, 0.6,\n\
+    \                             cq.Vector(0, 0, H - 0.6), cq.Vector(0, 0, 1))\n\
+    \    body = body.cut(lead)\n\n    # relief slots through the lip so it can flex\
+    \ when the nut is pressed in\n    inner_x = p.lip_hole_d / 2.0 - 0.25\n    slot_len\
+    \ = p.slot_r_out - inner_x\n    for i in range(int(p.slot_n)):\n        slot =\
+    \ (cq.Workplane(\"XY\").workplane(offset=lip_z0 - 0.05)\n                .center(inner_x\
+    \ + slot_len / 2.0, 0)\n                .rect(slot_len, p.slot_w)\n          \
+    \      .extrude(p.lip_t + 0.15)\n                .rotate((0, 0, 0), (0, 0, 1),\
+    \ 120.0 * i))\n        body = body.cut(slot)\n\n    return body"
+  print_orientation: flat bottom face on the bed (as modeled, z = 0)
+  use_orientation: 'as printed: the bolt threads in through the flat bottom face and
+    its tip exits through the top snap-lip opening'
+- id: fit-coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    cos30 = 0.86602540378\n    pocket_af =\
+    \ p.nut_af + p.pocket_af_clear\n    pocket_ac = pocket_af / cos30\n    R = p.coupon_d\
+    \ / 2.0\n    floor_z = p.coupon_floor_t\n    lip_z0 = floor_z + (p.nut_h + p.nut_seat_clear)\n\
+    \    H = lip_z0 + p.lip_t\n    hole_d = p.bolt_d + p.bolt_clear\n\n    body =\
+    \ cq.Workplane(\"XY\").circle(R).extrude(H)\n\n    pocket = (cq.Workplane(\"XY\"\
+    ).workplane(offset=floor_z)\n              .polygon(6, pocket_ac).extrude(lip_z0\
+    \ - floor_z))\n    body = body.cut(pocket)\n\n    lip_hole = (cq.Workplane(\"\
+    XY\").workplane(offset=lip_z0)\n                .circle(p.lip_hole_d / 2.0).extrude(p.lip_t\
+    \ + 0.1))\n    body = body.cut(lip_hole)\n\n    body = body.cut(cq.Workplane(\"\
+    XY\").circle(hole_d / 2.0).extrude(floor_z))\n\n    lead = cq.Solid.makeCone(p.lip_hole_d\
+    \ / 2.0, p.lip_hole_d / 2.0 + 0.6, 0.6,\n                             cq.Vector(0,\
+    \ 0, H - 0.6), cq.Vector(0, 0, 1))\n    body = body.cut(lead)\n\n    inner_x =\
+    \ p.lip_hole_d / 2.0 - 0.25\n    slot_len = p.slot_r_out - inner_x\n    for i\
+    \ in range(int(p.slot_n)):\n        slot = (cq.Workplane(\"XY\").workplane(offset=lip_z0\
+    \ - 0.05)\n                .center(inner_x + slot_len / 2.0, 0)\n            \
+    \    .rect(slot_len, p.slot_w)\n                .extrude(p.lip_t + 0.15)\n   \
+    \             .rotate((0, 0, 0), (0, 0, 1), 120.0 * i))\n        body = body.cut(slot)\n\
+    \n    return body"
+  print_orientation: flat bottom face on the bed (as modeled, z = 0)
+  use_orientation: as printed, for the fit test only (not part of the finished knob)
+hardware:
+- id: iso-nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: crit-pocket
+  part: knob
+  feature: hex nut pocket
+  relation: contains
+  hardware: iso-nut
+  clearance_mm: 0.1
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af_clear
+  - nut_seat_clear
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: 'Press the nut into the coupon by hand: it should snap into the pocket
+      with firm finger pressure and sit fully below the lip'
+- id: crit-lip
+  part: knob
+  feature: snap lip opening
+  relation: contains
+  hardware: iso-nut
+  clearance_mm: null
+  params:
+  - lip_hole_d
+  - lip_t
+  - slot_n
+  - slot_w
+  - slot_r_out
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: 'With the nut pressed in, turn the coupon upside down and shake it:
+      the nut must stay in. Push the nut from the bottom hole: it must not come out'
+- id: crit-bolthole
+  part: knob
+  feature: bolt clearance hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.6
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: 'Thread the M3 bolt in through the coupon''s bottom hole: it should
+      pass freely and its tip should exit the top opening'
+manual:
+- n: '1'
+  text: Print both parts (knob and fit-coupon) flat on the bed, bottom face down,
+    0.2 mm layers, no supports needed.
+  parts:
+  - knob
+  - fit-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Fit test with the coupon: press the M3 hex nut into the coupon''s top opening
+    with your thumb. It should snap past the lip into the pocket with firm finger
+    pressure.'
+  parts:
+  - fit-coupon
+  hardware:
+  - iso-nut
+  tool: fingers
+- n: '3'
+  text: 'Retention test: turn the coupon upside down and shake it — the nut must stay
+    in. Then push the nut from the bottom hole — it must not come out. Thread your
+    M3 bolt in from the bottom: it should pass freely and the tip should poke out
+    through the top opening. If the nut is too tight to press in or too loose, tell
+    me and I''ll adjust the pocket and lip sizes.'
+  parts:
+  - fit-coupon
+  hardware:
+  - iso-nut
+  tool: null
+- n: '4'
+  text: Press the nut into the knob the same way (top opening, thumb pressure) until
+    it snaps in flush between the pocket floor and the lip.
+  parts:
+  - knob
+  hardware:
+  - iso-nut
+  tool: fingers
+- n: '5'
+  text: 'Use: screw your M3 bolt into the knob from the flat bottom face; the bolt
+    tip passes through the nut and exits through the small top opening. Grip the fluted
+    sides to tighten without tools.'
+  parts:
+  - knob
+  hardware: []
+  tool: null

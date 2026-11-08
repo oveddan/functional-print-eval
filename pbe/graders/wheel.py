@@ -11,6 +11,7 @@ import tempfile
 from dataclasses import dataclass
 from itertools import groupby
 
+from pbe.graders import assumed
 from pbe.graders.checks import Verdict
 from pbe.graders.nuts import coupons_in_the_manual
 from pbe.graders.sections import clear_width, hole_axis, holes_by_layer
@@ -153,6 +154,10 @@ def _holds(across, too_tight, holds) -> Verdict:
         return Verdict(False, f"{across:.2f} mm: a {too_tight} mm seat wouldn't take the bearing")
     if holds[0] - TOL <= across <= holds[1] + TOL:
         return Verdict(True, f"{across:.2f} mm: it presses in and holds upside down")
+    close = assumed.nearest(across, [(too_tight, False), (holds[0], True), (holds[1], True)])
+    if close:
+        result = "it presses in and holds upside down" if close[1] else "the seat wouldn't take the bearing"
+        return Verdict(close[1], f"{across:.2f} mm: {result} ({assumed.note(close[0])})")
     if across < holds[0]:
         return Verdict(None, f"{across:.2f} mm: between {too_tight}, too tight, and {holds[0]}, which held")
     return Verdict(None, f"{across:.2f} mm: no print has measured above {holds[1]}")
@@ -280,5 +285,9 @@ def bolt_passes(sub, built, seat_range, bolt, fine):
     if clear < bolt - TOL:
         return False, f"{clear:.2f} mm clear at its tightest: a {bolt} mm bolt won't pass"
     if clear < fine - TOL:
+        close = assumed.nearest(clear, [(bolt, False), (fine, True)])
+        if close:
+            return close[1], (f"{clear:.2f} mm clear at its tightest: the bolt {'passes' if close[1] else 'jams'} "
+                              f"({assumed.note(close[0])})")
         return None, f"{clear:.2f} mm clear at its tightest: no print has measured that"
     return True, f"{clear:.2f} mm clear at its tightest"

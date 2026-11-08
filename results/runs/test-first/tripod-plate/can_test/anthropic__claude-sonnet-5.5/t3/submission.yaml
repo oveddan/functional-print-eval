@@ -1,0 +1,375 @@
+task: tripod-plate
+note: It's an easy print, but I couldn't get the clamp's lip height, lip angle or
+  length, or the camera socket depth, so those are guesses. The three clamp coupons
+  (A, B, C) test the guessed edge shapes, and the boltslot coupon tests the bolt channel.
+  Print the coupons first, because plate_t and bevel_angle may need changing. I didn't
+  print a screw, because 1/4-20 threads in PLA are weak and are likely to strip. The
+  plate uses your webcam bolt instead. Its head sits in a slotted channel under a
+  raised pad, so you can slide the bolt to line up with the camera's socket. The PLA
+  plate is a stop-gap and may creep or flex under a heavy camera.
+questions:
+- text: What is the height of the jaw lip, and what angle does it have?
+  answer: null
+- text: How deep is the camera's tripod socket?
+  answer: null
+- text: How long is the tripod clamp along the direction the plate drops in?
+  answer: null
+- text: Is the bolt's thread the full 10 mm under the head, or is part of it smooth?
+  answer: null
+params:
+  clamp_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: plate width the tripod clamp takes
+  fit_clear:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: plate narrower than clamp by this much for a drop-in fit
+  land:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: short vertical edge at the bottom of the plate
+  plate_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: guessed
+    note: edge thickness; jaw lip height not measurable, test with clampA/B/C coupons
+  bevel_angle:
+    value: 45
+    unit: mm
+    kind: design
+    source: guessed
+    note: angle of the edge slope from horizontal; jaw lip angle unknown
+  plate_len:
+    value: 70
+    unit: mm
+    kind: design
+    source: guessed
+    note: clamp length unknown
+  rail_w:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: raised pad width the camera sits on
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: approximate, 'about 15 mm'
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: approximate
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: world
+    source: measured
+    note: under the head, approximate
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 1/4 inch nominal thread diameter
+  head_clear:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: extra width and height around the bolt head
+  shank_clear:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: extra slot width around the shank
+  engage:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: guessed
+    note: how far the bolt sticks out above the pad into the camera; socket depth
+      could not be measured
+  slot_end:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: end of the shank slot, measured from the open end of the plate
+  chan_end:
+    value: 56
+    unit: mm
+    kind: design
+    source: design
+    note: end of the head channel
+  bolt_y:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: nominal bolt position, adjustable along the slot
+  coupon_len:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_len:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  cA_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: guessed
+    note: ''
+  cA_angle:
+    value: 45
+    unit: mm
+    kind: design
+    source: guessed
+    note: ''
+  cB_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: guessed
+    note: ''
+  cB_angle:
+    value: 60
+    unit: mm
+    kind: design
+    source: guessed
+    note: ''
+  cC_t:
+    value: 7
+    unit: mm
+    kind: design
+    source: guessed
+    note: ''
+  cC_angle:
+    value: 45
+    unit: mm
+    kind: design
+    source: guessed
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\ndef build(p):\n    W=p.clamp_width-p.fit_clear;\
+    \ T=p.plate_t; L=p.plate_len\n    inset=(T-p.land)/math.tan(math.radians(p.bevel_angle))\n\
+    \    pts=[(-W/2,0),(W/2,0),(W/2,p.land),(W/2-inset,T),(-W/2+inset,T),(-W/2,p.land)]\n\
+    \    base=cq.Workplane('XZ').polyline(pts).close().extrude(-L)\n    ch_w=p.bolt_head_d+p.head_clear\n\
+    \    ch_h=p.bolt_head_h+p.head_clear\n    roof=p.bolt_len-p.engage\n    H=ch_h+roof\n\
+    \    rail=cq.Workplane('XY').box(p.rail_w,L,H,centered=(True,False,False))\n \
+    \   body=base.union(rail)\n    # head channel, open at the y=0 end and at the\
+    \ bottom\n    ch_len=p.chan_end\n    ch=cq.Workplane('XY').box(ch_w,ch_len,ch_h,centered=(True,False,False))\n\
+    \    ch=ch.edges('|Z and >Y').fillet(ch_w/2-0.01)\n    # shank slot through the\
+    \ roof\n    sw=p.bolt_d+p.shank_clear\n    sl=cq.Workplane('XY').box(sw,p.slot_end,H,centered=(True,False,False))\n\
+    \    sl=sl.edges('|Z and >Y').fillet(sw/2-0.01)\n    return body.cut(ch).cut(sl)\n"
+  print_orientation: wide face down on the bed; the channel in the pad opens onto
+    the bed
+  use_orientation: wide face down in the tripod clamp, pad up, camera on the pad
+- id: clampA
+  role: coupon
+  material: PLA
+  code: "import math\nimport cadquery as cq\ndef build(p):\n    W=p.clamp_width-p.fit_clear;\
+    \ T=p.cA_t\n    inset=(T-p.land)/math.tan(math.radians(p.cA_angle))\n    pts=[(-W/2,0),(W/2,0),(W/2,p.land),(W/2-inset,T),(-W/2+inset,T),(-W/2,p.land)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().extrude(-p.coupon_len)\n"
+  print_orientation: wide face down on bed
+  use_orientation: dropped into tripod clamp, wide face down
+- id: clampB
+  role: coupon
+  material: PLA
+  code: "import math\nimport cadquery as cq\ndef build(p):\n    W=p.clamp_width-p.fit_clear;\
+    \ T=p.cB_t\n    inset=(T-p.land)/math.tan(math.radians(p.cB_angle))\n    pts=[(-W/2,0),(W/2,0),(W/2,p.land),(W/2-inset,T),(-W/2+inset,T),(-W/2,p.land)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().extrude(-p.coupon_len)\n"
+  print_orientation: wide face down on bed
+  use_orientation: dropped into tripod clamp, wide face down
+- id: clampC
+  role: coupon
+  material: PLA
+  code: "import math\nimport cadquery as cq\ndef build(p):\n    W=p.clamp_width-p.fit_clear;\
+    \ T=p.cC_t\n    inset=(T-p.land)/math.tan(math.radians(p.cC_angle))\n    pts=[(-W/2,0),(W/2,0),(W/2,p.land),(W/2-inset,T),(-W/2+inset,T),(-W/2,p.land)]\n\
+    \    return cq.Workplane('XZ').polyline(pts).close().extrude(-p.coupon_len)\n"
+  print_orientation: wide face down on bed
+  use_orientation: dropped into tripod clamp, wide face down
+- id: boltslot
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\ndef build(p):\n    ch_w=p.bolt_head_d+p.head_clear\n\
+    \    ch_h=p.bolt_head_h+p.head_clear\n    roof=p.bolt_len-p.engage\n    H=ch_h+roof\n\
+    \    W=ch_w+10\n    L=p.slot_len\n    blk=cq.Workplane('XY').box(W,L,H,centered=(True,False,False))\n\
+    \    ch=cq.Workplane('XY').box(ch_w,L,ch_h,centered=(True,False,False))\n    sl=cq.Workplane('XY').box(p.bolt_d+p.shank_clear,L,H,centered=(True,False,False))\n\
+    \    return blk.cut(ch).cut(sl)\n"
+  print_orientation: flat, channel side down on bed
+  use_orientation: bolt head slid into the channel from the open end
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 30.0
+  - 5.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: head channel (roof underside)
+    role: head_seat
+  - part: plate
+    feature: shank slot
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: c1
+  part: plate
+  feature: bevelled edges, 38 mm wide
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_width
+  - fit_clear
+  - plate_t
+  - bevel_angle
+  - land
+  check:
+    method: coupon
+    ref: clampA
+    description: Drop clampA, clampB and clampC into the tripod clamp. The one that
+      drops in and is gripped firmly with no wobble is the right edge profile. Copy
+      its thickness and angle into plate_t and bevel_angle.
+- id: c2
+  part: plate
+  feature: head channel
+  relation: contains
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_clear
+  check:
+    method: coupon
+    ref: boltslot
+    description: The bolt head slides in from the open end, with its sides reachable
+      by fingers, and doesn't rattle badly.
+- id: c3
+  part: plate
+  feature: shank slot
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.6
+  params:
+  - bolt_d
+  - shank_clear
+  check:
+    method: coupon
+    ref: boltslot
+    description: The threaded shank slides freely along the slot.
+- id: c4
+  part: plate
+  feature: pad top face
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_len
+  - engage
+  - rail_w
+  check:
+    method: measure
+    ref: null
+    description: With the bolt in the plate, measure how far the thread sticks out
+      above the pad. It should be about 4.5 mm and no more than the camera socket
+      depth.
+manual:
+- n: '1'
+  text: Print the three clamp coupons (clampA, clampB, clampC) and the boltslot coupon.
+    They're small, flat on the bed, no supports.
+  parts:
+  - clampA
+  - clampB
+  - clampC
+  - boltslot
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Drop each clamp coupon into the tripod clamp. Pick the one that goes in easily
+    and is gripped firmly when you tighten the knob. If none fits, tell me what''s
+    wrong: too loose, too tight, or the lips don''t catch. The final plate''s plate_t
+    and bevel_angle then need changing to match.'
+  parts:
+  - clampA
+  - clampB
+  - clampC
+  hardware: []
+  tool: null
+- n: '3'
+  text: Slide the bolt head into the boltslot coupon from the open end, with the thread
+    poking up through the slot. Check it slides. Measure how far the thread sticks
+    out above the top. It should be about 4.5 mm. Compare that with how deep your
+    camera's socket is, which you can check by screwing the bolt in a few turns by
+    hand.
+  parts:
+  - boltslot
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Print the plate with its wide face down on the bed, no supports. Use 4 walls
+    and 40% or more infill. The head channel opens onto the bed.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Slide the webcam bolt head into the open end of the channel with the thread
+    pointing up through the slot. Slide it to where your camera's socket will sit,
+    roughly the middle of the plate.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '6'
+  text: Hold the camera on the pad and turn the bolt head with your fingers, reaching
+    into the open end of the channel, until the thread is in the socket and the plate
+    is snug against the camera. Don't overtighten, because PLA is weak.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '7'
+  text: Drop the plate, wide face down, into the tripod clamp and tighten the knob.
+    Test with the camera held in your hand before you let go. Treat it as a temporary
+    plate and don't leave a heavy camera on it for long.
+  parts:
+  - plate
+  hardware: []
+  tool: null

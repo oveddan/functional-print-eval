@@ -1,0 +1,292 @@
+task: bearing-wheel
+note: 'Assumptions: you couldn''t measure the bracket gap, bolt length or rail profile,
+  so I designed a plain flat-tread 50 x 16 mm wheel with two 608 bearings pressed
+  into pockets (0.15 mm diametral clearance) and a 17.2 mm total stack on the bolt.
+  The bolt reference (M8x40) is a placeholder; use your own bolt as long as it passes
+  through both arms, the 17.2 mm stack, washers and the nut. PLA is fine for a light
+  door but will creep under heavy loads, so check it after a few weeks. The coupon
+  result came back unreadable, so the 0.15 mm press-fit clearance is untested.'
+questions:
+- text: What is the gap between your bracket arms, and the length of your M8 bolt
+    (so that the bolt, 2 arms, 17.2 mm stack, washers and nut fit)?
+  answer: null
+- text: What is the track profile (flat, V or U groove)? I made a plain flat tread
+    50 mm across.
+  answer: null
+params:
+  wheel_d:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel ~50 mm across
+  wheel_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: old wheel ~16 mm wide; bracket gap not measurable
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: 608 OD 22.000; user's rough measure ~22
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: user measured ~7
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: user measured shank ~8 mm; bolt length not obtainable
+  pocket_clear:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: diametral clearance for a snug press fit; coupon printed with 0.05/0.15/0.25
+      but user could not report results, so a typical value is used
+  recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: how far each bearing sits below the wheel face so the shield never touches
+      washers/bracket
+  web_hole_d:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: hole through the central web; leaves a 4 mm ring to support each outer race
+  spacer_od:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: must be less than the bearing inner race shoulder (~12) so it touches the
+      inner race only
+  bolt_clear:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: extra diameter on spacer/collar bores over the bolt
+  collar_protrude:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: how far each collar sticks out past the wheel face; sets the stack width
+      = wheel_w + 2*this
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    depth = p.bearing_w + p.recess\n    pd = p.bearing_od\
+    \ + p.pocket_clear\n    w = cq.Workplane('XY').circle(p.wheel_d/2).extrude(p.wheel_w)\n\
+    \    w = w.edges().chamfer(p.edge_chamfer)\n    w = w.cut(cq.Workplane('XY').circle(pd/2).extrude(depth))\n\
+    \    w = w.cut(cq.Workplane('XY').workplane(offset=p.wheel_w-depth).circle(pd/2).extrude(depth))\n\
+    \    w = w.cut(cq.Workplane('XY').circle(p.web_hole_d/2).extrude(p.wheel_w))\n\
+    \    return w"
+  print_orientation: one flat face on the bed, axis vertical
+  use_orientation: axis horizontal, rolling on the track
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    depth = p.bearing_w + p.recess\n    h = p.wheel_w - 2*depth\n\
+    \    return (cq.Workplane('XY').circle(p.spacer_od/2).circle((p.bolt_d+p.bolt_clear)/2).extrude(h))"
+  print_orientation: flat ring
+  use_orientation: between the two bearings' inner races on the bolt
+- id: collar
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.recess + p.collar_protrude\n    return (cq.Workplane('XY').circle(p.spacer_od/2).circle((p.bolt_d+p.bolt_clear)/2).extrude(h))"
+  print_orientation: flat ring (print 2)
+  use_orientation: outside each bearing, touching the inner race only
+- id: pocket-coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    r = None\n    for i, c in enumerate([0.05, p.pocket_clear,\
+    \ 0.25]):\n        d = (cq.Workplane('XY').center(i*35, 0).circle(16).extrude(6)\n\
+    \             .faces('>Z').workplane().circle((p.bearing_od+c)/2).cutBlind(-4))\n\
+    \        r = d if r is None else r.union(d)\n    return r"
+  print_orientation: flat, pocket up
+  use_orientation: test only
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -1.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: bore
+    role: clearance
+  - part: collar
+    feature: bore
+    role: clearance
+  nut: locknut
+  external: Door bracket arms (bolt passes through both)
+criteria:
+- id: c1
+  part: wheel
+  feature: bearing pockets (both sides)
+  relation: contains
+  hardware: bearing
+  clearance_mm: 0.15
+  params:
+  - bearing_od
+  - pocket_clear
+  - bearing_w
+  - recess
+  check:
+    method: coupon
+    ref: pocket-coupon
+    description: Bearing should press in snugly by hand/thumb pressure and not fall
+      out.
+- id: c2
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt slides through freely.
+- id: c3
+  part: collar
+  feature: bore
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: measure
+    ref: null
+    description: Bolt slides through freely.
+- id: c4
+  part: spacer
+  feature: end faces
+  relation: supports
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - wheel_w
+  - bearing_w
+  - recess
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Spacer length equals the gap between the two inner races (about 1.2
+      mm); OD small enough to touch only the inner races.
+- id: c5
+  part: wheel
+  feature: central web hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - web_hole_d
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Spacer and bolt spin freely inside the web hole without touching
+      the wheel.
+manual:
+- n: '1'
+  text: Print the wheel, the spacer and two collars (PLA, 0.2 mm layers, 3+ walls,
+    30-40% gyroid infill; no supports needed). Optionally print the pocket-coupon
+    first and check a 608 bearing presses into the 22.15 mm pocket snugly. If it is
+    too loose or too tight, tell me which.
+  parts:
+  - wheel
+  - spacer
+  - collar
+  - pocket-coupon
+  hardware: []
+  tool: null
+- n: '2'
+  text: Press one 608ZZ bearing into each side of the wheel with steady thumb pressure
+    (or squeeze in a vise with a flat board against the bearing). Push on the outer
+    race only. Each bearing sits about 0.4 mm below the wheel face.
+  parts:
+  - wheel
+  hardware:
+  - bearing
+  tool: null
+- n: '3'
+  text: 'Slide the bolt through the first bracket arm (with a washer under the bolt
+    head if the head is outside), then a collar, the wheel with its bearing, and put
+    the spacer in between the inner races as you go: collar, bearing A, spacer, bearing
+    B, second collar.'
+  parts:
+  - collar
+  - spacer
+  - wheel
+  hardware:
+  - bolt
+  - washer
+  tool: null
+- n: '4'
+  text: Pass the bolt through the second bracket arm, add a washer and the lock nut.
+    Tighten until the arms just clamp the collars; the wheel must spin freely with
+    no side-to-side wobble. The spinning inner races are clamped by the collars and
+    spacer, the wheel body itself is not squeezed.
+  parts: []
+  hardware:
+  - bolt
+  - washer
+  - locknut
+  tool: 13 mm wrench
+- n: '5'
+  text: Stack width between the bracket arms is 17.2 mm (wheel 16 + 0.6 each collar).
+    If your bracket gap is wider, add M8 washers between the collar and arm. If it
+    is narrower than 17.2 mm, tell me and I will shorten the collars. Spin the wheel
+    by hand and rehang the door.
+  parts: []
+  hardware: []
+  tool: null

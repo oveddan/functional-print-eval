@@ -1,0 +1,173 @@
+task: tripod-plate
+note: Temporary Arca-style 38 mm plate. It uses the salvaged 1/4-20 webcam bolt instead
+  of a printed screw, because a printed 1/4-20 thread would be weak and rough. The
+  test print's bridging problem is fixed with a stepped roof. The clamp fit on the
+  test piece wasn't reported back.
+questions: []
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: clamp takes 38 mm plate (Arca-Swiss style)
+  bevel_z0:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bevel_depth:
+    value: 3
+    unit: mm
+    kind: world
+    source: guessed
+    note: 45 deg dovetail inset per side, typical Arca
+  plate_t:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_l:
+    value: 50
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  ef:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  layer_h:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: printer layer height, for bridging steps
+  hole_d:
+    value: 6.9
+    unit: mm
+    kind: hardware
+    source: design
+    note: clearance for 1/4-20
+  head_recess_d:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: design
+    note: head ~15 measured + 1
+  head_recess_h:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: design
+    note: head 5 mm measured; floor 5.5 so bolt sticks up ~4.5
+  bolt_l:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    hw=p.plate_w/2; i=p.bevel_depth; ef=p.ef\n    pts=[(-hw+ef,0),(hw-ef,0),(hw,ef),(hw,p.bevel_z0),(hw-i,p.bevel_z0+i),(hw-i,p.plate_t),(-hw+i,p.plate_t),(-hw+i,p.bevel_z0+i),(-hw,p.bevel_z0),(-hw,ef)]\n\
+    \    b=cq.Workplane('YZ').polyline(pts).close().extrude(p.plate_l/2,both=True)\n\
+    \    b=b.cut(cq.Workplane('XY').circle(p.hole_d/2).extrude(p.plate_t))\n    b=b.cut(cq.Workplane('XY').circle(p.head_recess_d/2).extrude(p.head_recess_h))\n\
+    \    # stepped bridging: slot across the pocket, then a square, then the round\
+    \ hole\n    b=b.cut(cq.Workplane('XY').workplane(offset=p.head_recess_h).rect(p.head_recess_d,p.hole_d).extrude(p.layer_h))\n\
+    \    b=b.cut(cq.Workplane('XY').workplane(offset=p.head_recess_h+p.layer_h).rect(p.hole_d,p.hole_d).extrude(p.layer_h))\n\
+    \    return b\n"
+  print_orientation: bottom face (tripod side) on bed
+  use_orientation: bevelled edges gripped by the clamp jaws, camera on top
+hardware:
+- id: bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_bolt
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: plate
+    feature: head pocket
+    role: head_seat
+  - part: plate
+    feature: bolt hole
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket
+criteria:
+- id: fit
+  part: plate
+  feature: dovetail edges
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - bevel_depth
+  - bevel_z0
+  check:
+    method: coupon
+    ref: plate_slice
+    description: plate drops into the open clamp and stays put when you tighten it
+- id: protrusion
+  part: plate
+  feature: bolt hole
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_t
+  - head_recess_h
+  - bolt_l
+  check:
+    method: measure
+    ref: null
+    description: bolt sticks up about 4.5 mm, so it can't bottom out in the camera
+manual:
+- n: '1'
+  text: Print the plate flat, bottom down, with no supports. The roof over the head
+    pocket is built in steps (a slot, then a square, then the hole), so it bridges
+    cleanly.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Push the webcam bolt up through the pocket from underneath until its head
+    sits fully in the pocket. About 4.5 mm of thread should stick up through the top.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '3'
+  text: Screw the camera onto the bolt by hand until it sits flat on the plate. If
+    it stops before it's flat, the bolt is hitting the bottom of the camera socket.
+    Don't force it.
+  parts:
+  - plate
+  hardware:
+  - bolt
+  tool: null
+- n: '4'
+  text: Open the clamp knob, drop the plate in with the narrow side up, and tighten.
+    Pull on it before you let go. PLA can creep, so tighten the clamp again now and
+    then and don't leave a heavy camera hanging out over the side.
+  parts:
+  - plate
+  hardware: []
+  tool: null

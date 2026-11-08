@@ -1,0 +1,290 @@
+task: tripod-plate
+note: Arca-Swiss compatible quick-release camera tripod plate designed for zero-support
+  3D printing, utilizing the salvaged metal 1/4"-20 webcam mount bolt for secure,
+  safe camera attachment.
+questions:
+- text: Is it safe to 3D print the screw part?
+  answer: No. 3D-printed plastic screws printed vertically are prone to shearing along
+    layer lines under bending and shear loads, which risks snapping off inside your
+    camera's metal tripod socket. Using the salvaged metal 1/4"-20 webcam mount bolt
+    provides full metal tensile strength, while the printed plate safely handles clamping
+    and compression loads.
+- text: How does the plate secure into the tripod clamp?
+  answer: The plate uses the standard 38 mm Arca-Swiss profile with 45-degree dovetails.
+    When dropped into the clamp from above and tightened via the knob, the angled
+    jaws pull the plate down tight against the clamp bed, locking the camera securely.
+params:
+  slot_travel:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Adjustment travel distance along plate length
+  dovetail_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Horizontal indent depth of dovetail per side
+  top_flange_h:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Height of camera-facing upper rim
+  web_thickness:
+    value: 4.3
+    unit: mm
+    kind: design
+    source: design
+    note: Clamping web thickness under bolt head; leaves 5.7mm thread protrusion into
+      camera
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured webcam mount bolt threaded length under head
+  dovetail_slope_h:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Vertical height of 45-degree slope (dx = dz)
+  head_pocket_d:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: Counterbore width for 15mm bolt head with clearance
+  plate_width:
+    value: 38
+    unit: mm
+    kind: design
+    source: design
+    note: Standard Arca-Swiss plate width
+  head_pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: Counterbore depth allowing bolt head to sit sub-flush
+  dovetail_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: design
+    note: Standard Arca-Swiss dovetail angle
+  plate_length:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: Overall length of the quick release plate
+  bottom_flange_h:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of bottom vertical rim resting in clamp
+  bolt_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 1/4-20 UNC major thread diameter (0.25 inch)
+  bolt_clearance_d:
+    value: 6.8
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for 1/4-20 bolt shank
+  camera_socket_min_depth:
+    value: 5.5
+    unit: mm
+    kind: world
+    source: guessed
+    note: Standard ISO 1222 camera tripod socket thread depth
+  tripod_clamp_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Measured width of plate accepted by tripod clamp
+  plate_thickness:
+    value: 9.5
+    unit: mm
+    kind: design
+    source: design
+    note: Total plate thickness
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured webcam mount bolt head diameter
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Measured webcam mount bolt head height
+parts:
+- id: arca_tripod_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    w = p.plate_width / 2.0\n\
+    \    w_dovetail = (p.plate_width - 2.0 * p.dovetail_depth) / 2.0\n    z0 = 0.0\n\
+    \    z1 = p.top_flange_h\n    z2 = z1 + p.dovetail_slope_h\n    z3 = z2 + p.dovetail_slope_h\n\
+    \    z4 = p.plate_thickness\n\n    # Symmetrical Arca-Swiss cross-section in XZ\
+    \ plane\n    pts = [\n        (-w, z0),\n        (-w, z1),\n        (-w_dovetail,\
+    \ z2),\n        (-w, z3),\n        (-w, z4),\n        (w, z4),\n        (w, z3),\n\
+    \        (w_dovetail, z2),\n        (w, z1),\n        (w, z0),\n    ]\n\n    body\
+    \ = (\n        cq.Workplane(\"XZ\")\n        .polyline(pts)\n        .close()\n\
+    \        .extrude(p.plate_length)\n        .translate((0, -p.plate_length / 2.0,\
+    \ 0))\n    )\n\n    slot_r = p.bolt_clearance_d / 2.0\n    half_travel = p.slot_travel\
+    \ / 2.0\n\n    # Clearance slot cut through full plate thickness\n    c1 = (\n\
+    \        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n        .transformed(offset=(0,\
+    \ -half_travel, 0))\n        .circle(slot_r)\n        .extrude(z4 + 2.0)\n   \
+    \ )\n    c2 = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-1.0)\n\
+    \        .transformed(offset=(0, half_travel, 0))\n        .circle(slot_r)\n \
+    \       .extrude(z4 + 2.0)\n    )\n    c_mid = (\n        cq.Workplane(\"XY\"\
+    )\n        .workplane(offset=-1.0)\n        .box(2.0 * slot_r, 2.0 * half_travel,\
+    \ z4 + 2.0, centered=(True, True, False))\n    )\n    shank_slot = c1.union(c2).union(c_mid)\n\
+    \n    # Counterbore slot for bolt head from web_thickness up to clamp face\n \
+    \   head_r = p.head_pocket_d / 2.0\n    head_cut_h = (z4 - p.web_thickness) +\
+    \ 2.0\n\n    h1 = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=p.web_thickness)\n\
+    \        .transformed(offset=(0, -half_travel, 0))\n        .circle(head_r)\n\
+    \        .extrude(head_cut_h)\n    )\n    h2 = (\n        cq.Workplane(\"XY\"\
+    )\n        .workplane(offset=p.web_thickness)\n        .transformed(offset=(0,\
+    \ half_travel, 0))\n        .circle(head_r)\n        .extrude(head_cut_h)\n  \
+    \  )\n    h_mid = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=p.web_thickness)\n\
+    \        .box(2.0 * head_r, 2.0 * half_travel, head_cut_h, centered=(True, True,\
+    \ False))\n    )\n    head_slot = h1.union(h2).union(h_mid)\n\n    res = body.cut(shank_slot).cut(head_slot)\n\
+    \    return res\n"
+  print_orientation: z = 0 is on the print bed (camera contact face flat on bed; prints
+    completely support-free)
+  use_orientation: z = 0 face points upward against camera base; z = 9.5 face drops
+    downward into tripod clamp
+hardware:
+- id: camera_bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera_mount_joint
+  fastener: camera_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 4.3
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: arca_tripod_plate
+    feature: counterbore_seat
+    role: head_seat
+  - part: arca_tripod_plate
+    feature: clearance_slot
+    role: clearance
+  nut: null
+  external: camera tripod 1/4-20 threaded socket
+criteria:
+- id: tripod_clamp_fit
+  part: arca_tripod_plate
+  feature: dovetail_rails
+  relation: engages
+  hardware: null
+  clearance_mm: 0.2
+  params:
+  - plate_width
+  - dovetail_depth
+  check:
+    method: measure
+    ref: null
+    description: Verify outer dovetail width is 38.0 mm and waist width is 32.0 mm
+      to fit tripod clamp jaws
+- id: bolt_head_seat
+  part: arca_tripod_plate
+  feature: counterbore_seat
+  relation: seats
+  hardware: camera_bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_pocket_d
+  - head_pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Ensure 15mm diameter bolt head sits flush or sub-flush inside counterbore
+- id: bolt_thread_protrusion
+  part: arca_tripod_plate
+  feature: web
+  relation: contains
+  hardware: camera_bolt
+  clearance_mm: 0.5
+  params:
+  - bolt_length
+  - web_thickness
+  - camera_socket_min_depth
+  check:
+    method: measure
+    ref: null
+    description: Ensure bolt threads protrude 5.0 to 5.7 mm beyond camera face for
+      full engagement without bottoming out in socket
+manual:
+- n: '1'
+  text: Print the arca_tripod_plate with the camera-contact face (z=0) flat on the
+    print bed. Use 4 or more perimeters and 40%+ infill for strength. No supports
+    are needed because all outer slopes are self-supporting 45-degree angles and the
+    counterbore faces upward during printing.
+  parts:
+  - arca_tripod_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '2'
+  text: Inspect the part and ensure the central adjustment slot is clean and free
+    of debris or brims.
+  parts:
+  - arca_tripod_plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Insert the salvaged 1/4"-20 webcam mount bolt from the bottom counterbored
+    side through the slot so its threaded shank extends out through the flat camera-facing
+    surface.
+  parts:
+  - arca_tripod_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '4'
+  text: Align the plate with the bottom of your camera, threading the bolt into the
+    camera's 1/4"-20 tripod mounting socket. Slide the plate along the slot if needed
+    to clear battery doors or balance the camera.
+  parts:
+  - arca_tripod_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '5'
+  text: Hand-tighten the bolt firmly into the camera. The bolt head sits recessed
+    inside the pocket so it does not protrude past the bottom face of the plate.
+  parts:
+  - arca_tripod_plate
+  hardware:
+  - camera_bolt
+  tool: null
+- n: '6'
+  text: Open your tripod head clamp jaws by turning the clamp knob counter-clockwise,
+    drop the camera with the mounted plate into the clamp from above, and tighten
+    the knob securely. The clamp jaws will engage the 45-degree dovetails, locking
+    the camera solidly in place.
+  parts:
+  - arca_tripod_plate
+  hardware: []
+  tool: null

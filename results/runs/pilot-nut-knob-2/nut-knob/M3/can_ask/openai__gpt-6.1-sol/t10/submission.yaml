@@ -1,0 +1,281 @@
+task: nut-knob/M3
+note: 'One-piece, approximately 20 mm hand knob with a recessed press-fit M3 nut and
+  a through-hole. Print the fit strip first: friction retention cannot be guaranteed
+  from nominal nut dimensions alone. Only the knob is part of the finished assembly;
+  the strip is a disposable calibration print. No glue or additional retaining hardware
+  is required.'
+questions:
+- text: Can you measure the nut across flats and its thickness?
+  answer: Cannot measure; use standard dimensions and a fit test.
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 thickness.
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M3 major diameter.
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_recess:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Nut top lies this far below the knob top when seated.
+  fit_offset:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: 'Added to nominal nut across-flats dimension. Provisional: replace with
+      the winning fit-strip offset before printing knob.'
+  hole_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance added to nominal M3 diameter.
+  lead_h:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_widening:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: Increase in socket across-flats dimension at its mouth.
+  flute_count:
+    value: 12
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_radius:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_centres_r:
+    value: 11.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_count:
+    value: 5
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  coupon_pitch:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_width:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_first_offset:
+    value: -0.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_offset_step:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    h = p.knob_h\n    depth = p.nut_h + p.nut_recess\n\
+    \    floor = h - depth\n    af = p.nut_af + p.fit_offset\n    def hex_d(a):\n\
+    \        return a / math.cos(math.pi / 6)\n    body = cq.Workplane('XY').circle(p.knob_d\
+    \ / 2).extrude(h)\n    for i in range(int(p.flute_count)):\n        a = 2 * math.pi\
+    \ * i / p.flute_count\n        x = p.flute_centres_r * math.cos(a)\n        y\
+    \ = p.flute_centres_r * math.sin(a)\n        cutter = cq.Workplane('XY').center(x,y).circle(p.flute_radius).extrude(h)\n\
+    \        body = body.cut(cutter)\n    bore = cq.Workplane('XY').circle((p.bolt_d+p.hole_clearance)/2).extrude(h)\n\
+    \    socket = cq.Workplane('XY').workplane(offset=floor).polygon(6,hex_d(af)).extrude(depth)\n\
+    \    lead = (cq.Workplane('XY').workplane(offset=h-p.lead_h)\n            .polygon(6,hex_d(af)).workplane(offset=p.lead_h)\n\
+    \            .polygon(6,hex_d(af+p.lead_widening)).loft())\n    return body.cut(bore).cut(socket).cut(lead)\n"
+  print_orientation: Flat uninterrupted underside on bed at z=0; nut pocket opens
+    upward.
+  use_orientation: Nut pocket faces away from the clamped item. Bolt passes from the
+    underside through the nut and can protrude above the pocket.
+- id: fit_strip
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    h = p.knob_h\n    depth = p.nut_h + p.nut_recess\n\
+    \    floor = h - depth\n    length = p.coupon_count * p.coupon_pitch\n    body\
+    \ = cq.Workplane('XY').box(length,p.coupon_width,h,centered=(False,False,False))\n\
+    \    for i in range(int(p.coupon_count)):\n        x = (i+0.5)*p.coupon_pitch\n\
+    \        y = p.coupon_width/2\n        af = p.nut_af + p.coupon_first_offset +\
+    \ i*p.coupon_offset_step\n        d = af/math.cos(math.pi/6)\n        bore = cq.Workplane('XY').center(x,y).circle((p.bolt_d+p.hole_clearance)/2).extrude(h)\n\
+    \        socket = cq.Workplane('XY').workplane(offset=floor).center(x,y).polygon(6,d).extrude(depth)\n\
+    \        lead = (cq.Workplane('XY').workplane(offset=h-p.lead_h).center(x,y)\n\
+    \                .polygon(6,d).workplane(offset=p.lead_h)\n                .polygon(6,(af+p.lead_widening)/math.cos(math.pi/6)).loft())\n\
+    \        body = body.cut(bore).cut(socket).cut(lead)\n    return body\n"
+  print_orientation: 60 x 14 mm flat underside at z=0, all five sockets facing upward.
+  use_orientation: Calibration only; socket offsets progress along the strip's positive
+    X direction.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: test_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints: []
+criteria:
+- id: press_retention
+  part: knob
+  feature: Hex socket flats
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - fit_offset
+  check:
+    method: coupon
+    ref: fit_strip
+    description: Select a socket that accepts the nut fully using firm thumb pressure,
+      prevents rotation, and retains it when inverted and gently shaken. Transfer
+      that socket's offset to fit_offset. Do not force a nut into a cracking or whitening
+      socket.
+- id: nut_recessed
+  part: knob
+  feature: Socket floor and pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  - knob_h
+  check:
+    method: measure
+    ref: null
+    description: Nut must reach the floor and lie below the top surface; nominal recess
+      is 0.6 mm.
+- id: positive_stop
+  part: knob
+  feature: Solid floor surrounding central bore
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - nut_h
+  - nut_recess
+  - bolt_d
+  - hole_clearance
+  check:
+    method: none
+    ref: null
+    description: 4 mm thick shoulder below the nut; 3.4 mm bore is smaller than the
+      nut's 5.5 mm across-flats dimension, preventing passage through the underside.
+- id: bolt_passage
+  part: knob
+  feature: Central through-bore
+  relation: clears
+  hardware: test_bolt
+  clearance_mm: 0.2
+  params:
+  - bolt_d
+  - hole_clearance
+  check:
+    method: coupon
+    ref: fit_strip
+    description: Check that the M3 screw passes freely through the printed bore before
+      threading into the nut. The stated clearance is radial.
+manual:
+- n: '1'
+  text: 'Print fit_strip in PLA at 0.2 mm layers with the sockets upward, using the
+    same settings planned for knob. Use 4 walls, 5 top/bottom layers and 40% infill;
+    no supports. Allow it to cool. Mark the five sockets in increasing X order: offsets
+    -0.05, +0.05, +0.15, +0.25, +0.35 mm. The strip is symmetric, so mark its positive-X
+    end in the slicer preview before removing it from the plate.'
+  parts:
+  - fit_strip
+  hardware: []
+  tool: null
+- n: '2'
+  text: Start with the largest socket (+0.35), then try progressively smaller sockets.
+    Align nut flats and press straight down by thumb until seated. Choose a fit that
+    seats with firm hand pressure and retains the nut when inverted and gently shaken,
+    without splitting or stress whitening. Check that the bolt passes through the
+    bore and threads smoothly. To retrieve the nut, thread test_bolt into it a few
+    turns from the open-pocket side and pull straight out by the screw head; do not
+    lever sideways. Do not use a hammer or force an undersized fit.
+  parts:
+  - fit_strip
+  hardware:
+  - nut
+  - test_bolt
+  tool: null
+- n: '3'
+  text: Set fit_offset to the successful socket's offset and regenerate knob. If none
+    gives both hand insertion and retention, shift or refine the coupon offsets and
+    retest instead of printing an unverified final fit. Print knob underside-down
+    using the same settings as the strip, without supports; let it cool fully.
+  parts:
+  - knob
+  - fit_strip
+  hardware: []
+  tool: null
+- n: '4'
+  text: Align the nut with knob's socket and press it completely onto the floor using
+    your thumb. Its top should sit about 0.6 mm below the knob face. Invert and gently
+    shake the knob to confirm retention. If it falls out, use a tighter tested fit
+    rather than glue. The shoulder prevents the nut being pushed through the underside.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Place the flat underside against the item being clamped. Thread the M3 bolt
+    through the underside bore into the nut; its end can emerge through the open pocket.
+    Turn the knob by hand while the bolt is prevented from rotating. Use finger-tight
+    loads only; do not use pliers, and keep PLA away from heat. test_bolt is a fit-check/example
+    bolt; choose the actual bolt length from your clamped stack thickness.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - test_bolt
+  tool: null

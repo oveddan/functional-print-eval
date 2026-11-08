@@ -1,0 +1,198 @@
+task: nut-knob/M5
+note: Single-piece 30 mm fluted M5 hand knob with a stepped press-fit hex nut pocket
+  and full through-hole for the M5 bolt.
+questions: []
+params:
+  nut_recess:
+    value: 1.3
+    unit: mm
+    kind: design
+    source: design
+    note: Depth the nut top sits below the top surface of the knob so it is fully
+      inside
+  flute_offset:
+    value: 17.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from knob center to flute cutout center
+  flute_d:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of cylindrical flute cutouts around the knob perimeter
+  nut_lead_in_depth:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the wider hex lead-in at the top of the pocket
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of the hand knob (~30 mm requested)
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4762 M5 nominal thread diameter
+  bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for M5 bolt shaft through-hole
+  nut_lead_in_clearance:
+    value: 0.35
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats clearance at top entry of pocket to help align the nut by hand
+  knob_h:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut across flats
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger flutes around the perimeter
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut height
+  nut_fit_clearance:
+    value: 0.05
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats clearance for hand press-fit retention in PLA
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    # Main cylinder body sitting on z = 0\n\
+    \    body = (\n        cq.Workplane(\"XY\")\n        .circle(p.knob_od / 2.0)\n\
+    \        .extrude(p.knob_h)\n        .faces(\"<Z or >Z\")\n        .chamfer(1.0)\n\
+    \    )\n\n    # Subtract finger grip flutes around the perimeter\n    flutes =\
+    \ (\n        cq.Workplane(\"XY\")\n        .polarArray(p.flute_offset, 0, 360,\
+    \ int(p.flute_count))\n        .circle(p.flute_d / 2.0)\n        .extrude(p.knob_h)\n\
+    \    )\n    body = body.cut(flutes)\n\n    # Through-hole for M5 bolt going all\
+    \ the way through\n    bolt_hole_d = p.bolt_d + p.bolt_clearance\n    body = (\n\
+    \        body.faces(\">Z\")\n        .workplane()\n        .circle(bolt_hole_d\
+    \ / 2.0)\n        .cutThruAll()\n    )\n\n    # Recessed press-fit hex nut pocket\
+    \ from the top face (stopped by internal shelf)\n    pocket_depth = p.nut_h +\
+    \ p.nut_recess\n    press_af = p.nut_af + p.nut_fit_clearance\n    press_circum_d\
+    \ = press_af * 2.0 / math.sqrt(3.0)\n\n    body = (\n        body.faces(\">Z\"\
+    )\n        .workplane()\n        .polygon(6, press_circum_d)\n        .cutBlind(-pocket_depth)\n\
+    \    )\n\n    # Slight hex lead-in at the very top so the nut aligns easily before\
+    \ pressing in\n    lead_af = p.nut_af + p.nut_lead_in_clearance\n    lead_circum_d\
+    \ = lead_af * 2.0 / math.sqrt(3.0)\n    body = (\n        body.faces(\">Z\")\n\
+    \        .workplane()\n        .polygon(6, lead_circum_d)\n        .cutBlind(-p.nut_lead_in_depth)\n\
+    \    )\n\n    return body\n"
+  print_orientation: Flat bottom face on the build plate (z = 0), nut pocket opening
+    upward (+Z) so the internal nut seat bridges/prints cleanly without support.
+  use_orientation: Bolt passes through along the Z axis; the internal shelf prevents
+    the nut from pushing out the bottom (-Z) side while the bolt exits through the
+    top (+Z).
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: knob_bolt_joint
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bolt_through_hole
+    role: clearance
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  nut: m5_nut
+  external: null
+criteria:
+- id: nut_press_fit_retention
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: 0.05
+  params:
+  - nut_af
+  - nut_h
+  - nut_fit_clearance
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Press the M5 hex nut into the hexagonal pocket by hand; verify it
+      sits below the top rim against the internal shelf and stays in place when inverted.
+- id: bolt_through_clearance
+  part: knob
+  feature: bolt_through_hole
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: measure
+    ref: null
+    description: Pass the M5 bolt through the bottom bore, thread it through the captured
+      nut, and verify it exits cleanly out the other side.
+manual:
+- n: '1'
+  text: Print the knob in PLA with its flat bottom face on the build plate (z = 0).
+    No supports are needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the M5 hex nut with the recessed hexagonal lead-in on the top of the
+    knob and press it firmly by hand until it seats against the internal floor below
+    the top face. Turn the knob upside down to verify that the friction fit holds
+    the nut in place.
+  parts:
+  - knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Insert the M5 bolt through the clearance hole from the bottom face, thread
+    it through the captured M5 nut, and continue until the bolt passes out the top
+    side of the knob.
+  parts:
+  - knob
+  hardware:
+  - m5_bolt
+  - m5_nut
+  tool: null

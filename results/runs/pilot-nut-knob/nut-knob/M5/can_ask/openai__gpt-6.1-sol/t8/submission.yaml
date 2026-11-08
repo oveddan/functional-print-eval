@@ -1,0 +1,314 @@
+task: nut-knob/M5
+note: 'One-piece, approximately 30 mm hand knob with a hand-installed captive M5 nut.
+  Six split socket walls flex during insertion; small lips retain the nut when inverted.
+  A solid floor prevents push-through while a central clearance hole lets the bolt
+  pass. Nut dimensions are nominal because measurement was unavailable. Print the
+  optional coupon first: actual nut tolerances and PLA printing accuracy affect snap
+  fit. Intended for hand tightening, not high-torque or safety-critical clamping.'
+questions:
+- text: Measure the nut across flats and its thickness.
+  answer: Unable to measure; use standard dimensions.
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal across flats; actual nut may be smaller.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal major diameter.
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 8.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_h:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance over the M5 thread.
+  pocket_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats clearance; main socket AF = 8.4 mm.
+  wall_t:
+    value: 1.1
+    unit: mm
+    kind: design
+    source: design
+    note: Socket wall thickness measured normal to flats.
+  lip_interference:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: 'Lip throat AF is nominal nut AF minus this value: 7.7 mm. Adjust after
+      coupon only if necessary.'
+  nut_axial_clearance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Space between nominal seated nut top and retaining-lip underside.
+  lip_land_h:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_af_clearance:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Entry mouth AF is nominal nut AF plus this value.
+  slot_w:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_inner_r:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  slot_outer_r:
+    value: 7.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  ring_inner_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Open annular gap around socket allows tabs to flex.
+  scallop_d:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_radius:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  coupon_d:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    def hx(af,z,h):\n        return cq.Workplane('XY').workplane(offset=z).polygon(6,af/math.cos(math.pi/6)).extrude(h)\n\
+    \    floor=p.floor_h\n    top=p.knob_h\n    af=p.nut_af+p.pocket_clearance\n \
+    \   lip=p.nut_af-p.lip_interference\n    lip_z=floor+p.nut_h+p.nut_axial_clearance\n\
+    \    ramp_z=lip_z+p.lip_land_h\n    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(top)\n\
+    \    for i in range(int(p.scallop_count)):\n        a=2*math.pi*i/p.scallop_count\n\
+    \        cut=cq.Workplane('XY').center(p.scallop_radius*math.cos(a),p.scallop_radius*math.sin(a)).circle(p.scallop_d/2).extrude(top)\n\
+    \        body=body.cut(cut)\n    body=body.cut(cq.Workplane('XY').workplane(offset=floor).circle(p.ring_inner_d/2).extrude(top-floor))\n\
+    \    socket=hx(af+2*p.wall_t,floor,top-floor)\n    socket=socket.cut(hx(af,floor,lip_z-floor))\n\
+    \    socket=socket.cut(hx(lip,lip_z,p.lip_land_h))\n    ramp=(cq.Workplane('XY').workplane(offset=ramp_z).polygon(6,lip/math.cos(math.pi/6)).workplane(offset=top-ramp_z).polygon(6,(p.nut_af+p.entry_af_clearance)/math.cos(math.pi/6)).loft())\n\
+    \    socket=socket.cut(ramp)\n    for i in range(6):\n        slot=(cq.Workplane('XY').box(p.slot_outer_r-p.slot_inner_r,p.slot_w,top-floor,centered=(True,True,False)).translate(((p.slot_outer_r+p.slot_inner_r)/2,0,floor)).rotate((0,0,0),(0,0,1),60*i))\n\
+    \        socket=socket.cut(slot)\n    body=body.union(socket)\n    return body.cut(cq.Workplane('XY').circle((p.bolt_d+p.bore_clearance)/2).extrude(top))"
+  print_orientation: Flat, uninterrupted bottom face at z=0 on bed; socket opening
+    and retaining tabs face upward. No supports.
+  use_orientation: Nut enters from the top at z=8.6. Bolt axis is Z; bolt can extend
+    through the bottom clearance hole.
+- id: socket_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    def hx(af,z,h):\n        return cq.Workplane('XY').workplane(offset=z).polygon(6,af/math.cos(math.pi/6)).extrude(h)\n\
+    \    floor=p.floor_h\n    top=p.knob_h\n    af=p.nut_af+p.pocket_clearance\n \
+    \   lip=p.nut_af-p.lip_interference\n    lip_z=floor+p.nut_h+p.nut_axial_clearance\n\
+    \    ramp_z=lip_z+p.lip_land_h\n    body=cq.Workplane('XY').circle(p.coupon_d/2).extrude(floor)\n\
+    \    socket=hx(af+2*p.wall_t,floor,top-floor)\n    socket=socket.cut(hx(af,floor,lip_z-floor))\n\
+    \    socket=socket.cut(hx(lip,lip_z,p.lip_land_h))\n    ramp=(cq.Workplane('XY').workplane(offset=ramp_z).polygon(6,lip/math.cos(math.pi/6)).workplane(offset=top-ramp_z).polygon(6,(p.nut_af+p.entry_af_clearance)/math.cos(math.pi/6)).loft())\n\
+    \    socket=socket.cut(ramp)\n    for i in range(6):\n        slot=(cq.Workplane('XY').box(p.slot_outer_r-p.slot_inner_r,p.slot_w,top-floor,centered=(True,True,False)).translate(((p.slot_outer_r+p.slot_inner_r)/2,0,floor)).rotate((0,0,0),(0,0,1),60*i))\n\
+    \        socket=socket.cut(slot)\n    return body.union(socket).cut(cq.Workplane('XY').circle((p.bolt_d+p.bore_clearance)/2).extrude(top))"
+  print_orientation: Circular base flat on bed at z=0; socket upward. No supports.
+  use_orientation: Optional test only, not part of assembled knob.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: hand_insertion_and_retention
+  part: knob
+  feature: Six split walls with 7.7 mm AF retaining throat and tapered entry
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - lip_interference
+  - wall_t
+  - slot_w
+  - knob_h
+  - floor_h
+  check:
+    method: coupon
+    ref: socket_coupon
+    description: 'Nut must enter with firm thumb pressure without cracking or permanent
+      outward bending. After seating, invert and shake gently: nut must remain captured.
+      Do not hammer or use a vise.'
+- id: hex_drive
+  part: knob
+  feature: 8.4 mm AF hexagonal socket beneath retaining lips
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_clearance
+  check:
+    method: coupon
+    ref: socket_coupon
+    description: With nut seated, verify it cannot rotate continuously inside the
+      socket when turned by hand.
+- id: closed_floor
+  part: knob
+  feature: 2.4 mm floor below nut, with 5.6 mm central hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_h
+  - bore_clearance
+  - bolt_d
+  - nut_af
+  check:
+    method: coupon
+    ref: socket_coupon
+    description: Push seated nut toward bottom by hand; it must bear on floor and
+      cannot pass through.
+- id: fully_recessed
+  part: knob
+  feature: Nut lies between z=2.4 and nominal z=7.1, below knob top at z=8.6
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - floor_h
+  - knob_h
+  - nut_axial_clearance
+  check:
+    method: coupon
+    ref: socket_coupon
+    description: Confirm nut is fully below the top and snapped under all six retaining
+      lips.
+- id: bolt_passage
+  part: knob
+  feature: 5.6 mm coaxial through-hole under nut
+  relation: clears
+  hardware: null
+  clearance_mm: 0.3
+  params:
+  - bolt_d
+  - bore_clearance
+  check:
+    method: coupon
+    ref: socket_coupon
+    description: Thread an M5 bolt through the nut by hand and verify it emerges through
+      the bottom without binding on printed plastic.
+manual:
+- n: '1'
+  text: 'Recommended: print socket_coupon first at 0.2 mm layers with a 0.4 mm nozzle,
+    4 wall loops, 5 top/bottom layers and 40% infill. Use no supports. Print slowly
+    around the small socket tabs and allow the print to cool fully.'
+  parts:
+  - socket_coupon
+  hardware: []
+  tool: Slicer and printer
+- n: '2'
+  text: Remove any strings from the slots and bolt hole. Align the nut flats with
+    the socket flats and press it straight down using your thumb until it seats under
+    all six lips. Do not force it with tools. Check inversion retention, hex drive,
+    floor support and bolt passage as described in the criteria. A tiny amount of
+    rotational play is normal.
+  parts:
+  - socket_coupon
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: If insertion is too stiff or any tab cracks, reduce lip_interference by 0.1
+    mm and reprint the coupon. If the nut falls out, increase lip_interference by
+    0.1 mm and recheck. If the seated hex socket binds, increase pocket_clearance
+    by 0.1 mm. Change one parameter at a time; never accept cracked or permanently
+    spread tabs.
+  parts:
+  - socket_coupon
+  hardware: []
+  tool: null
+- n: '4'
+  text: Print knob with the successful coupon parameters and the same settings, bottom
+    face on bed and opening upward. No supports. Inspect the six slots and retaining
+    lips after cooling.
+  parts:
+  - knob
+  hardware: []
+  tool: Slicer and printer
+- n: '5'
+  text: If reusing the coupon nut, gently lift it from below through the bolt hole
+    while easing the tabs outward; sacrifice the coupon if needed, keeping tools away
+    from your fingers. Align and thumb-press the nut into knob. Verify it is fully
+    seated and stays captured upside down. No glue is needed.
+  parts:
+  - socket_coupon
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '6'
+  text: Thread the knob onto your M5 bolt or stud by hand. The bolt may pass through
+    the nut and out the bottom hole. Tighten using the outside grip only. Stop if
+    the nut starts rotating in the plastic or a tab cracks. Keep away from heat; PLA
+    can creep under sustained heavy clamp loads.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

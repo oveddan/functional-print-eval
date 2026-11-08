@@ -1,0 +1,374 @@
+task: tripod-plate
+note: ''
+questions: []
+params:
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: world
+    source: measured
+    note: about 15 mm across; assumed round/knurled - the disc bore is sized for that
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: world
+    source: measured
+    note: about 5 mm tall
+  bolt_shank_len:
+    value: 10
+    unit: mm
+    kind: world
+    source: measured
+    note: about 10 mm of thread under the head
+  clamp_plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: asked
+    note: 'they answered ''the width of plate it takes: 38 mm'' - nominal Arca-style
+      width'
+  deck_t:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: bolt engagement = 10 - 5.5 = 4.5 mm into the camera socket (~3.5 turns of
+      1/4-20)
+  deck_under:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: bolt head 5 mm tall + 0.6 mm play; head bears on the deck underside when
+      tight
+  disc_bore:
+    value: 14.8
+    unit: mm
+    kind: design
+    source: design
+    note: 0.2 mm interference on the 15 mm head, one slit so it flexes on and grips
+  disc_od:
+    value: 19.5
+    unit: mm
+    kind: design
+    source: design
+    note: passes the 20.2 mm tunnel mouth between the walls
+  disc_slit:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: slit width of the snap ring
+  disc_t:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: bore depth > head height; protrudes ~1.4 mm below the plate for finger grip
+  hole_d:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: clears the 6.35 mm shank by 0.55 mm
+  plate_length:
+    value: 40
+    unit: mm
+    kind: design
+    source: guessed
+    note: slot length was never returned as a number; 40 mm is the safe common minimum
+      - if the plate doesn't slide fully in, report back
+  shim_id:
+    value: 6.9
+    unit: mm
+    kind: design
+    source: design
+    note: clears the shank
+  shim_od:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: optional shim for shallower-than-assumed sockets
+  shim_t:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: use only if the bolt bottoms out before the camera is firm
+  side_fit:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: plate runs 37.6 mm across vs the 38 mm opening; snug drop-in, sandable
+  socket_depth:
+    value: 5
+    unit: mm
+    kind: world
+    source: unknown
+    note: pin-depth check did not return a figure; deck sized for a worst-common 5
+      mm socket, spacer shim covers shallower ones
+  top_chamfer:
+    value: 2.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree lead-in to match the clamp's angled lips
+parts:
+- id: qr_plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    W = p.clamp_plate_width - p.side_fit\n    L = p.plate_length\n\
+    \    H = p.deck_under + p.deck_t\n    gap = p.disc_od + 0.7\n    pl = cq.Workplane(\"\
+    XY\").box(W, L, H, centered=(True, True, False))\n    pl = pl.edges(\"|Y and >Z\"\
+    ).chamfer(p.top_chamfer)\n    pl = pl.cut(\n        cq.Workplane(\"XY\").box(gap,\
+    \ L + 4.0, p.deck_under, centered=(True, True, False))\n    )\n    pl = pl.faces(\"\
+    >Z\").workplane().cskHole(p.hole_d, 11.0, 82)\n    return pl"
+  print_orientation: bottom face down - the two wall feet on the bed, tunnel ceiling
+    bridged above
+  use_orientation: 'as printed: wall feet sit on the clamp floor, deck top carries
+    the camera'
+- id: thumb_disc
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    od = p.disc_od\n    t = p.disc_t\n    d\
+    \ = cq.Workplane(\"XY\").circle(od / 2.0).extrude(t)\n    d = d.faces(\">Z\").workplane().hole(p.disc_bore)\n\
+    \    d = d.cut(\n        cq.Workplane(\"XY\", origin=(0.0, p.disc_bore / 2.0,\
+    \ -1.0))\n        .rect(p.disc_slit, od / 2.0 + 2.0)\n        .extrude(t + 2.0)\n\
+    \    )\n    for k in range(12):\n        a = math.radians(15.0 + 30.0 * k)\n \
+    \       x = (od / 2.0) * math.cos(a)\n        y = (od / 2.0) * math.sin(a)\n \
+    \       d = d.cut(\n            cq.Workplane(\"XY\", origin=(x, y, t - 0.8)).circle(1.25).extrude(2.0)\n\
+    \        )\n    return d"
+  print_orientation: flat, bore axis vertical
+  use_orientation: 'as printed: slides up under the plate between the walls, bore
+    caps the bolt head'
+- id: spacer_shim
+  role: final
+  material: PLA
+  code: "def build(p):\n    return (\n        cq.Workplane(\"XY\")\n        .circle(p.shim_od\
+    \ / 2.0)\n        .extrude(p.shim_t)\n        .faces(\">Z\")\n        .workplane()\n\
+    \        .hole(p.shim_id)\n    )"
+  print_orientation: flat
+  use_orientation: 'as printed: lies on the deck under the camera, only if the bolt
+    bottoms out early'
+- id: fit_test
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    W = p.clamp_plate_width - p.side_fit\n    L = 24.0\n \
+    \   H = p.deck_under + p.deck_t\n    gap = p.disc_od + 0.7\n    c = cq.Workplane(\"\
+    XY\").box(W, L, H, centered=(True, True, False))\n    c = c.edges(\"|Y and >Z\"\
+    ).chamfer(p.top_chamfer)\n    c = c.cut(\n        cq.Workplane(\"XY\").box(gap,\
+    \ L + 4.0, p.deck_under, centered=(True, True, False))\n    )\n    c = c.faces(\"\
+    >Z\").workplane().cskHole(p.hole_d, 11.0, 82)\n    return c"
+  print_orientation: bottom face down, same as the plate
+  use_orientation: as printed
+hardware:
+- id: bolt_14_20
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: j_camera
+  fastener: bolt_14_20
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: qr_plate
+    feature: deck underside at the tunnel (head bearing face)
+    role: head_seat
+  - part: qr_plate
+    feature: countersunk central hole through the deck
+    role: clearance
+  nut: null
+  external: camera 1/4-20 tripod socket (bolt threads into the camera, ~4.5 mm engagement)
+criteria:
+- id: c_fit
+  part: qr_plate
+  feature: outer profile 37.6 x 40 with 2.5 mm top lead-in chamfers
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_plate_width
+  - side_fit
+  - plate_length
+  - top_chamfer
+  check:
+    method: coupon
+    ref: null
+    description: 'Slide fit_test into the clamp slot: it should drop in from above
+      with light friction and no side-to-side rock. If very tight, sand the outer
+      faces 0.1-0.2 mm.'
+- id: c_bolt_drop
+  part: qr_plate
+  feature: tunnel between the walls (gap 20.2)
+  relation: clears
+  hardware: bolt_14_20
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - disc_od
+  check:
+    method: coupon
+    ref: null
+    description: Bolt head drops in from below between the walls and swings freely.
+- id: c_shank
+  part: qr_plate
+  feature: central countersunk 6.9 hole through the deck
+  relation: clears
+  hardware: bolt_14_20
+  clearance_mm: null
+  params:
+  - hole_d
+  - bolt_shank_len
+  check:
+    method: coupon
+    ref: null
+    description: Bolt shank passes the deck hole by hand; countersink guides it.
+- id: c_disc_snap
+  part: thumb_disc
+  feature: 14.8 slit snap bore
+  relation: engages
+  hardware: bolt_14_20
+  clearance_mm: null
+  params:
+  - disc_bore
+  - bolt_head_d
+  check:
+    method: coupon
+    ref: null
+    description: Snap the disc onto the head with finger pressure (slit opens slightly);
+      it must turn the head without slipping. If it slips, wrap one layer of paper
+      tape around the head.
+- id: c_disc_pass
+  part: thumb_disc
+  feature: 19.5 rim vs the 20.2 tunnel mouth
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - disc_od
+  check:
+    method: coupon
+    ref: null
+    description: Disc slides up between the plate walls (0.35 mm per side) to reach
+      the head.
+- id: c_seat
+  part: qr_plate
+  feature: deck underside (head bearing face at z = 5.6)
+  relation: seats
+  hardware: bolt_14_20
+  clearance_mm: null
+  params:
+  - deck_under
+  check:
+    method: measure
+    ref: null
+    description: With the camera threaded on and the bolt firm, the head must bear
+      on the deck underside so the camera does not rock or lift.
+- id: c_engage
+  part: qr_plate
+  feature: deck thickness 5.5 -> 4.5 mm bolt engagement into the camera socket
+  relation: supports
+  hardware: bolt_14_20
+  clearance_mm: null
+  params:
+  - deck_t
+  - bolt_shank_len
+  - socket_depth
+  check:
+    method: measure
+    ref: null
+    description: Screw the camera on until firm. If the bolt stops early and the camera
+      still lifts off (socket shallower than assumed 5 mm), add spacer_shim on the
+      deck under the camera and retighten.
+manual:
+- n: '1'
+  text: 'Print the two small test pieces first: fit_test (coupon) and thumb_disc.'
+  parts:
+  - fit_test
+  - thumb_disc
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Fit test: slide fit_test into the tripod''s clamp slot. It should drop in
+    from above with light friction and no side-to-side rock. If it is very tight,
+    sand 0.1-0.2 mm off its two outer faces.'
+  parts:
+  - fit_test
+  hardware: []
+  tool: null
+- n: '3'
+  text: 'Bolt test: push the webcam-mount bolt up between the walls of fit_test from
+    below (head inside the tunnel, shank through the deck hole). Snap thumb_disc onto
+    the head (round bore with one slit - it opens slightly as it goes on) and check
+    it turns the head without slipping. If it slips, wrap one layer of paper tape
+    around the head.'
+  parts:
+  - fit_test
+  - thumb_disc
+  hardware:
+  - bolt_14_20
+  tool: null
+- n: '4'
+  text: Print the plate and the spacer (both quick). Keep fit_test until you are happy
+    with the fit.
+  parts:
+  - qr_plate
+  - spacer_shim
+  hardware: []
+  tool: null
+- n: '5'
+  text: Start the bolt into the camera's tripod socket by hand, 2-3 turns. If the
+    head is smooth and hard to grip, use thumb_disc on it to start it, then pull the
+    disc off.
+  parts:
+  - thumb_disc
+  hardware:
+  - bolt_14_20
+  tool: null
+- n: '6'
+  text: 'Lower qr_plate over the bolt: guide the shank into the deck''s countersunk
+    hole and let the head ride up into the tunnel through the open bottom. Seat the
+    deck flat on the camera''s base.'
+  parts:
+  - qr_plate
+  hardware:
+  - bolt_14_20
+  tool: null
+- n: '7'
+  text: Slide thumb_disc up between the walls onto the bolt head and turn clockwise
+    until the camera is firm on the deck - the head pulls up hard against the deck
+    underside. If the bolt stops early and the camera still lifts off, place spacer_shim
+    on the deck under the camera and retighten.
+  parts:
+  - qr_plate
+  - thumb_disc
+  - spacer_shim
+  hardware:
+  - bolt_14_20
+  tool: null
+- n: '8'
+  text: 'Drop the whole assembly into the tripod clamp and close the knob. To remove:
+    open the knob, lift out, unscrew with the disc; bolt and disc lift out together
+    - keep them with the plate.'
+  parts:
+  - qr_plate
+  - thumb_disc
+  hardware:
+  - bolt_14_20
+  tool: null
+- n: '9'
+  text: 'Care: hand-tight only (PLA). Don''t leave it in a hot car. If the camera
+    twists on the deck, stick a strip of rubber or gaffer tape under it. The plate''s
+    hole is centred - if your camera''s socket is off-centre it will sit slightly
+    offset; that''s normal for this temporary fix.'
+  parts: []
+  hardware: []
+  tool: null

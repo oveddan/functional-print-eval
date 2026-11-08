@@ -1,0 +1,129 @@
+task: nut-knob/M5
+note: ''
+questions:
+- text: The nut press-fit is a guess (0.4 mm interference across flats). Can you print
+    a test and report how the nut seats and whether it stays in when inverted?
+  answer: null
+params:
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: knob outside diameter, as requested
+  knob_h:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: knob height; leaves ~15 mm of solid material above the nut pocket
+  nut_af:
+    value: 8.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 across flats
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 thickness
+  press_af:
+    value: 7.6
+    unit: mm
+    kind: design
+    source: design
+    note: pocket across flats, 0.4 mm smaller than the nut so it press-fits by hand
+      and resists falling out when inverted. Interference is a guess for PLA; adjust
+      after a test fit
+  pocket_depth:
+    value: 4.7
+    unit: mm
+    kind: design
+    source: design
+    note: equal to nut thickness; nut sits flush with the mounting face
+  bore_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: M5 clearance bore through the top, smaller than the nut across flats so
+      the nut cannot pass through the far side
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "def build(p):\n    body = cq.Workplane('XY').circle(p.knob_d / 2).extrude(p.knob_h)\n\
+    \    hex_d = p.press_af / 0.8660254\n    pocket = cq.Workplane('XY').polygon(6,\
+    \ hex_d).extrude(p.pocket_depth)\n    bore = cq.Workplane('XY').circle(p.bore_d\
+    \ / 2).extrude(p.knob_h)\n    return body.cut(pocket).cut(bore)\n"
+  print_orientation: knob axis vertical; nut pocket face (z=0) on the bed, bore pointing
+    up
+  use_orientation: knob axis vertical, nut pocket facing down, bolt passing up through
+    the top bore
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x30
+  qty: 1
+joints: []
+criteria:
+- id: nut-pocket
+  part: knob
+  feature: hex nut pocket (7.6 mm AF, 4.7 mm deep, open at the bottom)
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - press_af
+  - pocket_depth
+  - nut_af
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Press the ISO 4032 M5 nut into the pocket by hand; it should seat
+      fully, stay in when inverted, and not push out through the top bore.
+- id: bolt-bore
+  part: knob
+  feature: M5 clearance bore through the top (5.5 mm)
+  relation: clears
+  hardware: bolt
+  clearance_mm: null
+  params:
+  - bore_d
+  check:
+    method: measure
+    ref: null
+    description: M5 bolt passes freely through the bore and threads into the nut.
+manual:
+- n: '1'
+  text: Print the knob with the nut pocket facing down on the bed. No supports are
+    needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Test-fit the nut: push the M5 hex nut into the hex pocket from the open bottom
+    face by hand. It should start straight and seat fully, flush with the bottom face.
+    If it is too tight to push in by hand, or it falls out when the knob is inverted,
+    report the fit before relying on it.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Insert the M5x30 bolt through the top bore so it enters the nut, and thread
+    it in. The bolt should turn the nut; the nut stays captured because it cannot
+    pass the bore.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null
