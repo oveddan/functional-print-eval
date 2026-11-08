@@ -475,6 +475,27 @@ Dan, reviewing Gemini 4 Argon's M3 knob, on the print noted "really struggles to
 
 "No test coupon in the manual would catch it" was wrong on designs whose test print would show the size is wrong, such as Sonnet's M3 knob t1: its one 5.50 mm pocket wouldn't take the nut, so printing it finds the problem. Dan raised this while reviewing that verdict. R3 and R4 now say what's true: no test print in the manual, no size known to hold, or no param to apply the size with. The rule stays, and `docs/limitations.md` lists it as an assumption: at most 2 trials would change if it were relaxed. No verdict changes: regrading the knob and wheel runs left every `summary.csv` unchanged, and 31 saved trials took the new text, with the earlier text under `regrades`. The coupon loop samples keep the old wording.
 
+## 2026-11-05: The seat reader catches small crush ribs; no saved verdict changes
+
+`pbe/graders/wheel.py`, `_is_round`: a seat was plain if its area was within 6% (`PLAIN`) of its clear circle's. Crush ribs 0.2 mm high add only 3.4%, so a ribbed 22.2 mm seat read as a plain 21.8 mm one, the circle its ribs touch, and failed R3 as too tight. Ribbed seats aren't in the records (round 2 printed plain seats only), so they should be not graded. Now a seat is plain only if, as well, its widest span is within 0.1 mm (`RIBS_MM`) of its clear circle. A plain printed seat reads within 0.01 mm.
+
+Found by reading the game spinner's first look (issue 41, PR 44): Sonnet 5.5's 22.2 mm seat with six 0.2 mm ribs was failed at 21.80 mm. Gemini 4 Argon's 0.12 mm ribs (2.1% more area) would have read the same way, but there a tall boss hid the seat first.
+
+Evidence:
+- `tests/test_bearing_wheel.py`, a new test: a 22.2 mm seat with six 0.2 mm ribs is not graded on R3. It fails before this change and passes after.
+- Sonnet 5.5's saved first-look design: `wheel.fit` gave fail ("21.80 mm: a 22.0 mm seat wouldn't take the bearing") before and not graded ("ribs, lobes or a slot in the seat") after.
+- A regrade of all 153 saved trials under `results/runs/`, on scratch copies with the base code and with this change, gave identical `grades.json` in all 153: no verdict, finding or detail moves, because no saved design has ribs this small. Nothing under `results/` changes.
+- `uv run pytest` and every `--reference`: see the PR.
+
+Scoring walk (`docs/scoring.md` and section 5 of the eval design guide):
+- Real-world relevance: crush ribs are a common way to press-fit a bearing; a model drew them unprompted.
+- Task design: unchanged.
+- Grader reliability: one false fail removed, with a test that fails before the change. Weak: the 0.1 mm threshold is a reading of printed-seat geometry, not of a print.
+- Evidence of model limitations: unchanged; this changes no saved verdict.
+- Reproducibility: unchanged.
+- Human expertise and review: Claude found and fixed it; Dan approved making it a follow-on PR.
+- Insight: a check that reads shapes needs a test for the smallest version of each feature it means to catch.
+
 ## 2026-11-04: The lineup at 3 runs on the `can_ask` pilot tasks, and the first `can_run_code` trials (issue 34)
 
 Pilot data: one to three trials per model, task and condition. The code these runs used merged as #39. No check, task wording, prompt or saved trial changes.

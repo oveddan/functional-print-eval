@@ -14,12 +14,15 @@ from itertools import groupby
 from pbe.graders import assumed
 from pbe.graders.checks import Verdict
 from pbe.graders.nuts import coupons_in_the_manual
-from pbe.graders.sections import clear_width, hole_axis, holes_by_layer
+from pbe.graders.sections import clear_width, diameter, hole_axis, holes_by_layer
 from pbe.parts.build import build_parts
 
 STEP = 0.2
 TOL = 0.02  # mm; a curve's facets read a modeled width slightly narrow
 PLAIN = 1.06  # a hole this much bigger than its clear circle has ribs, lobes or a slot in it
+# mm a hole may be wider at its widest than its clear circle and still be plain. A plain printed seat reads within
+# 0.01 mm; crush ribs 0.2 mm high (Sonnet 5.5's, game spinner first look) read 0.4 mm but add only 3.4% to the area
+RIBS_MM = 0.1
 PROUD = 0.5  # mm a bearing may stand out of its seat and still count as seated, though no print has tried it
 
 
@@ -66,7 +69,10 @@ def _axle(mesh, axis, seat_range):
 
 
 def _is_round(hole):
-    return hole.area <= PLAIN * math.pi * clear_width(hole) ** 2 / 4
+    """A plain round hole: no more area than its clear circle's, and no wider anywhere. Ribs, lobes or
+    a slot show in one or the other: big ones in the area, small ribs only in the widest span."""
+    clear = clear_width(hole)
+    return hole.area <= PLAIN * math.pi * clear ** 2 / 4 and diameter(hole) - clear <= RIBS_MM
 
 
 def _read_seat(run, layer, tightest, bearing_width, bearings):

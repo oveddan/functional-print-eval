@@ -65,6 +65,21 @@ def build(p):
     return part
 '''
 
+# Six crush ribs standing only 0.2 mm into a 22.2 mm seat, as Sonnet 5.5 drew them on the game spinner's
+# first look: they add 3.4% to the hole's area, under PLAIN, so only the widest span shows them
+SMALL_RIBS = '''
+def build(p):
+    import math
+    body = cq.Workplane("XY").circle(p.across / 2).extrude(p.width)
+    seat = cq.Workplane("XY").workplane(offset=p.width - p.seat_h).circle(p.seat / 2).extrude(p.seat_h)
+    part = body.cut(seat).cut(cq.Workplane("XY").circle(p.relief / 2).extrude(p.width))
+    for i in range(6):
+        a = i * math.pi / 3
+        r = p.seat / 2 + 1.0 - 0.2
+        part = part.union(cq.Workplane("XY").workplane(offset=p.width - p.seat_h).center(r * math.cos(a), r * math.sin(a)).circle(1.0).extrude(p.seat_h))
+    return part
+'''
+
 COUPON = '''
 def build(p):
     body = cq.Workplane("XY").rect(32, 90).extrude(5)
@@ -143,6 +158,11 @@ def test_a_bolt_hole_between_the_bolt_and_its_clearance_takes_the_nearest(tmp_pa
 def test_ribs_arent_graded_on_fit(tmp_path):
     findings = grade(design(code=RIBS), tmp_path)
     assert "R3" in not_graded(findings) and "R3" not in failed(findings)
+
+
+def test_small_crush_ribs_arent_graded_on_fit(tmp_path):
+    findings = grade(design(code=SMALL_RIBS), tmp_path)
+    assert not failed(findings) and not_graded(findings) == {"R3"}, not_passing(findings)
 
 
 def test_coupon_rescues_a_wrong_seat(tmp_path):
