@@ -248,24 +248,29 @@ def test_a_rib_with_no_room_still_fails_with_another_part(tmp_path):
 
 # --- between the records: not graded -------------------------------------------------------------------
 
-def test_a_cutout_tighter_than_the_test_print_isnt_graded(tmp_path):
-    only_not_graded(design(clearance=0.1), tmp_path, {"R1"})
+def test_a_cutout_tighter_than_test_print_d_passes_on_round_3s_frames(tmp_path):
+    """Round 3's frames went over the body at 0.0 and 0.1 a side (Dan, 2026-11-12), so the band between
+    the body's size and D's 0.25 is graded now."""
+    findings = all_pass(design(clearance=0.1), tmp_path)
+    assert "went through cutouts at 0, 0.1 and 0.25 a side" in detail(findings, "R1")
+    all_pass(design(clearance=0.0), tmp_path / "flush")
 
 
-def test_a_channel_with_less_than_the_bodys_clearance_isnt_graded(tmp_path):
-    findings = only_not_graded(design(channel_w=1.7), tmp_path, {"R3"})
-    assert "no relieved plate was printed" in detail(findings, "R3")
+def test_a_channel_as_narrow_as_round_3s_passes(tmp_path):
+    """Round 3's M2 took the rib, tabs flush, in a channel 0.05 a side (Dan, 2026-11-12). 1.7 is 0.095 a
+    side; 1.55 is 0.02 a side, under the printed 0.05 but within the assumption tolerance."""
+    all_pass(design(channel_w=1.7), tmp_path)
+    findings = all_pass(design(channel_w=1.55), tmp_path / "narrow")
+    assert "assumed from the 0.05" in detail(findings, "R3")
 
 
-def test_a_plain_cutout_looser_than_the_test_print_isnt_graded(tmp_path):
-    """Seated from above, the cable has to pass; nothing measured the cable exit, so a looser plain
-    cutout can't be failed on it, though it still fails from underneath."""
-    findings = only_not_graded(design(code=plate_code(channel=None), clearance=0.4), tmp_path, {"R3"})
+def test_no_room_for_the_rib_fails_however_loose_the_cutout(tmp_path):
+    """No gap for the rib on either face fails (Dan, 2026-11-12), even where the route from above, past
+    the cable, would be left not graded: a looser plain cutout, or a notch for the cable."""
+    findings = only_failed(design(code=plate_code(channel=None), clearance=0.4), tmp_path, {"R3"})
     assert "the cable exit was never measured" in detail(findings, "R3")
-
-
-def test_a_cable_notch_isnt_graded(tmp_path):
-    only_not_graded(design(code=plate_code(channel=None, cable_notch=3)), tmp_path, {"R3"})
+    assert "no room for the rib on either face" in detail(findings, "R3")
+    only_failed(design(code=plate_code(channel=None, cable_notch=3)), tmp_path / "notch", {"R3"})
 
 
 def test_holes_lined_up_with_only_one_record_arent_graded(tmp_path):
@@ -344,3 +349,29 @@ def test_with_the_datasheet_the_request_comes_with_its_pages():
     asked = agent.opening_messages(TASK, "can_ask", person, 8)
     given = agent.opening_messages(TASK, agent.DATASHEET, person, 8)
     assert given[0] == asked[0] and agent.tools(agent.DATASHEET) == agent.tools("can_ask")
+
+
+def test_an_opening_behind_the_cutout_doesnt_shrink_it():
+    """A wall with the servo's window, and behind it a wider gap that overlaps the window's lower edge: the
+    window keeps its size. Opus 5.5's servo-arm frame read 2.94 mm a side too small before, its window cut
+    down to the overlap."""
+    from shapely.geometry import box
+
+    from pbe.graders import servo
+    body = servo.Body(40.58, 19.82, 0.25)
+    window = box(-20.6, 29.8, 20.6, 50.2)
+    behind = box(-30, 10, 30, 36)
+    runs = servo._runs([[window]] * 25 + [[behind]] * 20, body)
+    first = next(cleared for layers, cleared in runs if layers.start == 0)
+    assert first.equals(window) and next(layers for layers, _ in runs if layers.start == 0) == range(0, 25)
+
+
+def test_a_bigger_opening_beside_the_cutout_isnt_taken_for_it(tmp_path):
+    """A frame joined to the plate with a 46 x 26 window, roomier than the servo's cutout: the servo goes in
+    the closer fit (Gemini 4 Argon's servo-arm frame read its 2.3 a side gap before)."""
+    frame = plate_code().replace("    return plate\n",
+        "    plate = plate.union(cq.Workplane('XY').center(72, 0).rect(76, 36).extrude(p.plate_t)"
+        ".cut(cq.Workplane('XY').center(75, 0).rect(46, 26).extrude(p.plate_t)))\n    return plate\n")
+    findings = grade(design(code=frame), tmp_path)
+    assert {"R1", "R2", "R3"}.isdisjoint(failed(findings) | not_graded(findings)), not_passing(findings)
+    assert detail(findings, "R1").startswith("0.2")
