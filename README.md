@@ -344,6 +344,22 @@ OPENROUTER_API_KEY=... uv run python -m pbe.eval --run mine --condition can_test
 
 It saves the conversation, the design and every check's result under `results/runs/mine/`. The tasks are `tripod-plate`, `bearing-wheel`, `nut-knob/M3`, `nut-knob/M5` and `estoa-light`, and `--model` takes any OpenRouter model id.
 
+**Use the agent on a real part** (a live session): the same prompt, tools and hand-in format, but you answer its questions. `measure` and `print_test` come to you at the terminal, or to a file of answers; each test piece is saved as an STL, and printing it is your call. With a measurement the agent may send a sketch with numbered dimensions, which opens in your browser so you can answer by number.
+
+```bash
+OPENROUTER_API_KEY=... uv run python -m pbe.live "I need a clamp that holds a 25 mm tube to the edge of a shelf" --model anthropic/claude-sonnet-5.5 --budget 0.50
+```
+
+It saves the transcript, your answers (`session.yaml`), the design and its parts under `results/local/live/`. Pass `--answers` with that `session.yaml` to run the session again with nobody answering.
+
+**Check a design before printing it** (the pre-print check): the eval's checks on the agent's hand-in, or on an STL or STEP file exported from any CAD tool, oriented as it prints with z up.
+
+```bash
+uv run python -m pbe.preprint knob.stl --nut M5
+```
+
+Each line is a prediction and the recorded print it rests on, or "not graded" where nothing recorded is near. It predicts from the design's geometry and the recorded prints on one printer and filament. It is not a print simulation: warping, bed adhesion, stringing and strength aren't predicted. It exits 1 if a check fails. How these fit Dan's own builds is in [docs/making-system.md](docs/making-system.md).
+
 ## Limits
 
 Many designs couldn't be graded without more test prints ([What we couldn't grade](#what-we-couldnt-grade)).
@@ -385,5 +401,7 @@ Code from BenchCAD (MIT) is used for its CadQuery sandbox; CADEngBench has no li
 * I wrote or dictated most of the README's text myself. Claude wrote the generated tables, the failure-class table and some captions, and edited the rest.
 
 ## More
+
+The version submitted to the hackathon is the tag [`hackathon-submission`](https://github.com/oveddan/functional-print-eval/tree/hackathon-submission). Work after it, such as the live mode and the pre-print check, is not part of what was submitted.
 
 The full results, every check, what went wrong task by task and the prior art are in [docs/reference.md](docs/reference.md). MIT licence, in `LICENSE`. `docs/context/` is my private material, isn't covered, and is left out of the submission ZIP.

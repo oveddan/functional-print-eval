@@ -27,6 +27,7 @@ from pbe.parts.build import build_parts
 from pbe.parts.printer import printer
 from pbe.parts.submission import Submission
 from pbe.runner import build_on_submit, llm, python_tool
+from pbe.runner import sketch as measure_sketches
 from pbe.runner.measure import Person
 from pbe.runner.python_tool import PythonTool
 from pbe.runner.tasks import TaskFormat
@@ -148,8 +149,18 @@ def _design_schema(assembly):
     return design
 
 
+def _measure_parameters(sketch):
+    """measure's parameters. Only a live session offers `sketch` (pbe/runner/sketch.py); every eval condition gets
+    the two it always had."""
+    properties = {"item": {"type": "string", "description": "What to measure, e.g. 'desk'"},
+                  "what": {"type": "string", "description": "Which dimension, e.g. 'thickness at the edge'"}}
+    if sketch:
+        properties["sketch"] = measure_sketches.SCHEMA
+    return {"type": "object", "properties": properties, "required": ["item", "what"]}
+
+
 @cache
-def tools(condition="can_ask", assembly=False):
+def tools(condition="can_ask", assembly=False, sketch=False):
     design = _design_schema(assembly)
     submit = SUBMIT_BUILDS_FIRST if condition == python_tool.CONDITION else SUBMIT
 
@@ -157,10 +168,7 @@ def tools(condition="can_ask", assembly=False):
         return {"type": "function", "function": {"name": name, "description": description, "parameters": parameters}}
     return [
         function_tool("measure", "Ask the person to measure one of their own things. They answer with what they measured, or say they can't.",
-           {"type": "object", "properties": {
-               "item": {"type": "string", "description": "What to measure, e.g. 'desk'"},
-               "what": {"type": "string", "description": "Which dimension, e.g. 'thickness at the edge'"}},
-            "required": ["item", "what"]}),
+           _measure_parameters(sketch)),
         function_tool("submit_design", submit, design),
         function_tool("report_limitation", "Say you wanted to use something (a technique, a tool, a part or material, a way of "
            "handing in the design) but couldn't because of what's available here. It changes nothing; it's noted.",
@@ -286,6 +294,8 @@ def grade(task, sub, out_dir):
 # the model's message as the transcript keeps it and the next request sends it back. Reasoning
 # goes back unchanged: some providers need it to continue a tool-use turn
 TEST_PRINTED = "I printed the test pieces. Here's how they came out:"
+NONE_PRINTED = "I didn't print the test pieces:"  # a live session only: the eval's person always prints them
+NOT_PRINTED_BASIS = "not printed"  # the basis of a line about a piece the live person chose not to print
 KEPT_FROM_REPLY = ("role", "content", "tool_calls", "reasoning", "reasoning_details")
 USE_YOUR_TOOLS = "Please use your tools: measure to ask me for a measurement, submit_design to hand in the design."
 
@@ -305,15 +315,27 @@ def read_arguments(call: llm.ToolCall) -> dict:
     return arguments
 
 
+def recorded_test_prints(task, pieces: Submission) -> dict:
+    """How each test piece came out, by part id, from the recorded prints only: the eval's answer to print_test.
+    A live session answers it with what the person says instead (pbe/runner/live.py)."""
+    from pbe.runner import coupon_loop  # it imports this module
+    with tempfile.TemporaryDirectory() as out:
+        built = build_parts(pieces, Path(out) / "parts")
+        return coupon_loop.printed_parts_report(task, pieces, built)
+
+
 class TrialTools:
     """The model's tools (three, and run_python where it can run code), and what its calls
     to them collect over one trial."""
 
-    def __init__(self, task, person, python: PythonTool | None = None, can_test: bool = False):
+    def __init__(self, task, person, python: PythonTool | None = None, can_test: bool = False,
+                 print_tests=recorded_test_prints, measure_sketch=False):
         self.task = task
+        self.measure_sketch = measure_sketch  # a live session: measure may come with a sketch, which the person is shown
         self.person = person
         self.python = python
         self.can_test = can_test
+        self.print_tests = print_tests  # (task, the test pieces) -> each piece's report lines, by part id
         self.test_prints = []  # can_test: each print_test call that was printed, and what the person said
         self.limitations = []  # whatever the model passed to report_limitation
         self.repairs = 0  # submit_design calls sent back to be fixed
@@ -340,7 +362,10 @@ class TrialTools:
         return tool(arguments)
 
     def measure(self, arguments):
-        return self.person.measure(str(arguments.get("item", "")), str(arguments.get("what", "")))
+        item, what = str(arguments.get("item", "")), str(arguments.get("what", ""))
+        if self.measure_sketch and arguments.get("sketch") is not None:
+            return self.person.measure(item, what, sketch=arguments["sketch"])
+        return self.person.measure(item, what)
 
     def run_python(self, arguments):
         return self.python.run(str(arguments.get("code", "")))
@@ -348,7 +373,6 @@ class TrialTools:
     def print_test(self, arguments):
         """Print the test pieces and say how each came out: the same readings the person gives in the test-print
         loop (a pocket's fit, a seat's fit, a holed roof), from the recorded prints only, with no cause or fix."""
-        from pbe.runner import coupon_loop  # it imports this module
         parts = [{**part, "role": "coupon"} if isinstance(part, dict) else part for part in arguments.get("parts") or []]
         try:
             pieces = Submission.model_validate({"task": self.task.id, "params": arguments.get("params") or {}, "parts": parts})
@@ -356,10 +380,9 @@ class TrialTools:
             return f"I can't print that yet. Fix these and call print_test again:\n{e}"
         if not pieces.parts:
             return "There's nothing to print: send at least one part."
-        with tempfile.TemporaryDirectory() as out:
-            built = build_parts(pieces, Path(out) / "parts")
-            report = coupon_loop.printed_parts_report(self.task, pieces, built)
-        reply = TEST_PRINTED + "\n" + "\n".join(
+        report = self.print_tests(self.task, pieces)
+        printed = any(line.basis != NOT_PRINTED_BASIS for lines in report.values() for line in lines)
+        reply = (TEST_PRINTED if printed else NONE_PRINTED) + "\n" + "\n".join(
             f"{part_id}:\n" + "\n".join(f"- {line.text}" for line in lines) for part_id, lines in report.items())
         self.test_prints.append({"params": arguments.get("params"), "parts": [part.id for part in pieces.parts],
                                  "reply": {part_id: [{"text": line.text, "basis": line.basis} for line in lines]
@@ -500,19 +523,24 @@ def outcome_of(error, sub):
     return "submitted" if sub is not None else "no_submission"
 
 
-def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, chat=llm.chat, workdir=None):
+def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, chat=llm.chat, workdir=None,
+              person=None, print_tests=recorded_test_prints, measure_sketch=False):
     """Returns (record, messages, submission or None). Infrastructure errors end the trial
     with outcome "error", counted apart from the model's own failures. `workdir` is
-    run_python's working folder, in the condition that has it."""
-    person = Person(task.hidden_facts)
+    run_python's working folder, in the condition that has it. `person` and `print_tests` are who
+    answers measure and print_test: the task's recorded answers unless a live session passes its own
+    (pbe/runner/live.py); the prompt and the hand-in format are the same either way. `measure_sketch` is a live
+    session's one addition to the tools: measure may carry a numbered sketch for the person (pbe/runner/sketch.py)."""
+    person = person if person is not None else Person(task.hidden_facts)
     python = code_tool(task, condition, workdir)
-    trial_tools = TrialTools(task, person, python, can_test=condition == TEST_CONDITION)
+    trial_tools = TrialTools(task, person, python, can_test=condition == TEST_CONDITION, print_tests=print_tests,
+                             measure_sketch=measure_sketch)
     messages = opening_messages(task, condition, person, max_turns, python)
     calls, error = [], None
     started = time.monotonic()
     for _ in range(max_turns):
         try:
-            response = chat(model, messages, tools=tools(condition, task.format.assembly), max_tokens=max_tokens,
+            response = chat(model, messages, tools=tools(condition, task.format.assembly, measure_sketch), max_tokens=max_tokens,
                             **llm.caching_params(model))
         except llm.LLMError as e:
             error = str(e)

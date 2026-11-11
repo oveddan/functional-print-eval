@@ -2,6 +2,19 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-13: The making system: a live mode for the agent and a pre-print check
+
+No saved result changes: no run was regraded, and the eval's conditions get the prompt, tools and answers they had.
+
+- **Why.** Dan agreed a design on 2026-11-11 for how the eval fits with his own builds and write-ups (`docs/making-system.md` has the public part): the eval's agent is used on real parts, a real failure becomes a case in `seeds/`, and the checks run on a design before it's printed.
+- **Live mode** (`pbe/live.py`, `pbe/runner/live.py`). `agent.run_trial` takes who answers `measure` and `print_test` as arguments; the eval's defaults are the task's table and the recorded prints, as before. In a live session a person answers at the terminal or from a file, each test piece is saved as an STL, and `session.yaml` keeps every answer and is itself an answers file, so the session runs again without the person. A test print's reply is recorded with the basis "live answer", so it's never read as a recorded print.
+- **A sketch on `measure`, live sessions only** (`pbe/runner/sketch.py`; Dan, 2026-11-11). Asked for "number 4" on a diagram, Dan measured a hole spacing when a thread test was meant. In a live session `measure` takes an optional SVG with numbered dimensions and what each asks for; it opens in the browser, is answered by number, and is kept in `sketches/` beside the transcript. The drawing is checked before it's saved or opened (drawing elements only, 50,000 characters, every number labelled) and refused with the reason otherwise. The eval's conditions don't offer it: a test holds their `measure` tool to what it was.
+- **Pre-print check** (`pbe/preprint.py`). The general checks, and nut pockets and 608 seats read from the shape, on a hand-in or an exported STL or STEP file. Every prediction names the print it rests on, or "nothing recorded is near". A hand-in for one of the eval's tasks gets that task's requirements. The 608 limits are the wheel task's own (`tasks/bearing-wheel/requirements.yaml`, set from rounds 2 and 3), and a part the design says to print with supports passes `bridges` as a trial's does.
+- **Evidence.** `tests/test_live.py` (14) and `tests/test_preprint.py` (15); the whole suite passes. On `examples/arca-plate/original.yaml` the check fails `bridges` on the Arca plate's roof and test print A's cell H, and `fix.yaml` passes it. The first version read every hexagon as a nut pocket and called the plate's bolt-head recess an M8 pocket, so pockets are read only for a nut someone names (`--nut`, or the hand-in's hardware).
+- **Review** (Codex's two findings and eight of our own, all fixed in this PR, each with a test). A sketch's `<?xml-stylesheet?>` is refused and what's saved is the checked drawing written out again; a sealed or run-through hex pocket fails on geometry; a replayed answer is used only for a test piece of the same code and params, or the same sketch, and what nobody answered is asked again; the check reads a task's requirements on the final parts only, as a `can_test` trial does; an interrupted session keeps the person's answers; a check that crashes on a shape is not graded and the rest run; a reply about pieces nobody printed no longer says they were printed; each pocket basis says which prints it rests on, round 3's ribbed and lipped pockets included.
+- **Not verified.** No live session against a real model (the tests script the model), no sketch drawn by a model or opened by a live session, and no STL exported from OpenSCAD.
+- Scoring walk (`docs/scoring.md`). Real limitation: unchanged, no task added. Defensible grading: the check reuses the graders, adds no verdict of its own, and "not graded" stays apart from pass. Reliable grader: weak for a bare mesh, which is read as it sits in its file with no orientation or unit check. Explainable failures: each prediction carries its basis. Reproducible: both run from one command; a live session isn't reproducible by nature, which is why its answers are saved.
+
 ## 2026-11-12: Main's tests green again after round 3's review fixes
 
 - PR #7's last two fixes (the short-strand rule checks every direction, with at least 24% anchored; the test-print loop's person answers from coupon B only) went in without a regrade, and main's CI failed two tests on it. Every run and loop replay is regraded on main's code, `tests/test_servo_mount.py`'s on-edge plate now passes (its channel ledges are short-strand roofs), and two trials that no longer fail on roofs alone are dropped from `NOT_HOLED_ROOFS` (Qwen 3.8 Flash knob t5, Gemini 4 Argon wheel t5 clears on regrade).
@@ -134,7 +147,6 @@ Scoring walk (`docs/scoring.md`, and section 5 of the hackathon's eval design gu
 - **Reproducibility:** the grader reads a committed file; no key needed.
 - **Human expertise and review:** the outcome words, the "loose fails" call and the 1.8 mm depth floor are Claude's, for Dan to review.
 - **Insight:** a test print only settles what it has on it: piece N decides the hub but not the screw holes, so R4 on the horn can pass on centring while whether the arm turns with the horn stays open.
-
 ## 2026-11-08: The game spinner task removed
 
 - Dan's call, for the submission: the game spinner (PR 44) is taken out whole: its task, grader (`pbe/graders/combined.py`), first-look runs and tests. It was written before the assumption tolerance and broke against it (20 failing tests, one a crash in its grader); none of the scored results used it.
