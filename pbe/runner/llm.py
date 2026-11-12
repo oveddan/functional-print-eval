@@ -46,6 +46,11 @@ def _key():
     return op_read.stdout.strip()
 
 
+def api_key() -> str:
+    """The OpenRouter key, read once (1Password asks once a process). Never print it."""
+    return _key()
+
+
 def _post(data, timeout) -> dict:
     request = urllib.request.Request(URL, data=data, headers={
         "Authorization": f"Bearer {_key()}",
