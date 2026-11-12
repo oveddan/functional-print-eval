@@ -304,3 +304,32 @@ def test_regrading_a_run_without_grades_keeps_its_own_summary(tmp_path):
     runner.regrade(run_dir, ["nut-knob"])
     assert runner.summarize(run_dir) == []
     assert (run_dir / "summary.csv").read_text() == own
+
+
+def _saved_trials(run_dir, count):
+    """`count` saved m5-spacer trials, each the task's reference saved with no findings, so a regrade changes every verdict."""
+    task = tasks.load("m5-spacer")
+    for trial in range(1, count + 1):
+        folder = runner.trial_folder(run_dir, task, "can_ask", "m", trial)
+        folder.mkdir(parents=True)
+        (folder / "submission.yaml").write_text(task.reference)
+        record = a_record(task=task.id, outcome="submitted", trial=trial)
+        record.set_verdict([])
+        record.save(folder)
+
+
+def _saved_files(run_dir):
+    return {path.relative_to(run_dir): path.read_bytes() for path in sorted(run_dir.rglob("*"))
+            if path.name in ("grades.json", "summary.csv")}
+
+
+def test_a_regrade_with_two_workers_saves_what_a_serial_one_does(tmp_path):
+    stamp = runner.VersionStamp("2026-11-12T00:00:00+00:00", "abc1234")
+    for workers in (1, 2):
+        run_dir = tmp_path / f"workers-{workers}"
+        _saved_trials(run_dir, 2)
+        runner.regrade(run_dir, ["m5-spacer"], workers, stamp)
+        runner.summarize(run_dir)
+    serial, parallel = _saved_files(tmp_path / "workers-1"), _saved_files(tmp_path / "workers-2")
+    assert len(serial) == 3 and parallel == serial
+    assert all(TrialRecord.load(folder).regrades for folder, _ in TrialRecord.all_in(tmp_path / "workers-2"))
