@@ -4,6 +4,7 @@
     uv run python -m pbe.eval --reference --task m5-spacer   # the reference must pass every check
     uv run python -m pbe.eval --regrade --run pilot --task m5-spacer   # saved submissions, current checks
     uv run python -m pbe.eval --regrade --runs-dir /tmp/runs --run pilot --task m5-spacer   # on a copy
+    uv run python -m pbe.eval --regrade --run pilot-estoa --task estoa-light --workers 6   # trials side by side
     uv run python -m pbe.eval --run pilot-code --condition can_run_code --task m5-spacer --model ... --budget 0.50
 
 Each trial saves transcript.json, submission.yaml, grades.json (and parts/, not committed;
@@ -19,6 +20,8 @@ import json
 import platform
 import subprocess
 import sys
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -68,10 +71,23 @@ def code_version():
     return git("rev-parse", "--short", "HEAD") + ("-dirty" if has_changes else "")
 
 
+@dataclass(frozen=True)
+class VersionStamp:
+    """When, with which code and on which platform a verdict was made."""
+    date: str
+    commit: str
+    platform: str = PLATFORM
+
+    @classmethod
+    def now(cls):
+        return cls(datetime.now(timezone.utc).isoformat(timespec="seconds"), code_version())
+
+    def apply(self, record):
+        record.date, record.commit, record.platform = self.date, self.commit, self.platform
+
+
 def stamp_version(record):
-    record.date = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    record.commit = code_version()
-    record.platform = PLATFORM
+    VersionStamp.now().apply(record)
 
 
 def spent(run_dir):
@@ -151,30 +167,69 @@ def what_decides(record):
     return read, record.failed_checks, record.not_graded_checks, record.declined
 
 
-def regrade_one(record, sub, folder):
+def regrade_one(record, sub, folder, stamp):
+    """Grade one saved trial again and save it if anything changed. The line saying its verdict changed, or None."""
     findings, observations = agent.evaluate(tasks.load(record.task), agent.graded_design(record.condition, sub), folder)
     regraded = record.model_copy(deep=True)
     regraded.set_verdict(findings, declined.reason(sub, findings))
     verdict_changed = what_decides(regraded) != what_decides(record)
     if not verdict_changed and observations == record.observations:
-        return
+        return None
     record.observations = observations
+    change = None
     if verdict_changed:
         was = record.verdict
         record.keep_verdict_as_earlier()
         record.set_verdict(findings, regraded.declined)
-        stamp_version(record)
-        print(f"{record.task} {record.condition} {record.model} t{record.trial}: {was} -> {record.verdict}")
+        stamp.apply(record)
+        change = f"{record.task} {record.condition} {record.model} t{record.trial}: {was} -> {record.verdict}"
     record.save(folder)
+    return change
 
 
-def regrade(run_dir, task_ids):
-    """Grade saved submissions again with the current checks, without calling a model.
-    The earlier verdicts stay in grades.json under `regrades`, so a changed result is visible."""
+@dataclass(frozen=True)
+class RegradeJob:
+    """One saved trial to grade again. Each job writes only its own folder, so jobs can run side by side."""
+    folder: Path
+    record: TrialRecord
+    stamp: VersionStamp
+
+
+def regrade_folder(job):
+    """Run one job, in this process or a worker's."""
+    return regrade_one(job.record, submission.load(job.folder / "submission.yaml"), job.folder, job.stamp)
+
+
+def regrade_jobs(run_dir, task_ids, stamp):
+    """The selected trials that have a submission to grade, in path order."""
+    jobs = []
     for folder, record in TrialRecord.all_in(run_dir):
-        sub_path = folder / "submission.yaml"
-        if is_selected(record.task, task_ids) and sub_path.exists():
-            regrade_one(record, submission.load(sub_path), folder)
+        if is_selected(record.task, task_ids) and (folder / "submission.yaml").exists():
+            jobs.append(RegradeJob(folder, record, stamp))
+    return jobs
+
+
+def run_jobs(jobs, workers):
+    """Each job's result in job order as soon as it and those before it are done, from `workers` processes;
+    one runs them here, one after another. A job that raises stops the rest, as a serial regrade does."""
+    if workers <= 1:
+        yield from map(regrade_folder, jobs)
+        return
+    pool = ProcessPoolExecutor(max_workers=workers)
+    try:
+        yield from pool.map(regrade_folder, jobs)
+    finally:
+        pool.shutdown(cancel_futures=True)
+
+
+def regrade(run_dir, task_ids, workers=1, stamp=None):
+    """Grade saved submissions again with the current checks, without calling a model.
+    The earlier verdicts stay in grades.json under `regrades`, so a changed result is visible.
+    One stamp for the whole regrade, so trials regraded together say so whichever worker graded them."""
+    jobs = regrade_jobs(run_dir, task_ids, stamp or VersionStamp.now())
+    for change in run_jobs(jobs, workers):
+        if change:
+            print(change)
 
 
 def check_references(task_ids):
@@ -206,9 +261,14 @@ def parse_args():
     ap.add_argument("--max-tokens", type=int, default=32000)
     ap.add_argument("--reference", action="store_true", help="grade each task's reference solution instead")
     ap.add_argument("--regrade", action="store_true", help="grade the run's saved submissions again with the current checks")
+    ap.add_argument("--workers", type=int, default=1, help="with --regrade: trials graded side by side, one process each")
     args = ap.parse_args()
     if not (args.model or args.reference or args.regrade):
         ap.error("--model is required unless --reference or --regrade")
+    if args.workers < 1:
+        ap.error("--workers must be 1 or more")
+    if args.workers > 1 and not args.regrade:
+        ap.error("--workers only applies to --regrade")
     return args
 
 
@@ -247,7 +307,7 @@ def main():
         sys.exit(0 if check_references(args.task) else 1)
     run_dir = args.runs_dir / args.run
     if args.regrade:
-        regrade(run_dir, args.task)
+        regrade(run_dir, args.task, args.workers)
         summarize(run_dir)
         return
     args.condition = args.condition or ["can_ask"]

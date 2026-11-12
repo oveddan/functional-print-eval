@@ -2,6 +2,12 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-12: Regrade trials side by side (`--workers`)
+
+- `uv run python -m pbe.eval --regrade ... --workers N` grades saved trials in N processes at once; the default, 1, grades them one after another here as before. Each trial still writes only its own `grades.json`, and `summary.csv` is written once at the end from the saved trials in path order, so the saved files don't depend on the worker count (`test_a_regrade_with_two_workers_saves_what_a_serial_one_does`: two m5-spacer trials regraded with one worker and with two save byte-identical `grades.json` and `summary.csv`). No verdict changes: this only changes how fast a regrade runs.
+- One date and commit stamp per regrade now, taken when it starts, instead of one per changed trial; trials regraded together say so. Verdict-changed lines print in path order as trials finish; a trial that raises stops the regrade, as before. `--workers` without `--regrade` is an error.
+- Not done for the coupon loop's replays (`scripts/coupon_loop.py`): each replay calls a model and checks the shared budget before each arm, so running them side by side would let the budget overshoot. `--model` already lets one process per model run side by side.
+
 ## 2026-11-08: The game spinner task removed
 
 - Dan's call, for the submission: the game spinner (PR 44) is taken out whole: its task, grader (`pbe/graders/combined.py`), first-look runs and tests. It was written before the assumption tolerance and broke against it (20 failing tests, one a crash in its grader); none of the scored results used it.
