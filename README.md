@@ -110,7 +110,8 @@ recorded = my nut-pocket test print: for each nut size, each pocket's clearance 
 for each layer of the model's part, from the bed up:
     find a hexagonal hole about the size of the nut
 pocket = the widest across-flats of that hole
-if the pocket has ribs, clips or relief cut into it:  not graded  (no test print had them)
+if the pocket has ribs, clips or a lip:  compare it with round 3's pocket of the same shape and bite;
+                                          not graded if none is close
 clearance = pocket - the nut's across-flats size (ISO table)
 
 if a recorded pocket is within 0.01 mm of clearance:  use what that nut did
@@ -189,10 +190,10 @@ More from the saved trials: four passes and four failures, failures seen from be
 
 > "The roller wheel on my sliding closet door snapped. I've got two 608 skateboard bearings and an M8 bolt I could use. Could I 3D print a new wheel that spins on the bolt? The old one was about 50 mm across and about 16 mm wide."
 
-| Reference solution | Pass: a cone roof | Fail: a flat roof | Not graded: a narrow ledge |
+| Reference solution | Pass: a cone roof | Fail: a flat roof | Fail since round 3: a narrow ledge |
 |---|---|---|---|
 | ![The reference wheel](docs/media/tasks/bearing-wheel-reference.png) | ![Opus's wheel cut through the middle: the roof is a cone](docs/media/failures/wheel-cone.png) | ![Sonnet's wheel cut through the middle: a flat roof over the lower bearing](docs/media/failures/wheel-flat-roof.png) | ![Sonnet's wheel cut through the middle: a narrow ledge](docs/media/failures/wheel-narrow-ledge.png) |
-| Seats for both bearings | Opus 5.5, trial 1: the ledge between the bearings steps inward each layer, so nothing is printed over air | Sonnet 5.5, trial 1: a flat ledge over the empty lower bearing seat; only 22% of strands land on plastic at both ends, so it would sag | Sonnet 5.5, trial 3: a ledge about 2.5 mm wide, narrower than any that failed in a test print, so it isn't graded |
+| Seats for both bearings | Opus 5.5, trial 1: the ledge between the bearings steps inward each layer, so nothing is printed over air | Sonnet 5.5, trial 1: a flat ledge over the empty lower bearing seat; only 22% of strands land on plastic at both ends, so it would sag | Sonnet 5.5, trial 3: a ledge about 2.5 mm wide. It wasn't graded until round 3's ring roofs, where a 2 mm ledge round a bolt hole tangled; now it fails |
 
 More from the saved trials: four passes and four failures, failures seen from below with the failing roof or ledge in red.
 
@@ -202,10 +203,10 @@ More from the saved trials: four passes and four failures, failures seen from be
 
 > "I want a hand knob for an M3 bolt, about 20 mm across, so I can tighten it without a tool. It's one printed piece. An M3 hex nut (ISO 4032) presses into the knob by hand and has to stay in when I turn the knob upside down, no glue."
 
-| Reference solution | Pass | Fail: no clearance | Not graded: crush ribs |
+| Reference solution | Pass | Fail: no clearance | Pass since round 3: crush ribs |
 |---|---|---|---|
 | ![The reference knob](docs/media/tasks/nut-knob-reference.png) | ![Sonnet 5.5's M3 knob, its pocket set from its own test print](docs/media/tasks/nut-knob-pass.png) | ![Sonnet's M3 pocket cut across with the nut's outline](docs/media/failures/knob-no-clearance.png) | ![Close-up of Opus's M5 knob: small round ridges stand out from the hex pocket's walls](docs/media/tasks/nut-knob-ribs.png) |
-| Pocket at a size the test print held | Sonnet 5.5, M3, trial 2 with test prints: it asked for a test print of four pocket sizes and heard 5.40 and 5.50 mm won't go in, 5.60 mm really struggles, and 5.70 mm goes in snug and stays upside down. Its knob uses 5.70 mm | Sonnet 5.5, M3 trial 1, cut across: the pocket is exactly as wide as the nut, with no gap. Dan's test print at that size wouldn't take the nut | Opus 5.5, M5 trial 2: the small round ridges on the pocket's walls are meant to grip the nut. No test print has tried ribs, so the check can't say whether the nut would hold |
+| Pocket at a size the test print held | Sonnet 5.5, M3, trial 2 with test prints: it asked for a test print of four pocket sizes and heard 5.40 and 5.50 mm won't go in, 5.60 mm really struggles, and 5.70 mm goes in snug and stays upside down. Its knob uses 5.70 mm | Sonnet 5.5, M3 trial 1, cut across: the pocket is exactly as wide as the nut, with no gap. Dan's test print at that size wouldn't take the nut | Opus 5.5, M5 trial 2: the small round ridges on the pocket's walls are meant to grip the nut. No test print had ribs until round 3, where a pocket with three round ribs took an M5 pressed in on a bolt and held it upside down. These ribs are within 0.2 mm of that one, so the check passes them, saying which print it assumed from |
 
 More from the saved trials: four passes and four failures, failures seen from below with the failing roof or ledge in red.
 
@@ -236,35 +237,35 @@ In these results the model can ask for test prints before its final design, as i
 
 **Best to worst, when the model can ask for test prints** (7 models, 5 or more trials on each of the four tasks):
 
-1. **Gemini 4 Argon**, 77% of trials pass (20/26): $0.20 and 0.4 print hours per working part
-2. **Gemini 3.8 Flash**, 57% of trials pass (13/23): $0.26 and 0.4 print hours per working part
-3. **GPT-6.1 Sol**, 52% of trials pass (21/40): $0.09 and 0.6 print hours per working part
-4. **Opus 5.5**, 44% of trials pass (17/39): $0.35 and 0.6 print hours per working part
-5. **DeepSeek V4.1 Flash**, 31% of trials pass (8/26): $0.19 and 1.3 print hours per working part
-6. **Sonnet 5.5**, 25% of trials pass (10/40): $0.42 and 1.3 print hours per working part
+1. **Gemini 4 Argon**, 82% of trials pass (23/28): $0.19 and 0.4 print hours per working part
+2. **GPT-6.1 Sol**, 62% of trials pass (25/40): $0.08 and 0.5 print hours per working part
+3. **Gemini 3.8 Flash**, 56% of trials pass (14/25): $0.26 and 0.4 print hours per working part
+4. **Opus 5.5**, 52% of trials pass (21/40): $0.29 and 0.5 print hours per working part
+5. **Sonnet 5.5**, 50% of trials pass (20/40): $0.21 and 0.7 print hours per working part
+6. **DeepSeek V4.1 Flash**, 38% of trials pass (10/26): $0.16 and 1.0 print hours per working part
 7. **Haiku 5.5**, 15% of trials pass (3/20): $0.04 and 2.0 print hours per working part
 
-Not run with test prints, ranked by their first print without them: GPT-6 Luna 15%, GLM 5.3 Flash 15%, DeepSeek V4 Pro 5%, Qwen 3.8 Flash 0%. Grok 4.7 was left out because it was too expensive to run 10 trials on.
+Not run with test prints, ranked by their first print without them: GLM 5.3 Flash 22%, GPT-6 Luna 8%, DeepSeek V4 Pro 5%, Qwen 3.8 Flash 3%. Grok 4.7 was left out because it was too expensive to run 10 trials on.
 
-**What asking for test prints changed.** Across these 7 models, 23% of first prints pass without test prints, and 43% pass when the model can ask for test prints before its final design.
+**What asking for test prints changed.** Across these 7 models, 37% of first prints pass without test prints, and 53% pass when the model can ask for test prints before its final design.
 
 | Model | First print, no test prints | Second print, after hearing how the first came out | Asking for test prints first | Change from the first print |
 |---|---|---|---|---|
-| Gemini 4 Argon | 28% (11/40) | 72% | 77% (20/26) | +49 points |
-| Gemini 3.8 Flash | 30% (12/40) | 57% | 57% (13/23) | +27 points |
-| GPT-6.1 Sol | 22% (9/40) | 30% | 52% (21/40) | +30 points |
-| Opus 5.5 | 25% (10/40) | 38% | 44% (17/39) | +19 points |
-| DeepSeek V4.1 Flash | 29% (12/41) | 41% | 31% (8/26) | +2 points |
-| Sonnet 5.5 | 22% (9/40) | 35% | 25% (10/40) | +2 points |
-| Haiku 5.5 | 8% (3/40) | not replayed | 15% (3/20) | +8 points |
+| Gemini 4 Argon | 48% (19/40) | 78% | 82% (23/28) | +35 points |
+| GPT-6.1 Sol | 50% (20/40) | 52% | 62% (25/40) | +12 points |
+| Gemini 3.8 Flash | 45% (18/40) | 62% | 56% (14/25) | +11 points |
+| Opus 5.5 | 40% (16/40) | 60% | 52% (21/40) | +12 points |
+| Sonnet 5.5 | 35% (14/40) | 50% | 50% (20/40) | +15 points |
+| DeepSeek V4.1 Flash | 39% (16/41) | 61% | 38% (10/26) | -1 points |
+| Haiku 5.5 | 2% (1/40) | not replayed | 15% (3/20) | +12 points |
 
-In 150 of these 214 trials the person answered at least one test piece with "I can't tell you how that one came out", for a size my test prints never tried. 58 of the 92 passes came after such an answer, so some may owe part of the pass to moving to a size I did print (see Limits).
+In 155 of these 219 trials the person answered at least one test piece with "I can't tell you how that one came out", for a size my test prints never tried. 78 of the 116 passes came after such an answer, so some may owe part of the pass to moving to a size I did print (see Limits).
 <!-- scorecard:end --> 
 
 <!-- scorecard-note:start (written by scripts/scorecard.py; don't edit by hand) -->
-Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Gemini 4 Argon 6 of its 18, Gemini 3.8 Flash 4 of its 11, GPT-6.1 Sol 1 of its 3. DeepSeek V4.1 Flash, Opus 5.5 and Sonnet 5.5 had none.
+Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Sonnet 5.5 1 of its 6. Gemini 4 Argon, Gemini 3.8 Flash, DeepSeek V4.1 Flash, Opus 5.5 and GPT-6.1 Sol had none.
 
-**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 0 of 30 designs pass on the first print. After the person says how the box came out, 1 of the 26 failures replayed passes. Asking for test prints first, 0 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
+**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 1 of 30 designs pass on the first print. After the person says how the box came out, 1 of the 26 failures replayed passes. Asking for test prints first, 0 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
 <!-- scorecard-note:end -->
 
 ### Where models fail
@@ -289,23 +290,30 @@ With more test prints around all these designs that the model makes, I can reall
 
 ## What we couldn't grade
 
-For the duration of the hackathon, I was away from my 3D printer, so I could not print additional test prints that would help me grade unanticipated designs that the model produced, beyond the ones I printed before the hackathon began. For example, some models generated crush ribs to hold the nut, which were never in our test prints. We can't count this kind of trial as a pass, because we don't know the truth, so we mark it as **not graded**.
+During the hackathon I was away from my 3D printer, so the first results left every design no test print covered as **not graded**: crush ribs to hold a nut, narrow roof ledges, bolt holes and bearing seats between the sizes I'd printed, the USB-C plug's head. Not graded is never a pass, because we don't know the truth.
 
-This list shows the types of designs we weren't able to grade, how many trials produced each one, and the type of print that would help us answer if it succeeded or failed:
+Back at the printer on 2026-11-11 and 12, I printed a third round of test prints aimed at those gaps, and six roofs cut straight out of the models' own Estoa designs, and measured my USB-C plug. The checks now read those records, and every saved trial was regraded (`CHANGELOG.md`, 2026-11-12, has each rule and its evidence). 127 trial results moved from what was published before: 64 nut knobs and 3 bearing wheels that were not graded now pass, and 40 not graded now fail; 10 knobs that passed now fail, because their pockets are tighter than round 3's tightest that took a nut. Five of the six roof crops failed as the bridge check predicted, and the sixth, a short-span roof, printed clean, so roofs whose strands are all 6.8 mm or shorter now pass. The Estoa light box stays at 1 pass in 48: its other failures, mostly keyholes and roofs that really tangle, still stand.
+
+![Each round 3 test print from above, every hole outlined by what happened when I tried it](docs/media/test-print-maps.png)
+
+| Bridges and roofs cut from the models' designs | GPT's roof, the one that printed clean | Ring roofs: stepped clean, plain tangled | A tightened M5 nut on the 1.3 mm ledge |
+|---|---|---|---|
+| ![The undersides of the 60, 80 and 100 mm bridges and five roof crops, every one strung across](https://media.danoved.xyz/print-build-eval/nogit/16e6737/46cc720f/bridges-and-roof-crops-underside.jpg) | ![GPT-6.1 Sol's roof crop held up: a short roof with a clean underside](https://media.danoved.xyz/print-build-eval/nogit/16e6737/5828c4a9/gpt-roof-crop-clean.jpg) | ![The ring-roof plate from underneath: the stepped roofs printed solid, the plain ones over the bigger pockets tangled](https://media.danoved.xyz/print-build-eval/nogit/16e6737/86844df7/ring-roofs-underside.jpg) | ![An M5 bolt through ring roof 5 with its nut tightened underneath, sitting slightly proud on the strands](https://media.danoved.xyz/print-build-eval/nogit/16e6737/5e7b512a/ring-roof-cell5-m5-nut.jpg) |
+| All strung: the bridge check failed each of these, and the 50 mm span limit stands | Its longest unsupported strand is 6.8 mm, so short-strand roofs now pass | 9 of 10 cells came out as the bridge check predicted | It holds, just not flush: the miss the short-strand rule fixes |
+
+What's still not graded, how many trials produced each, and the print that would settle it:
 
 <!-- not-graded:start (written by scripts/failure_tables.py; don't edit by hand) -->
 | Not graded because | Example | Trials | The print that would settle it |
 |---|---|---|---|
-| A nut pocket with crush ribs or clips | <img src="docs/media/not-graded/a-nut-pocket-with-crush-ribs-or-clips.png" width="160" alt="A nut pocket with crush ribs or clips: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 111 | Pockets with ribs, clips or relief beside plain ones. Each model's ribs differ, so one print settles only designs like it |
-| A roof ledge 1.5 to 3 mm wide | <img src="docs/media/not-graded/a-roof-ledge-1-5-to-3-mm-wide.png" width="160" alt="A roof ledge 1.5 to 3 mm wide: Opus 5.5, estoa light, trial 3"><br><sub>Opus 5.5, estoa light, trial 3</sub> | 54 | Ring roofs 1.5 to 3 mm wide around a bolt hole |
-| A tripod head recess under 5 mm deep | <img src="docs/media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 8"><br><sub>Haiku 5.5, tripod plate, trial 8</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
-| Bearings a little proud, or no shoulder | <img src="docs/media/not-graded/bearings-a-little-proud-or-no-shoulder.png" width="160" alt="Bearings a little proud, or no shoulder: Opus 5.5, bearing wheel, trial 6"><br><sub>Opus 5.5, bearing wheel, trial 6</sub> | 23 | Wheels with bearings 0.2 to 0.6 mm proud, and a bore with no shoulder |
-| A tripod bolt hole between 6.35 and 6.8 mm | <img src="docs/media/not-graded/a-tripod-bolt-hole-between-6-35-and-6-8-mm.png" width="160" alt="A tripod bolt hole between 6.35 and 6.8 mm: Haiku 5.5, tripod plate, trial 2"><br><sub>Haiku 5.5, tripod plate, trial 2</sub> | 13 | Bolt holes at 6.5 and 6.6 mm |
+| A tripod head recess under 5 mm deep | <img src="docs/media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 3"><br><sub>Haiku 5.5, tripod plate, trial 3</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
+| A nut pocket with ribs, clips or a lip unlike any printed | <img src="docs/media/not-graded/a-nut-pocket-with-ribs-clips-or-a-lip-unlike-any-printed.png" width="160" alt="A nut pocket with ribs, clips or a lip unlike any printed: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 29 | That rib shape and bite. Round 3 printed 3 and 6 round ribs, 6 flat ribs and two lips; each model's ribs differ, so one print settles only designs like it |
+| A roof ledge 1.5 to 2 mm wide | <img src="docs/media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 12 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
+| A nut pocket no recorded print settles | <img src="docs/media/not-graded/a-nut-pocket-no-recorded-print-settles.png" width="160" alt="A nut pocket no recorded print settles: DeepSeek V4.1 Flash, knob M5, trial 6"><br><sub>DeepSeek V4.1 Flash, knob M5, trial 6</sub> | 12 | A print of that pocket |
 | A plate width outside 37 to 39 mm | <img src="docs/media/not-graded/a-plate-width-outside-37-to-39-mm.png" width="160" alt="A plate width outside 37 to 39 mm: DeepSeek V4.1 Flash, tripod plate, trial 2"><br><sub>DeepSeek V4.1 Flash, tripod plate, trial 2</sub> | 11 | Dovetail plates from 34 to 45 mm tried in the clamp |
-| A nut pocket tighter than any printed | <img src="docs/media/not-graded/a-nut-pocket-tighter-than-any-printed.png" width="160" alt="A nut pocket tighter than any printed: Haiku 5.5, knob M5, trial 2"><br><sub>Haiku 5.5, knob M5, trial 2</sub> | 3 | M5 pockets at -0.15, -0.10 and -0.05 mm |
-| A test print whose pockets are ribbed or unsettled | <img src="docs/media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Haiku 5.5, knob M5, trial 3"><br><sub>Haiku 5.5, knob M5, trial 3</sub> | 3 | The ribbed pockets above, and coupon B2's finer steps |
 | A pocket shape the checker can't read | <img src="docs/media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 2 | None: the checker needs fixing |
-| A bearing seat between printed sizes, or ribbed | <img src="docs/media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: Haiku 5.5, bearing wheel, trial 3"><br><sub>Haiku 5.5, bearing wheel, trial 3</sub> | 1 | Seats at 22.05, 22.4 and 22.5 mm, and lobed seats |
+| A test print whose pockets are ribbed or unsettled | <img src="docs/media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Sonnet 5.5, knob M3, trial 5"><br><sub>Sonnet 5.5, knob M3, trial 5</sub> | 2 | The ribbed pockets above, and coupon B2's finer steps |
+| A bearing seat between printed sizes, or ribbed | <img src="docs/media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: GLM 5.3 Flash, bearing wheel, trial 2"><br><sub>GLM 5.3 Flash, bearing wheel, trial 2</sub> | 1 | Seats at 22.1 and 22.3 mm, and lobed seats: 22.05 wouldn't take a 608, 22.2 held, 22.4 fell out |
 <!-- not-graded:end -->
 
 ## Run it

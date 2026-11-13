@@ -52,5 +52,5 @@ The longer stretch Dan asked for: let the footage run, with his words from the t
 ## Recording notes
 
 - Record in OBS as Apple VT ProRes 422, 1920x1080, 30 fps, then make an H.264 copy to upload. Check the first take's bitrate with ffprobe before recording the rest.
-- The timelapses and the nut video are on R2 (links in the README); use the full-length originals from Dan's movies folder for section 2, not the GIFs.
+- The timelapses and the nut video are on R2 (links in the README); use the full-length originals from Dan's Dropbox folder `Projects/Making Documentation/Print Build Eval` for section 2, not the GIFs.
 - Scroll the README on GitHub for the rest. Upload somewhere the link opens without asking for permission, and keep it under 5 minutes.

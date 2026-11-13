@@ -3,15 +3,16 @@ bearings (C5), will they press in and stay on this printer (C2), does the
 bolt pass (C3)?
 
 Nothing here assumes how it's done: a seat on each side, two bearings stacked from one side, or two
-halves bolted together. Which limits, and where they come from, are in the task's brief. A seat no
-print has measured comes back None, "not graded", which is never a pass.
+halves bolted together. Which limits, and where they come from, are in the task's brief: round 2's and
+round 3's seats (E, H) and round 3's bolt holes (F). A seat no print has measured comes back None,
+"not graded", which is never a pass.
 """
 import math
 import tempfile
 from dataclasses import dataclass
 from itertools import groupby
 
-from pbe.graders import assumed
+from pbe.graders import assumed, bolt_fits
 from pbe.graders.checks import Verdict
 from pbe.graders.nuts import coupons_in_the_manual
 from pbe.graders.sections import clear_width, diameter, hole_axis, holes_by_layer
@@ -23,7 +24,9 @@ PLAIN = 1.06  # a hole this much bigger than its clear circle has ribs, lobes or
 # mm a hole may be wider at its widest than its clear circle and still be plain. A plain printed seat reads within
 # 0.01 mm; crush ribs 0.2 mm high (Sonnet 5.5's, game spinner first look) read 0.4 mm but add only 3.4% to the area
 RIBS_MM = 0.1
-PROUD = 0.5  # mm a bearing may stand out of its seat and still count as seated, though no print has tried it
+# mm a bearing may stand out of its seat and still count as seated: round 3's H5 to H7 held a 608 standing 0.2,
+# 0.4 and 0.6 mm proud of a 22.2 seat (Claude's scoring call to read it for any seat that holds, 2026-11-12)
+PROUD = 0.6
 
 
 @dataclass
@@ -147,26 +150,41 @@ def room(sub, built, seat_range, bearing_width, bearings):
     if held < bearings:
         deep = ", ".join(f"{seat.depth:.1f}" for seat in seats) or "none"
         return False, f"room for {held} of {bearings} bearings {bearing_width} mm wide; seat-sized depth: {deep} mm"
+    return True, f"room for {held} bearings, in {len(seats)} seat(s){_how_placed(seats)}"
+
+
+def _how_placed(seats):
+    """What round 3 says about bearings with no shoulder behind them, or standing a little out of their seat,
+    in words. Claude's scoring call (2026-11-12): a seat with no shoulder counts, because H8 (22.2, no shoulder)
+    held its bearing upside down. Whether a push moves it through wasn't reported; whether the seat's width
+    holds is R3's question, so one mistake counts once."""
+    notes = []
     if not all(seat.stopped for seat in seats if seat.bearings):
-        return None, "the bore doesn't narrow past the seat, so only the press fit places the bearings, and no print has tried that"
+        notes.append("no shoulder stops the bearings, as on round 3's H8, which held its bearing upside down")
     if any(seat.proud for seat in seats):
-        deep = ", ".join(f"{seat.depth:.1f}" for seat in seats)
-        return None, f"the bearings would stand a little proud (seat depth {deep} mm), and no print has tried that"
-    return True, f"room for {held} bearings, in {len(seats)} seat(s)"
+        notes.append(f"the bearings stand a little proud, no more than round 3's H7 ({PROUD} mm), which held")
+    return "".join(f"; {note}" for note in notes)
 
 
-def _holds(across, too_tight, holds) -> Verdict:
+def _holds(across, too_tight, holds, too_loose) -> Verdict:
     if across <= too_tight + TOL:
         return Verdict(False, f"{across:.2f} mm: a {too_tight} mm seat wouldn't take the bearing")
+    if across >= too_loose - TOL:
+        return Verdict(False, f"{across:.2f} mm: from {too_loose} mm the bearing was too loose and fell out")
     if holds[0] - TOL <= across <= holds[1] + TOL:
         return Verdict(True, f"{across:.2f} mm: it presses in and holds upside down")
-    close = assumed.nearest(across, [(too_tight, False), (holds[0], True), (holds[1], True)])
+    close = assumed.nearest(across, [(too_tight, False), (holds[0], True), (holds[1], True), (too_loose, False)])
     if close:
-        result = "it presses in and holds upside down" if close[1] else "the seat wouldn't take the bearing"
+        if close[1]:
+            result = "it presses in and holds upside down"
+        elif close[0] == too_loose:
+            result = "the bearing would be too loose and fall out"
+        else:
+            result = "the seat wouldn't take the bearing"
         return Verdict(close[1], f"{across:.2f} mm: {result} ({assumed.note(close[0])})")
     if across < holds[0]:
         return Verdict(None, f"{across:.2f} mm: between {too_tight}, too tight, and {holds[0]}, which held")
-    return Verdict(None, f"{across:.2f} mm: no print has measured above {holds[1]}")
+    return Verdict(None, f"{across:.2f} mm: between {holds[1]}, which held, and {too_loose}, which fell out")
 
 
 def _param_that_moves_seat(sub, part_id, across, seat_range, bearing_width, bearings):
@@ -186,11 +204,11 @@ def _param_that_moves_seat(sub, part_id, across, seat_range, bearing_width, bear
     return None
 
 
-def _coupon_seat_that_holds(sub, built, seat_range, too_tight, holds, bearing_width):
+def _coupon_seat_that_holds(sub, built, seat_range, too_tight, holds, too_loose, bearing_width):
     """A test coupon in the manual with a seat that holds: its id, or None."""
     for part_id, coupon in coupons_in_the_manual(sub, built):
         seats = _coupon_seats(coupon.mesh, seat_range, bearing_width)
-        if any(seat.plain and _holds(seat.across, too_tight, holds).ok is True for seat in seats):
+        if any(seat.plain and _holds(seat.across, too_tight, holds, too_loose).ok is True for seat in seats):
             return part_id
     return None
 
@@ -251,7 +269,7 @@ def _why_no_coupon_helps(sub, built, coupon):
     return "no test print in the manual"
 
 
-def fit(sub, built, seat_range, too_tight, holds, bearing_width, bearings):
+def fit(sub, built, seat_range, too_tight, holds, too_loose, bearing_width, bearings):
     """The bearing presses in and stays upside down, or a test coupon would have found a size that
     does and the design has a param to apply it with."""
     found = _seats_with_bearings(sub, built, seat_range, bearing_width, bearings)
@@ -259,26 +277,45 @@ def fit(sub, built, seat_range, too_tight, holds, bearing_width, bearings):
         return None, "no seat to read"
     if not all(seat.plain for _, seat in found):
         return None, "ribs, lobes or a slot in the seat: only plain round seats were printed"
-    worst = _worst([_holds(seat.across, too_tight, holds) for _, seat in found])
+    worst = _worst([_holds(seat.across, too_tight, holds, too_loose) for _, seat in found])
     if worst.ok is True:
         return worst
-    coupon = _coupon_seat_that_holds(sub, built, seat_range, too_tight, holds, bearing_width)
+    coupon = _coupon_seat_that_holds(sub, built, seat_range, too_tight, holds, too_loose, bearing_width)
     part_id, seat = found[0]
     if coupon and (param := _param_that_moves_seat(sub, part_id, seat.across, seat_range, bearing_width, bearings)):
         return True, f"{worst.detail}; test coupon {coupon} would find a size that holds, and {param} moves the seat"
     return worst.ok, f"{worst.detail}; {_why_no_coupon_helps(sub, built, coupon)}"
 
 
-def bolt_passes(sub, built, seat_range, bolt, fine):
-    """The bolt fits through every part of the wheel. Between the bolt's size and ISO 273's fine
-    clearance hole, no print has said whether a printed hole passes it."""
+def _bolt_through(clear, bolt, thread, fine, spins) -> Verdict:
+    """How the bolt goes through a printed bore this wide, from round 3's F (bolt_fits). A bore the bolt only
+    screws through fails on the wheel itself: Claude's scoring call (2026-11-12), because the wheel would grip
+    the bolt and couldn't spin on it. A spacer or sleeve on the bolt doesn't spin, so there it's enough."""
+    if clear < bolt - TOL:
+        return Verdict(False, f"{clear:.2f} mm clear at its tightest: a {bolt} mm bolt won't pass")
+    if clear >= fine - TOL:
+        return Verdict(True, f"{clear:.2f} mm clear at its tightest")
+    how, assumed_from = bolt_fits.reading(thread, clear)
+    assumed_words = f" ({assumed.note(assumed_from)})" if assumed_from is not None else ""
+    if how == "screws in" and spins:
+        return Verdict(False, f"{clear:.2f} mm clear at its tightest: round 3's {thread} only screwed through a hole that size"
+                              f"{assumed_words}, so the wheel would grip the bolt and not spin")
+    if how is None:
+        return Verdict(None, f"{clear:.2f} mm clear at its tightest: no print has measured that")
+    return Verdict(True, f"{clear:.2f} mm clear at its tightest: round 3's {thread} went through a hole that size ({how}){assumed_words}")
+
+
+def bolt_passes(sub, built, seat_range, bolt, thread, fine):
+    """The bolt goes through every part of the wheel, and the wheel turns on it. Between the bolt's size
+    and ISO 273's fine clearance hole, round 3's F says how a printed hole takes it."""
     finals = _finals(sub, built)
     if not finals:
         return None, "no wheel to read"
     wheels = [mesh for mesh in finals if _middle_side(mesh) >= seat_range[1]]
-    tightest = [_tightest_bore(mesh, seat_range) for mesh in wheels]
-    if not tightest or None in tightest:
+    wheel_bores = [_tightest_bore(mesh, seat_range) for mesh in wheels]
+    if not wheel_bores or None in wheel_bores:
         return False, "no hole runs through the wheel"
+    verdicts = [_bolt_through(clear, bolt, thread, fine, spins=True) for clear in wheel_bores]
     # a printed spacer or sleeve on the bolt has to pass it too
     others = [mesh for mesh in finals if not any(mesh is wheel_mesh for wheel_mesh in wheels)]
     for mesh in others:
@@ -286,14 +323,5 @@ def bolt_passes(sub, built, seat_range, bolt, fine):
         if axis is None:
             continue
         stacks, _ = _bore_stacks(mesh, axis)
-        tightest += [min(clear_width(hole) for hole in stack) for stack in stacks]
-    clear = min(tightest)
-    if clear < bolt - TOL:
-        return False, f"{clear:.2f} mm clear at its tightest: a {bolt} mm bolt won't pass"
-    if clear < fine - TOL:
-        close = assumed.nearest(clear, [(bolt, False), (fine, True)])
-        if close:
-            return close[1], (f"{clear:.2f} mm clear at its tightest: the bolt {'passes' if close[1] else 'jams'} "
-                              f"({assumed.note(close[0])})")
-        return None, f"{clear:.2f} mm clear at its tightest: no print has measured that"
-    return True, f"{clear:.2f} mm clear at its tightest"
+        verdicts += [_bolt_through(min(clear_width(hole) for hole in stack), bolt, thread, fine, spins=False) for stack in stacks]
+    return _worst(verdicts)

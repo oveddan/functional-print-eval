@@ -1,6 +1,7 @@
 """Hex nut pockets, read from the mesh one layer at a time, and compared with what
 actually held on this printer (coupon B, results/predictions/round1-coupons.yaml:
-press the nut in by hand, turn the coupon over, shake).
+press the nut in by hand, turn the coupon over, shake; and round 3's I, round3-coupons.yaml:
+pockets under the nut's size, with crush ribs and with a lip, the nut pressed in on a bolt).
 
 The right clearance can't be known before printing, and it changes with nut size, so a
 design passes the fit check in either of two ways: its pocket lands where the prints say
@@ -16,6 +17,7 @@ import tempfile
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel
@@ -57,6 +59,24 @@ SETTLES = {"holds": True, "won't go in": False, "falls out": False}
 # and "with force it goes in". So it presses in by hand. Nobody recorded turning it over; it's tighter
 # than +0.2, which holds, so it's read as holding too (issue 38).
 READ_AS = {("M3", 0.1): "holds"}
+# Round 3's I pockets, read as the same words, by cell. Claude's scoring call (2026-11-12): a pocket passes
+# when the nut "goes in when pressed (with a bolt) and holds upside down"; going in by thumb alone isn't
+# required. Each reading rests on the record's outcome, outcome_pressed_with_bolt and
+# holds_with_bolt_out_upside_down, quoted in round3-coupons.yaml; the record stays word for word.
+ROUND3_READS = {
+    "U1": "won't go in",  # pressed with bolt: "won't go in"
+    "U2": "won't go in",  # pressed with bolt: "won't go in"
+    "U3": "holds",        # "goes in when pushed hard"; upside down: "stays in"
+    "R2": "holds",        # "goes in, but has to be really pushed"; upside down: "stays in"
+    "R3": "holds",        # "M5 fits nicely"; upside down: "stays in"
+    "R4": "goes in",      # "M3 fits"; upside down: "not reported", so whether it holds isn't settled
+    "R5": "won't go in",  # pressed with bolt: "M3 won't go in"
+    "L1": "holds",        # "goes in nice and snug" by thumb, not pressed on a bolt; past the lip, the lip keeps it in
+    "L2": "won't go in",  # pressed with bolt: "doesn't fit"
+}
+# R1's rib sheared during the thumb attempts ("looks like the top rib is gone"), so its pressed result counts neither way.
+ROUND3_LEFT_OUT = {"R1"}
+Shape = Literal["plain", "ribbed", "lip"]
 
 
 class PrintedPocket(BaseModel):
@@ -75,6 +95,37 @@ class CouponRound(BaseModel):
     B_nuts: NutCoupon
 
 
+class RoundThreePocket(BaseModel):
+    """One pocket printed on round 3's I, as far as the nut checks read it."""
+    cell: str
+    nut: str
+    clearance: float  # the hexagon's across-flats over the nut's
+    ribs: int
+    lip_af: float | None
+    bite: float  # how far the nut crushes each rib, or the lip on each side
+
+    @property
+    def shape(self) -> Shape:
+        if self.lip_af is not None:
+            return "lip"
+        return "ribbed" if self.ribs else "plain"
+
+    @property
+    def reading(self) -> float:
+        """Its tightest across-flats over the nut's, as find_pockets reads it: for ribs or a lip, the nut's
+        size less the bite on each side (tests/test_nut_knob.py checks this against the printed shapes)."""
+        return self.clearance if self.shape == "plain" else round(-2 * self.bite, 3)
+
+
+class RoundThreeNuts(BaseModel):
+    pockets: list[RoundThreePocket]
+
+
+class RoundThree(BaseModel):
+    """results/predictions/round3-coupons.yaml, as far as the nut checks read it."""
+    I_nuts: RoundThreeNuts
+
+
 @dataclass
 class LayerHole:
     layer: int
@@ -89,7 +140,12 @@ class Pocket:
     depth: float
     z: tuple[float, float]
     opens: list[str]  # the faces a nut could be pressed in from: "bed", "top"
-    plain: bool  # a plain hex, the only kind of pocket coupon B measured
+    shape: Shape  # "plain"; "ribbed": ribs, clips or relief leave more room than the hexagon; "lip": a wider seat beyond it
+
+    @property
+    def plain(self):
+        """A plain hex, the only kind of pocket coupon B measured."""
+        return self.shape == "plain"
 
 
 def _fits_through(slice_holes, nut):
@@ -167,15 +223,16 @@ def _nut_sized_stacks(slices, af):
     return stacks
 
 
-def _is_plain(stack, tightest, opens):
+def _shape(stack, tightest, opens) -> Shape:
     """Is this a plain hex pocket, the only kind coupon B measured? Ribs, clips and corner relief
     leave more room than the hexagon, and a snap ring or lip has a wider seat beyond it."""
-    roomy = tightest.hole.area > 1.03 * HEX_AREA * tightest.width ** 2
+    if tightest.hole.area > 1.03 * HEX_AREA * tightest.width ** 2:
+        return "ribbed"
     if "top" in opens:  # the nut comes in from the top, so beyond the tightest layer is below it
         beyond = [layer for layer in stack if layer.layer < tightest.layer]
     else:
         beyond = [layer for layer in stack if layer.layer > tightest.layer]
-    return not roomy and all(layer.width <= tightest.width + TOL for layer in beyond)
+    return "plain" if all(layer.width <= tightest.width + TOL for layer in beyond) else "lip"
 
 
 def _read_pocket(stack, tightest, slices, outlines, bottom, layer_h):
@@ -194,7 +251,7 @@ def _read_pocket(stack, tightest, slices, outlines, bottom, layer_h):
     if all(nut_passes[tightest.layer + 1:]):
         opens.append("top")
     z = (bottom + stack[0].layer * layer_h, bottom + (stack[-1].layer + 1) * layer_h)
-    return Pocket(nut.centroid, tightest.width, depth, z, opens, _is_plain(stack, tightest, opens))
+    return Pocket(nut.centroid, tightest.width, depth, z, opens, _shape(stack, tightest, opens))
 
 
 def find_pockets(mesh, af):
@@ -233,22 +290,38 @@ def _outcome(printed):
     return "falls out" if fell_out else printed.outcome
 
 
+def _predictions(name):
+    return yaml.safe_load((ROOT / "results/predictions" / name).read_text())
+
+
+def round3_pockets() -> list[RoundThreePocket]:
+    """Round 3's I pockets that count: every one but ROUND3_LEFT_OUT."""
+    pockets = RoundThree.model_validate(_predictions("round3-coupons.yaml")).I_nuts.pockets
+    return [printed for printed in pockets if printed.cell not in ROUND3_LEFT_OUT]
+
+
 @cache
-def _measured():
-    """The prints' outcomes per nut: (clearance, outcome), tightest first."""
-    coupons = CouponRound.model_validate(yaml.safe_load((ROOT / "results/predictions/round1-coupons.yaml").read_text()))
+def _measured(with_round3=True):
+    """The prints' outcomes per (nut, shape): (clearance, outcome), tightest first. Round 1's pockets
+    were all plain; round 3's are read by ROUND3_READS at the clearance find_pockets would read. Without
+    round 3, only what coupon B's person printed (the test-print loop's replies)."""
     table = {}
-    for printed in coupons.B_nuts.pockets:
-        table.setdefault(printed.nut, []).append((printed.clearance, _outcome(printed)))
-    return {nut: sorted(rows) for nut, rows in table.items()}
+    for printed in CouponRound.model_validate(_predictions("round1-coupons.yaml")).B_nuts.pockets:
+        table.setdefault((printed.nut, "plain"), []).append((printed.clearance, _outcome(printed)))
+    for printed in round3_pockets() if with_round3 else []:
+        table.setdefault((printed.nut, printed.shape), []).append((printed.reading, ROUND3_READS[printed.cell]))
+    return {key: sorted(rows) for key, rows in table.items()}
 
 
-def reading(label, clearance) -> tuple[str | None, float | None]:
+def reading(label, clearance, shape: Shape = "plain", with_round3=True) -> tuple[str | None, float | None]:
     """(outcome, the printed clearance it was assumed from, or None if it was printed or the trend settles it).
-    Outcomes are "holds", "loose", "falls out", "won't go in" or a READ_AS reading. Tighter than "won't go in" and
-    looser than "loose" are settled; between steps that disagree, or beyond the steps where the trend doesn't settle
-    it, the nearest step within the assumption tolerance decides (assumed.py); further than that, None."""
-    rows = _measured()[label]
+    Outcomes are "holds", "loose", "falls out", "won't go in", "goes in" (round 3's R4: hold not reported) or a
+    READ_AS reading, read against prints of this shape. Tighter than "won't go in" and looser than "loose" are
+    settled; between steps that disagree, or beyond the steps where the trend doesn't settle it, the nearest step
+    within the assumption tolerance decides (assumed.py); further than that, or with no print of this shape, None."""
+    rows = _measured(with_round3).get((label, shape))
+    if rows is None:
+        return None, None
     for printed, outcome in rows:
         if abs(clearance - printed) <= TOL:
             return outcome, None
@@ -264,19 +337,20 @@ def reading(label, clearance) -> tuple[str | None, float | None]:
     return (close[1], close[0]) if close else (None, None)
 
 
-def verdict(label, clearance):
-    """What the prints say at this clearance, or what the nearest print says within the assumption tolerance."""
-    return reading(label, clearance)[0]
+def verdict(label, clearance, shape: Shape = "plain"):
+    """What the prints of this shape say at this clearance, or what the nearest one says within the assumption
+    tolerance."""
+    return reading(label, clearance, shape)[0]
 
 
-def _holds(label, clearance):
+def _holds(label, clearance, shape: Shape = "plain"):
     """Does the nut press in by hand and stay in upside down? None if no print has settled it."""
-    return SETTLES.get(verdict(label, clearance))
+    return SETTLES.get(verdict(label, clearance, shape))
 
 
 def _pocket_holds(label, found, af):
-    """The same for a pocket. The prints only speak for plain ones: crush ribs or clips are a different thing."""
-    return _holds(label, found.across - af) if found.plain else None
+    """The same for a pocket, read against prints of its shape."""
+    return _holds(label, found.across - af, found.shape)
 
 
 def _walls_split(mesh):
@@ -362,12 +436,14 @@ def _coupon_sizes(sub, built, nut, af):
     return sizes
 
 
-def _reading(found, clearance, af, label):
+def _reading(found, clearance, af, said, assumed_from):
     """What the prints say about this pocket, in words."""
     if not found.plain:
-        return f"pocket {found.across:.2f} across flats at its tightest, with ribs, clips, a lip or relief: no print has measured those"
-    said, assumed_from = reading(label, clearance)
-    words = f"pocket {found.across:.2f} across flats, {clearance:+.2f} over the {af} nut: prints say {said or 'not measured'}"
+        kind = "a lip" if found.shape == "lip" else "ribs, clips or relief"
+        words = (f"pocket {found.across:.2f} across flats at its tightest, with {kind}, {clearance:+.2f} over the {af} nut: "
+                 f"round 3's prints of that shape say {said or 'not measured'}")
+    else:
+        words = f"pocket {found.across:.2f} across flats, {clearance:+.2f} over the {af} nut: prints say {said or 'not measured'}"
     if assumed_from is not None:
         words += f" ({assumed.note(assumed_from, ' mm clearance')})"
     if said == "loose":
@@ -408,16 +484,19 @@ def fit(sub, built, nut, label):
     if found is None:
         return None, "no hex pocket for a nut to fit"
     clearance = round(found.across - af, 3) or 0.0  # or 0.0: a tiny negative would print as "-0.00"
-    reading = _reading(found, clearance, af, label)
-    holds = _holds(label, clearance) if found.plain else None
+    said, assumed_from = reading(label, clearance, found.shape)
+    words = _reading(found, clearance, af, said, assumed_from)
+    if said == "goes in":
+        words += " (round 3's R4: nobody reported turning it over)"
+    holds = _holds(label, clearance, found.shape)
     if holds:
-        return True, reading
+        return True, words
     if not found.plain:  # a size found on a plain coupon says nothing about a pocket with ribs or clips
-        return holds, f"{reading}; test prints aren't counted for a pocket like this"
+        return holds, f"{words}; test prints aren't counted for a pocket like this"
     rescue = _coupon_rescue(sub, built, nut, label, part.part_id, found, af)
     if isinstance(rescue, str):
-        return holds, f"{reading}; {rescue}"
-    return rescue.ok, f"{reading}; {rescue.detail}"
+        return holds, f"{words}; {rescue}"
+    return rescue.ok, f"{words}; {rescue.detail}"
 
 
 def _says_to_open_a_hole(sentence):
@@ -482,7 +561,7 @@ def summarize(sub, built, nut, label):
             continue
         for found in find_pockets(built_part.mesh, af):
             clearance = round(found.across - af, 2) or 0.0  # or 0.0: not "-0.0"
-            prints_say = verdict(label, clearance) if found.plain else "not a plain pocket"
+            prints_say = verdict(label, clearance, found.shape)
             out.append({"part": part.id, "role": part.role, "across": round(found.across, 2), "clearance": clearance,
                         "prints_say": prints_say, "depth": round(found.depth, 1), "opens": found.opens})
     return out

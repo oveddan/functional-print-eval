@@ -12,7 +12,7 @@ from typing import NamedTuple
 
 from shapely.ops import unary_union
 
-from pbe.graders import assumed
+from pbe.graders import assumed, bolt_fits
 from pbe.graders.checks import Verdict
 from pbe.graders.nuts import MAX_DRILL_OUT, sentence_saying_to_clear_it
 from pbe.graders.sections import clear_width, holes, section
@@ -232,8 +232,11 @@ def fits_clamp(sub, built, width, narrows_by):
     return True, f"{widest:.1f} mm wide, narrowing by {narrowing:.1f} mm on both edges"
 
 
-def bolt_hole(sub, built, bolt, too_tight, printed, head_stopped, head_passes):
-    """The bolt passes, its head doesn't, and the head goes on the clamp side."""
+def bolt_hole(sub, built, bolt, thread, too_tight, head_stopped, head_passes):
+    """The bolt passes by hand, its head doesn't, and the head goes on the clamp side. How a hole this wide
+    takes the bolt comes from round 3's F (bolt_fits). A hole the bolt only screws through fails: Claude's
+    scoring call (2026-11-12), because the plate's own thread holds the bolt, so once its head seats it
+    can't turn on to pull the camera down onto the plate."""
     plate, axis = _plate(sub, built)
     if plate is None:
         return None, "no plate built"
@@ -254,15 +257,14 @@ def bolt_hole(sub, built, bolt, too_tight, printed, head_stopped, head_passes):
     wide_end = _wide_end(widths)
     if recess.depth >= MIN_RECESS and wide_end is not None and recess.end != wide_end:
         return False, "the head's recess opens on the narrow face: the head is on the camera's side, or the dovetail is upside down"
-    if clear < printed - TOL:
-        close = assumed.nearest(clear, [(too_tight, False), (printed, True)])
-        if close:
-            return close[1], (f"{clear:.2f} mm clear at its tightest: the bolt {'passes' if close[1] else 'jams'} "
-                              f"({assumed.note(close[0])}){drilled}")
+    how, assumed_from = bolt_fits.reading(thread, clear)
+    assumed_words = f" ({assumed.note(assumed_from)})" if assumed_from is not None else ""
+    if how == "screws in":
+        return False, (f"{clear:.2f} mm clear at its tightest: round 3's {thread} only screwed through a hole that size{assumed_words}, "
+                       f"so the plate's thread would stop the head pulling the camera down{drilled}")
+    if how is None or clear > head_stopped:
         return None, f"{clear:.2f} mm clear at its tightest: no print has measured that{drilled}"
-    if clear > head_stopped:
-        return None, f"{clear:.2f} mm clear at its tightest: no print has measured that{drilled}"
-    return True, f"{clear:.2f} mm clear at its tightest{drilled}"
+    return True, f"{clear:.2f} mm clear at its tightest: the bolt goes through by hand{assumed_words or ' (round 3)'}{drilled}"
 
 
 def _drill_out_told(sub):

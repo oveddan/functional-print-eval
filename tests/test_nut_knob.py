@@ -294,12 +294,12 @@ def test_every_size_loads_with_its_own_nut_in_its_reference(nut):
     pytest.param(design("M3", clearance=0.0), {"R4"}, set(), id="wont-go-in"),
     pytest.param(design("M5", clearance=0.3), {"R4"}, set(), id="falls-out"),
     # no print has settled this clearance: not graded, which is still not a pass
-    pytest.param(design("M5", clearance=-0.3), set(), {"R4"}, id="tighter-than-any-print"),
+    pytest.param(design("M5", clearance=-0.3), {"R4"}, set(), id="tighter-than-round-3s-U1-which-wouldnt-go-in"),
     # the pocket itself is wrong, so the checks that need a hex pocket can't say
     pytest.param(design(code=ROUND_POCKET), {"R3"}, {"R4", "R5"}, id="round-pocket"),
     pytest.param(design(nut_af=13.0), {"R3"}, {"R4", "R5"}, id="an-M8-pocket-in-an-M5-knob"),
     pytest.param(design(recess=-2), {"R3"}, set(), id="shallow-2.7-for-a-4.7-nut"),
-    pytest.param(design(code=CLOSED_POCKET), {"R3"}, {"bridges"}, id="closed-under-a-roof-with-a-narrow-ledge"),
+    pytest.param(design(code=CLOSED_POCKET), {"R3"}, set(), id="closed-under-a-roof-with-a-narrow-ledge"),
     pytest.param(design(code=ROUND_COLLAR_ABOVE), {"R3"}, {"R4"}, id="round-collar-the-corners-cant-pass"),
     pytest.param(design(code=FILLETED_SQUARE), {"R3"}, {"R4", "R5"}, id="filleted-square-as-wide-as-the-hex"),
     pytest.param(design(code=PENTAGON), {"R3"}, {"R4", "R5"}, id="pentagon"),
@@ -358,12 +358,11 @@ def test_right_designs_that_differ_from_the_reference_pass(tmp_path, sub):
     assert all(f.ok is True for f in findings), not_passing(findings)
 
 
-def test_a_bed_pocket_with_a_plain_hole_is_not_measured(tmp_path):
-    # its roof is a ring 1.3 to 3 mm wide around the hole. It fails the strand test, but it's
-    # narrower than any roof seen to tangle (3.1 mm, the Arca plate) and wider than the 1.5 mm
-    # allowance, so no print can say. Everything else about the design passes.
+def test_a_bed_pocket_with_a_plain_hole_passes(tmp_path):
+    # its roof is a ring 1.3 to 3 mm wide around the hole, few of whose strands are anchored. Its strands are
+    # short, as round 3's ring roof 5 (an 8.1 hex round a 5.5 hole) was, which printed and held a nut
     findings = grade(design(code=BED_POCKET_PLAIN_HOLE), tmp_path)
-    assert (failed(findings), not_graded(findings)) == (set(), {"bridges"})
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 @pytest.mark.parametrize("sub", [
@@ -375,22 +374,17 @@ def test_a_coupon_no_print_can_judge_is_not_a_failure(tmp_path, sub):
 
 
 def test_the_deeper_of_two_hex_pockets_on_one_axis_is_the_nuts(tmp_path):
-    # the recess's own roof is a narrow ledge round the bolt hole, which no print has measured
     findings = grade(design(code=SECOND_HEX_RECESS), tmp_path)
-    assert (failed(findings), not_graded(findings)) == (set(), {"bridges"})
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 @pytest.mark.parametrize("sub", [
-    # GPT-6.1 Sol's and Grok 4.7's clips read as "no hex pocket" and "+0.50, falls out" before,
-    # because the shape test aimed the nut's corner at a slot's end. The hex is there, and the
-    # clips may well hold, but coupon B only measured plain pockets.
-    pytest.param(design(code=SPRING_CLIPS), id="clips"),
-    pytest.param(design(code=RIBS), id="ribs"),
+    pytest.param(design("M3", code=RIBS, clearance=0.0), id="ribs-M3-like-round-3s-R4-which-nobody-turned-over"),
     pytest.param(design(code=SNAP_RING), id="snap-ring"),
     pytest.param(design("M3", code=SNAP_RING, clearance=0.0), id="snap-ring-M3-not-wont-go-in"),
     pytest.param(design(code=RELIEVED_CORNERS), id="corner-relief"),
     pytest.param(design(code=RELIEF_SLOTS), id="slots-out-from-three-flats"),
-    pytest.param(with_coupon(design(code=RIBS)), id="a-plain-coupon-cant-speak-for-ribs"),
+    pytest.param(with_coupon(design("M3", code=RIBS, clearance=0.0)), id="a-plain-coupon-cant-speak-for-ribs"),
 ])
 def test_a_pocket_that_isnt_plain_is_not_graded(tmp_path, sub):
     findings = grade(sub, tmp_path)
@@ -436,8 +430,9 @@ def test_a_crash_in_a_design_is_one_failure(tmp_path):
     ("M5", 0.15, "holds"),         # between two that disagree: the nearest decides, the tighter on a tie (graders/assumed.py)
     ("M3", 0.05, "won't go in"),   # Gemini 4 Argon's M3 knob: midway between "won't go in" and READ_AS's "holds"
     ("M3", -0.2, "won't go in"),   # tighter than "won't go in" is settled
-    ("M5", -0.1, "holds"),         # tighter than "holds", within the assumption tolerance of it
-    ("M5", -0.3, None),            # ... and further than that: it might not go in
+    ("M8", -0.1, "holds"),         # tighter than "holds", within the assumption tolerance of it
+    ("M8", -0.3, None),            # ... and further than that: it might not go in
+    ("M5", -0.1, "won't go in"),   # round 3's U2, pressed on a bolt
     ("M3", 0.5, "holds"),          # looser than "holds", within the tolerance
     ("M3", 0.6, None),             # ... and further than that: it might fall out
     ("M5", 0.5, "falls out"),      # looser than "falls out" is settled
@@ -451,11 +446,57 @@ def test_verdict_reads_what_the_prints_say(label, clearance, expected):
     ("M5", 0.05, True),
     ("M5", 0.2, None),                         # "loose": nobody has turned it over
     ("M5", 0.15, True),                        # the nearest print, 0.1, held
-    ("M5", -0.3, None),                        # no print near it says
+    ("M5", -0.3, False),                       # tighter than round 3's U1, which wouldn't go in
+    ("M8", -0.3, None),                        # no print near it says
     ("M3", 0.1, True),                         # with force it goes in (nuts.READ_AS)
 ])
 def test_holds_is_settled_only_where_prints_settle_it(label, clearance, expected):
     assert nuts._holds(label, clearance) is expected
+
+
+@pytest.mark.parametrize("label, clearance, shape, expected", [
+    ("M5", -0.3, "ribbed", "holds"),        # between round 3's R3 (bite 0.2) and R2 (bite 0.1), which both held
+    ("M3", -0.2, "ribbed", "goes in"),      # R4: went in on a bolt, but nobody reported turning it over
+    ("M3", -0.5, "ribbed", "won't go in"),  # tighter than R5, which wouldn't go in
+    ("M5", -0.2, "lip", "holds"),           # L1
+    ("M5", -0.3, "lip", "won't go in"),     # midway between L2, which wouldn't go in, and L1: the tighter decides (assumed.py)
+    ("M5", 0.1, "lip", None),               # looser than L1 by more than the assumption tolerance
+    ("M8", -0.2, "ribbed", None),           # no ribbed M8 was printed
+])
+def test_round_3_speaks_for_ribs_and_lips(label, clearance, shape, expected):
+    assert nuts.verdict(label, clearance, shape) == expected
+
+
+def test_round_3_pockets_read_as_their_records_say(tmp_path):
+    # the records' clearance and bite give the shape and tightest width find_pockets reads from the printed cells
+    import sys
+    sys.path.insert(0, str(nuts.ROOT / "coupons"))
+    import round3
+    import trimesh
+    import cadquery as cq
+    by_cell = {printed.cell: printed for printed in nuts.round3_pockets()}
+    for cell in round3.I_POCKETS:
+        if cell.name not in by_cell:
+            continue
+        stl = tmp_path / f"{cell.name}.stl"
+        cq.exporters.export(round3.nut_pockets([cell]), str(stl), tolerance=0.01, angularTolerance=0.1)
+        [found] = nuts.find_pockets(trimesh.load(stl), cell.af)
+        printed = by_cell[cell.name]
+        assert (found.shape, round(found.across - cell.af, 2)) == (printed.shape, printed.reading), cell.name
+
+
+def test_clips_within_the_tolerance_of_round_3s_r3_hold(tmp_path):
+    # GPT-6.1 Sol's and Grok 4.7's clips read as "no hex pocket" and "+0.50, falls out" before, because the shape
+    # test aimed the nut's corner at a slot's end. The clips stand 0.25 proud of the nut's flats, 0.05 more than
+    # round 3's R3 ribs, which held: within the assumption tolerance (graders/assumed.py), so they're read from R3
+    findings = grade(design(code=SPRING_CLIPS), tmp_path)
+    assert (failed(findings), not_graded(findings)) == (set(), set()), not_passing(findings)
+
+
+def test_ribs_like_round_3s_r2_hold(tmp_path):
+    # Gemini 4 Argon's ribs over a pocket at the nut's size stand 0.1 into the nut on each flat, as R2's did
+    findings = grade(design(code=RIBS, clearance=0.0), tmp_path)
+    assert (failed(findings), not_graded(findings)) == (set(), set()), not_passing(findings)
 
 
 @pytest.mark.parametrize("sentence, tells", [

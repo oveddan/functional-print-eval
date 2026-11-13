@@ -126,7 +126,7 @@ def _pocket_line(found, af, label) -> ReportLine:
     if not found.plain:  # coupon B only printed plain hexagons; crush ribs or clips are a different thing
         return ReportLine(f"{size}: {CANT_TELL}", "no record")
     clearance = found.across - af
-    outcome, assumed_from = nuts.reading(label, clearance)
+    outcome, assumed_from = nuts.reading(label, clearance, with_round3=False)  # this person printed coupon B only
     if outcome is None:
         return ReportLine(f"{size}: {CANT_TELL}", "no record")
     if assumed_from is None:

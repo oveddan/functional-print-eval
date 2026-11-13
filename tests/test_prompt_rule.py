@@ -2,7 +2,9 @@
 
 servo-mount leaves the servos out of the hardware list, so the MG996R's tab rib is something to ask
 about. The hashes below are of every existing task's opening messages (system prompt and request)
-and tools, per condition, taken on main at c3cec82, before format.yaml could leave hardware out.
+and tools, per condition, taken on main at c3cec82, before format.yaml could leave hardware out. Re-taken on
+2026-11-12, when round 3 added the "Supports: none" line to every condition (agent.NO_SUPPORTS) and Dan's notes on
+the servo horn changed catalog/hardware.yaml: a diff of each prompt against main's showed nothing else changed.
 """
 import hashlib
 import json
@@ -13,27 +15,27 @@ from pbe.runner import agent, python_tool, tasks
 from pbe.runner.measure import Person
 
 BEFORE_PROMPT_RULES = {
-    "m5-spacer can_ask": "1aff3fcca3a65f2ef2c72ea2c4944cdc5bf1bdb87a4a093abc740198b138c00d",
-    "m5-spacer all_given": "1aff3fcca3a65f2ef2c72ea2c4944cdc5bf1bdb87a4a093abc740198b138c00d",
-    "m5-spacer can_run_code": "7ebebfe02c76b84389b6eb46290f4b8da1b8cd99e479ead0e8036a258f0bb06e",
-    "tripod-plate can_ask": "b6f61734b3ebba54b9b538705efe5c734cc1ae7704a6a97fea127d4eec4cb4e0",
-    "tripod-plate all_given": "1cd8b1dde01799979e95dd7d96fcdf8d4837b59ecb812d5ef6acbf50a27b5bec",
-    "tripod-plate can_run_code": "177aa3955976298d5e8041962086e724dcbf39fdcef75cd016099f5b29f5d137",
-    "bearing-wheel can_ask": "05a3869169a46e2cbdaaa21cf48cd293592392385ec0b51e7e7eb978d49113b5",
-    "bearing-wheel all_given": "4f3941acacafbc02336861480a4ed4a7641ab99128cfd1deed3d1ae1d677d100",
-    "bearing-wheel can_run_code": "1be7139d4e35b3055b49f45f81a03d8b7d24b93ebcb542129bebe4d80dd65774",
-    "nut-knob/M3 can_ask": "99a18b04bf31477c83ae35634572e2968b7eac3cdff1823da7505480baac76ff",
-    "nut-knob/M3 all_given": "99a18b04bf31477c83ae35634572e2968b7eac3cdff1823da7505480baac76ff",
-    "nut-knob/M3 can_run_code": "cfab731aab5049f5afcebdeee1cb7c7bc3fe605d7fbc608cffbae68afcf27e60",
-    "nut-knob/M5 can_ask": "768a457d2393420b3d48e6b10dfab6c714584eb8488e32e2656edb36af349158",
-    "nut-knob/M5 all_given": "768a457d2393420b3d48e6b10dfab6c714584eb8488e32e2656edb36af349158",
-    "nut-knob/M5 can_run_code": "405eab970846fe91b32e5f234b3872d1881f7d950a7b3d1f64df132dad522802",
-    "nut-knob/M8 can_ask": "1547d6d06b9f15bd6c21691eb4a58ec6c1f7cb51a4c41d39b41d84fef7ad1b4f",
-    "nut-knob/M8 all_given": "1547d6d06b9f15bd6c21691eb4a58ec6c1f7cb51a4c41d39b41d84fef7ad1b4f",
-    "nut-knob/M8 can_run_code": "3933179ef9b03eddf8530474f0bea1319173c38741a7a042e28e80d96a45f6cc",
-    "estoa-light can_ask": "af6dccd9bc9213334321815d4d9d0b3283a50f2c3e728cb88a9ede5c9cc69fcd",
-    "estoa-light all_given": "972c30d61e19d9d3eb8a4f6fc69f80794b97ec29c24d16ded72fe7e54e52715c",
-    "estoa-light can_run_code": "048cd0242cc1989b10be0c8adfed8bce21954b043e8ed682cd6105e94f6a2f2d",
+    "m5-spacer can_ask": "efe933b2e04ba04c3fa8ee5676e5c5a734b173814555e589ef91fa156d823e18",
+    "m5-spacer all_given": "efe933b2e04ba04c3fa8ee5676e5c5a734b173814555e589ef91fa156d823e18",
+    "m5-spacer can_run_code": "9c7a6dd8a2ef799f9ac3f355729dbf1e071d15cd777e6debfef7a246e71fc7c9",
+    "tripod-plate can_ask": "c134497af2f70eed1458630ccb9f3c4c6dc0e76e06166504d7c5ce2294139bbb",
+    "tripod-plate all_given": "beb45c077c24cb736c09dcd60bd7b61045aad4c08c5fb7d0ead313afb75d3aa1",
+    "tripod-plate can_run_code": "efb3240fee3fe1cc5b67bde063a2dd2dcd07a916ebe57ae8c3e324b81706727e",
+    "bearing-wheel can_ask": "2e7a279e0da054cbe08f4beeffdc070b15e8e7e596596d940346a18a2b2568f4",
+    "bearing-wheel all_given": "f26518d0c0811adf750c8087f567af2b5456f94113c5d83f90989a0b1151d26e",
+    "bearing-wheel can_run_code": "a51dbc82642e9a11ff90249ec4617942178462553911b938780eb4b6e3af7962",
+    "nut-knob/M3 can_ask": "e33af447155bc39f00307cf7bfd035b5df172d3c102f910683905f88af8d8717",
+    "nut-knob/M3 all_given": "e33af447155bc39f00307cf7bfd035b5df172d3c102f910683905f88af8d8717",
+    "nut-knob/M3 can_run_code": "5c9886bf9775cc9e56ae353c55c05a16969cac66a34c3c0886ae4fd33b756a46",
+    "nut-knob/M5 can_ask": "2baa7c0c8cc51cd69e0b89a923a01c3ca7c37bec0531b310d7e85d026076469c",
+    "nut-knob/M5 all_given": "2baa7c0c8cc51cd69e0b89a923a01c3ca7c37bec0531b310d7e85d026076469c",
+    "nut-knob/M5 can_run_code": "46f3575deef3c5dd0b3d7139493aea890407088df676ccf37a721b499a15fbce",
+    "nut-knob/M8 can_ask": "d39e771b1c33bbf1e3bc759f31e701c1267047dc5ba420f27518cc018cddd7b0",
+    "nut-knob/M8 all_given": "d39e771b1c33bbf1e3bc759f31e701c1267047dc5ba420f27518cc018cddd7b0",
+    "nut-knob/M8 can_run_code": "c5c76dc348a9e4defb9b64798799d7b80b3575dc546cb6b382aa2a6f8a8ddecf",
+    "estoa-light can_ask": "5b11d989c5b17a15c73ea39092c422d22c2bb181afccf26f48b8fd020e90b090",
+    "estoa-light all_given": "2d49252224fd722f2ce3e1f760c91b852fb59b14bd1c8f9f522c57a058c17a03",
+    "estoa-light can_run_code": "ffb981b298201e9cf8883537fbcf442481a509766ace03929c86dcd5f9f98fe9",
 }
 
 

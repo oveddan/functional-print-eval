@@ -122,9 +122,10 @@ def test_a_plate_with_a_wall_on_one_edge_passes(tmp_path):
 
 
 def test_a_plate_printed_on_its_edge_passes_the_servo_checks(tmp_path):
-    """On its edge, the channels' roofs are ledges no print has measured: that's the bridge check's call."""
+    """On its edge, the channels' roofs are ledges the bridge check fails since round 3 lowered narrowest_tangled_mm
+    to 2.0 (they were not graded before): that's the bridge check's call, and only it fails."""
     findings = grade(design(code=plate_code(on_edge=True)), tmp_path)
-    assert not failed(findings) and not_graded(findings) == {"bridges"}, not_passing(findings)
+    assert failed(findings) == {"bridges"} and not not_graded(findings), not_passing(findings)
 
 
 def test_a_slot_through_a_plate_thinner_than_the_rib_passes_the_servo_checks(tmp_path):

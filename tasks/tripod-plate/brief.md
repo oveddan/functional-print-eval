@@ -39,13 +39,13 @@ Whether a model asked is recorded for every trial, and `scripts/digest.py` shows
 
 Nothing here was measured for this task, and no model's design gets printed. Every limit comes from the
 one plate Dan printed (`arca_plate.scad`, in his private local-lights repo) and that session's
-record. What they can't decide is "not graded", which is never a pass.
+record, except the bolt hole's lower end, which comes from round 3's test print F. What they can't decide is "not graded", which is never a pass.
 
 | Check | Fails | Passes | Not graded | Source |
 |---|---|---|---|---|
 | R2 clamp: plate width | | 37 to 39 mm | anything else | 38 mm fit a knob clamp. **Estimate:** ±1 mm, because the knob's jaws have travel. How far they travel isn't recorded, so a further-off plate isn't failed. |
 | R2 clamp: angled edges | straight sides | narrows by 1 mm a side | | The clamp has angled lips (the session's reading of Dan's photos). The real bevel was 45°; other angles aren't failed. |
-| R3 bolt hole | under 6.35 mm, or 15 mm and over | 6.8 to 7 mm, or wider up to 13 mm | 6.35 to 6.8, 13 to 15 | 1/4"-20 is 6.35 mm. 6.8 and 7 were printed. A head that fit a 15 mm recess could pull through a 15 mm hole; 13 stopped it. |
+| R3 bolt hole | under 6.35 mm; 6.35 itself, which the bolt only screws through; 15 mm and over | 6.5 up to 13 mm | over 6.35 and under 6.5, 13 to 15 | 1/4"-20 is 6.35 mm. Round 3 (F, PLA on this printer, 2026-11-12): 6.35 "screws in only", 6.5 "goes through with a bit of grip", 6.6 loose; 6.8 and 7 were printed on Dan's plate. **Claude's scoring call:** screwing through doesn't count, because the plate's thread holds the bolt, so once the head seats it can't turn on to pull the camera down. A head that fit a 15 mm recess could pull through a 15 mm hole; 13 stopped it. |
 | R3 which face | a simple dovetail with the head's recess on its narrow, camera side | the recess on the wide side | a part with a groove in its side: the outline can't say which face goes down | The head goes under the plate, and a simple dovetail's wide face sits in the clamp. Gemini 3.8 Flash's correct grooved plate showed the outline alone can't always decide. |
 | R4 head recess: width | 13 mm or less | 15 mm or more | between | Seed `arca-counterbore-guessed`: 13 too tight, 15 fit. |
 | R4 head recess: depth | | 5 mm or more | under 5, or no recess at all | 5 fit. A head standing 1 mm proud was never tried. |

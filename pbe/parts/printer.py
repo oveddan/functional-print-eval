@@ -27,6 +27,8 @@ class Bridging(BaseModel):
     narrowest_tangled_mm: Number
     anchor_tol_mm: Number
     min_anchored: Number
+    short_strand_mm: Number
+    short_strand_min_anchored: Number
 
 
 class Printer(BaseModel):

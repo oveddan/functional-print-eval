@@ -163,7 +163,10 @@ def test_reference_passes_every_check(tmp_path):
 @pytest.mark.parametrize("sub, want_failed, want_not_graded", [
     # the real Estoa mistakes
     pytest.param(socket_set_back(4, usb_w=11.5), {"R3"}, set(), id="usb-opening-11.5-wide-set-back-from-the-port"),
-    pytest.param(design(key_up=-1), {"R6"}, set(), id="keyholes-point-down"),
+    pytest.param(design(key_entry=9.5), {"R6"}, set(), id="keyhole-entry-too-small-for-a-10-head"),
+    pytest.param(body_code("body = body.cut(keyhole(p, side))",
+                           'body = body.cut(keyhole(p, side) if side > 0 else keyhole(p, side).mirror("XZ", (0, p.key_y, 0)))'),
+                 {"R6"}, set(), id="keyholes-run-opposite-ways"),
     pytest.param(disk_holes_apart(30), {"R1"}, {"R2"}, id="disk-holes-30-apart"),
     pytest.param(disk_holes_apart(30, template=True), set(), {"R2"}, id="disk-holes-30-apart-but-checked-on-a-template"),
     pytest.param(hard_coded_disk_holes(disk_holes_apart(30, template=True)), {"R1"}, {"R2"}, id="template-but-the-holes-are-hard-coded"),
@@ -181,11 +184,8 @@ def test_reference_passes_every_check(tmp_path):
     pytest.param(with_opening_test_print(body_code_on(socket_set_back(4, usb_w=11.5), "stadium(p.usb_w, p.usb_h)", "stadium(11.5, p.usb_h)")),
                  {"R3"}, set(), id="opening-test-print-but-the-width-is-hard-coded"),
     pytest.param(perfboard_under_the_disk_screws("ISO 4762 M3x12"), set(), {"R2"}, id="screw-tip-over-the-perfboard"),
-    pytest.param(design(usb_w=13, usb_h=8.5), set(), {"R3"}, id="usb-opening-13-between-records"),
-    pytest.param(rectangular_opening(12, 7.5), set(), {"R3"}, id="usb-opening-12-under-the-largest-plug-head"),
-    pytest.param(rectangular_opening(13, 7.5), set(), {"R3"}, id="usb-opening-holds-the-bare-plug-head-only"),
+    pytest.param(design(usb_w=11.8, usb_h=8.5), set(), {"R3"}, id="usb-opening-takes-the-plug-head-but-not-with-0.2-a-side"),
     pytest.param(socket_set_back(-1.5, usb_w=11.5), set(), {"R3"}, id="small-opening-in-a-thin-wall-at-the-port"),
-    pytest.param(design(key_entry=9.5), set(), {"R6"}, id="keyhole-entry-9.5-never-hung"),
     pytest.param(corner_posts(7.5), set(), {"R4"}, id="insert-posts-under-8-thinner-than-any-printed"),
 ])
 def test_wrong_or_undecided_designs(tmp_path, sub, want_failed, want_not_graded):
@@ -209,6 +209,7 @@ def test_reward_hacks_fail(tmp_path, sub, want_failed, want_not_graded):
 
 @pytest.mark.parametrize("sub", [
     pytest.param(design(usb_w=16, usb_h=10), id="roomier-usb-opening"),
+    pytest.param(rectangular_opening(12, 7.5), id="usb-opening-holds-dans-plug-head-with-0.2-a-side"),
     pytest.param(design(key_slot=5.5, key_entry=11), id="other-keyhole-sizes"),
     pytest.param(design(screw_refs={"disk-screw": "ISO 4762 M3x20"}), id="m3x20-disk-screws-hit-nothing"),
     pytest.param(design(disk_hole_d=3.6), id="roomier-disk-holes"),
@@ -234,6 +235,12 @@ def test_inserts_behind_the_disk_need_a_template(tmp_path, template, want):
     findings = {f.check: f.ok for f in grade(inserts_behind_the_disk(template), tmp_path)}
     assert findings["R1"] is want
     assert findings["R2"] is True and findings["R4"] is True
+
+
+def test_keyholes_that_run_down_hang_the_piece_the_other_way_up(tmp_path):
+    # Dan, 2026-11-11: nothing fixes which way up the round light hangs, so slots that all run down are fine
+    findings = {f.check: f.ok for f in grade(design(key_up=-1), tmp_path)}
+    assert findings["R6"] is True
 
 
 def test_posts_like_the_8_mm_ones_that_bulged_at_100_percent_infill_hold(tmp_path):

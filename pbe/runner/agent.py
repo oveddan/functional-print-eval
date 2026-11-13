@@ -128,7 +128,7 @@ PRINT_TEST = ("Optional. If you need to know whether something is going to work 
 PRINT_TEST_LINE = ("- print_test(params, parts): optional. If you need to know whether something is going to work but you're "
                    "not sure, ask the person to print a test of it before you hand in the final design, so you both save "
                    "time and filament. They print it and tell you how each piece came out.")
-NO_SUPPORTS = "- Supports: none. Every part has to print without them."  # can_test: under the setup's last line
+NO_SUPPORTS = "- Supports: none. Every part has to print without them."  # every condition since 2026-11-12, under the bridge line
 MEASURE_LINE = "- measure(item, what): ask the person to measure one of their own things"
 SUBMIT_LINE_BUILDS_FIRST = ("- submit_design(...): hand in the finished design. Every part is built first: if one doesn't "
                             "build, you get its error back to fix. A design whose parts all build ends the conversation.")
@@ -443,17 +443,19 @@ def _with_task_format(text, task_format: TaskFormat | None):
     return text
 
 
+def _below_line(text, line_start, new_line):
+    """The text with new_line added just below the line that starts with line_start."""
+    end = text.index("\n", text.index(line_start))
+    return text[:end + 1] + new_line + "\n" + text[end + 1:]
+
+
 def system_prompt(max_turns, python: PythonTool | None = None, task_format: TaskFormat | None = None, can_test=False):
     left_out = task_format.hardware_left_out if task_format else ()
     text = SYSTEM.format(setup=setup_text(), hardware=hardware_text(left_out), max_turns=max_turns)
     text = _with_task_format(text, task_format)
+    text = _below_line(text, "- Longest bridge seen to print cleanly", NO_SUPPORTS)  # every condition since 2026-11-12
     if can_test:
-        bridge = text.index("- Longest bridge seen to print cleanly")
-        bridge_end = text.index("\n", bridge)
-        text = text[:bridge_end + 1] + NO_SUPPORTS + "\n" + text[bridge_end + 1:]
-        start = text.index(MEASURE_LINE)
-        end = text.index("\n", start)
-        text = text[:end + 1] + PRINT_TEST_LINE + "\n" + text[end + 1:]
+        text = _below_line(text, MEASURE_LINE, PRINT_TEST_LINE)
     if python is None:
         return text
     assert text.count(SUBMIT_LINE) == 1
