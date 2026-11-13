@@ -7,6 +7,7 @@ session the variable holds a placeholder, and the proxy attaches the real key.
 import http.client
 import json
 import os
+import re
 import subprocess
 import time
 import urllib.error
@@ -61,6 +62,15 @@ def _post(data, timeout) -> dict:
         return json.load(reply)
 
 
+ACCOUNT_ID = re.compile(r"\buser_[A-Za-z0-9]{12,}")
+
+
+def without_account_id(text: str) -> str:
+    """An error's text without the account that made the call: OpenRouter's out-of-credit reply names it, and
+    a trial's error is saved in results/, which is public."""
+    return ACCOUNT_ID.sub("[account id removed]", text)
+
+
 def _error_in(response):
     """OpenRouter can answer 200 with an error in the body, at the top or in the first choice."""
     first_choice = (response.get("choices") or [{}])[0]
@@ -89,13 +99,13 @@ def _attempt(model, data, timeout) -> dict:
     try:
         response = _post(data, timeout)
     except urllib.error.HTTPError as e:
-        detail = e.read().decode(errors="replace")[:2000]
+        detail = without_account_id(e.read().decode(errors="replace")[:2000])
         raise _Failed(f"HTTP {e.code} from {model}: {detail}", http_code=e.code) from None
     except (OSError, http.client.HTTPException, ValueError) as e:  # a dropped connection, or a cut-off body
         raise _Failed(f"{model}: {e}", connection=True) from None
     error = _error_in(response)
     if error or not response.get("choices"):
-        raise _Failed(f"{model}: {error or 'no choices in response'}", body_error=error)
+        raise _Failed(without_account_id(f"{model}: {error or 'no choices in response'}"), body_error=error)
     response["elapsed_s"] = round(time.monotonic() - started, 1)
     return response
 

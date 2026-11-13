@@ -333,3 +333,29 @@ def test_a_regrade_with_two_workers_saves_what_a_serial_one_does(tmp_path):
     serial, parallel = _saved_files(tmp_path / "workers-1"), _saved_files(tmp_path / "workers-2")
     assert len(serial) == 3 and parallel == serial
     assert all(TrialRecord.load(folder).regrades for folder, _ in TrialRecord.all_in(tmp_path / "workers-2"))
+
+
+def test_a_failed_calls_error_leaves_out_the_account_id(monkeypatch):
+    """OpenRouter's out-of-credit reply names the account; a trial's error is saved under results/, which is public."""
+    import io
+    import urllib.error
+
+    body = b'{"error":{"message":"would exceed your available credits","code":402},"user_id":"user_4bCdEfGhIjKlMnOpQrStUvWx"}'
+
+    def out_of_credit(data, timeout):
+        raise urllib.error.HTTPError("https://openrouter.ai", 402, "Payment Required", {}, io.BytesIO(body))
+
+    monkeypatch.setattr(llm, "_post", out_of_credit)
+    with pytest.raises(llm.LLMError) as failure:
+        llm.chat("some/model", [{"role": "user", "content": "hi"}], retries=0)
+    assert "HTTP 402" in str(failure.value) and "available credits" in str(failure.value)
+    assert "user_4bCd" not in str(failure.value) and "[account id removed]" in str(failure.value)
+
+
+def test_no_saved_result_names_an_account():
+    from pathlib import Path
+
+    results = Path(__file__).resolve().parents[1] / "results"
+    saved = [path for folder in ("runs", "first-look") for path in (results / folder).rglob("grades.json")
+             if llm.ACCOUNT_ID.search(path.read_text(errors="replace"))]
+    assert saved == []
