@@ -4,7 +4,7 @@ Raw material for Dan to rewrite. One lesson per entry, each with its evidence. N
 
 ## Grading
 
-**A grader built from one reference fails correct designs that don't look like it.** The nut pocket's hexagon test was aimed at one point of the opening, so it missed hexes at other rotations and read a slot's end as the pocket. GPT-6.1 Sol was told "no hex pocket" and Grok "+0.50 falls out" for designs that had neither problem. Only reading the transcripts showed it. Evidence: commit d656f47. The first hole check did the same thing to chamfered spacers (`CHANGELOG.md`).
+**A grader built from one reference fails correct designs that don't look like it.** The nut pocket's hexagon test was aimed at one point of the opening, so it missed hexes at other rotations and read a slot's end as the pocket. GPT-6.1 Sol was told "no hex pocket" and Grok "+0.50 falls out" for designs that had neither problem. Only reading the transcripts showed it. Evidence: commit d656f47. The first hole check did the same thing to chamfered spacers (`changes/history.md`).
 
 **Each wrong design needs its own check to fail, and only that one.** Otherwise one mistake counts several times in the failures by class. Checks that need a part another check already failed now say "not graded". Evidence: `tests/test_nut_knob.py`, `tests/test_tripod_plate.py`.
 
@@ -40,7 +40,7 @@ Raw material for Dan to rewrite. One lesson per entry, each with its evidence. N
 
 **A fix for one failure can surface the next one.** Most fixed plates still fail on what the report never mentioned, mostly the dovetail upside down, so passes went from 0 to 3. Three revisions got worse: a lost recess, a plate in pieces, a deck too thick for the bolt. Evidence: `loop-tripod`'s `loop.json`.
 
-**A check can fail a known fix.** R3 failed Opus's drill-out skin as "no hole runs through", though `docs/plan.md` says a drill-out layer passes and the knob's check already allowed one. The tripod check had never met one. Evidence: `CHANGELOG.md`, 2026-11-06.
+**A check can fail a known fix.** R3 failed Opus's drill-out skin as "no hole runs through", though `docs/plan.md` says a drill-out layer passes and the knob's check already allowed one. The tripod check had never met one. Evidence: `changes/history.md`, 2026-11-06.
 
 ## What physical truth can decide
 
@@ -74,7 +74,7 @@ Raw material for Dan to rewrite. One lesson per entry, each with its evidence. N
 
 **A contrast can only test what its facts contain.** Nobody recorded the clamp's size, so `all_given` can't supply it, and GPT-6.1 Sol's reason for declining survives: its t1 here raises `ValueError: STOP: missing measurements` inside its own part. So this run can't say whether Sol would design a plate given the clamp's numbers. Evidence: `pilot-tripod-given`, Sol t1.
 
-**I keep inventing requirements the records don't back.** On the wheel, I wrote that a seat must be full depth and that something must stop the bearing. Neither has a print behind it. Reading the runs caught both, and Opus's and Luna's seats and Qwen's and GLM's through bores moved from failed to not graded. A check's author has a picture of the right design, and it leaks in. The brief's table of what the records decide is the guard, but only if every verdict in the code is on it. Evidence: `CHANGELOG.md`, the wheel entries.
+**I keep inventing requirements the records don't back.** On the wheel, I wrote that a seat must be full depth and that something must stop the bearing. Neither has a print behind it. Reading the runs caught both, and Opus's and Luna's seats and Qwen's and GLM's through bores moved from failed to not graded. A check's author has a picture of the right design, and it leaks in. The brief's table of what the records decide is the guard, but only if every verdict in the code is on it. Evidence: `changes/history.md`, the wheel entries.
 
 ## Running it
 
@@ -82,7 +82,7 @@ Raw material for Dan to rewrite. One lesson per entry, each with its evidence. N
 
 **Models can't see what they built, so CAD slips look like design errors.** DeepSeek Pro's cuts missed the part (t1, bevels), ran along its length (t2, the hole) and across its end (t3, no hole at all). Gemini 3.8 Flash asked for a 17 mm recess but swapped `slot2D`'s arguments and got 12 mm. Qwen's cut went away from the part, and Gemini 3.8 Flash's cuts in another run landed 40 mm from a plate its extrude had moved. Each model's notes describe the part it meant to make. A build error comes back to the model and a geometry error doesn't, so these checks measure "knew what to do and could check it", not knowledge alone. Evidence: DeepSeek Pro t1 to t3, Gemini 3.8 Flash t2, Qwen t1.
 
-**A review can find what pilots don't.** The code review of the tripod checks found 12 faults; only 4 of 34 verdicts changed when they were fixed, and no pass changed. The rest were waiting for a shape nobody had submitted yet. Evidence: `CHANGELOG.md`, tripod repeats entry.
+**A review can find what pilots don't.** The code review of the tripod checks found 12 faults; only 4 of 34 verdicts changed when they were fixed, and no pass changed. The rest were waiting for a shape nobody had submitted yet. Evidence: `changes/history.md`, tripod repeats entry.
 
 **Small models find the harness's bugs cheaply.** Most runner and schema faults showed up on Haiku and DeepSeek Flash for a few cents. Evidence: `pilot-nut-knob`'s first trials.
 

@@ -62,7 +62,7 @@ In order. Cut breadth before rigor.
 - The grader regression suite as one command, including two reward-hacking attempts: oversized pockets and undeclared hardware.
 
 ### Full run
-- About 5 models x the family variations x 3 runs, under the base, design-guide and oracle conditions (on a subset for the last two if the budget is tight). Read failures by hand, fix graders, log each fix in `CHANGELOG.md`.
+- About 5 models x the family variations x 3 runs, under the base, design-guide and oracle conditions (on a subset for the last two if the budget is tight). Read failures by hand, fix graders, log each fix in a change file under `changes/`.
 - Dan ranks about 10 designs by hand; compare with the graders.
 
 ### Report
