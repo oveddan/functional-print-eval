@@ -15,8 +15,10 @@
 | 5-classes | Jev 1.14 | 49/57 (86%) | 49/57 (86%) | 13/57 (23%) | 57 | 0.24 s | $0.0021 | 0 |
 | 5-held-out | GPT-6 Luna | 40/57 (70%) | 40/57 (70%) | 57/57 (100%) | 57 | 0.35 s | $0.0030 | 0 |
 | 5-held-out | Jev 1.14 | 11/57 (19%) | 11/57 (19%) | 57/57 (100%) | 57 | 0.24 s | $0.0019 | 0 |
+| 6-video-audio | Gemini Decision 1 | 39/60 (65%) | 39/60 (65%) | 30/60 (50%) | 15 | 1.57 s | $0.0088 | 0 |
+| 6-video-silent | Gemini Decision 1 | 36/60 (60%) | 36/60 (60%) | 30/60 (50%) | 15 | 2.11 s | $0.0063 | 0 |
 
-Total reported cost: $0.0638
+Total reported cost: $0.0788
 
 | Test | Question | Model | Recorded key | After hand check | Baseline |
 |---|---|---|---|---|---|
@@ -67,3 +69,16 @@ Total reported cost: $0.0638
 | Jev 1.14 says none | 11/57 (19%) | 1/57 (2%) |
 | Jev 1.14 says none or its pick is under 0.5 | 26/57 (46%) | 7/57 (12%) |
 | Luna says none and Jev's pick is under 0.7 (tuned on this run) | 34/57 (60%) | 4/57 (7%) |
+
+| Clip | Sound | Agrees | Baseline | Questions answered the same on every pass | Median latency | Input tokens per call |
+|---|---|---|---|---|---|---|
+| IMG_6158 | silent | 3/6 (50%) | 3/6 (50%) | 2/2 | 3.53 s | 7120 |
+| IMG_6162 | silent | 3/9 (33%) | 3/9 (33%) | 3/3 | 2.11 s | 2819 |
+| IMG_6163 | silent | 6/9 (67%) | 3/9 (33%) | 3/3 | 1.97 s | 2401 |
+| IMG_6174 | silent | 21/30 (70%) | 27/30 (90%) | 10/10 | 3.11 s | 7011 |
+| IMG_6186 | silent | 3/6 (50%) | 3/6 (50%) | 2/2 | 1.39 s | 1674 |
+| IMG_6158 | audio | 0/6 (0%) | 3/6 (50%) | 2/2 | 3.32 s | 10154 |
+| IMG_6162 | audio | 3/9 (33%) | 3/9 (33%) | 3/3 | 1.37 s | 3870 |
+| IMG_6163 | audio | 3/9 (33%) | 3/9 (33%) | 3/3 | 1.50 s | 3265 |
+| IMG_6174 | audio | 30/30 (100%) | 27/30 (90%) | 10/10 | 2.88 s | 9600 |
+| IMG_6186 | audio | 3/6 (50%) | 3/6 (50%) | 2/2 | 1.08 s | 2312 |

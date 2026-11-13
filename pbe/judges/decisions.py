@@ -3,7 +3,7 @@
 Request and response shapes are from OpenRouter's API reference ("Submit a decisions request",
 /docs/api/api-reference/alphadecisions) and its multimodal guide (/docs/guides/community/multimodal-decisions),
 read 2026-11-12. One POST to /api/alpha/decisions carries a model, a `state` (what is judged: a string, or a list
-of strings and image parts) and `questions`, keyed by id, each one of:
+of strings and image or video parts) and `questions`, keyed by id, each one of:
 
 - noul: yes or no; the answer is the probability of yes.
 - choice: one option from `criteria` (option name -> guidance); the answer has a probability per option.
@@ -30,6 +30,7 @@ from pbe.runner.llm import api_key
 URL = "https://openrouter.ai/api/alpha/decisions"
 JEV = "typesafe/jev-1.14"
 LUNA = "openai/gpt-6-luna-decisions"
+GEMINI = "google/gemini-decision-1"  # reads video and audio; Gemini models are also contestants in the eval
 MODELS = (JEV, LUNA)
 BOX_MODELS = (JEV,)  # the API reference: other providers answer a box question with 400
 PRICE_PER_M_INPUT = 0.10  # USD, all three decisions models in the brief; output tokens are free
@@ -67,9 +68,20 @@ class Image(BaseModel):
         return cls(image_url={"url": "data:image/jpeg;base64," + base64.b64encode(data).decode()})
 
 
+class Video(BaseModel):
+    """A video part in `state` (Gemini Decision 1 and Clef Omni only): an inline base64 MP4. Gemini also fetches
+    public https URLs; this eval never uses that, so Dan's clips stay private."""
+    type: Literal["video_url"] = "video_url"
+    video_url: dict[str, str]
+
+    @classmethod
+    def mp4(cls, data: bytes) -> "Video":
+        return cls(video_url={"url": "data:video/mp4;base64," + base64.b64encode(data).decode()})
+
+
 class Request(BaseModel):
     model: str
-    state: str | list[str | Image]
+    state: str | list[str | Image | Video]
     questions: dict[str, Question]
 
 
@@ -191,11 +203,12 @@ def _worth_retrying(error: DecisionsError) -> bool:
     return error.status is None or error.status in RETRY_STATUS  # no status: the connection, not the request
 
 
-def decide(request: Request, budget: Budget, retries: int = 3) -> Decision:
+def decide(request: Request, budget: Budget, retries: int = 3, most: float | None = None) -> Decision:
     """Send one request. Lost connections, timeouts, 429 and 5xx are retried; 402 (credits or the key's limit)
-    stops the run. Whatever happens, the reservation is settled."""
+    stops the run. Whatever happens, the reservation is settled. `most` replaces the byte-count bound where a
+    tighter one is known (video)."""
     body = request.model_dump_json(exclude_none=True).encode()
-    most = most_it_could_cost(body)
+    most = most_it_could_cost(body) if most is None else most
     budget.reserve(most)
     cost = 0.0
     try:
@@ -255,6 +268,52 @@ def crop_jpeg(jpeg: bytes, edges: Edges, margin: float = 0.15, smallest_side: in
     out = io.BytesIO()
     region.save(out, format="JPEG", quality=90)
     return out.getvalue()
+
+
+# --- video ---
+
+GEMINI_MAX_REQUEST_BYTES = 20_000_000  # Google: inline video only while the whole request is under 20 MB
+VIDEO_TOKENS_PER_SECOND_MOST = 600  # twice Google's "approximately 300 tokens per second" at high resolution
+
+
+class Footage(BaseModel):
+    """An MP4 made from a master, and how long it runs."""
+    mp4: bytes
+    seconds: float
+
+
+def _seconds(path: Path) -> float:
+    probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+                           check=True, capture_output=True, text=True)
+    return float(probe.stdout.strip())
+
+
+def video_mp4(path: Path, audio: bool, height: int = 720) -> Footage:
+    """A clip as a small H.264 MP4 (720p, AAC audio or none), made in a temp folder. The master is only read, and
+    nothing is copied into the repo. The phone's rotation is applied by ffmpeg."""
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "clip.mp4"
+        sound = ["-map", "0:a:0", "-c:a", "aac", "-b:a", "64k"] if audio else ["-an"]
+        subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", str(path), "-map", "0:v:0", *sound,
+                        "-vf", f"scale=-2:{height}", "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+                        "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(out)], check=True, capture_output=True)
+        return Footage(mp4=out.read_bytes(), seconds=_seconds(out))
+
+
+def most_for_video(clip: Footage, text_bytes: int) -> float:
+    """An upper bound for a video request: the clip at twice Google's token rate, and every text byte a token."""
+    return (clip.seconds * VIDEO_TOKENS_PER_SECOND_MOST + text_bytes) * PRICE_PER_M_INPUT / 1e6
+
+
+def about_clip(clip: Footage, shows: str, questions: dict[str, Question], budget: Budget,
+               model: str = GEMINI) -> Decision:
+    """Test 6: questions about what happens in a clip of a test print being tried."""
+    request = Request(model=model, state=[shows, Video.mp4(clip.mp4)], questions=questions)
+    size = len(request.model_dump_json(exclude_none=True))
+    if size > GEMINI_MAX_REQUEST_BYTES:
+        raise ValueError(f"request is {size / 1e6:.1f} MB, over Google's 20 MB for inline video: cut the clip")
+    text_bytes = len(shows) + len(json.dumps({k: q.model_dump() for k, q in questions.items()}))
+    return decide(request, budget, most=most_for_video(clip, text_bytes))
 
 
 # --- one function per question ---
