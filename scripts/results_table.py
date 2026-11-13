@@ -30,8 +30,6 @@ SMOKE_RUNS = ("cloud-smoke", "cloud-smoke-2")  # one Haiku spacer each, to test 
 # rest on the holed-roof assumption. Keyed by task, condition, model and trial. tests/test_results_table.py
 # rebuilds every such trial's parts and checks this list against bridges.is_holed_roof.
 NOT_HOLED_ROOFS = {
-    ("nut-knob/M5", "can_ask", "qwen/qwen3.8-flash", 5):
-        "eight small ledges up the knob (the first 19 mm² at z = 20.8 mm), not round a hole; failing since round 3 put the narrowest tangled ledge at 2 mm",
     ("nut-knob/M5", "can_ask", "google/gemini-4-argon", 2):
         "the underside of its 30 mm grip overhangs the 16 mm boss below: a ledge whose free edge is the outside",
     ("estoa-light", "can_ask", "deepseek/deepseek-v4-pro-0813", 1):

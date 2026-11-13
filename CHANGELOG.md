@@ -2,6 +2,10 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-12: Main's tests green again after round 3's review fixes
+
+- PR #7's last two fixes (the short-strand rule checks every direction, with at least 24% anchored; the test-print loop's person answers from coupon B only) went in without a regrade, and main's CI failed two tests on it. Every run and loop replay is regraded on main's code, `tests/test_servo_mount.py`'s on-edge plate now passes (its channel ledges are short-strand roofs), and two trials that no longer fail on roofs alone are dropped from `NOT_HOLED_ROOFS` (Qwen 3.8 Flash knob t5, Gemini 4 Argon wheel t5 clears on regrade).
+
 ## 2026-11-12: Decisions models tried as judges on five known-answer tests (no grade changed)
 
 - **What.** OpenRouter's Decisions API (`pbe/judges/decisions.py`): Jev 1.14 and GPT-6 Luna Decisions answered five questions whose answers are known (`scripts/judge_known_answers.py`, raw answers in `results/judges/2026-11-12/`, table from `scripts/judge_summary.py`). Gemini Decision 1 was dropped at Dan's request. Total $0.064. Write-up: `docs/decisions-api.md`.
