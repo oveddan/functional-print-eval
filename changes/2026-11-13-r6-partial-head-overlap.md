@@ -1,0 +1,6 @@
+## 2026-11-13: R6 keyholes: a head partly over the entry still hangs; Estoa regraded
+
+- **What.** R6 no longer fails a slot that stops short of carrying the whole assumed 9.9 mm head clear of the entry. The slot only has to take the shank past the entry's edge; a head still partly over the entry rests on the lip. Dan, of a slot 8.0 mm long under a 9.9 mm entry: "that would hang fine, it shouldnt be a failure of the whole print". Entry size, slot width, the slots running the same way, and plastic thinner than the screws' standoff are unchanged.
+- **Regrade** (pilot-estoa, test-first, pilot-estoa-carbon and the loop-estoa replays). R6 stopped failing 8 first-print or test-first designs, but every one still fails or isn't graded on something else (4 on roofs over air alone), so the first print stays at 1 of 30 and test prints at 0 of 18. After feedback, 5 of the 26 replayed failures now pass (was 1): Opus 5.5 t4, Sonnet 5.5 t3 and t5, and Gemini 4 Argon t4 are new.
+- **Not changed, on purpose.** Roofs are still graded in the orientation the model drew and named in `print_orientation`. Dan: "if we tell it the orientation, then yeah, it's a failure if it prints with the bridge issue."
+- README: the stale "keyhole that runs down" example and figure are removed (since 2026-11-11 the slots only have to run the same way), and C7's description is corrected.

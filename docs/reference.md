@@ -274,10 +274,10 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
-| `can_ask` | 525 | 176 | 294 | 37 | 10 | 8 | $47.07 |
+| `can_ask` | 525 | 176 | 293 | 38 | 10 | 8 | $47.07 |
 | `can_run_code` | 19 | 3 | 11 | 0 | 5 | 0 | $2.55 |
 | `can_test` | 296 | 124 | 109 | 16 | 3 | 44 | $33.48 |
-| **all** | **850** | 304 | 421 | 54 | 19 | 52 | $84.22 |
+| **all** | **850** | 304 | 420 | 55 | 19 | 52 | $84.22 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
@@ -307,7 +307,7 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
 | `can_ask` | anthropic/claude-haiku-5.5 | 5 | 0 | 4 | 1 | 0 | 0 | $0.16 |
-| `can_ask` | anthropic/claude-opus-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $2.54 |
+| `can_ask` | anthropic/claude-opus-5.5 | 5 | 1 | 3 | 1 | 0 | 0 | $2.54 |
 | `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $2.26 |
 | `can_ask` | deepseek/deepseek-v4-pro-0813 | 5 | 0 | 4 | 1 | 0 | 0 | $0.58 |
 | `can_ask` | google/gemini-4-argon | 5 | 0 | 5 | 0 | 0 | 0 | $4.33 |
@@ -333,7 +333,7 @@ Each check across the 17 graded designs (one verdict per design), on the records
 | R3 | 11 | 3 | 3 | 11 | 3 | 3 |
 | R4 | 8 | 0 | 9 | 8 | 0 | 9 |
 | R5 | 10 | 3 | 4 | 10 | 3 | 4 |
-| R6 | 3 | 10 | 4 | 3 | 10 | 4 |
+| R6 | 6 | 7 | 4 | 6 | 7 | 4 |
 | R7 | 16 | 1 | 0 | 16 | 1 | 0 |
 
 Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not graded.
@@ -592,7 +592,7 @@ These are treated as true without a print that shows them for that exact case. T
 |---|---|---|
 | The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (144 pass, 9 fail), so all 32 tripod passes |
 | One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (131 pass, 28 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 104 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
+| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 108 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
 | Each hole's centre is at the middle of where Dan's readings put it, 16.85 mm out. Source: the middle of 16.60 to 17.11, from Dan's calipers; no reading pins it closer. | estoa-light R1 | Graded apart: 5 pass, 0 fail of the estoa-light designs it decides |
 | The disk's board is 1.6 mm thick, and each hole's centre is 16.85 mm out. Source: 1.6 mm is the standard circuit board thickness and what the Estoa model used; the holes as in R1's assumption. | estoa-light R2 | Graded apart: 2 pass, 2 fail of the estoa-light designs it decides |
 <!-- assumptions:end -->

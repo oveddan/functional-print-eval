@@ -102,7 +102,7 @@ Every one of our checks comes from failures that happened on my real builds. Goi
 | **C3** Fastener stack-up | ![A lid-screw post after its heat-set insert went in: too thin, it bent and flared](https://media.danoved.xyz/print-build-eval/nogit/efec6749/IMG_4928.jpg) | Estoa's posts for the heat-set inserts (brass threaded sleeves melted into the plastic) were too thin; they bent and the inserts sat crooked. | It adds up each bolt's path from the part and the catalog's real thread lengths: does the bolt reach the camera, pass through the nut, or bottom out before it tightens; is there enough plastic around each insert. |
 | **C5** Mating-part envelopes | ![The ESP32's USB-C opening in the Estoa box, sized to the port, not the plug](https://media.danoved.xyz/print-build-eval/nogit/c524a219/IMG_4884.jpg) | Estoa's USB opening fit the port, but a real plug's head is wider than the hole. | It places the real hardware against the part (the clamp's jaws, both bearings, the perfboard, a USB-C plug) and checks each one fits. |
 | **C6** Printability in the orientation printed | ![The underside of the tripod's Arca plate: the roof over the bolt's recess printed as a tangle](https://media.danoved.xyz/print-build-eval/nogit/1e41d9fa/IMG_5045.jpg) | The bottom of the camera plate: the plastic printed over the bolt's recess collapsed into loose strands. | It cuts the part into layers as printed and lays strands across every overhang. If too few land on solid at both ends, the roof fails. Each part must also be one piece and fit the bed. |
-| **C7** Works in the orientation it's used | no photo | Estoa's keyhole slots ran down, so it couldn't hang on its screws. | It reads which way is up from the design and checks each keyhole's slot runs up from its entry. |
+| **C7** Works in the orientation it's used | no photo | Estoa's keyhole slots ran down, so it couldn't hang on its screws. | It finds the keyholes in the back and checks both slots run the same way, so the box can drop onto both screws, and that each entry passes a common screw head. |
 
 Not tested yet: C4 tool and hand access, C8 test-plan coverage, C9 manual correctness, C10 print settings.
 
@@ -193,10 +193,10 @@ More from the saved trials: four passes and four failures, failures seen from be
 
 We ran out of time to make the test-print loop work on this task. Some example failures:
 
-| A roof over air | A keyhole that runs down | A perfboard with no wall on one side |
-|---|---|---|
-| ![Argon's first box, whole and close up: the strip over the USB opening, in red, has nothing under it](docs/media/walkthrough/first-whole-and-close-up.png) | ![The back of Opus's box cut at the keyholes: both slots run down from their entries](docs/media/failures/estoa-keyhole-down.png) | ![Sol's box cut just above the perfboard: the wall stops short of the board's side](docs/media/failures/estoa-perfboard-open.png) |
-| Gemini 4 Argon, trial 2: the top edge of the USB opening (red) spans thin air and would sag | Opus 5.5, trial 2 with test prints: both slots run down from their entries, so the box can't drop onto the wall screws | GPT-6.1 Sol, trial 3 with test prints: the wall stops short of the perfboard's side, so the board isn't inside the box |
+| A roof over air | A perfboard with no wall on one side |
+|---|---|
+| ![Argon's first box, whole and close up: the strip over the USB opening, in red, has nothing under it](docs/media/walkthrough/first-whole-and-close-up.png) | ![Sol's box cut just above the perfboard: the wall stops short of the board's side](docs/media/failures/estoa-perfboard-open.png) |
+| Gemini 4 Argon, trial 2: the top edge of the USB opening (red) spans thin air and would sag | GPT-6.1 Sol, trial 3 with test prints: the wall stops short of the perfboard's side, so the board isn't inside the box |
 
 ## Results
 
@@ -243,7 +243,7 @@ In 155 of these 219 trials the person answered at least one test piece with "I c
 <!-- scorecard-note:start (written by scripts/scorecard.py; don't edit by hand) -->
 Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Sonnet 5.5 1 of its 6. Gemini 4 Argon, Opus 5.5, Gemini 3.8 Flash, DeepSeek V4.1 Flash and GPT-6.1 Sol had none.
 
-**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 1 of 30 designs pass on the first print. After the person says how the box came out, 1 of the 26 failures replayed passes. Asking for test prints first, 0 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
+**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 1 of 30 designs pass on the first print. After the person says how the box came out, 5 of the 26 failures replayed pass. Asking for test prints first, 0 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
 <!-- scorecard-note:end -->
 
 ### Where models fail
