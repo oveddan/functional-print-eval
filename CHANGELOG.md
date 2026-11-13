@@ -2,6 +2,20 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-12: Decisions models tried as judges on five known-answer tests (no grade changed)
+
+- **What.** OpenRouter's Decisions API (`pbe/judges/decisions.py`): Jev 1.14 and GPT-6 Luna Decisions answered five questions whose answers are known (`scripts/judge_known_answers.py`, raw answers in `results/judges/2026-11-12/`, table from `scripts/judge_summary.py`). Gemini Decision 1 was dropped at Dan's request. Total $0.064. Write-up: `docs/decisions-api.md`.
+- **Results after Claude's hand check of every disagreement** (`results/judges/hand-labels.yaml`):
+  - supports asked for in a design's text: 98% for both judges (baseline 52%);
+  - Dan's spoken outcomes as verdicts: Luna 90%, Jev 82% (baseline 40%); every miss was a stated word call in the code;
+  - roof photos, clean or not: 68% for both, no better than always saying "not clean". With two labelled example crops of each verdict, taken from other cells only: Luna 53%, Jev 47%, worse than without. The bridge strips' failure (strands that break when touched) doesn't show in the photo;
+  - Jev's Box put all 13 cell centres inside Claude's boxes (IoU 0.18 to 0.91);
+  - Estoa transcript checklist: 97 to 98% (baseline 70%);
+  - failure records into the 10 classes in `seeds/classes.yaml`: Jev 86%, Luna 67% (baseline 23%). With a record's class held out, Luna answered "none of these" for 70% of them, with 11% false flags; Jev did so for only 19%. 4 of Jev's 8 misses are defensible under C5's own wording, which overlaps C1.
+- **Found on the way:** `pbe/parts/supports.py` misses "Support is needed under the roof inside the box" (Haiku 5.5 Estoa can_ask t5, loop feedback arm). Not fixed here. Test 4's own keyword keys were wrong 10 times where the judges were right. The judges missed keyhole tests that code found in the `print_test` calls.
+- **After review:** the client retries lost connections and timeouts, and records them as failed calls instead of crashing. `--budget` is a hard cap. Finished calls are kept when a run stops. Test 4's keyword keys are corrected at the source and agree with all 246 hand-checked keys. Test 2 keeps one row per record (rerun: 40 outcomes, same disagreements).
+- **No trial was graded by a judge.** Recommendation: Jev as the default judge for narrow labels, with Luna as a second opinion only, never alone on runs where GPT-6 Luna competes. Neither is to be used on roof photos.
+
 ## 2026-11-12: Regrade trials side by side (`--workers`)
 
 - `uv run python -m pbe.eval --regrade ... --workers N` grades saved trials in N processes at once; the default, 1, grades them one after another here as before. Each trial still writes only its own `grades.json`, and `summary.csv` is written once at the end from the saved trials in path order, so the saved files don't depend on the worker count (`test_a_regrade_with_two_workers_saves_what_a_serial_one_does`: two m5-spacer trials regraded with one worker and with two save byte-identical `grades.json` and `summary.csv`). No verdict changes: this only changes how fast a regrade runs.
