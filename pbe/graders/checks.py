@@ -92,15 +92,24 @@ def _bridging_verdict(found):
     return True, "every overhang can be bridged"
 
 
+def _with_declared_supports(ok, detail, supports):
+    """A part the design's own instructions say to print with supports passes whatever its overhangs (Dan,
+    2026-11-12: "if an existing design said to do supports, then it's fine"), saying what it would get without them."""
+    if ok is True or not supports:
+        return ok, detail
+    return True, f'prints with supports, as the design\'s instructions say ("{supports}"); without them: {detail}'
+
+
 def bridges(built):
     """Every overhang that needs a bridge can be bridged: in some direction, its
     strands land on solid at both ends (the Arca plate's tangled roof). A narrow ledge
-    that fails this but that no print has measured is not graded."""
+    that fails this but that no print has measured is not graded. A part the design
+    says to print with supports passes (pbe/parts/supports.py)."""
     from pbe.graders.bridges import overhangs
 
     findings = []
     for part in _built_parts(built):
-        ok, detail = _bridging_verdict(overhangs(part.mesh))
+        ok, detail = _with_declared_supports(*_bridging_verdict(overhangs(part.mesh)), part.supports)
         findings.append(_printability("bridges", part, ok, detail))
     return findings
 

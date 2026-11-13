@@ -9,9 +9,12 @@ requirements.yaml; the brief says where each comes from. What the records can't 
 "not graded", which is never a pass.
 """
 import tempfile
+from functools import cache
+from pathlib import Path
 from typing import NamedTuple
 
 import numpy as np
+import yaml
 from pydantic import BaseModel
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
@@ -25,6 +28,7 @@ from pbe.graders.sections import clear_circle, holes_by_layer
 from pbe.parts.build import build_parts
 from pbe.parts.submission import Placement
 
+ROOT = Path(__file__).resolve().parents[2]
 TOL = 0.02  # mm; a curve's facets read a modelled width slightly narrow
 NEAR = 4.0  # mm around a board's hole that's read for what lies behind it
 LAYER = 0.4  # mm between the cross-sections read along a screw
@@ -521,6 +525,23 @@ def post_screws(sub, built, item, board_thickness, near, engage, ring):
 
 # --- a plug reaching a socket from outside ---
 
+class MeasuredPlug(BaseModel):
+    """A plug's moulded head and the bare metal in front of it, measured (catalog/connectors.yaml)."""
+    head_width_mm: float
+    head_thickness_mm: float
+    metal_length_mm: float
+    source: str
+
+
+class PlugRecord(BaseModel):
+    measured: MeasuredPlug
+
+
+@cache
+def measured_plug(name) -> MeasuredPlug:
+    return PlugRecord.model_validate(yaml.safe_load((ROOT / "catalog/connectors.yaml").read_text())[name]).measured
+
+
 def _obstacles(piece, disk, disk_radius, disk_thickness, with_wall):
     """The printed parts, the disk's board and, if asked, the wall, as meshes in the piece's frame."""
     found = list(piece.meshes)
@@ -577,6 +598,11 @@ def _wall_at_port(meshes, socket, way_in):
             first = min(pieces, key=lambda piece: piece.bounds[0][2])
             runs.append(first.bounds[1][2] - first.bounds[0][2])
     return min(runs) if runs else 0.0
+
+
+def _holds_slot(passage, size):
+    """Whether the passage holds a slot shape this size, centred on the socket's axis."""
+    return _stadium(*size).buffer(-TOL).difference(passage).area < 0.01
 
 
 def _component_at_axis(covered, window):
@@ -649,12 +675,14 @@ def _test_print_rescue(sub, built, piece, item, way_in, fits, window, disk, disk
 
 
 @_readable
-def plug_reaches(sub, built, item, fits, failed, failed_from, socket_body, disk, disk_radius, disk_thickness, inside, window):
+def plug_reaches(sub, built, item, plug, margin, failed_from, socket_body, disk, disk_radius, disk_thickness, inside, window):
     """A plug reaches the socket from outside: the board sits inside the box, and the way in from its
-    mouth to the outside is at least as roomy as the opening that let a plug seat. It fails only like
-    the opening that stopped plugs: no roomier, that far or further out from the mouth, where the plug's
-    boot stops and its bare metal can't reach. A small opening nearer the mouth may work, and no print
-    says whether it does."""
+    mouth to the outside holds the measured plug head with `margin` a side. It fails when the bare head
+    doesn't get through `failed_from` mm or further out from the mouth, as Estoa's 11.5 mm opening 4 mm out
+    stopped plugs: the head stops there and its bare metal can't reach. Nearer the mouth, a small opening
+    may work, and no print says whether it does. Claude's scoring call (2026-11-12), from Dan's measured
+    plug (catalog/connectors.yaml): the head is read as a slot shape, as the openings are, since only its
+    width and thickness were measured."""
     piece, why = placed.piece(sub, built)
     if piece is None:
         return Verdict(None, why)
@@ -672,18 +700,20 @@ def plug_reaches(sub, built, item, fits, failed, failed_from, socket_body, disk,
     way_in = _clear_passage(_obstacles(piece, disk_at, disk_radius, disk_thickness, True), socket, window)
     if way_in is None:
         return Verdict(False, "something stands right in front of the socket")
-    roomy, tight = _stadium(*fits).buffer(-TOL), _stadium(*failed).buffer(TOL)
+    head = measured_plug(plug)
+    bare = (head.head_width_mm, head.head_thickness_mm)
+    fits = (round(bare[0] + 2 * margin, 2), round(bare[1] + 2 * margin, 2))
     low_y, low_z, high_y, high_z = way_in.bounds
     size = f"{high_y - low_y:.1f} x {high_z - low_z:.1f} mm"
-    if roomy.difference(way_in).area < 0.01:
-        return Verdict(True, f"the way in is at least {fits[0]} x {fits[1]} mm ({size} at its widest)")
+    if _holds_slot(way_in, fits):
+        return Verdict(True, f"the way in holds the {bare[0]} x {bare[1]} mm plug head with {margin} mm a side ({size} at its widest)")
     farther_out = _clear_passage(_obstacles(piece, disk_at, disk_radius, disk_thickness, True), socket, window, start=failed_from)
-    if farther_out is None or farther_out.difference(tight).area < 0.01:
-        found = Verdict(False, f"{failed_from} mm or more out from the socket, the way in is no roomier than the {failed[0]} x {failed[1]} mm "
-                               f"opening that stopped plugs there ({size} at its widest overall)")
+    if farther_out is None or not _holds_slot(farther_out, bare):
+        found = Verdict(False, f"{failed_from} mm or more out from the socket, the way in doesn't take the {bare[0]} x {bare[1]} mm plug head, "
+                               f"so its {head.metal_length_mm} mm of bare metal can't seat ({size} at its widest overall)")
     else:
-        found = Verdict(None, f"the way in ({size}) is smaller than the {fits[0]} x {fits[1]} mm opening that let a plug seat, and no "
-                              f"print says whether a plug gets through it")
+        found = Verdict(None, f"the way in ({size}) takes the plug head {failed_from} mm out, but not with {margin} mm a side all the way "
+                              f"to the port, and no print says whether a plug gets through it")
     rescue = _test_print_rescue(sub, built, piece, item, way_in, fits, window, disk, disk_radius, disk_thickness)
     if rescue is None:
         return Verdict(found.ok, f"{found.detail}; no test print in the manual would catch it")
@@ -844,25 +874,35 @@ def _lip(meshes, wall_z, point):
     return max(piece.bounds[1][2] for piece in touching) - wall_z if touching else 0.0
 
 
-def _keyhole_verdict(meshes, wall_z, found, entry: EntryLimits, slot_limits: SlotLimits, travel_limit, angle_limits: AngleLimits,
-                     standoff, head=None) -> Verdict:
-    """`head`, given only under an assumption: the wall screws' head size. The entry must then pass it and the
-    slot must carry it clear of the entry, in place of the entry and run of the one keyhole that hung."""
+def _hanging_up(found):
+    """Which way is up when the piece hangs: the way its slots run, on average. Nothing in the request fixes it
+    (Dan, 2026-11-11: the disc is round and the USB-C port can face any way), so the person turns the piece
+    to suit its keyholes. Slots running opposite ways average to nothing, and no way up suits them both."""
+    total = np.sum([keyhole[3] for keyhole in found], axis=0)
+    length = float(np.linalg.norm(total))
+    return total / length if length > 1e-6 else found[0][3]
+
+
+def _keyhole_verdict(meshes, wall_z, found, up, entry: EntryLimits, slot_limits: SlotLimits, travel_limit,
+                     angle_limits: AngleLimits, standoff, head=None) -> Verdict:
+    """`up`: the way up the piece hangs (`_hanging_up`). `head`, given only under an assumption: the wall screws'
+    head size. The entry must then pass it and the slot must carry it clear of the entry, in place of the entry
+    and run of the one keyhole that hung."""
     centre, entry_width, slot, direction, travel = found
-    angle = float(np.degrees(np.arccos(np.clip(direction[1], -1, 1))))
+    angle = float(np.degrees(np.arccos(np.clip(np.dot(direction, up), -1, 1))))
     where = f"keyhole at ({centre[0]:.0f}, {centre[1]:.0f})"
     rest = centre + direction * travel
     side = np.array([-direction[1], direction[0]]) * (slot / 2 + 1.0)
     lip = max(_lip(meshes, wall_z, rest + side), _lip(meshes, wall_z, rest - side))
     failures = []
     if angle > angle_limits.fails_beyond:
-        failures.append(f"its slot runs {angle:.0f} degrees from straight up, so the piece can't drop onto the screw")
+        failures.append(f"its slot runs {angle:.0f} degrees from the other slots' way up, so no way of hanging the piece drops it onto both screws")
     if entry_width < entry.fails_under - TOL:
-        failures.append(f"its entry is {entry_width:.1f} mm, too small for a head the screws were bought at about 8 to 9 mm")
+        failures.append(f"its entry is {entry_width:.1f} mm, too small for the largest common head ({entry.fails_under:g} mm)")
     if slot < slot_limits.fails_under - TOL:
         failures.append(f"its slot is {slot:.2f} mm, narrower than a #8 screw")
     if slot >= slot_limits.fails_from - TOL:
-        failures.append(f"its slot is {slot:.1f} mm, too wide to hold a head of about 8 mm")
+        failures.append(f"its slot is {slot:.1f} mm, too wide to hold the smallest common head ({slot_limits.fails_from:g} mm)")
     if travel <= entry_width / 2:
         failures.append("the screw would rest inside the entry, not under the slot's lip")
     if lip >= standoff - TOL:
@@ -892,8 +932,8 @@ def _keyhole_verdict(meshes, wall_z, found, entry: EntryLimits, slot_limits: Slo
 
 @_readable
 def keyholes(sub, built, entry, slot, travel, angle, standoff, count, at_depth, head=None):
-    """The piece hangs on the wall screws: keyholes in its back whose slots run up from entries that pass
-    the screws' heads, narrow enough to hold them, in plastic thinner than the screws stand out."""
+    """The piece hangs on the wall screws: keyholes in its back whose slots run up, whichever way up it's hung,
+    from entries that pass the screws' heads, narrow enough to hold them, in plastic thinner than the screws stand out."""
     piece, why = placed.piece(sub, built)
     if piece is None:
         return Verdict(None, why)
@@ -906,7 +946,9 @@ def keyholes(sub, built, entry, slot, travel, angle, standoff, count, at_depth, 
     if len(found) < count:
         return Verdict(None, f"{len(found)} keyhole(s) found in the back, and this check reads only keyholes")
     entry, slot, angle = EntryLimits.model_validate(entry), SlotLimits.model_validate(slot), AngleLimits.model_validate(angle)
-    return _worst([_keyhole_verdict(piece.meshes, wall_z, keyhole, entry, slot, travel, angle, standoff, head) for keyhole in found])
+    up = _hanging_up(found)
+    return _worst([_keyhole_verdict(piece.meshes, wall_z, keyhole, up, entry, slot, travel, angle, standoff, head)
+                   for keyhole in found])
 
 
 @_readable

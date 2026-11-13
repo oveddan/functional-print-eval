@@ -82,7 +82,7 @@ Everything behind the [README](../../README.md): the failure classes, how to run
 
 3 failures in the builds. Tested by:
 
-- `estoa-light` R6, the box hangs on the wall screws through keyholes that run up
+- `estoa-light` R6, the box hangs on the wall screws through keyholes whose slots run the same way
 
 **From the builds** (Estoa light piece): The lid's keyhole slots ran down from the entry hole, so the piece couldn't drop onto the wall screws. Found by: agent review before printing.
 
@@ -125,11 +125,11 @@ sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 Then:
 
 ```bash
-git clone https://github.com/oveddan/functional-print-eval.git
+git clone https://github.com/oveddan/print-build-eval.git
 ```
 
 ```bash
-cd functional-print-eval && uv sync
+cd print-build-eval && uv sync
 ```
 
 ### Everything at once
@@ -179,7 +179,7 @@ CI runs steps 2 and 3 on every pull request and on `main` (`.github/workflows/ci
 
 ### Running new trials (needs an API key)
 
-Models are called through [OpenRouter](https://openrouter.ai), which bills per call. To get a key: make an account at openrouter.ai, add credits, and create a key in its settings. Then set it in the shell that runs the command, with `export OPENROUTER_API_KEY=<your key>`. Never commit it. If the variable isn't set, the runner tries the 1Password CLI at the reference in `pbe/runner/llm.py` (`OP_REF`), and otherwise stops with an error that says how to set it.
+Models are called through [OpenRouter](https://openrouter.ai), by API. Set `OPENROUTER_API_KEY` in your environment (if it's unset, the runner tries the 1Password CLI, which only works on Dan's machine). Never commit it.
 
 ```bash
 uv run python -m pbe.eval --run my-run --task tripod-plate --model anthropic/claude-haiku-5.5 --trials 1 --budget 0.50
@@ -191,20 +191,6 @@ uv run python -m pbe.eval --run my-run --task tripod-plate --model anthropic/cla
 - **What it costs:** the Cost column in [Results](#results) is what OpenRouter charged for the saved trials, by task, condition and model. Divide by the Trials column for a trial's cost.
 - **Prompt caching:** Claude models ask for OpenRouter's prompt caching; every model gets the same messages and tools, byte for byte (issue 34, `tests/test_caching.py`). Each trial saved since records `settings.prompt_caching`. Trials saved before had no caching, so their Claude costs are full price. `scripts/cost_report.py <run>...` gives cost per trial and per turn by model.
 - **`can_run_code`** lets the model run Python before handing in. That code runs in bubblewrap on Linux, or in Docker with the image from `scripts/build_run_python_image.sh`. Docker on macOS hasn't been tested; a Linux cloud machine is the tested route. The saved runs `pilot-code-smoke` (one trial) and `pilot-code` (three per lineup model on the tripod) used it, under bubblewrap (issue 34).
-
-### Try your own request (needs an API key)
-
-Run the agent on a request you write yourself instead of one of the tasks:
-
-    uv run python -m pbe.try_request "I want a hook for my bike helmet that screws under my desk..." --model anthropic/claude-sonnet-5.5 --budget 0.50
-
-The request becomes a throwaway task with nothing hidden to measure and no checks of its own, so only the general
-checks grade it (`builds`, `connected_bodies`, `bed_fit`, `bridges`): nothing checks that the part fits or does what
-you asked, and "not graded" means no recorded test print decides that check. Put every measurement in the request:
-the model can ask for measurements, but nobody answers, and it can ask for test prints (the default, `can_test`), but
-for a request of your own no recorded print decides them, so the reply is that the person can't tell. It prints the verdict, each check's finding, the parts' STL paths and the cost,
-and saves the trial under `results/local/try/` (not committed, and not part of the results). The Claude Code skill
-`.claude/skills/try-a-print-request/` walks through it.
 
 ### Print-time and filament estimates (optional, needs Bambu Studio)
 
@@ -244,7 +230,7 @@ Why each is hard, and every limit's source, is in its `brief.md`. The fit limits
 - **`can_ask`** (the main one): the request and the setup facts. The person's own measurements are withheld, and the model can ask for them with `measure`. The person is a lookup table, not a model: anything not on record gets "I can't measure that".
 - **`all_given`**: the same, with every recorded measurement stated up front. Passing only here means the model didn't ask.
 - **`can_run_code`**: `can_ask` plus a sandboxed `run_python` tool, and `submit_design` builds every part and sends build errors back.
-- **`can_test`** (the `test-first` run, the README's headline): `can_ask` plus an optional `print_test` tool. The prompt says: if you need to know whether something is going to work but you're not sure, ask the person to print a test of it before the final design, so you both save time and filament (Dan's wording). The person prints it at once and says how each piece came out, from the recorded test prints only (the same readings as the test-print loop: a pocket's fit, a seat's fit, a holed roof; anything else gets "I can't tell you how that one came out"). The model can test again, then hands in its final design, which is graded with any test pieces it still lists left out. Its setup also says "Supports: none", which the other conditions' prompt doesn't. Up to 12 turns. Print time and filament count every test piece it asked for.
+- **`can_test`** (the `test-first` run, the README's headline): `can_ask` plus an optional `print_test` tool. The prompt says: if you need to know whether something is going to work but you're not sure, ask the person to print a test of it before the final design, so you both save time and filament (Dan's wording). The person prints it at once and says how each piece came out, from the recorded test prints only (the same readings as the test-print loop: a pocket's fit, a seat's fit, a holed roof; anything else gets "I can't tell you how that one came out"). The model can test again, then hands in its final design, which is graded with any test pieces it still lists left out. Its setup also says "Supports: none", which the other conditions' prompt didn't until 2026-11-12; every condition says it now. Up to 12 turns. Print time and filament count every test piece it asked for.
 
 Every condition also has `report_limitation`, which changes nothing and records what the model wanted but couldn't use.
 
@@ -267,71 +253,72 @@ The scorecard: every listed model's first print, its print after feedback, and t
 <!-- scorecard:start (written by scripts/scorecard.py; don't edit by hand) -->
 | Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | First print | After feedback | Not graded | pass^10 | Tokens per trial | Cost per pass | Print hours per pass | Filament per pass |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Gemini 4 Argon | 3/10 → 10/10 | 4/10 → 4/10 | 1/10 → 5/10 | 3/10 → 10/10 | 28% (11/40) | **72%** (29/40) | 2 | 50% | 21k | $0.24 | 0.6 h | 19 g |
-| Gemini 3.8 Flash | 4/10 → 6/10 | 4/10 → 4/10 | 1/10 → 5/10 | 3/10 → 8/10 | 30% (12/40) | **57%** (23/40) | 4 | 0% | 51k | $0.30 | 0.6 h | 20 g |
-| DeepSeek V4.1 Flash | 1/10 → 3/10 | 1/10 → 3/10 | 5/10 → 5/10 | 5/11 → 6/11 | 29% (12/41) | **41%** (17/41) | 10 | 0% | 172k | $0.14 | 1.4 h | 45 g |
-| Opus 5.5 | 1/10 → 4/10 | 1/10 → 3/10 | 4/10 → 4/10 | 4/10 → 4/10 | 25% (10/40) | **38%** (15/40) | 19 | 0% | 22k | $0.72 | 1.3 h | 42 g |
-| Sonnet 5.5 | 0/10 → 2/10 | 0/10 → 2/10 | 5/10 → 6/10 | 4/10 → 4/10 | 22% (9/40) | **35%** (14/40) | 12 | 0% | 25k | $0.45 | 1.3 h | 46 g |
-| GPT-6.1 Sol | 1/10 → 1/10 | 6/10 → 9/10 | 2/10 → 2/10 | 0/10 → 0/10 | 22% (9/40) | **30%** (12/40) | 19 | 0% | 27k | $0.34 | 1.4 h | 41 g |
-| GPT-6 Luna | 0/10 | 0/10 | 0/10 | 6/10 | **15% (6/40)** | not run | 5 | 0% | 26k | $0.03 | 1.3 h | 45 g |
-| GLM 5.3 Flash | 0/10 | 0/10 | 4/10 | 2/10 | **15% (6/40)** | not run | 6 | 0% | 246k | $0.25 | 1.3 h | 43 g |
-| Haiku 5.5 | 0/10 | 0/10 | 0/10 | 3/10 | **8% (3/40)** | not run | 10 | 0% | 34k | $0.07 | 2.3 h | 87 g |
-| DeepSeek V4 Pro | 0/10 | 0/10 | 1/10 | 1/10 | **5% (2/40)** | not run | 6 | 0% | 70k | $2.75 | 3.1 h | 104 g |
-| Qwen 3.8 Flash | 0/10 | 0/10 | 0/10 | 0/5 | **0% (0/35)** | not run | 3 | 0% | 299k | no pass | no pass | no pass |
+| Gemini 4 Argon | 3/10 → 10/10 | 6/10 → 6/10 | 1/10 → 5/10 | 9/10 → 10/10 | 48% (19/40) | **78%** (31/40) | 0 | 50% | 21k | $0.20 | 0.5 h | 15 g |
+| Gemini 3.8 Flash | 4/10 → 6/10 | 4/10 → 4/10 | 1/10 → 5/10 | 9/10 → 10/10 | 45% (18/40) | **62%** (25/40) | 1 | 25% | 51k | $0.25 | 0.4 h | 15 g |
+| DeepSeek V4.1 Flash | 1/10 → 4/10 | 1/10 → 6/10 | 5/10 → 5/10 | 9/11 → 10/11 | 39% (16/41) | **61%** (25/41) | 4 | 0% | 172k | $0.09 | 0.9 h | 29 g |
+| Opus 5.5 | 1/10 → 4/10 | 1/10 → 6/10 | 4/10 → 4/10 | 10/10 → 10/10 | 40% (16/40) | **60%** (24/40) | 5 | 25% | 22k | $0.41 | 0.7 h | 25 g |
+| GPT-6.1 Sol | 1/10 → 1/10 | 8/10 → 9/10 | 2/10 → 2/10 | 9/10 → 9/10 | 50% (20/40) | **52%** (21/40) | 5 | 0% | 27k | $0.17 | 0.6 h | 19 g |
+| Sonnet 5.5 | 0/10 → 2/10 | 0/10 → 2/10 | 5/10 → 6/10 | 9/10 → 10/10 | 35% (14/40) | **50%** (20/40) | 4 | 25% | 25k | $0.29 | 0.9 h | 31 g |
+| GLM 5.3 Flash | 0/10 | 0/10 | 4/10 | 5/10 | **22% (9/40)** | not run | 2 | 0% | 246k | $0.17 | 0.9 h | 29 g |
+| GPT-6 Luna | 0/10 | 0/10 | 0/10 | 3/10 | **8% (3/40)** | not run | 1 | 0% | 26k | $0.06 | 2.6 h | 91 g |
+| DeepSeek V4 Pro | 0/10 | 1/10 | 1/10 | 0/10 | **5% (2/40)** | not run | 4 | 0% | 70k | $2.75 | 3.1 h | 104 g |
+| Qwen 3.8 Flash | 0/10 | 1/10 | 0/10 | 0/5 | **3% (1/35)** | not run | 0 | 0% | 299k | $1.77 | 6.9 h | 235 g |
+| Haiku 5.5 | 0/10 | 0/10 | 0/10 | 1/10 | **2% (1/40)** | not run | 3 | 0% | 34k | $0.22 | 6.9 h | 260 g |
 
 ![Verified pass rate against cost per trial, one dot per model](media/scorecard.svg)
 <!-- scorecard:end -->
 
 <!-- results:start (written by scripts/results_table.py; don't edit by hand) -->
-803 trials of 12 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 12 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
+850 trials of 13 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 12 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
 
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
-| `can_ask` | 524 | 135 | 261 | 111 | 10 | 7 | $45.57 |
+| `can_ask` | 525 | 175 | 296 | 36 | 10 | 8 | $47.07 |
 | `can_run_code` | 19 | 3 | 11 | 0 | 5 | 0 | $2.55 |
-| `can_test` | 250 | 100 | 97 | 47 | 3 | 3 | $32.67 |
-| **all** | **803** | 239 | 376 | 159 | 19 | 10 | $81.91 |
+| `can_test` | 296 | 124 | 109 | 16 | 3 | 44 | $33.48 |
+| **all** | **850** | 303 | 423 | 53 | 19 | 52 | $84.22 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
 | `can_ask` | anthropic/claude-haiku-5.5 | 10 | 0 | 10 | 0 | 0 | 0 | $0.07 |
-| `can_ask` | anthropic/claude-opus-5.5 | 10 | 1 | 5 | 4 | 0 | 0 | $1.76 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 10 | 0 | 8 | 2 | 0 | 0 | $1.09 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 10 | 0 | 9 | 1 | 0 | 0 | $0.78 |
+| `can_ask` | anthropic/claude-opus-5.5 | 10 | 1 | 7 | 2 | 0 | 0 | $1.76 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 10 | 0 | 10 | 0 | 0 | 0 | $1.09 |
+| `can_ask` | deepseek/deepseek-v4-pro-0813 | 10 | 1 | 9 | 0 | 0 | 0 | $0.78 |
 | `can_ask` | deepseek/deepseek-v4.1-flash | 10 | 1 | 9 | 0 | 0 | 0 | $0.63 |
-| `can_ask` | google/gemini-3.8-flash | 10 | 4 | 5 | 1 | 0 | 0 | $1.11 |
-| `can_ask` | google/gemini-4-argon | 10 | 4 | 5 | 1 | 0 | 0 | $1.47 |
+| `can_ask` | google/gemini-3.8-flash | 10 | 4 | 6 | 0 | 0 | 0 | $1.11 |
+| `can_ask` | google/gemini-4-argon | 10 | 6 | 4 | 0 | 0 | 0 | $1.47 |
 | `can_ask` | openai/gpt-6-luna | 10 | 0 | 10 | 0 | 0 | 0 | $0.04 |
-| `can_ask` | openai/gpt-6.1-sol | 10 | 6 | 2 | 2 | 0 | 0 | $0.90 |
-| `can_ask` | qwen/qwen3.8-flash | 10 | 0 | 9 | 1 | 0 | 0 | $0.51 |
+| `can_ask` | openai/gpt-6.1-sol | 10 | 8 | 2 | 0 | 0 | 0 | $0.90 |
+| `can_ask` | qwen/qwen3.8-flash | 10 | 1 | 9 | 0 | 0 | 0 | $0.51 |
 | `can_ask` | z-ai/glm-5.3-flash | 10 | 0 | 8 | 1 | 0 | 1 | $0.37 |
 | `can_test` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.04 |
-| `can_test` | anthropic/claude-opus-5.5 | 12 | 4 | 5 | 3 | 0 | 0 | $2.32 |
+| `can_test` | anthropic/claude-opus-5.5 | 12 | 4 | 8 | 0 | 0 | 0 | $2.32 |
 | `can_test` | anthropic/claude-sonnet-5.5 | 12 | 0 | 12 | 0 | 0 | 0 | $1.21 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 6 | 1 | 4 | 1 | 0 | 0 | $0.34 |
-| `can_test` | google/gemini-3.8-flash | 6 | 5 | 1 | 0 | 0 | 0 | $0.82 |
-| `can_test` | google/gemini-4-argon | 7 | 3 | 3 | 1 | 0 | 0 | $1.09 |
-| `can_test` | openai/gpt-6.1-sol | 12 | 9 | 0 | 3 | 0 | 0 | $0.80 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 11 | 2 | 4 | 0 | 0 | 5 | $0.34 |
+| `can_test` | google/gemini-3.8-flash | 11 | 5 | 1 | 0 | 0 | 5 | $0.82 |
+| `can_test` | google/gemini-4-argon | 11 | 6 | 2 | 1 | 0 | 2 | $1.47 |
+| `can_test` | openai/gpt-6.1-sol | 12 | 9 | 1 | 2 | 0 | 0 | $0.80 |
 
 ### `estoa-light` (drafted from Dan's answers, approved by Dan)
 
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.16 |
-| `can_ask` | anthropic/claude-opus-5.5 | 5 | 0 | 3 | 2 | 0 | 0 | $2.54 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 0 | 4 | 1 | 0 | 0 | $2.26 |
+| `can_ask` | anthropic/claude-haiku-5.5 | 5 | 0 | 4 | 1 | 0 | 0 | $0.16 |
+| `can_ask` | anthropic/claude-opus-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $2.54 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $2.26 |
 | `can_ask` | deepseek/deepseek-v4-pro-0813 | 5 | 0 | 4 | 1 | 0 | 0 | $0.58 |
 | `can_ask` | google/gemini-4-argon | 5 | 0 | 5 | 0 | 0 | 0 | $4.33 |
+| `can_ask` | google/gemini-4-carbon | 1 | 0 | 0 | 0 | 0 | 1 | $1.50 |
 | `can_ask` | openai/gpt-6.1-sol | 5 | 0 | 4 | 0 | 0 | 1 | $0.87 |
 | `can_test` | anthropic/claude-opus-5.5 | 3 | 0 | 3 | 0 | 0 | 0 | $1.67 |
 | `can_test` | anthropic/claude-sonnet-5.5 | 3 | 0 | 2 | 1 | 0 | 0 | $1.90 |
 | `can_test` | deepseek/deepseek-v4.1-flash | 3 | 0 | 3 | 0 | 0 | 0 | $0.16 |
 | `can_test` | google/gemini-3.8-flash | 3 | 0 | 1 | 1 | 0 | 1 | $0.42 |
 | `can_test` | google/gemini-4-argon | 3 | 0 | 2 | 0 | 0 | 1 | $4.85 |
-| `can_test` | openai/gpt-6.1-sol | 3 | 0 | 3 | 0 | 0 | 0 | $0.51 |
+| `can_test` | openai/gpt-6.1-sol | 3 | 0 | 2 | 1 | 0 | 0 | $0.51 |
 
 Each check across the 17 graded designs (one verdict per design), on the records alone and then with the assumptions below (`python -m pbe.assumptions`). A check the records decide never changes.
 
@@ -340,13 +327,13 @@ Each check across the 17 graded designs (one verdict per design), on the records
 | builds | 17 | 0 | 0 | 17 | 0 | 0 |
 | connected_bodies | 16 | 1 | 0 | 16 | 1 | 0 |
 | bed_fit | 17 | 0 | 0 | 17 | 0 | 0 |
-| bridges | 4 | 11 | 2 | 4 | 11 | 2 |
+| bridges | 6 | 11 | 0 | 6 | 11 | 0 |
 | R1 | 9 | 1 | 7 | 14 | 1 | 2 |
 | R2 | 8 | 1 | 8 | 10 | 3 | 4 |
-| R3 | 9 | 2 | 6 | 9 | 2 | 6 |
+| R3 | 11 | 3 | 3 | 11 | 3 | 3 |
 | R4 | 8 | 0 | 9 | 8 | 0 | 9 |
 | R5 | 10 | 3 | 4 | 10 | 3 | 4 |
-| R6 | 1 | 6 | 10 | 6 | 7 | 4 |
+| R6 | 3 | 10 | 4 | 3 | 10 | 4 |
 | R7 | 16 | 1 | 0 | 16 | 1 | 0 |
 
 Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not graded.
@@ -374,47 +361,47 @@ Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not grad
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
 | `can_ask` | anthropic/claude-haiku-5.5 | 10 | 0 | 7 | 3 | 0 | 0 | $0.04 |
-| `can_ask` | anthropic/claude-opus-5.5 | 10 | 4 | 0 | 6 | 0 | 0 | $1.26 |
+| `can_ask` | anthropic/claude-opus-5.5 | 10 | 4 | 5 | 1 | 0 | 0 | $1.26 |
 | `can_ask` | anthropic/claude-sonnet-5.5 | 10 | 5 | 3 | 2 | 0 | 0 | $0.68 |
 | `can_ask` | deepseek/deepseek-v4-pro-0813 | 10 | 1 | 7 | 2 | 0 | 0 | $1.76 |
 | `can_ask` | deepseek/deepseek-v4.1-flash | 10 | 5 | 1 | 4 | 0 | 0 | $0.52 |
 | `can_ask` | google/gemini-3.8-flash | 10 | 1 | 6 | 3 | 0 | 0 | $1.08 |
 | `can_ask` | google/gemini-4-argon | 10 | 1 | 5 | 4 | 0 | 0 | $0.88 |
-| `can_ask` | openai/gpt-6-luna | 10 | 0 | 8 | 2 | 0 | 0 | $0.03 |
-| `can_ask` | openai/gpt-6.1-sol | 10 | 2 | 0 | 8 | 0 | 0 | $0.68 |
-| `can_ask` | qwen/qwen3.8-flash | 10 | 0 | 9 | 1 | 0 | 0 | $0.52 |
+| `can_ask` | openai/gpt-6-luna | 10 | 0 | 9 | 1 | 0 | 0 | $0.03 |
+| `can_ask` | openai/gpt-6.1-sol | 10 | 2 | 4 | 4 | 0 | 0 | $0.68 |
+| `can_ask` | qwen/qwen3.8-flash | 10 | 0 | 10 | 0 | 0 | 0 | $0.52 |
 | `can_ask` | z-ai/glm-5.3-flash | 10 | 4 | 5 | 1 | 0 | 0 | $0.14 |
 | `can_test` | anthropic/claude-haiku-5.5 | 5 | 2 | 0 | 3 | 0 | 0 | $0.03 |
 | `can_test` | anthropic/claude-opus-5.5 | 12 | 6 | 2 | 4 | 0 | 0 | $1.80 |
 | `can_test` | anthropic/claude-sonnet-5.5 | 12 | 11 | 1 | 0 | 0 | 0 | $0.96 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 6 | 2 | 2 | 2 | 0 | 0 | $0.30 |
-| `can_test` | google/gemini-3.8-flash | 6 | 4 | 2 | 0 | 0 | 0 | $0.50 |
-| `can_test` | google/gemini-4-argon | 6 | 5 | 1 | 0 | 0 | 0 | $0.77 |
-| `can_test` | openai/gpt-6.1-sol | 12 | 7 | 4 | 1 | 0 | 0 | $0.51 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 11 | 2 | 2 | 2 | 0 | 5 | $0.30 |
+| `can_test` | google/gemini-3.8-flash | 11 | 4 | 2 | 0 | 0 | 5 | $0.50 |
+| `can_test` | google/gemini-4-argon | 11 | 5 | 1 | 0 | 0 | 5 | $0.80 |
+| `can_test` | openai/gpt-6.1-sol | 12 | 7 | 5 | 0 | 0 | 0 | $0.51 |
 
 ### `nut-knob/M5` (draft, not approved by Dan: exploratory)
 
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 10 | 3 | 0 | 7 | 0 | 0 | $0.04 |
-| `can_ask` | anthropic/claude-opus-5.5 | 10 | 4 | 0 | 6 | 0 | 0 | $1.43 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 10 | 4 | 0 | 6 | 0 | 0 | $0.75 |
-| `can_ask` | deepseek/deepseek-v4-pro-0813 | 10 | 1 | 8 | 1 | 0 | 0 | $1.54 |
-| `can_ask` | deepseek/deepseek-v4.1-flash | 11 | 5 | 1 | 5 | 0 | 0 | $0.35 |
-| `can_ask` | google/gemini-3.8-flash | 10 | 3 | 1 | 6 | 0 | 0 | $1.07 |
-| `can_ask` | google/gemini-4-argon | 10 | 3 | 1 | 6 | 0 | 0 | $0.79 |
-| `can_ask` | openai/gpt-6-luna | 10 | 6 | 1 | 3 | 0 | 0 | $0.04 |
-| `can_ask` | openai/gpt-6.1-sol | 10 | 0 | 0 | 10 | 0 | 0 | $0.66 |
-| `can_ask` | qwen/qwen3.8-flash | 5 | 0 | 3 | 1 | 0 | 1 | $0.26 |
+| `can_ask` | anthropic/claude-haiku-5.5 | 10 | 1 | 9 | 0 | 0 | 0 | $0.04 |
+| `can_ask` | anthropic/claude-opus-5.5 | 10 | 10 | 0 | 0 | 0 | 0 | $1.43 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 10 | 9 | 0 | 1 | 0 | 0 | $0.75 |
+| `can_ask` | deepseek/deepseek-v4-pro-0813 | 10 | 0 | 10 | 0 | 0 | 0 | $1.54 |
+| `can_ask` | deepseek/deepseek-v4.1-flash | 11 | 9 | 1 | 1 | 0 | 0 | $0.35 |
+| `can_ask` | google/gemini-3.8-flash | 10 | 9 | 1 | 0 | 0 | 0 | $1.07 |
+| `can_ask` | google/gemini-4-argon | 10 | 9 | 1 | 0 | 0 | 0 | $0.79 |
+| `can_ask` | openai/gpt-6-luna | 10 | 3 | 7 | 0 | 0 | 0 | $0.04 |
+| `can_ask` | openai/gpt-6.1-sol | 10 | 9 | 0 | 1 | 0 | 0 | $0.66 |
+| `can_ask` | qwen/qwen3.8-flash | 5 | 0 | 4 | 0 | 0 | 1 | $0.26 |
 | `can_ask` | x-ai/grok-4.7 | 1 | 0 | 0 | 1 | 0 | 0 | $0.48 |
-| `can_ask` | z-ai/glm-5.3-flash | 10 | 2 | 4 | 3 | 0 | 1 | $0.46 |
-| `can_test` | anthropic/claude-haiku-5.5 | 5 | 1 | 1 | 3 | 0 | 0 | $0.03 |
-| `can_test` | anthropic/claude-opus-5.5 | 9 | 5 | 0 | 4 | 0 | 0 | $1.06 |
-| `can_test` | anthropic/claude-sonnet-5.5 | 10 | 0 | 0 | 10 | 0 | 0 | $0.87 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 7 | 3 | 1 | 3 | 0 | 0 | $0.39 |
-| `can_test` | google/gemini-3.8-flash | 5 | 3 | 1 | 1 | 0 | 0 | $0.51 |
-| `can_test` | google/gemini-4-argon | 5 | 5 | 0 | 0 | 0 | 0 | $0.64 |
-| `can_test` | openai/gpt-6.1-sol | 10 | 6 | 0 | 4 | 0 | 0 | $0.34 |
+| `can_ask` | z-ai/glm-5.3-flash | 10 | 5 | 4 | 0 | 0 | 1 | $0.46 |
+| `can_test` | anthropic/claude-haiku-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $0.03 |
+| `can_test` | anthropic/claude-opus-5.5 | 10 | 9 | 1 | 0 | 0 | 0 | $1.14 |
+| `can_test` | anthropic/claude-sonnet-5.5 | 10 | 10 | 0 | 0 | 0 | 0 | $0.87 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 10 | 4 | 3 | 0 | 0 | 3 | $0.39 |
+| `can_test` | google/gemini-3.8-flash | 10 | 4 | 1 | 0 | 0 | 5 | $0.51 |
+| `can_test` | google/gemini-4-argon | 10 | 5 | 0 | 0 | 0 | 5 | $0.64 |
+| `can_test` | openai/gpt-6.1-sol | 10 | 10 | 0 | 0 | 0 | 0 | $0.34 |
 
 ### `tripod-plate` (Dan's own words, approved by Dan)
 
@@ -441,7 +428,7 @@ Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not grad
 | `can_ask` | openai/gpt-6.1-sol | 10 | 1 | 0 | 0 | 9 | 0 | $0.50 |
 | `can_ask` | qwen/qwen3.8-flash | 10 | 0 | 10 | 0 | 0 | 0 | $0.47 |
 | `can_ask` | x-ai/grok-4.7 | 1 | 1 | 0 | 0 | 0 | 0 | $0.46 |
-| `can_ask` | z-ai/glm-5.3-flash | 10 | 0 | 8 | 1 | 0 | 1 | $0.50 |
+| `can_ask` | z-ai/glm-5.3-flash | 10 | 0 | 9 | 0 | 0 | 1 | $0.50 |
 | `can_run_code` | anthropic/claude-haiku-5.5 | 3 | 0 | 1 | 0 | 2 | 0 | $0.01 |
 | `can_run_code` | anthropic/claude-opus-5.5 | 3 | 1 | 2 | 0 | 0 | 0 | $0.57 |
 | `can_run_code` | anthropic/claude-sonnet-5.5 | 3 | 0 | 3 | 0 | 0 | 0 | $0.38 |
@@ -451,8 +438,8 @@ Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not grad
 | `can_test` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.03 |
 | `can_test` | anthropic/claude-opus-5.5 | 10 | 3 | 6 | 1 | 0 | 0 | $1.60 |
 | `can_test` | anthropic/claude-sonnet-5.5 | 10 | 1 | 9 | 0 | 0 | 0 | $1.53 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 9 | 3 | 5 | 1 | 0 | 0 | $0.64 |
-| `can_test` | google/gemini-3.8-flash | 8 | 2 | 5 | 0 | 0 | 1 | $1.74 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 10 | 3 | 6 | 0 | 0 | 1 | $0.64 |
+| `can_test` | google/gemini-3.8-flash | 10 | 2 | 7 | 0 | 0 | 1 | $2.07 |
 | `can_test` | google/gemini-4-argon | 10 | 7 | 3 | 0 | 0 | 0 | $1.74 |
 | `can_test` | openai/gpt-6.1-sol | 10 | 2 | 5 | 0 | 3 | 0 | $0.54 |
 <!-- results:end -->
@@ -471,21 +458,21 @@ Follow-up experiments on saved trials, each with its own write-up:
 Counts are trials, from the saved runs; a trial can fail more than one way. The pictures are cuts through saved designs, made by `scripts/failure_figures.py`, with the hardware drawn in orange where it has to go. None of these designs was printed.
 
 <!-- wrong-tripod-plate:start (written by scripts/failure_tables.py; don't edit by hand) -->
-### `tripod-plate`: 201 trials
+### `tripod-plate`: 204 trials
 
 | What went wrong | Trials |
 |---|---|
-| A roof with the bolt's hole cut through it (`bridges`) | 78 |
+| A roof with the bolt's hole cut through it (`bridges`) | 81 |
 | Straight sides, nothing for the clamp's lips to grip | 28 |
 | Dovetail upside down: the bolt head's recess is on the camera's side | 27 |
-| No usable bolt hole | 26 |
+| No usable bolt hole | 24 |
 | Declined: handed in only a test print, because the clamp's size isn't known | 19 |
 | Code didn't run | 10 |
+| A roof or ledge too wide to bridge, with no hole through it | 9 |
 | Bolt doesn't reach far enough into the camera | 9 |
 | A part in pieces | 7 |
-| A roof or ledge too wide to bridge, with no hole through it | 7 |
+| No design handed in | 5 |
 | Head recess too small for the bolt's head | 4 |
-| No design handed in | 4 |
 | A broken shape | 1 |
 <!-- wrong-tripod-plate:end -->
 
@@ -501,17 +488,16 @@ Counts are trials, from the saved runs; a trial can fail more than one way. The 
 The bridge check's picture of GPT-6 Luna's roof (`pilot-tripod` t1, 449 mm² at 5.4 mm): green strands land on solid at both ends, red ones don't. In the best direction only 66% are anchored, because the bolt's hole is cut through the middle of the roof. Dan's first plate tangled on this shape.
 
 <!-- wrong-bearing-wheel:start (written by scripts/failure_tables.py; don't edit by hand) -->
-### `bearing-wheel`: 170 trials
+### `bearing-wheel`: 184 trials
 
 | What went wrong | Trials |
 |---|---|
-| A roof with the bolt's hole cut through it (`bridges`), over the seat that opens at the bed | 64 |
-| Bearing seat a size the prints don't take | 30 |
-| Other wheel geometry | 23 |
+| A roof with the bolt's hole cut through it (`bridges`), over the seat that opens at the bed | 75 |
+| Bearing seat a size the prints don't take | 32 |
+| Other wheel geometry | 16 |
 | Code didn't run | 14 |
+| No design handed in | 13 |
 | A part in pieces | 9 |
-| A roof or ledge too wide to bridge, with no hole through it | 1 |
-| No design handed in | 1 |
 <!-- wrong-bearing-wheel:end -->
 
 | Fails: a flat roof | Not graded: a narrow ledge | Passes: a cone |
@@ -520,20 +506,20 @@ The bridge check's picture of GPT-6 Luna's roof (`pilot-tripod` t1, 449 mm² at 
 | Sonnet 5.5 t1. A flat ring of 230 mm² over the lower bearing; 22% of strands anchored. | Sonnet 5.5 t3. A 157 mm² ledge, about 2.5 mm wide: narrower than any roof seen to tangle, so not graded. | Opus 5.5 t1. The roof is a cone stepping in about 0.2 mm a layer, so nothing has to bridge. |
 
 <!-- wrong-nut-knob:start (written by scripts/failure_tables.py; don't edit by hand) -->
-### `nut-knob` (M3 and M5): 327 trials
+### `nut-knob` (M3 and M5): 356 trials
 
 | What went wrong | Trials |
 |---|---|
-| Nut pocket a size the prints don't take | 40 |
+| Nut pocket a size the prints don't take | 77 |
+| No design handed in | 30 |
 | The pocket is closed, so the nut can't be pressed in | 29 |
-| Code didn't run | 15 |
-| A roof with the bolt's hole cut through it | 5 |
+| Code didn't run | 16 |
+| A roof with the bolt's hole cut through it | 4 |
 | A part in pieces | 3 |
 | A roof or ledge too wide to bridge, with no hole through it | 2 |
-| No design handed in | 2 |
 | Its test print labelled as a final part | 1 |
 
-Most knob trials that didn't pass weren't failed: 114 pass, 85 fail and 126 are not graded, mostly for the pockets below.
+Most knob trials that didn't pass weren't failed: 167 pass, 121 fail and 38 are not graded, mostly for the pockets below.
 <!-- wrong-nut-knob:end -->
 
 | No clearance | A closed pocket |
@@ -555,16 +541,14 @@ A check is not graded when no recorded print decides it. A trial can have more t
 <!-- not-graded:start (written by scripts/failure_tables.py; don't edit by hand) -->
 | Not graded because | Example | Trials | The print that would settle it |
 |---|---|---|---|
-| A nut pocket with crush ribs or clips | <img src="media/not-graded/a-nut-pocket-with-crush-ribs-or-clips.png" width="160" alt="A nut pocket with crush ribs or clips: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 111 | Pockets with ribs, clips or relief beside plain ones. Each model's ribs differ, so one print settles only designs like it |
-| A roof ledge 1.5 to 3 mm wide | <img src="media/not-graded/a-roof-ledge-1-5-to-3-mm-wide.png" width="160" alt="A roof ledge 1.5 to 3 mm wide: Opus 5.5, estoa light, trial 3"><br><sub>Opus 5.5, estoa light, trial 3</sub> | 54 | Ring roofs 1.5 to 3 mm wide around a bolt hole |
-| A tripod head recess under 5 mm deep | <img src="media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 8"><br><sub>Haiku 5.5, tripod plate, trial 8</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
-| Bearings a little proud, or no shoulder | <img src="media/not-graded/bearings-a-little-proud-or-no-shoulder.png" width="160" alt="Bearings a little proud, or no shoulder: Opus 5.5, bearing wheel, trial 6"><br><sub>Opus 5.5, bearing wheel, trial 6</sub> | 23 | Wheels with bearings 0.2 to 0.6 mm proud, and a bore with no shoulder |
-| A tripod bolt hole between 6.35 and 6.8 mm | <img src="media/not-graded/a-tripod-bolt-hole-between-6-35-and-6-8-mm.png" width="160" alt="A tripod bolt hole between 6.35 and 6.8 mm: Haiku 5.5, tripod plate, trial 2"><br><sub>Haiku 5.5, tripod plate, trial 2</sub> | 13 | Bolt holes at 6.5 and 6.6 mm |
+| A tripod head recess under 5 mm deep | <img src="media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 3"><br><sub>Haiku 5.5, tripod plate, trial 3</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
+| A nut pocket with ribs, clips or a lip unlike any printed | <img src="media/not-graded/a-nut-pocket-with-ribs-clips-or-a-lip-unlike-any-printed.png" width="160" alt="A nut pocket with ribs, clips or a lip unlike any printed: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 29 | That rib shape and bite. Round 3 printed 3 and 6 round ribs, 6 flat ribs and two lips; each model's ribs differ, so one print settles only designs like it |
+| A roof ledge 1.5 to 2 mm wide | <img src="media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 12 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
+| A nut pocket no recorded print settles | <img src="media/not-graded/a-nut-pocket-no-recorded-print-settles.png" width="160" alt="A nut pocket no recorded print settles: DeepSeek V4.1 Flash, knob M5, trial 6"><br><sub>DeepSeek V4.1 Flash, knob M5, trial 6</sub> | 12 | A print of that pocket |
 | A plate width outside 37 to 39 mm | <img src="media/not-graded/a-plate-width-outside-37-to-39-mm.png" width="160" alt="A plate width outside 37 to 39 mm: DeepSeek V4.1 Flash, tripod plate, trial 2"><br><sub>DeepSeek V4.1 Flash, tripod plate, trial 2</sub> | 11 | Dovetail plates from 34 to 45 mm tried in the clamp |
-| A nut pocket tighter than any printed | <img src="media/not-graded/a-nut-pocket-tighter-than-any-printed.png" width="160" alt="A nut pocket tighter than any printed: Haiku 5.5, knob M5, trial 2"><br><sub>Haiku 5.5, knob M5, trial 2</sub> | 3 | M5 pockets at -0.15, -0.10 and -0.05 mm |
-| A test print whose pockets are ribbed or unsettled | <img src="media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Haiku 5.5, knob M5, trial 3"><br><sub>Haiku 5.5, knob M5, trial 3</sub> | 3 | The ribbed pockets above, and coupon B2's finer steps |
 | A pocket shape the checker can't read | <img src="media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 2 | None: the checker needs fixing |
-| A bearing seat between printed sizes, or ribbed | <img src="media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: Haiku 5.5, bearing wheel, trial 3"><br><sub>Haiku 5.5, bearing wheel, trial 3</sub> | 1 | Seats at 22.05, 22.4 and 22.5 mm, and lobed seats |
+| A test print whose pockets are ribbed or unsettled | <img src="media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Sonnet 5.5, knob M3, trial 5"><br><sub>Sonnet 5.5, knob M3, trial 5</sub> | 2 | The ribbed pockets above, and coupon B2's finer steps |
+| A bearing seat between printed sizes, or ribbed | <img src="media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: GLM 5.3 Flash, bearing wheel, trial 2"><br><sub>GLM 5.3 Flash, bearing wheel, trial 2</sub> | 1 | Seats at 22.1 and 22.3 mm, and lobed seats: 22.05 wouldn't take a 608, 22.2 held, 22.4 fell out |
 <!-- not-graded:end -->
 
 Ribbed pockets are the biggest gap. Two models' answers, cut where the nut is tightest, with the M5 nut's outline dashed:
@@ -582,8 +566,8 @@ Estoa has merged, and its trials are in the results above. Servo mount is on an 
 
 | Task | Branch | What it tests | Model trials | Result | Cost |
 |---|---|---|---|---|---|
-| Estoa light | merged in [a04b153](https://github.com/oveddan/functional-print-eval/commit/a04b153), run `pilot-estoa` | A solid enclosure that hangs on the wall for an ESP32 that powers an LED disc | 18 | 0 pass, 14 fail, 3 not graded, 1 with no design | $6.03 |
-| Servo mount | merged in [e7dc82b](https://github.com/oveddan/functional-print-eval/commit/e7dc82b), runs `servo-first-look`, `servo-first-look-2`, `servo-datasheet` | A 3D-printed mount for a servo that's going to drive a robotic arm | 29 | 1 pass, 17 fail, 11 not graded | $4.81 |
+| Estoa light | merged in [#23](https://github.com/oveddan/print-build-eval/pull/23), run `pilot-estoa` | A solid enclosure that hangs on the wall for an ESP32 that powers an LED disc | 18 | 0 pass, 14 fail, 3 not graded, 1 with no design | $6.03 |
+| Servo mount | [#47](https://github.com/oveddan/print-build-eval/pull/47), runs `servo-first-look`, `servo-first-look-2`, `servo-datasheet` | A 3D-printed mount for a servo that's going to drive a robotic arm | 29 | 1 pass, 17 fail, 11 not graded | $4.81 |
 
 ### Estoa light
 
@@ -607,11 +591,10 @@ These are treated as true without a print that shows them for that exact case. T
 | Assumption | Check | What rests on it in the saved runs |
 |---|---|---|
 | The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (144 pass, 9 fail), so all 32 tripod passes |
-| One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (129 pass, 28 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 96 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
+| One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (131 pass, 28 fail) |
+| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 105 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
 | Each hole's centre is at the middle of where Dan's readings put it, 16.85 mm out. Source: the middle of 16.60 to 17.11, from Dan's calipers; no reading pins it closer. | estoa-light R1 | Graded apart: 5 pass, 0 fail of the estoa-light designs it decides |
 | The disk's board is 1.6 mm thick, and each hole's centre is 16.85 mm out. Source: 1.6 mm is the standard circuit board thickness and what the Estoa model used; the holes as in R1's assumption. | estoa-light R2 | Graded apart: 2 pass, 2 fail of the estoa-light designs it decides |
-| The wall screws' heads are 9 mm across, so a keyhole works if its entry passes a 9 mm head and its slot carries the head clear of the entry, in place of matching the one keyhole that hung (10.5 mm entry, 12 mm slot). Source: Dan bought #8 round heads 9 mm across at most; the rest is geometry. | estoa-light R6 | Graded apart: 5 pass, 1 fail of the estoa-light designs it decides |
 <!-- assumptions:end -->
 
 ### Whose calls these are
@@ -633,7 +616,7 @@ From the audit of the saved failures (issue 15):
 
 Built: the four runnable task families above with references and checks; the runner with the lookup-table person and three conditions; sandboxed builds; regrading; the test-print loop and the crash replay; the results page; the test print designs and their recorded outcomes (`coupons/`, `results/predictions/`).
 
-Not built: an assembly simulation (parts moving into place along the manual's steps); a printer simulator with a hidden error; any score beyond pass, fail, not graded and declined; a comparison with a hand ranking; a simulated builder. The failure atlas (`report/atlas/`) doesn't build from the repo: it uses macOS's `sips` and points at photos that aren't in it.
+Not built: an assembly simulation (parts moving into place along the manual's steps); a printer simulator with a hidden error; any score beyond pass, fail, not graded and declined; a comparison with a hand ranking; a simulated builder. The failure atlas (`report/atlas/`) builds only on Dan's Mac: it uses `sips` and points at local photos.
 
 ## Where things are
 

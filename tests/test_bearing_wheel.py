@@ -100,10 +100,9 @@ def test_a_seat_each_side_with_a_plain_roof_fails_only_the_bridge_check(tmp_path
 
 
 def test_a_stepped_roof_doesnt_fail(tmp_path):
+    # the square step leaves small corners at the round hole, whose strands are short
     findings = grade(design(code=STEPPED), tmp_path)
-    assert not failed(findings)
-    # the square step leaves small corners at the round hole, and no print has measured those
-    assert not_graded(findings) == {"bridges"}
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 def test_two_halves_pass(tmp_path):
@@ -111,8 +110,10 @@ def test_two_halves_pass(tmp_path):
     assert all(f.ok is True for f in findings), not_passing(findings)
 
 
-def test_nominal_seat_fails_fit_only(tmp_path):
-    assert failed(grade(design(seat=22.0), tmp_path)) == {"R3"}
+def test_a_seat_too_tight_or_too_loose_fails_fit_only(tmp_path):
+    # 22.0: round 2, won't go in; 22.05: round 3's H1, won't go in; 22.4: round 3's H2, too loose
+    for d in (22.0, 22.05, 22.4):
+        assert failed(grade(design(seat=d), tmp_path / str(d))) == {"R3"}
 
 
 def test_a_seat_at_the_edges_of_what_held_passes(tmp_path):
@@ -121,11 +122,11 @@ def test_a_seat_at_the_edges_of_what_held_passes(tmp_path):
         assert not failed(findings) and not not_graded(findings), not_passing(findings)
 
 
-def test_a_seat_takes_the_nearest_print_within_the_tolerance_and_isnt_graded_beyond_it(tmp_path):
-    assert failed(grade(design(seat=22.05), tmp_path / "a")) == {"R3"}  # midway to 22.0, which wouldn't take it
-    assert not ({"R3"} & (failed(found := grade(design(seat=22.45), tmp_path / "b")) | not_graded(found)))  # near 22.3
-    findings = grade(design(seat=22.6), tmp_path / "c")
-    assert not failed(findings) and not_graded(findings) == {"R3"}
+def test_a_seat_between_prints_takes_the_nearest_within_the_tolerance(tmp_path):
+    # between 22.3, which held, and 22.4, which fell out: the nearer print decides, the tighter on a tie (assumed.py)
+    findings = grade(design(seat=22.34), tmp_path / "a")
+    assert not failed(findings) and not not_graded(findings), not_passing(findings)
+    assert failed(grade(design(seat=22.37), tmp_path / "b")) == {"R3"}
 
 
 def test_too_shallow_for_two_bearings_fails_room_only(tmp_path):
@@ -133,9 +134,10 @@ def test_too_shallow_for_two_bearings_fails_room_only(tmp_path):
     assert failed(findings) == {"R2"}
 
 
-def test_a_bore_with_nothing_to_stop_the_bearings_isnt_graded(tmp_path):
+def test_a_bore_with_nothing_to_stop_the_bearings_passes(tmp_path):
+    # round 3's H8, a 22.2 seat with no shoulder, held its bearing upside down
     findings = grade(design(relief=22.2), tmp_path)
-    assert not failed(findings) and not_graded(findings) == {"R2"}
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 def test_oversize_wheel_fails_size_only(tmp_path):
@@ -150,9 +152,18 @@ def test_bolt_hole_too_small_fails_only_that(tmp_path):
     assert failed(grade(design(relief=7.8), tmp_path)) == {"R4"}
 
 
-def test_a_bolt_hole_between_the_bolt_and_its_clearance_takes_the_nearest(tmp_path):
-    assert failed(grade(design(relief=8.1), tmp_path / "a")) == {"R4"}
-    assert "R4" not in failed(found := grade(design(relief=8.3), tmp_path / "b")) | not_graded(found)
+def test_a_bolt_hole_between_printed_holes_takes_the_nearest(tmp_path):
+    # between round 3's 8.0, which the M8 only screwed through, and 8.1, which it went through by hand (assumed.py)
+    assert failed(grade(design(relief=8.03), tmp_path / "a")) == {"R4"}
+    assert "R4" not in failed(found := grade(design(relief=8.08), tmp_path / "b")) | not_graded(found)
+    assert "R4" not in failed(found := grade(design(relief=8.3), tmp_path / "c")) | not_graded(found)
+
+
+def test_bolt_hole_reads_round_3(tmp_path):
+    # the M8 only screwed through 8.0, so the wheel would grip it; it went through 8.2 by hand
+    assert failed(grade(design(relief=8.0), tmp_path / "8.0")) == {"R4"}
+    findings = grade(design(relief=8.2), tmp_path / "8.2")
+    assert all(f.ok is True for f in findings), not_passing(findings)
 
 
 def test_ribs_arent_graded_on_fit(tmp_path):
@@ -222,7 +233,8 @@ def test_the_person_can_answer_about_the_bearing():
     assert "22" in person.measure("608 bearing", "outside diameter")
 
 
-def test_a_bearing_a_little_proud_isnt_graded(tmp_path):
+def test_a_bearing_a_little_proud_passes(tmp_path):
+    # round 3's H5 to H7 held a 608 standing 0.2 to 0.6 mm proud of its seat
     findings = grade(design(seat_h=13.8), tmp_path)
-    assert not failed(findings) and not_graded(findings) == {"R2"}
+    assert all(f.ok is True for f in findings), not_passing(findings)
 

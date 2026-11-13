@@ -1,0 +1,145 @@
+task: nut-knob/M5
+note: Pocket is 8.00 mm across flats. In your test print that size was a tight push-in
+  and held the nut upside down. If your next spool prints tighter, use 8.10 (pocket_af).
+questions: []
+params:
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  pocket_af:
+    value: 8.0
+    unit: mm
+    kind: design
+    source: design
+    note: 'coupon: 8.00 tight press, nut stays in upside down; 8.10 snug also held;
+      8.20 loose'
+  nut_recess:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: nut sits this far below the top face
+  bolt_clear_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: ''
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  grip_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "def build(p):\n    import math\n    h=p.knob_h\n    k=cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \    for i in range(int(p.grip_n)):\n        a=2*math.pi*i/p.grip_n\n        c=cq.Workplane('XY').center(p.knob_d/2*math.cos(a),p.knob_d/2*math.sin(a)).circle(p.grip_r).extrude(h)\n\
+    \        k=k.cut(c)\n    k=k.edges('not |Z').chamfer(0.6)\n    depth=p.nut_h+p.nut_recess\n\
+    \    pocket=cq.Workplane('XY').workplane(offset=h-depth).polygon(6,p.pocket_af/math.cos(math.pi/6)).extrude(depth+0.01)\n\
+    \    hole=cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(h)\n    return k.cut(pocket).cut(hole)"
+  print_orientation: bolt-exit face on the bed, nut pocket opening upward (no overhangs,
+    no supports)
+  use_orientation: nut pocket faces the user, bolt exits from the bed-side face toward
+    the work
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: nut_press
+  part: knob
+  feature: hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: '8.00 pocket: tight press, stays in upside down when shaken'
+- id: nut_flush
+  part: knob
+  feature: pocket depth
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: nut top sits ~0.3 mm below knob top face
+- id: floor_stop
+  part: knob
+  feature: pocket floor around 5.5 mm hole
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: 5.5 hole smaller than 8 mm nut across flats, so nut can't pass through
+manual:
+- n: '1'
+  text: 'Print the knob in PLA as modelled: flat face with only the round hole on
+    the bed, hex pocket opening upward. No supports.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Line the M5 nut up with the hex pocket and press it in firmly with your thumb
+    (or press it down on a table) until it sits on the pocket floor, a little below
+    the top face. If it is stubborn, thread it onto the bolt and pull it in by turning
+    the knob.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Thread your M5 bolt in from the pocket side or the back. It goes through the
+    nut and comes out of the round hole on the flat face. Turn the knob by hand to
+    tighten.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

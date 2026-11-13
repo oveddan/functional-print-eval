@@ -298,6 +298,14 @@ def test_a_test_print_is_reported_before_the_final_design_and_only_where_the_mod
     assert [part.role for part in agent.graded_design("can_test", sub).parts] == ["final"]
     assert agent.PRINT_TEST_LINE in messages[0]["content"]
     assert "print_test" in [tool["function"]["name"] for tool in agent.tools("can_test")]
-    assert agent.NO_SUPPORTS in messages[0]["content"] and agent.NO_SUPPORTS not in agent.system_prompt(8)
     assert agent.PRINT_TEST_LINE not in agent.system_prompt(8)
     assert "print_test" not in [tool["function"]["name"] for tool in agent.tools("can_ask")]
+
+
+def test_the_loops_person_answers_only_from_coupon_b():
+    """Round 3 printed an M5 pocket 0.10 mm under the nut ("won't go in"); the loop's person printed coupon B
+    only, so they answer from its nearest pocket."""
+    from pbe.graders import nuts
+
+    assert nuts.reading("M5", -0.10) == ("won't go in", None)
+    assert nuts.reading("M5", -0.10, with_round3=False) == ("holds", 0.0)

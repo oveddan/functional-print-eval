@@ -150,14 +150,15 @@ def test_reference_passes_every_check(tmp_path):
     pytest.param(design(code=STRAIGHT_SIDES), {"R2"}, set(), id="straight-sides"),
     pytest.param(design(width=45), set(), {"R2"}, id="width-only-38-was-printed"),
     pytest.param(design(hole=6), {"R3"}, set(), id="hole-under-the-thread"),
-    pytest.param(design(hole=6.5), {"R3"}, set(), id="hole-near-the-thread"),
-    pytest.param(design(hole=6.57), set(), {"R3"}, id="hole-between-thread-and-printed"),
+    # between round 3's 6.35, which the bolt only screwed through, and 6.5, which it went through by hand:
+    # the nearer print decides (graders/assumed.py)
+    pytest.param(design(hole=6.4), {"R3"}, set(), id="hole-nearer-the-one-the-bolt-only-screws-through"),
     pytest.param(design(code=RECESS_ON_CAMERA_SIDE), {"R3"}, set(), id="head-on-the-camera-side"),
     pytest.param(design(height=15), {"R5"}, set(), id="too-much-plate-for-the-bolt"),
     pytest.param(design(code=NO_RECESS_AND_A_PIN_HOLE, height=6, bevel=2), set(), {"R4"}, id="no-recess-and-a-pin-hole"),
     pytest.param(design(code=STRAIGHT_WITH_A_RAISED_PAD), {"R2"}, set(), id="a-raised-pad-is-not-a-dovetail"),
     pytest.param(design(code=ONE_BEVEL), {"R2"}, set(), id="a-bevel-on-one-edge-only"),
-    pytest.param(design(hole=6.35), {"R3"}, set(), id="hole-exactly-the-thread"),
+    pytest.param(design(hole=6.35), {"R3"}, set(), id="hole-the-bolt-only-screws-through"),  # round 3's F
     pytest.param(design(hardware=[submission.HardwareItem(id="bolt", ref="ISO 4762 M5x20")]), {"R3"}, {"R4", "R5"}, id="a-bolt-that-wont-fit-a-camera"),
     pytest.param(design(hardware=[]), set(), {"R3", "R4", "R5"}, id="printed-screw"),
 ])
@@ -173,6 +174,8 @@ def test_wrong_or_undecided_designs(tmp_path, sub, want_failed, want_not_graded)
     pytest.param(design(code=TWO_HOLES), id="a-second-hole-for-a-pin"),
     pytest.param(design(code=GROOVE_IN_THE_SIDE), id="a-groove-in-the-side"),
     pytest.param(design(head_d=16, hole=6.8), id="roomier-recess-tighter-hole"),
+    pytest.param(design(hole=6.5), id="hole-the-bolt-goes-through-by-hand"),  # round 3's F
+    pytest.param(design(hole=6.46), id="hole-nearer-the-one-the-bolt-goes-through-by-hand"),  # assumed from 6.5
     pytest.param(design(code=RELIEF_ON_THE_CAMERA_SIDE), id="a-relief-on-the-camera-side"),
     pytest.param(design(code=LIP_ON_THE_CAMERA_FACE), id="a-lip-on-the-camera-face"),
     pytest.param(design(length=30, slot=2), id="shorter-than-it-is-wide"),

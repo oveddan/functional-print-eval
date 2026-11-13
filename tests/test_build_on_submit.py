@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from helpers import saved_prompt_as_today
 
 from pbe.parts.submission import Submission
 from pbe.runner import agent, build_on_submit, code_sandbox, tasks
@@ -21,9 +22,11 @@ ROOT = Path(__file__).resolve().parents[1]
 HIDDEN = ROOT / "tasks/m5-spacer/hidden_facts.yaml"
 DOES_NOT_BUILD = "def build(p):\n    return cq.Workplane().box(math.pi, 2, 3)\n"  # no import math
 
-# sha256 of the can_ask and all_given tools and of their system prompt, taken before this change
+# sha256 of the can_ask and all_given tools and of their system prompt, taken before this change; a saved
+# can_ask trial's prompt is that one
 TOOLS_BEFORE = "6b7e33adfe134cbc79e1f48f87b77e00e26a454960e39aa030f0f7ccee0a613d"
 PROMPT_BEFORE = "043a6f16e3b32577b6c7c56da8c377919a4068a815e4019f740111487288ec73"
+SAVED_TRANSCRIPT = ROOT / "results/runs/pilot-wheel/bearing-wheel/can_ask/openai__gpt-6.1-sol/t1/transcript.json"
 
 
 @pytest.fixture
@@ -251,7 +254,9 @@ def test_grading_builds_the_parts_itself():
 def test_the_other_conditions_send_the_same_tools_and_prompt(condition):
     tools = json.dumps(agent.tools(condition), sort_keys=True).encode()
     assert hashlib.sha256(tools).hexdigest() == TOOLS_BEFORE
-    assert hashlib.sha256(agent.system_prompt(8).encode()).hexdigest() == PROMPT_BEFORE
+    saved = json.loads(SAVED_TRANSCRIPT.read_text())[0]["content"]
+    assert hashlib.sha256(saved.encode()).hexdigest() == PROMPT_BEFORE
+    assert agent.system_prompt(8) == saved_prompt_as_today(saved)  # only the documented changes since
 
 
 @pytest.mark.parametrize("condition", ["can_ask", "all_given"])

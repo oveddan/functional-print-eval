@@ -7,7 +7,9 @@ So for each unsupported region, try strand directions every few degrees and ask
 whether, in some direction, (nearly) every strand starts and ends on the layer
 below within the printer's longest clean span. A hole cut through a bridge fails
 in every direction, because some strands always end at the hole. That is the
-Arca plate's first print (and Estoa's sealed leg-pocket hole).
+Arca plate's first print (and Estoa's sealed leg-pocket hole). A roof whose strands are all
+short passes with few anchored (24% or more): round 3's ring roof 5 and round 3b's GPT roof crop
+printed fine with 24% and 44% anchored, longest 6.0 and 6.8 mm (Claude's scoring call).
 
 Material within a short distance of the layer below is an ordinary small
 overhang and is skipped. A ledge wider than that but narrower than anything seen to
@@ -111,17 +113,32 @@ def _try_direction(region, anchor, angle):
     return Direction(angle, sum(anchored) / len(anchored), longest, list(zip(strands, anchored)))
 
 
+def _short_strands(direction, bridging):
+    """Strands this short print clean even with few anchored (Claude's scoring call, round 3 and 3b: see
+    catalog/printer.yaml's short_strand_mm)."""
+    return direction.longest <= bridging.short_strand_mm and direction.anchored >= bridging.short_strand_min_anchored
+
+
+def _anchored_within_span(direction, bridging):
+    """(Nearly) every strand lands on solid at both ends, and none is longer than any seen to print clean."""
+    return direction.anchored >= bridging.min_anchored and direction.longest <= bridging.max_span_mm
+
+
 def assess(region, support):
     """Try a strand direction every 5 degrees and keep the best, the first if two tie:
     (angle, share anchored, longest, ok, [(strand, anchored)])."""
     bridging = printer().bridging
     anchor = support.buffer(bridging.anchor_tol_mm)
-    best = None
+    best, short = None, None
     for angle in range(0, 180, 5):
         tried = _try_direction(region, anchor, angle)
         if tried is not None and (best is None or tried.score > best.score):
             best = tried
-    ok = best.anchored >= bridging.min_anchored and best.longest <= bridging.max_span_mm
+        if tried is not None and _short_strands(tried, bridging) and short is None:
+            short = tried  # any direction with only short strands prints, however well anchored the best one is
+    if short is not None and not _anchored_within_span(best, bridging):
+        best = short
+    ok = _short_strands(best, bridging) or _anchored_within_span(best, bridging)
     return best.angle, best.anchored, best.longest, ok, best.strands
 
 

@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from helpers import BRIDGE_LINE, saved_prompt_as_today
 
 from pbe.runner import agent, code_sandbox, python_tool, tasks
 from pbe.runner.code_sandbox import Limits
@@ -423,7 +424,12 @@ def test_the_other_conditions_have_no_run_python(condition, monkeypatch):
 
 def test_can_ask_has_the_same_prompt_as_the_saved_trials():
     saved = json.loads((ROOT / "results/runs/pilot-wheel/bearing-wheel/can_ask/openai__gpt-6.1-sol/t1/transcript.json").read_text())
-    assert agent.system_prompt(8) == saved[0]["content"]
+    assert agent.system_prompt(8) == saved_prompt_as_today(saved[0]["content"])  # only the documented changes since
+
+
+@pytest.mark.parametrize("can_test", [False, True])
+def test_every_condition_is_told_there_are_no_supports(can_test):
+    assert BRIDGE_LINE + agent.NO_SUPPORTS + "\n" in agent.system_prompt(8, can_test=can_test)
 
 
 def test_only_can_run_code_and_can_test_get_more_turns():

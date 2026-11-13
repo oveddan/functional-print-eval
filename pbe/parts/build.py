@@ -23,6 +23,7 @@ from pathlib import Path
 import trimesh
 
 from pbe.parts.submission import Submission
+from pbe.parts.supports import printed_with_supports
 
 RUNNER = r"""
 import json, sys, types
@@ -96,6 +97,7 @@ class Built:
     mesh: trimesh.Trimesh | None = None
     error: str = ""
     role: str = ""
+    supports: str = ""  # the design's own sentence asking to print it with supports, if it has one
 
 
 def _last_line(stderr):
@@ -131,10 +133,12 @@ def build_parts(sub: Submission, out_dir, overrides=None, timeout=120) -> dict[s
     out_dir.mkdir(parents=True, exist_ok=True)
     params = {name: param.value for name, param in sub.params.items()}
     params.update(overrides or {})
+    asked = printed_with_supports(sub)
     results = {}
     with tempfile.TemporaryDirectory() as tmp:
         runner = Path(tmp) / "runner.py"
         runner.write_text(RUNNER)
         for part in sub.parts:
             results[part.id] = _build_one(part, params, out_dir, tmp, runner, timeout)
+            results[part.id].supports = asked.get(part.id, "")
     return results

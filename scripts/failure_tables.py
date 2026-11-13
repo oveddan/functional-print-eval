@@ -60,24 +60,24 @@ NO_DESIGN = "No design handed in"
 # not graded: (the reference's words, the print that would settle it)
 NOT_GRADED = {
     "Not graded: a nut pocket with ribs or clips, never printed":
-        ("A nut pocket with crush ribs or clips",
-         "Pockets with ribs, clips or relief beside plain ones. Each model's ribs differ, so one print settles only designs like it"),
+        ("A nut pocket with ribs, clips or a lip unlike any printed",
+         "That rib shape and bite. Round 3 printed 3 and 6 round ribs, 6 flat ribs and two lips; each model's ribs differ, so one print settles only designs like it"),
     "Not graded: head recess under 5 mm deep, never printed":
         ("A tripod head recess under 5 mm deep", "Recesses 3, 4 and 4.5 mm deep for the 5 mm head"),
     "Not graded: a roof ledge 1.5 to 3 mm wide, never printed":
-        ("A roof ledge 1.5 to 3 mm wide", "Ring roofs 1.5 to 3 mm wide around a bolt hole"),
+        ("A roof ledge 1.5 to 2 mm wide", "Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled"),
     "Not graded: bolt hole between 6.35 and 6.8 mm, never printed":
-        ("A tripod bolt hole between 6.35 and 6.8 mm", "Bolt holes at 6.5 and 6.6 mm"),
+        ("A tripod bolt hole between 6.35 and 6.5 mm", "A 6.4 mm hole: 6.35 screwed in, 6.5 went through"),
     "Not graded: plate width outside 37 to 39 mm (jaw travel not recorded)":
         ("A plate width outside 37 to 39 mm", "Dovetail plates from 34 to 45 mm tried in the clamp"),
     "Not graded: wheel bolt hole between 8.0 and 8.4 mm, never printed":
-        ("A wheel bolt hole between 8.0 and 8.4 mm", "Holes at 8.1, 8.2 and 8.3 mm on an M8"),
+        ("A wheel bolt hole between 8.0 and 8.1 mm", "An 8.05 mm hole: 8.0 screwed in, 8.1 went through"),
     "Not graded: bearing seat between printed sizes or ribbed":
-        ("A bearing seat between printed sizes, or ribbed", "Seats at 22.05, 22.4 and 22.5 mm, and lobed seats"),
+        ("A bearing seat between printed sizes, or ribbed", "Seats at 22.1 and 22.3 mm, and lobed seats: 22.05 wouldn't take a 608, 22.2 held, 22.4 fell out"),
     "Not graded: bearing a little proud, or no shoulder, never printed":
-        ("Bearings a little proud, or no shoulder", "Wheels with bearings 0.2 to 0.6 mm proud, and a bore with no shoulder"),
+        ("A bearing more than 0.6 mm proud", "A seat leaving the bearing 0.8 to 1 mm proud: 0.2 to 0.6 held"),
     "Not graded: a nut pocket tighter than any printed":
-        ("A nut pocket tighter than any printed", "M5 pockets at -0.15, -0.10 and -0.05 mm"),
+        ("A nut pocket tighter than any printed", "M3 pockets under the nut's size: round 3 printed M5 down to -0.15 mm"),
     "Not graded: a nut pocket looser than any printed":
         ("A nut pocket looser than any printed", "Pockets more than 0.3 mm over the nut, beyond coupon B's steps"),
     "Not graded: its test coupon's pockets are ribbed or sizes no print settled":

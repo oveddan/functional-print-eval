@@ -30,16 +30,14 @@ SMOKE_RUNS = ("cloud-smoke", "cloud-smoke-2")  # one Haiku spacer each, to test 
 # rest on the holed-roof assumption. Keyed by task, condition, model and trial. tests/test_results_table.py
 # rebuilds every such trial's parts and checks this list against bridges.is_holed_roof.
 NOT_HOLED_ROOFS = {
+    ("nut-knob/M5", "can_ask", "qwen/qwen3.8-flash", 5):
+        "eight small ledges up the knob (the first 19 mm² at z = 20.8 mm), not round a hole; failing since round 3 put the narrowest tangled ledge at 2 mm",
     ("nut-knob/M5", "can_ask", "google/gemini-4-argon", 2):
         "the underside of its 30 mm grip overhangs the 16 mm boss below: a ledge whose free edge is the outside",
     ("estoa-light", "can_ask", "deepseek/deepseek-v4-pro-0813", 1):
         "a closed roof over the whole box, 208 mm across: every strand lands, but none spans that far",
-    ("estoa-light", "can_ask", "google/gemini-4-argon", 1):
-        "its round rim bridges 39 mm over the USB opening; the strands end at the rim's curved outer edge",
     ("estoa-light", "can_ask", "google/gemini-4-argon", 5):
         "a 35 by 7 mm ledge 31 mm up the wall box, with no hole in it; half its strands land at both ends",
-    ("nut-knob/M5", "can_ask", "z-ai/glm-5.3-flash", 10):
-        "ten 3 to 6 mm undercuts ringing the knob 12 mm up, none with a hole: the grip's flutes",
     ("tripod-plate", "can_ask", "anthropic/claude-sonnet-5.5", 7):
         "a 16 by 47 mm roof along the plate's underside with no hole in it; 18% of strands land at both ends",
     ("tripod-plate", "can_ask", "deepseek/deepseek-v4-pro-0813", 10):
@@ -48,8 +46,6 @@ NOT_HOLED_ROOFS = {
         "a 16 by 56 mm roof along the plate's underside with no hole in it; 19% of strands land at both ends",
     ("estoa-light", "can_test", "anthropic/claude-sonnet-5.5", 2):
         "a 38 by 4.5 mm ledge 30 mm up the box wall, with no hole in it",
-    ("estoa-light", "can_test", "deepseek/deepseek-v4.1-flash", 3):
-        "a 36 by 5 mm ledge 32 mm up the box wall, with no hole in it",
 }
 
 # Whose words each task's request is, as of issue 35. The tripod's and the Estoa light's were approved by Dan

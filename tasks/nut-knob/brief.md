@@ -23,3 +23,12 @@ measured is reported as not graded, which isn't a pass. So is one coupon B calls
 has turned upside down (M5 +0.2, M8 +0.1 and +0.2); +0.3 fails, because nuts fell out
 at +0.3 on the tripod build (in PETG). No technique is required: the pocket can open up or down,
 with or without a coupon.
+
+Round 3 (test print I, 2026-11-12) adds M5 pockets under size and pockets with crush ribs or a lip, read
+at their tightest across-flats against prints of the same shape. **Claude's scoring call:** a pocket
+passes when the nut goes in pressed on a bolt and stays in upside down; going in by thumb alone isn't
+required. An M5 plain pocket at -0.05 holds, at -0.1 or tighter it won't go in. M5 ribs that bite 0.1
+to 0.2 mm a side hold (R2, R3). An M5 lip biting 0.1 holds (L1); one biting 0.2 won't go in (L2). M3
+ribs biting 0.2 won't go in (R5); at 0.1 the nut went in but nobody turned it over (R4), so that's not
+graded. R1 doesn't count: its rib sheared during the thumb attempts. Any other rib, lip or clip is not
+graded.

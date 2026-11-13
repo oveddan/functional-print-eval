@@ -82,6 +82,8 @@ Per-check limits and extensions are in `docs/limitations.md`; the report's limit
 - Strength: a hand-calculation check, then FEA (gmsh + CalculiX).
 - Judge alignment, if any check needs an LLM judge.
 - Physical work: the calibration test print, the real hardware bin, filming the failed parts.
+- Print the models' own servo-arm designs (Dan, 2026-11-12, for after the round 3 regrade): one passing design per model, plus a near-miss where a model has none, with predictions written first. Fit each on the 25T horn, tighten, run the servo, record the outcome beside the prediction. It checks the checks end to end. The servo-arm request still needs Dan's approval.
+- Test-print planning as its own eval: coverage of real build failures, filament spent, print vs measure (`coupons/PLANNING.md` collects the cases).
 
 ## Before publishing
 
