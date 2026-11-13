@@ -34,6 +34,8 @@ NOT_HOLED_ROOFS = {
         "the underside of its 30 mm grip overhangs the 16 mm boss below: a ledge whose free edge is the outside",
     ("estoa-light", "can_ask", "deepseek/deepseek-v4-pro-0813", 1):
         "a closed roof over the whole box, 208 mm across: every strand lands, but none spans that far",
+    ("estoa-light", "can_ask", "google/gemini-4-argon", 1):
+        "a 44 by 5.6 mm ledge 28 mm up the light box, with no hole in it; a quarter of its strands land at both ends",
     ("estoa-light", "can_ask", "google/gemini-4-argon", 5):
         "a 35 by 7 mm ledge 31 mm up the wall box, with no hole in it; half its strands land at both ends",
     ("tripod-plate", "can_ask", "anthropic/claude-sonnet-5.5", 7):
