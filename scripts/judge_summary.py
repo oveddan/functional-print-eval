@@ -34,7 +34,8 @@ class Line(BaseModel):
 
 
 def short(model: str) -> str:
-    return "Jev 1.14" if "jev" in model else "GPT-6 Luna" if "luna" in model else model
+    return "Jev 1.14" if "jev" in model else "GPT-6 Luna" if "luna" in model else \
+        "Gemini Decision 1" if "gemini" in model else model
 
 
 def checked_key(row: dict):
@@ -49,6 +50,8 @@ def checked_key(row: dict):
 def said_matches(row: dict, key) -> bool:
     if row["test"] == "5-classes":
         return bool(row["agrees"])  # the record's class or its second class (`also:`)
+    if row["test"].startswith("7"):
+        return set((row["answer"] or "").split(",")) == set(key.split(","))  # facts in any order
     if row["test"] == "3-photos":
         return (row["answer"] == "clean") == key
     return row["answer"] == key
