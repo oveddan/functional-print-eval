@@ -52,7 +52,8 @@ PRINTED_WIDTH_TOL = 0.5  # mm: a plate this close to 38 reads as the printed wid
 # "tighter than a record": smaller than the tightest size printed, which wouldn't take the nut or bearing,
 # so it won't either. The checks already read it that way (nuts.verdict, wheel._holds).
 Basis = Literal["coupon B record", "coupon E record", "tighter than a record", "bridge check prediction", "no record", "build error",
-                "tripod plate record", "Estoa record", "Dan's calipers", "geometry"]
+                "tripod plate record", "Estoa record", "Dan's calipers", "geometry",
+                "live answer", "not printed"]  # a live session: what the person said, not a record (pbe/runner/live.py)
 Arm = Literal["baseline", "feedback", "neutral"]
 
 

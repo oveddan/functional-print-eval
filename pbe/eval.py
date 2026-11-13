@@ -120,7 +120,8 @@ def finish_saved_trial(task, saved, folder):
     return saved
 
 
-def run_one(task, model, condition, trial, run_dir, args, chat=llm.chat):
+def run_one(task, model, condition, trial, run_dir, args, chat=llm.chat, run_trial=None):
+    """`run_trial` is agent.run_trial unless a live session passes one whose tools a person answers (pbe/live.py)."""
     folder = trial_folder(run_dir, task, condition, model, trial)
     saved = TrialRecord.load_if_saved(folder)
     if saved and saved.outcome != "error":  # an infrastructure error isn't a result; run it again
@@ -129,8 +130,8 @@ def run_one(task, model, condition, trial, run_dir, args, chat=llm.chat):
 
     folder.mkdir(parents=True, exist_ok=True)
     max_turns = args.max_turns or agent.DEFAULT_MAX_TURNS[condition]
-    record, messages, sub = agent.run_trial(task, model, condition, max_turns=max_turns, max_tokens=args.max_tokens,
-                                            chat=chat, workdir=folder / "workspace")
+    record, messages, sub = (run_trial or agent.run_trial)(task, model, condition, max_turns=max_turns, max_tokens=args.max_tokens,
+                                                               chat=chat, workdir=folder / "workspace")
     record.cost_usd = round(record.cost_usd + already_paid, 6)
     record.trial = trial
     stamp_version(record)
