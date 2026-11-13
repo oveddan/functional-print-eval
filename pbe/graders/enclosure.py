@@ -886,8 +886,10 @@ def _hanging_up(found):
 def _keyhole_verdict(meshes, wall_z, found, up, entry: EntryLimits, slot_limits: SlotLimits, travel_limit,
                      angle_limits: AngleLimits, standoff, head=None) -> Verdict:
     """`up`: the way up the piece hangs (`_hanging_up`). `head`, given only under an assumption: the wall screws'
-    head size. The entry must then pass it and the slot must carry it clear of the entry, in place of the entry
-    and run of the one keyhole that hung."""
+    head size. The entry must then pass it, in place of the entry of the one keyhole that hung. The slot only has to
+    take the shank past the entry's edge: a head still partly over the entry rests on the lip and hangs (Dan,
+    2026-11-13, of a slot 8.0 mm long under a 9.9 mm entry: "that would hang fine"), so a slot short of carrying
+    the whole head clear of the entry no longer fails."""
     centre, entry_width, slot, direction, travel = found
     angle = float(np.degrees(np.arccos(np.clip(np.dot(direction, up), -1, 1))))
     where = f"keyhole at ({centre[0]:.0f}, {centre[1]:.0f})"
@@ -909,9 +911,6 @@ def _keyhole_verdict(meshes, wall_z, found, up, entry: EntryLimits, slot_limits:
         failures.append(f"the plastic at its slot is {lip:.1f} mm thick, as far as the screws stand out of the wall")
     if head is not None and entry_width < head - TOL:
         failures.append(f"its entry is {entry_width:.1f} mm, smaller than a {head:g} mm head")
-    if head is not None and travel < entry_width / 2 + head / 2 - TOL:
-        failures.append(f"its slot runs {travel:.1f} mm, short of the {entry_width / 2 + head / 2:.1f} that carries "
-                        f"a {head:g} mm head clear of the entry")
     if failures:
         return Verdict(False, f"{where}: {'; '.join(failures)}")
     sizes = f"entry {entry_width:.1f}, slot {slot:.2f} running {travel:.1f} mm, {angle:.0f} degrees from up"
