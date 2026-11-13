@@ -30,7 +30,9 @@ from pbe.runner.llm import api_key
 URL = "https://openrouter.ai/api/alpha/decisions"
 JEV = "typesafe/jev-1.14"
 LUNA = "openai/gpt-6-luna-decisions"
+GEMINI = "google/gemini-decision-1"  # Gemini models are also contestants in the eval
 MODELS = (JEV, LUNA)
+MEASURE_MODELS = (JEV, LUNA, GEMINI)  # test 7 compares all three; only Jev could stand in for the person
 BOX_MODELS = (JEV,)  # the API reference: other providers answer a box question with 400
 PRICE_PER_M_INPUT = 0.10  # USD, all three decisions models in the brief; output tokens are free
 
@@ -368,3 +370,102 @@ def checklist(transcript: str, questions: dict[str, str], model: str, budget: Bu
     """Test 4: yes/no questions about what a design session did, all in one call."""
     asked = {qid: Noul(instructions=text) for qid, text in questions.items()}
     return decide(Request(model=model, state=transcript, questions=asked), budget)
+
+
+class Fact(BaseModel):
+    """One recorded measurement, as the judge sees it: its name and the note, never its value."""
+    qid: str
+    thing: str
+    measurement: str
+    note: str = ""
+
+
+def _fact_question(fact: Fact) -> Noul:
+    true = ("The request asks for this measurement of this thing, in any words, or asks about this thing in "
+            "general without naming any one measurement.")
+    if fact.note:
+        true += f" What is recorded: {fact.note}."
+    return Noul(instructions=f"Does the designer's request ask for the {fact.thing}'s {fact.measurement}?",
+                criteria={"true": true, "false": "The request is about another thing, or another measurement of it."})
+
+
+def measure_request(things: list[str], item: str, what: str, facts: list[Fact], model: str,
+                    budget: Budget) -> Decision:
+    """Test 7: which of the person's recorded measurements a measure(item, what) call asks for, one yes/no per
+    fact, because one request often asks for several. The judge picks; the value is never shown or generated."""
+    state = (f"A designer is making a 3D-printed part for a person and asked them to measure something of theirs. "
+             f"The person's things: {', '.join(things)}.\n"
+             f"The designer's request: measure(item=\"{item}\", what=\"{what}\")")
+    questions = {fact.qid: _fact_question(fact) for fact in facts}
+    return decide(Request(model=model, state=state, questions=questions), budget)
+
+
+COUNTS = {"none": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five_or_more": 5}
+ORDINALS = ("1st", "2nd", "3rd", "4th", "5th")
+NOT_RECORDED, NOTHING_MORE = "not_recorded", "nothing_more"
+
+
+def _count_question() -> Choice:
+    return Choice(instructions="How many separate measurements or details does the designer's request ask for, "
+                               "whether or not the person has them recorded?",
+                  criteria={name: f"It asks for {name.replace('_', ' ')}." for name in COUNTS})
+
+
+def _slot_question(ordinal: str, facts: list[Fact]) -> Choice:
+    criteria: dict[str, str | list] = {}
+    for fact in facts:
+        note = f" (what is recorded: {fact.note})" if fact.note else ""
+        criteria[fact.qid] = f"The {fact.thing}'s {fact.measurement}{note}."
+    criteria[NOT_RECORDED] = ("Something not in this list: another thing, or a measurement or detail of one of "
+                              "these things that isn't listed (a shape, a count, another size).")
+    criteria[NOTHING_MORE] = f"The request asks for fewer things than that; there is no {ordinal} one."
+    return Choice(instructions=f"Taking the things the request asks for in the order it asks them, what is the "
+                               f"{ordinal} one?", criteria=criteria)
+
+
+def measure_request_listed(things: list[str], item: str, what: str, facts: list[Fact], model: str,
+                           budget: Budget) -> Decision:
+    """Test 7b: how many things a measure call asks for, then each one in order, as a pick from the recorded
+    facts or "not recorded". The facts compete with each other and with "not recorded", which test 7's yes/no
+    per fact doesn't make them do. Values are never shown or generated."""
+    state = (f"A designer is making a 3D-printed part for a person and asked them to measure something of theirs. "
+             f"The person's things: {', '.join(things)}.\n"
+             f"The designer's request: measure(item=\"{item}\", what=\"{what}\")")
+    questions: dict[str, Question] = {"count": _count_question()}
+    for i, ordinal in enumerate(ORDINALS, start=1):
+        questions[f"ask_{i}"] = _slot_question(ordinal, facts)
+    return decide(Request(model=model, state=state, questions=questions), budget)
+
+
+def _said_question(fact: Fact, said: str) -> Noul:
+    return Noul(instructions=f"Does the designer's request ask for this recorded fact: \"{said}\"?",
+                criteria={"true": "The request asks for what this fact records, in any words, or asks about this "
+                                  "thing in general without naming any one measurement.",
+                          "false": "The request is about something else: another thing, or a measurement or detail "
+                                   "this fact doesn't record."})
+
+
+def measure_request_said(things: list[str], item: str, what: str, facts: list[tuple[Fact, str]], model: str,
+                         budget: Budget) -> Decision:
+    """Test 7c: test 7's yes/no per fact, with each fact shown as the person would say it (Person.say) and the state
+    saying nothing else is recorded. The judge still only picks; the reply is the recorded line."""
+    state = (f"A designer is making a 3D-printed part for a person and asked them to measure something of theirs. "
+             f"The person has measured only these things: {', '.join(things)}. Everything else (other parts, an old "
+             f"broken part, the space it goes in, a shape or size not listed below) isn't recorded.\n"
+             f"The designer's request: measure(item=\"{item}\", what=\"{what}\")")
+    questions = {fact.qid: _said_question(fact, said) for fact, said in facts}
+    return decide(Request(model=model, state=state, questions=questions), budget)
+
+
+def measure_single_ask(things: list[str], item: str, what: str, facts: list[tuple[Fact, str]], model: str,
+                       budget: Budget) -> Decision:
+    """Test 7d: one ask (one thing wanted about one item), so one pick: the recorded fact it asks for, or "not
+    recorded". Each fact is shown as the person would say it. The judge picks; the reply is the recorded line."""
+    state = (f"A designer is making a 3D-printed part for a person and asked them to measure one thing. "
+             f"The person has measured only these things: {', '.join(things)}. Everything else isn't recorded.\n"
+             f"The designer's request: measure(item=\"{item}\", what=\"{what}\")")
+    criteria: dict[str, str | list] = {fact.qid: f"This recorded fact: \"{said}\"." for fact, said in facts}
+    criteria[NOT_RECORDED] = ("None of these: the request asks about another thing, or a measurement or detail "
+                              "no fact above records.")
+    question = Choice(instructions="Which recorded fact answers the designer's request?", criteria=criteria)
+    return decide(Request(model=model, state=state, questions={"fact": question}), budget)

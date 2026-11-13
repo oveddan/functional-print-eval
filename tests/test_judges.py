@@ -165,3 +165,49 @@ def test_reference_photos_never_include_the_cell_being_judged():
         refs = photo_cells.references_for(cell)
         assert all((r.photo, r.name) != (cell.photo, cell.name) for r in refs)
         assert [r.clean for r in refs] == [True, True, False, False]
+
+
+def _transcript(folder, record_name="grades.json"):
+    """A trial folder with two measure calls (one with no `what`), another tool call, and a trial record."""
+    from pbe.runner.measure import NO_ANSWER
+    messages = [
+        {"role": "user", "content": "make me a wheel"},
+        {"role": "assistant", "tool_calls": [
+            {"id": "a", "type": "function", "function": {"name": "measure", "arguments": '{"item": "608 bearing", "what": "outer diameter"}'}},
+            {"id": "b", "type": "function", "function": {"name": "submit_design", "arguments": "{}"}}]},
+        {"role": "tool", "tool_call_id": "a", "content": "bearing od: about 22 mm (outside)"},
+        {"role": "tool", "tool_call_id": "b", "content": "Received."},
+        {"role": "assistant", "tool_calls": [
+            {"id": "c", "type": "function", "function": {"name": "measure", "arguments": '{"item": "the shelf"}'}}]},
+        {"role": "tool", "tool_call_id": "c", "content": NO_ANSWER},
+    ]
+    folder.mkdir(parents=True)
+    (folder / "transcript.json").write_text(json.dumps(messages))
+    (folder / record_name).write_text(json.dumps({"task": "bearing-wheel", "model": "x/designer"}))
+
+
+def test_measure_calls_are_collected_with_their_replies_and_deduped(tmp_path):
+    from pathlib import Path
+    from pbe.judges import measure_calls
+    runs = tmp_path / "runs"
+    _transcript(runs / "r1/t1")
+    _transcript(runs / "r2/t1/feedback", record_name="loop.json")
+    (runs / "r3").mkdir(parents=True)
+    (runs / "r3/transcript.json").write_text("[]")  # no trial record beside it: skipped
+    tasks = Path(__file__).resolve().parents[1] / "tasks"
+    requests = measure_calls.collect(runs, tasks)
+    assert [(r.item, r.what) for r in requests] == [("608 bearing", "outer diameter"), ("the shelf", "")]
+    bearing, shelf = requests
+    assert [a.trial for a in bearing.asked] == ["r1/t1", "r2/t1/feedback"]
+    assert bearing.asked[0].reply.startswith("bearing od") and bearing.answered_then
+    assert bearing.lookup == ["bearing.od"]
+    assert shelf.lookup == [] and not shelf.answered_then
+    assert bearing.asked[0].contestant == "x/designer" and bearing.task == "bearing-wheel"
+
+
+def test_a_family_variant_reads_the_familys_facts():
+    from pathlib import Path
+    from pbe.judges import measure_calls
+    tasks = Path(__file__).resolve().parents[1] / "tasks"
+    assert measure_calls.facts_for("nut-knob/M3", tasks) == {}
+    assert "bearing" in measure_calls.facts_for("bearing-wheel", tasks)

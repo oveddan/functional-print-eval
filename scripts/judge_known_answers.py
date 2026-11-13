@@ -10,6 +10,11 @@ Tests (docs/decisions-api.md):
      two labelled example crops of each
   4  a checklist over the 48 Estoa transcripts    key: tool calls where code decides (pbe/judges/transcripts.py)
   5  failure records into classes, and flagging    key: each record's class in seeds/; flags by holding a class out
+  7b the same, asked as a count then each thing in order, Jev only
+  7c test 7 with each fact shown as the person would say it, Jev only
+  7d the random 200 split into single asks (results/judges/2026-11-12/7d-asks.json), one pick each, Jev only
+  7  measure requests matched to recorded facts    key: today's alias lookup (pbe/runner/measure.py) where it answers;
+                                                   no key where it says "I can't measure that" (hand-checked)
 
 Answers go to results/judges/<date>/<test>.jsonl, one line per model and item, with the key beside the answer.
 `--data-root` reads round 3's records and code from another checkout (they live on the round 3 branch).
@@ -30,7 +35,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from pbe.judges import decisions as dz  # noqa: E402
-from pbe.judges import failures, photo_cells, transcripts  # noqa: E402
+from pbe.judges import failures, measure_calls, photo_cells, transcripts  # noqa: E402
+from pbe.runner.measure import Person  # noqa: E402
 from pbe.parts.submission import Submission  # noqa: E402
 from pbe.runner.llm import api_key  # noqa: E402
 
@@ -262,6 +268,131 @@ def run_failure(failure: failures.Failure, classes: list[failures.FailureClass],
     return with_call([row], decision)
 
 
+# --- test 7: measure requests ---
+
+def facts_of(person: Person) -> list[dz.Fact]:
+    return [dz.Fact(qid=f"{thing}__{measurement}", thing=thing.replace("_", " "),
+                    measurement=measurement.replace("_", " "), note=person.things[thing].measurements[measurement].note)
+            for thing, measurement in person.every_measurement()]
+
+
+def picks_from(decision: dz.Decision, facts: list[dz.Fact]) -> tuple[dict[str, float], list[str]]:
+    """p(yes) per fact as thing.measurement, and the facts at 0.5 or more, in the file's order."""
+    p_yes = {}
+    for fact in facts:
+        answer = decision.answers.get(fact.qid)
+        if answer and answer.noul is not None:
+            p_yes[fact.qid.replace("__", ".")] = answer.noul
+    return p_yes, [fid for fid, p in p_yes.items() if p >= 0.5]
+
+
+def least_sure(p_yes: dict[str, float]) -> float | None:
+    """How sure the judge is of its least certain yes/no: the probability of that fact's answer."""
+    return min(max(p, 1 - p) for p in p_yes.values()) if p_yes else None
+
+
+def run_measure(request: measure_calls.Request, person: Person, model: str, budget: dz.Budget) -> list[Row]:
+    """Key: the lookup's facts where it answers, joined with commas; no key where it doesn't."""
+    facts = facts_of(person)
+    things = [thing.replace("_", " ") for thing in person.things]
+    decision = dz.measure_request(things, request.item, request.what, facts, model, budget)
+    p_yes, picks = picks_from(decision, facts)
+    key = ",".join(request.lookup) if request.lookup else None
+    answer = ",".join(picks)
+    agrees = None if key is None else set(picks) == set(request.lookup)
+    raw = {"model": decision.model, "id": decision.id, "seconds": decision.seconds, "p_yes": p_yes}
+    return [Row(test="7-measure", item=request.id, model=decision.model, question="facts", key=key, answer=answer,
+                p=least_sure(p_yes), agrees=agrees, seconds=decision.seconds,
+                cost=decision.cost, raw=raw)]
+
+
+def run_measure_said(request: measure_calls.Request, person: Person, model: str, budget: dz.Budget) -> list[Row]:
+    """Test 7c: facts shown as the person says them; scored like test 7."""
+    facts = facts_of(person)
+    said = [(fact, person.say(*fact.qid.split("__"))) for fact in facts]
+    things = [thing.replace("_", " ") for thing in person.things]
+    decision = dz.measure_request_said(things, request.item, request.what, said, model, budget)
+    p_yes, picks = picks_from(decision, facts)
+    key = ",".join(request.lookup) if request.lookup else None
+    raw = {"model": decision.model, "id": decision.id, "seconds": decision.seconds, "p_yes": p_yes}
+    return [Row(test="7c-measure-said", item=request.id, model=decision.model, question="facts", key=key,
+                answer=",".join(picks), p=least_sure(p_yes), seconds=decision.seconds, cost=decision.cost, raw=raw,
+                agrees=None if key is None else set(picks) == set(request.lookup))]
+
+
+class SingleAsk(BaseModel):
+    """Test 7d: one ask from a request in the random 200, split by a subagent where Jev counted more than one."""
+    request: str  # the original request's id (task | item | what)
+    task: str
+    item: str
+    what: str
+    key: str  # thing.measurement, or "not_recorded"; keyed by a second subagent from the fact list
+
+
+ASKS = ROOT / "results/judges/2026-11-12/7d-asks.json"
+
+
+def run_single_ask(n: int, ask: SingleAsk, person: Person, budget: dz.Budget) -> list[Row]:
+    facts = facts_of(person)
+    said = [(fact, person.say(*fact.qid.split("__"))) for fact in facts]
+    things = [thing.replace("_", " ") for thing in person.things]
+    decision = dz.measure_single_ask(things, ask.item, ask.what, said, dz.JEV, budget)
+    row = choice_row(decision, "7d-single-asks", f"{n:04d} | {ask.request} || {ask.item} | {ask.what}", "fact", None)
+    row.answer = (row.answer or "").replace("__", ".") or None
+    row.key, row.agrees = ask.key, None if row.answer is None else row.answer == ask.key
+    return with_call([row], decision)
+
+
+def single_ask_jobs(data_root: Path, limit: int | None, budget: dz.Budget):
+    asks = [SingleAsk.model_validate(a) for a in json.loads(ASKS.read_text())][:limit]
+    people = {a.task: Person(measure_calls.facts_for(a.task, data_root / "tasks")) for a in asks}
+    return [("7d-single-asks", a.request, dz.JEV, lambda n=n, a=a: run_single_ask(n, a, people[a.task], budget))
+            for n, a in enumerate(asks)]
+
+
+def listed_picks(decision: dz.Decision) -> tuple[int | None, list[str]]:
+    """Test 7b: the count, and the recorded facts in the slots up to it, each once, in the order asked."""
+    count_answer = decision.answers.get("count")
+    count = dz.COUNTS.get(count_answer.choice) if count_answer and count_answer.choice else None
+    picks = []
+    for i in range(1, (count or 0) + 1):
+        answer = decision.answers.get(f"ask_{i}")
+        pick = answer.choice if answer else None
+        if pick and pick not in (dz.NOT_RECORDED, dz.NOTHING_MORE):
+            fact = pick.replace("__", ".")
+            if fact not in picks:
+                picks.append(fact)
+    return count, picks
+
+
+def run_measure_listed(request: measure_calls.Request, person: Person, model: str, budget: dz.Budget) -> list[Row]:
+    facts = facts_of(person)
+    things = [thing.replace("_", " ") for thing in person.things]
+    decision = dz.measure_request_listed(things, request.item, request.what, facts, model, budget)
+    count, picks = listed_picks(decision)
+    key = ",".join(request.lookup) if request.lookup else None
+    raw = {"model": decision.model, "id": decision.id, "seconds": decision.seconds, "count": count,
+           "slots": {qid: a.model_dump(exclude_none=True) for qid, a in decision.answers.items()}}
+    return [Row(test="7b-measure-listed", item=request.id, model=decision.model, question="facts", key=key,
+                answer=",".join(picks), agrees=None if key is None else set(picks) == set(request.lookup),
+                seconds=decision.seconds, cost=decision.cost, raw=raw)]
+
+
+def measure_jobs(data_root: Path, limit: int | None, budget: dz.Budget, listed: bool = False, said: bool = False):
+    """Tasks with recorded facts only: with none, there is nothing to pick. listed: test 7b; said: 7c; both Jev only."""
+    requests = measure_calls.collect(data_root / "results/runs", data_root / "tasks")
+    people = {r.task: Person(measure_calls.facts_for(r.task, data_root / "tasks")) for r in requests}
+    asked = [r for r in requests if people[r.task].things][:limit]
+    if said:
+        return [("7c-measure-said", r.id, dz.JEV, lambda r=r: run_measure_said(r, people[r.task], dz.JEV, budget))
+                for r in asked]
+    if listed:
+        return [("7b-measure-listed", r.id, dz.JEV, lambda r=r: run_measure_listed(r, people[r.task], dz.JEV, budget))
+                for r in asked]
+    return [("7-measure", r.id, m, lambda r=r, m=m: run_measure(r, people[r.task], m, budget))
+            for r in asked for m in dz.MEASURE_MODELS]
+
+
 # --- running ---
 
 class Stop(Exception):
@@ -326,6 +457,14 @@ def jobs_for(test: str, data_root: Path, limit: int | None, budget: dz.Budget):
         return [("5-held-out" if h else "5-classes", f"{c.source}:{c.id}", m,
                  lambda c=c, m=m, h=h: run_failure(c, classes, m, budget, h))
                 for h in (False, True) for c in cases for m in dz.MODELS]
+    if test == "7":
+        return measure_jobs(data_root, limit, budget)
+    if test == "7d":
+        return single_ask_jobs(data_root, limit, budget)
+    if test == "7c":
+        return measure_jobs(data_root, limit, budget, said=True)
+    if test == "7b":
+        return measure_jobs(data_root, limit, budget, listed=True)
     raise ValueError(f"no test {test}")
 
 
