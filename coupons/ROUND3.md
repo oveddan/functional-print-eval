@@ -1,7 +1,7 @@
 # Round 3 test prints
 
 Built by `coupons/round3.py`; predictions written before printing in `results/predictions/round3-coupons.yaml`
-(`coupons/predict3.py`). Each piece answers a row of "What we couldn't grade" in the README.
+(`coupons/predict3.py`). Each piece answers a row of the not-graded list in `docs/reference.md`.
 
 ## Print
 
