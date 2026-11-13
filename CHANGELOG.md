@@ -2,6 +2,17 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-12: Gemini Decision 1 tried as a judge on test-print video (no grade changed)
+
+- **What.** Test 6 in `scripts/judge_known_answers.py`: Gemini Decision 1 answered 20 questions about five round 3 clips (bolt holes IMG_6162/6163, nut pockets IMG_6174, horn pockets IMG_6186, bridges IMG_6158). Each clip was sent as an inline 720p H.264 copy made in a temp folder, never a link, once silent and once with sound, three passes each. The key is the round 3 records' words, written beside each question in `pbe/judges/video_cells.py`. Raw answers are in `results/judges/2026-11-12/6-video-*.jsonl`; the write-up is in `docs/decisions-api.md`, test 6. 30 calls, $0.015.
+- **API facts, from the docs.** Video is billed as input tokens at $0.10 per million. The saved usage matches Google's low resolution: 66 tokens a frame at one frame a second, plus 32 a second of sound. The frame rate and resolution can't be set through OpenRouter. Google says to send video inline only while the whole request is under 20 MB.
+- **Results.** Every answer was the same on all three passes.
+  - Sound off: 12 of 20 right, where always giving each clip's commonest answer gets 13. Its probabilities sat between 0.35 and 0.61.
+  - Sound on: 13 of 20. All 10 nut-pocket answers were right, because Dan says each result aloud in that clip. Sound made the silent-of-speech clips worse.
+  - Claude watched every disagreement. None was a key error: the horn visibly stays in when the plate is tipped, and the bridges' strands visibly peel apart. The thumb-pressed nuts and turning bolts can't be seen in one low-resolution frame a second.
+- **Recommendation:** don't use it on test-print video. For spoken outcomes, transcribe locally and judge the words (test 2). Gemini models are contestants, so it shouldn't judge their runs alone anyway.
+- **Client changes:** `decisions.Video`, `video_mp4`, `about_clip`, and a duration-based cost bound for `--budget` (counting video bytes as tokens would reserve about $0.93 a call). `scripts/judge_summary.py` gains a per-clip table.
+
 ## 2026-11-12: Decisions models tried as judges on five known-answer tests (no grade changed)
 
 - **What.** OpenRouter's Decisions API (`pbe/judges/decisions.py`): Jev 1.14 and GPT-6 Luna Decisions answered five questions whose answers are known (`scripts/judge_known_answers.py`, raw answers in `results/judges/2026-11-12/`, table from `scripts/judge_summary.py`). Gemini Decision 1 was dropped at Dan's request. Total $0.064. Write-up: `docs/decisions-api.md`.

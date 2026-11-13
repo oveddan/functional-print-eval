@@ -34,6 +34,8 @@ class Line(BaseModel):
 
 
 def short(model: str) -> str:
+    if "gemini-decision" in model:
+        return "Gemini Decision 1"
     return "Jev 1.14" if "jev" in model else "GPT-6 Luna" if "luna" in model else model
 
 
@@ -158,6 +160,33 @@ def flag_rules(folder: Path) -> list[str]:
     return out
 
 
+def clip_of(row: dict) -> str:
+    return row["item"].split(" pass ")[0]
+
+
+def video_lines(folder: Path) -> list[str]:
+    """Test 6, per clip: agreement silent and with sound, each against that clip's commonest-answer baseline, and
+    how many questions got the same answer on every pass."""
+    out = ["| Clip | Sound | Agrees | Baseline | Questions answered the same on every pass | Median latency | "
+           "Input tokens per call |", "|---|---|---|---|---|---|---|"]
+    for sound in ("silent", "audio"):
+        path = folder / f"6-video-{sound}.jsonl"
+        if not path.exists():
+            continue
+        rows = rows_of(path)
+        for clip in sorted({clip_of(r) for r in rows}):
+            mine = [r for r in rows if clip_of(r) == clip]
+            line = line_for(path.stem, "Gemini Decision 1", mine)
+            answers: dict[str, set] = {}
+            for r in mine:
+                answers.setdefault(r["question"], set()).add(str(r["answer"]))
+            steady = sum(len(a) == 1 for a in answers.values())
+            tokens = statistics.median(r["raw"]["usage"]["input_tokens"] for r in mine if r["raw"])
+            out.append(f"| {clip} | {sound} | {pct(line.agree_checked, line.checked)} | {pct(line.baseline, line.checked)} "
+                       f"| {steady}/{len(answers)} | {line.median_seconds:.2f} s | {tokens:.0f} |")
+    return out
+
+
 def main():
     folder = Path(sys.argv[1])
     paths = sorted(folder.glob("*.jsonl"))
@@ -172,7 +201,7 @@ def main():
         if path.stem.startswith(("1-", "4-")):
             detail += question_lines(path)
     total = sum(l.cost for l in lines)
-    text = "\n".join(table) + f"\n\nTotal reported cost: ${total:.4f}\n\n" + "\n".join(detail) + "\n\n" + "\n".join(box_overlaps(folder)) + "\n\n" + "\n".join(flag_rules(folder)) + "\n"
+    text = "\n".join(table) + f"\n\nTotal reported cost: ${total:.4f}\n\n" + "\n".join(detail) + "\n\n" + "\n".join(box_overlaps(folder)) + "\n\n" + "\n".join(flag_rules(folder)) + "\n\n" + "\n".join(video_lines(folder)) + "\n"
     (folder / "summary.md").write_text(text)
     (folder / "summary.json").write_text(json.dumps([l.model_dump() for l in lines], indent=1))
     print(text)

@@ -10,10 +10,13 @@ Tests (docs/decisions-api.md):
      two labelled example crops of each
   4  a checklist over the 48 Estoa transcripts    key: tool calls where code decides (pbe/judges/transcripts.py)
   5  failure records into classes, and flagging    key: each record's class in seeds/; flags by holding a class out
+  6  round 3 test-print clips, Gemini Decision 1:  key: round 3's records, cells placed by pbe/judges/video_cells.py;
+     silent, then with the sound (6-video-silent.jsonl, 6-video-audio.jsonl), --passes times each
 
 Answers go to results/judges/<date>/<test>.jsonl, one line per model and item, with the key beside the answer.
 `--data-root` reads round 3's records and code from another checkout (they live on the round 3 branch).
-The key is read from OPENROUTER_API_KEY or 1Password and never printed. Photos are read from Dropbox, never copied.
+The key is read from OPENROUTER_API_KEY or 1Password and never printed. Photos and clips are read from Dropbox, never
+copied: each clip is made into a short H.264 MP4 in a temp folder and sent inline, never as a link.
 """
 import argparse
 import datetime
@@ -30,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from pbe.judges import decisions as dz  # noqa: E402
-from pbe.judges import failures, photo_cells, transcripts  # noqa: E402
+from pbe.judges import failures, photo_cells, transcripts, video_cells  # noqa: E402
 from pbe.parts.submission import Submission  # noqa: E402
 from pbe.runner.llm import api_key  # noqa: E402
 
@@ -262,6 +265,42 @@ def run_failure(failure: failures.Failure, classes: list[failures.FailureClass],
     return with_call([row], decision)
 
 
+# --- test 6: video ---
+
+def footage_cache() -> dict[tuple[str, bool], dz.Footage]:
+    """Each clip twice, silent and with its sound, made once before the threads start."""
+    folder = Path.home() / video_cells.DROPBOX_FOOTAGE
+    return {(c.file, audio): dz.video_mp4(folder / c.file, audio) for c in video_cells.CLIPS for audio in (False, True)}
+
+
+def clip_rows(decision: dz.Decision, test: str, item: str, clip: video_cells.Clip) -> list[Row]:
+    rows = []
+    for asked in clip.asked:
+        if isinstance(asked.key, bool):
+            rows += noul_rows(decision, test, item, {asked.id: asked.key})
+        else:
+            rows.append(choice_row(decision, test, item, asked.id, asked.key))
+    return rows
+
+
+def run_clip(clip: video_cells.Clip, footage: dz.Footage, audio: bool, n: int, budget: dz.Budget) -> list[Row]:
+    test = "6-video-audio" if audio else "6-video-silent"
+    decision = dz.about_clip(footage, clip.shows, {a.id: a.question for a in clip.asked}, budget)
+    return with_call(clip_rows(decision, test, f"{clip.short} pass {n}", clip), decision)
+
+
+def video_jobs(passes: int, limit: int | None, budget: dz.Budget):
+    footage = footage_cache()
+    jobs = []
+    for audio in (False, True):
+        test = "6-video-audio" if audio else "6-video-silent"
+        for clip in video_cells.CLIPS[:limit]:
+            for n in range(1, passes + 1):
+                jobs.append((test, f"{clip.short} pass {n}", dz.GEMINI,
+                             lambda c=clip, a=audio, n=n: run_clip(c, footage[(c.file, a)], a, n, budget)))
+    return jobs
+
+
 # --- running ---
 
 class Stop(Exception):
@@ -298,7 +337,7 @@ def run_all(jobs, workers: int) -> list[Row]:
     return rows
 
 
-def jobs_for(test: str, data_root: Path, limit: int | None, budget: dz.Budget):
+def jobs_for(test: str, data_root: Path, limit: int | None, budget: dz.Budget, passes: int = 1):
     if test == "1":
         cases = supports_cases(data_root)[:limit]
         return [("1-supports", c.item, m, lambda c=c, m=m: run_supports(c, m, budget)) for c in cases for m in dz.MODELS]
@@ -326,6 +365,8 @@ def jobs_for(test: str, data_root: Path, limit: int | None, budget: dz.Budget):
         return [("5-held-out" if h else "5-classes", f"{c.source}:{c.id}", m,
                  lambda c=c, m=m, h=h: run_failure(c, classes, m, budget, h))
                 for h in (False, True) for c in cases for m in dz.MODELS]
+    if test == "6":
+        return video_jobs(passes, limit, budget)
     raise ValueError(f"no test {test}")
 
 
@@ -347,6 +388,7 @@ def main():
     parser.add_argument("--limit", type=int, default=None, help="items per test, for a trial run")
     parser.add_argument("--data-root", type=Path, default=ROOT)
     parser.add_argument("--workers", type=int, default=6)
+    parser.add_argument("--passes", type=int, default=3, help="test 6: times each clip is asked, to see how answers vary")
     parser.add_argument("--out", type=Path, default=ROOT / "results/judges" / datetime.date.today().isoformat())
     args = parser.parse_args()
     budget = dz.Budget(args.budget)
@@ -354,7 +396,7 @@ def main():
     rows = []
     try:
         for test in args.tests.split(","):
-            rows += run_all(jobs_for(test, args.data_root.resolve(), args.limit, budget), args.workers)
+            rows += run_all(jobs_for(test, args.data_root.resolve(), args.limit, budget, args.passes), args.workers)
             print(f"test {test}: {len(rows)} rows so far, ${budget.spent:.4f} spent")
     finally:
         save(rows, args.out)  # whatever finished, even if a test crashed

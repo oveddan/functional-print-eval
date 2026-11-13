@@ -1,6 +1,6 @@
 # Decisions models as judges
 
-OpenRouter's Decisions API answers typed questions (yes/no, pick one, a scale, where in a photo) with probabilities instead of text. This page covers how it works, when this eval should use one, how two of them did on five questions whose answers we already know, and where they'd fit. Everything here comes from one run on 2026-11-12, saved under `results/judges/2026-11-12/`, which cost $0.064 in all.
+OpenRouter's Decisions API answers typed questions (yes/no, pick one, a scale, where in a photo) with probabilities instead of text. This page covers how it works, when this eval should use one, how two of them did on five questions whose answers we already know, how a third did on video (test 6), and where they'd fit. Everything here comes from runs on 2026-11-12, saved under `results/judges/2026-11-12/`, which cost $0.079 in all ($0.064 for tests 1 to 5, $0.015 for test 6).
 
 **Rule unchanged:** graders are code wherever a program can decide. A decisions model is a judge for calls no program can make, never a contestant, and the report says where one was used. On this run no judge result was used to grade a trial.
 
@@ -27,7 +27,7 @@ The client is `pbe/judges/decisions.py`. It has typed records (`Request`, `Noul`
 
 ## The models
 
-The brief named three: Jev 1.14 (`typesafe/jev-1.14`), GPT-6 Luna Decisions (`openai/gpt-6-luna-decisions`) and Gemini Decision 1. Dan narrowed it to the first two mid-run, so Gemini wasn't run.
+The brief named three: Jev 1.14 (`typesafe/jev-1.14`), GPT-6 Luna Decisions (`openai/gpt-6-luna-decisions`) and Gemini Decision 1. Dan narrowed it to the first two mid-run, so Gemini wasn't run on tests 1 to 5. It was then run on video alone (test 6): of the three, it's the only one that reads video.
 
 | | Jev 1.14 | GPT-6 Luna Decisions |
 |---|---|---|
@@ -68,6 +68,8 @@ Each row compares a model's answers with the key. **Recorded key** is the key th
 | | GPT-6 Luna | 38/57 (67%) | same | 23% | 57 | 0.34 s | $0.0033 |
 | 5b. Class held out: answers "none of these" | Jev 1.14 | 11/57 (19%) | same | n/a | 57 | 0.24 s | $0.0019 |
 | | GPT-6 Luna | 40/57 (70%) | same | n/a | 57 | 0.35 s | $0.0030 |
+| 6. Test-print clips, sound off (20 questions, 3 passes) | Gemini Decision 1 | 36/60 (60%) | same | 50%; 65% per clip | 15 | 2.11 s | $0.0063 |
+| 6. The same clips with sound | Gemini Decision 1 | 39/60 (65%) | same | 50%; 65% per clip | 15 | 1.57 s | $0.0088 |
 
 ### 1. Supports (22 submissions, two questions each)
 
@@ -158,6 +160,54 @@ One question per known Estoa failure that the estoa-light task can show (`pbe/ju
 - Neither flagged C5 when C5 was held out (Jev 0 of 6, Luna 1 of 6). Its records went to C1, C3 or C7, the same overlap again.
 - 57 records, and only 3 to 13 per class, is small. The flag rates are a first read, not a calibration.
 
+### 6. Video: round 3 test-print clips (Gemini Decision 1)
+
+**From the docs, read 2026-11-12:** OpenRouter's multimodal-decisions guide, its model list (`/api/v1/models?output_modalities=decisions&input_modalities=video`), and Google's Gemini video-understanding page, which OpenRouter defers to for limits.
+- **How video goes in.** A part in the top-level `state`: `{"type": "video_url", "video_url": {"url": "data:video/mp4;base64,..."}}`. Gemini also fetches a public `https://` URL. The client never uses that, so Dan's clips stay private.
+- **Size limit.** OpenRouter sets none for Gemini Decision 1 and leaves it to Google. Google's page says to send video inline only while the whole request is under 20 MB (a table on the same page says 100 MB; the client keeps to 20 and refuses a bigger request). The 720p H.264 copies sent here were under 10 MB as base64.
+- **Billing.** $0.10 per million input tokens; output is free. Google counts video at one frame a second, 66 tokens a frame at low resolution or 258 otherwise, plus 32 tokens a second of sound. The saved usage matches low resolution: the 81-second nut clip cost 7,011 tokens silent and 9,600 with sound, and the difference is 32 × 81. A silent minute is about 5,200 tokens, or $0.0005.
+- **Nothing to tune.** OpenRouter ignores `processing` (the frame rate), and `detail` applies only to images. So a judge sees one low-resolution frame a second, whatever is sent.
+- **The cap.** Counting every byte of a video as a token would reserve about $0.93 a call. For video, `--budget` reserves the clip's length at twice Google's highest rate instead (`most_for_video`).
+
+**Clips and questions** (`pbe/judges/video_cells.py`). Copies were made with ffmpeg in a temp folder from the masters in `04 Test print footage`: 720p H.264, once without sound and once with it. Each clip was asked three times, so 30 calls in all.
+
+| Clip | What happens | Questions | Key from the record |
+|---|---|---|---|
+| IMG_6162 | an M8 bolt tried in three holes | per hole: screwed, pushed or slid | screwed, pushed, slid |
+| IMG_6163 | a 1/4-20 bolt tried in three holes | the same | screwed, pushed, slid ("loose") |
+| IMG_6174 | an M5 nut thumb-pressed into 8 pockets, then an M3 into 2; Dan says each result aloud | does the nut go in, per pocket in the order he says them | in once (L1, "nice and snug"), out 9 times |
+| IMG_6186 | a servo horn set into three pockets | how many fit; does it stay in when the plate is tipped on edge | one; yes |
+| IMG_6158 | the bridges handled and flexed | do strands break; does any hold as a solid bar | yes; no |
+
+- **One assumption.** The record says which clip shows a cell but not when, so questions name a cell by the order it's tried in. For the bolt holes that order is Claude's assumption (smallest first, as Dan named them): his hands cover the dots that tell the holes apart.
+- **Left out:** the bearing-seat clips (IMG_6171/6172), where the seats aren't tried in seat order, and the bolt-pressed nut clip (IMG_6179), where no order is recorded.
+- **Sound only matters in IMG_6174.** It's the only clip with speech: the others have tapping, a sigh, or "it's not so nice" over the bridges (transcribed locally with whisper.cpp to check).
+
+**Results, per clip** (`summary.md`). The baseline is always giving that clip's commonest answer.
+
+| Clip | Sound off | Sound on | Baseline |
+|---|---|---|---|
+| IMG_6162 bolt holes | 3/9 (33%) | 3/9 (33%) | 33% |
+| IMG_6163 bolt holes | 6/9 (67%) | 3/9 (33%) | 33% |
+| IMG_6174 nut pockets | 21/30 (70%) | 30/30 (100%) | 90% |
+| IMG_6186 horn pockets | 3/6 (50%) | 3/6 (50%) | 50% |
+| IMG_6158 bridges | 3/6 (50%) | 0/6 (0%) | 50% |
+
+- **Every answer was the same on all three passes**, so the 60 rows per setting are 20 answers given three times.
+- **Hand check.** Claude watched each disagreement. None was the key's fault:
+  - The horn visibly stays in when the plate is tipped (about 13 to 15 s), but Gemini said no (p 0.46).
+  - The bridges' strands visibly peel apart when flexed, but Gemini said a bridge holds as a solid bar (p 0.59, 0.64 with sound).
+  - With the sound off, the nut pockets and bolt holes can't be judged from the frames at all. The nut is under Dan's thumb at each press, and his hand hides whether a bolt turns or slides. That's the judge's limit, not the key's.
+- **Latency:** median 2.11 s a call silent, 1.57 s with sound, slowest 3.88 s. That's five to ten times a text call to Jev.
+
+**What it shows:**
+- **With the sound off, Gemini saw almost nothing.** 12 of 20 answers right, where giving each clip's commonest answer gets 13. Its probabilities sat between 0.35 and 0.61. It said "screwed" for 5 of the 6 bolt holes silent, and for all 6 with sound. A thumb pressing a nut, or a bolt turning in the fingers, is a few pixels in a frame or falls between two frames a second apart.
+- **With sound, it listens to Dan.** All 10 nut answers were right, at p(yes) 0.05 to 0.28 for the pockets he said refused and 0.61 for the one he said went in. That's test 2 (his words as verdicts) done from the clip, at about 9,600 tokens where his transcript would be a few hundred.
+- **Sound hurt where nobody spoke.** IMG_6163 fell from 2 of 3 holes to 1, and on the bridges "do strands break" flipped to no.
+- **The same lesson as the photos (test 3), for a new reason.** There, half the failures were felt and not seen. Here the motion that would show them is sampled too coarsely to see.
+
+**Verdict:** not usable as a silent video judge of fit outcomes. To get outcomes out of a clip, transcribe it locally (free, and the words can be checked) and judge the words as test 2 does. An untested idea if video is tried again: crop each clip to the plate and slow it to a quarter speed, so the one-frame-a-second sampling lands four times per real second, at four times the tokens. **Bias:** Gemini models are contestants in this eval, so Gemini Decision 1 shouldn't judge alone on a run where one competes. That's moot while it fails the gate.
+
 ## When to use which
 
 | | Code | Decisions model | Chat model (Opus) |
@@ -184,11 +234,8 @@ One question per known Estoa failure that the estoa-light task can show (`pbe/ju
   4. **Check.** Rerun test 5 with the new class added. The flagged records should land in it, and the 57 records on file should keep their classes. That keeps the class list from drifting as it grows.
 
   Not built yet: there are no flagged failures to name.
-- **Video, frame by frame (follow-up).** Jev reads only still images, so a clip becomes frames extracted with ffmpeg, either a few per second or at scene changes. They'd be made upright and sized like the photos, and sent as one request. Dan's test-print clips, with his spoken outcomes as the key, would make the next known-answer test. Gemini Decision 1 reads video directly, but it wasn't run.
-- **Gemini on video (follow-up Dan chose, 2026-11-12).** Gemini Decision 1 takes a whole MP4, with its audio, in the request.
-  - **First test:** the round 3 test-print clips (`04 Test print footage`, e.g. the bolt-hole clips IMG_6162 and 6163), asked "did the bolt go through?" with the sound off, against the outcomes already recorded. Video can show what the photos couldn't, like a strand breaking or a nut pressing in.
-  - **Later uses:** sorting clips by kind and project, a usable-take score, failure checks on print timelapses cut into pieces, and checking narration takes against the script.
-  - **Cost:** if it counts video the way Google's Gemini chat API does (just under 300 tokens a second), a minute is about a fifth of a cent. That's unconfirmed for Decision 1. Request size is the likely limit, so send H.264 copies cut short, never the masters, and never a public link.
+- **Video, frame by frame (follow-up).** Jev reads only still images, so a clip becomes frames extracted with ffmpeg, either a few per second or at scene changes. They'd be made upright and sized like the photos, and sent as one request. Dan's test-print clips, with his spoken outcomes as the key, would make the next known-answer test. Gemini Decision 1, which reads video directly, was tried first (test 6).
+- **Gemini on video (tried, test 6).** It read Dan's spoken outcomes from a clip, but with the sound off it did no better than always giving the commonest answer. Video judging waits on a better way to show the motion (cropped and slowed clips, untested), and the frame-by-frame idea above is no cheaper a bet: the photos failed the same way.
 - **Not for grading a design.** Nothing here supports letting a judge decide a pass.
 
 ## Recommendation
@@ -196,6 +243,7 @@ One question per known Estoa failure that the estoa-light task can show (`pbe/ju
 - **Jev 1.14 as the default judge.** It was as accurate as Luna after the hand check (and it's the far more used of the two on OpenRouter's rankings, which is context, not evidence), a little faster, billed at $0.042 per million tokens against $0.10, has Box, and isn't in the lineup. Luna refused a question twice; Jev refused none (its two failures were our oversized crops).
 - **Use Luna as a second opinion, and as the flagger for failures that fit no class** (test 5b: 70% of held-out classes caught, 11% false flags). Never use it alone on runs where GPT-6 Luna competes.
 - **Keep both away from roof photos** (with or without example photos, test 3c), keep code as the grader, and keep this run's known-answer tests as the gate any new judge question has to pass first.
+- **Don't use Gemini Decision 1 on test-print video** (test 6). For spoken outcomes, transcribe locally and judge the words.
 
 ## Fixes after review (2026-11-12)
 
@@ -214,7 +262,8 @@ A code review of this PR found nine things. All are fixed. None changed a number
 
 ```bash
 uv run python scripts/judge_known_answers.py --budget 3 --data-root <a checkout with round 3's records>
+uv run python scripts/judge_known_answers.py --budget 1 --tests 6 --passes 3   # Gemini on the round 3 clips
 uv run python scripts/judge_summary.py results/judges/<date>
 ```
 
-`--data-root` exists because round 3's records and `supports.py` were on the unmerged round 3 branch when this ran. Photos are read from Dan's Dropbox (`06 Photos`) and converted in a temp folder; they never enter the repo. Test 4 was rerun once, with whole `print_test` calls, after the first run hid them. Test 3 was rerun once after the crop fix. The saved files are the final runs.
+`--data-root` exists because round 3's records and `supports.py` were on the unmerged round 3 branch when this ran. Photos and clips are read from Dan's Dropbox (`06 Photos`, `04 Test print footage`) and converted in a temp folder; they never enter the repo. Test 6 doesn't need `--data-root`: its key is written into `pbe/judges/video_cells.py` with the record's words beside each answer. Test 4 was rerun once, with whole `print_test` calls, after the first run hid them. Test 3 was rerun once after the crop fix. The saved files are the final runs.

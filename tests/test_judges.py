@@ -165,3 +165,28 @@ def test_reference_photos_never_include_the_cell_being_judged():
         refs = photo_cells.references_for(cell)
         assert all((r.photo, r.name) != (cell.photo, cell.name) for r in refs)
         assert [r.clean for r in refs] == [True, True, False, False]
+
+
+def test_a_video_part_has_the_documented_shape():
+    """The multimodal guide's video part: a base64 data URL in the top-level state, never a link."""
+    request = dz.Request(model=dz.GEMINI, state=["a clip", dz.Video.mp4(b"x")], questions={"a": dz.Noul(instructions="yes?")})
+    body = json.loads(request.model_dump_json(exclude_none=True))
+    assert body["state"][1] == {"type": "video_url", "video_url": {"url": "data:video/mp4;base64,eA=="}}
+
+
+def test_the_video_bound_covers_what_a_clip_was_billed():
+    """IMG_6174 silent, 81 s, was billed 7,011 tokens; the bound must be above that and far below the byte count."""
+    clip = dz.Footage(mp4=b"x" * 5_000_000, seconds=80.8)
+    most = dz.most_for_video(clip, text_bytes=2_000)
+    assert 7_011 * dz.PRICE_PER_M_INPUT / 1e6 < most < 0.01
+
+
+def test_every_video_key_is_an_answer_its_question_can_give():
+    from pbe.judges.video_cells import CLIPS
+    for clip in CLIPS:
+        for asked in clip.asked:
+            if isinstance(asked.question, dz.Choice):
+                assert asked.key in asked.question.criteria, (clip.short, asked.id)
+            else:
+                assert isinstance(asked.key, bool), (clip.short, asked.id)
+        assert len({a.id for a in clip.asked}) == len(clip.asked)
