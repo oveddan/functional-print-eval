@@ -253,4 +253,7 @@ def test_a_replay_runs_arms_are_read_as_trials_kept_apart():
     assert len(set(keys)) == len(keys)
     assert not any("schema-bug" in str(folder) for folder, _ in arms)  # the kept originals aren't sliced again
     passed = [arm for _, arm in arms if arm.verdict == "pass"]
-    assert [(arm.model, arm.trial, arm.condition) for arm in passed] == [("google/gemini-4-argon", 2, "can_ask/feedback")]
+    assert [(arm.model, arm.trial, arm.condition) for arm in passed] == [  # since R6 stopped failing a head partly over the entry
+        ("anthropic/claude-opus-5.5", 4, "can_ask/feedback"), ("anthropic/claude-sonnet-5.5", 3, "can_ask/feedback"),
+        ("anthropic/claude-sonnet-5.5", 5, "can_ask/feedback"), ("google/gemini-4-argon", 2, "can_ask/feedback"),
+        ("google/gemini-4-argon", 4, "can_ask/feedback")]
