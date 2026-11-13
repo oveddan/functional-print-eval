@@ -17,7 +17,10 @@ What is read, and from where:
 - a diagnosis for each check that didn't pass: scripts/results_page.py (issues_of), with whether a failed bridge check
   is a roof with the bolt's hole cut through it read from results/holed_roofs.json rather than from meshes;
 - the task's request: scripts/gallery.py (brief_of); what each check means: tasks/<family>/requirements.yaml;
-- renders and meshes: scripts/results_site_media.json, written by another script, and optional.
+- renders and meshes: scripts/results_site_media.json, written by another script, and optional;
+- a drawn view of each failing or ungraded check: scripts/results_site_views.json (scripts/results_site_views.py), optional;
+  with, as `view.audit`, an LLM judge's answer to whether it shows the failure legibly: scripts/results_site_view_audit.json
+  (scripts/results_site_view_audit.py), optional.
 
 Nothing here is printed. A test print's answer comes from the simulated person, who answers only from Dan's recorded
 prints (or, for a roof with a hole through it, the bridge check's prediction); "not graded" is never a pass.
@@ -53,9 +56,11 @@ RUNS = ROOT / "results/runs"
 OUT = ROOT / "results/local/site"
 FRONTEND = Path(__file__).with_name("results_site")
 MEDIA = Path(__file__).with_name("results_site_media.json")
+VIEWS = Path(__file__).with_name("results_site_views.json")
+VIEW_AUDIT = Path(__file__).with_name("results_site_view_audit.json")
 HOLED = ROOT / "results/holed_roofs.json"
 REPO = "https://github.com/oveddan/functional-print-eval/blob/"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 FIRST_PRINT_RUNS = ("pilot-tripod", "pilot-wheel", "pilot-nut-knob", "pilot-nut-knob-2")  # can_ask on the four tasks
 ESTOA_RUN = "pilot-estoa"
@@ -639,13 +644,75 @@ def check_meanings(task: str) -> dict[str, dict]:
     return meanings
 
 
+@cache
+def views() -> dict:
+    """{design path: [view entry]} from scripts/results_site_views.json, or {} without it."""
+    if not VIEWS.exists():
+        return {}
+    try:
+        return json.loads(VIEWS.read_text()).get("designs") or {}
+    except (json.JSONDecodeError, AttributeError):
+        print(f"{VIEWS.name} isn't readable JSON: no drawn views on the site", file=sys.stderr)
+        return {}
+
+
+@cache
+def view_audit() -> dict:
+    """{view url: {shows_failure, p, model}} from scripts/results_site_view_audit.json (a decisions model's answer to
+    whether the drawing shows its failure legibly; scripts/results_site_view_audit.py), or {} without it."""
+    if not VIEW_AUDIT.exists():
+        return {}
+    try:
+        return json.loads(VIEW_AUDIT.read_text()).get("views") or {}
+    except (json.JSONDecodeError, AttributeError):
+        print(f"{VIEW_AUDIT.name} isn't readable JSON: no view audit on the site", file=sys.stderr)
+        return {}
+
+
+NO_VIEW_SAVED = "no drawn view is saved for this check"
+NO_VIEW_DECLINED = "the trial declined, so its checks aren't counted and no view was drawn"
+NO_VIEW_TEST_PRINT = "an ungraded check on a test print isn't drawn"
+
+
+def view_of(entry: Entry, finding: CheckResult, declined: str | None = None) -> dict:
+    """{"view": {url, kind, caption, state, test_print, width, height} | None, "no_view_reason": str | None} for a check that failed or
+    couldn't be graded, matched in the views manifest on (check, part, test print) within the design's own folder. A
+    passing or not-reached check gets neither key."""
+    state = check_state(finding)
+    if state not in ("fail", "not graded"):
+        return {}
+    for found in views().get(entry.id, []):
+        if (found["check"] == finding.check and bool(found["test_print"]) == bool(finding.test_print)
+                and (found["part"] == finding.part or same_part(str(found["part"]), str(finding.part)))):
+            if found["view"]:
+                view = {"url": found["view"], "kind": found["kind"], "caption": found["caption"],
+                        "state": found["state"], "test_print": bool(found["test_print"]),
+                        "width": found.get("width"), "height": found.get("height")}  # pixels, so a page can reserve the shape
+                if found["view"] in view_audit():
+                    view["audit"] = view_audit()[found["view"]]
+                return {"view": view, "no_view_reason": None}
+            return {"view": None, "no_view_reason": found["no_view_reason"]}
+    if declined:
+        return {"view": None, "no_view_reason": NO_VIEW_DECLINED}
+    if finding.test_print and state == "not graded":
+        return {"view": None, "no_view_reason": NO_VIEW_TEST_PRINT}
+    return {"view": None, "no_view_reason": NO_VIEW_SAVED}
+
+
+def view_counts(entry: Entry) -> dict:
+    """How many counted failed checks have a drawn view, and how many don't."""
+    failed = [finding for finding in counted_of(entry) if finding.ok is False]
+    drawn = sum(bool(view_of(entry, finding).get("view")) for finding in failed)
+    return {"views": drawn, "views_missing": len(failed) - drawn}
+
+
 def finding_rows(entry: Entry, findings: list[CheckResult], declined: str | None = None) -> list[dict]:
     diagnosed = diagnoses(entry)
     meanings = check_meanings(entry.task)
     rows = []
     for finding in findings:
         counted = not finding.test_print and not declined
-        rows.append({"check": finding.check, "part": finding.part, "ok": finding.ok, "detail": clip(finding.detail, CAP["detail"]),
+        rows.append(view_of(entry, finding, declined) | {"check": finding.check, "part": finding.part, "ok": finding.ok, "detail": clip(finding.detail, CAP["detail"]),
                      "test_print": finding.test_print, "counted": counted, "state": check_state(finding),
                      "title": meanings.get(finding.check, {}).get("title", finding.check),
                      "meaning": meanings.get(finding.check, {}).get("text"),
@@ -996,7 +1063,7 @@ def index_row(entry: Entry, sliced: dict, by_id: dict[str, Entry]) -> dict:
            "failed_checks": sorted({f.check for f in counted_of(entry) if f.ok is False}),
            "not_graded_checks": sorted({f.check for f in counted_of(entry) if check_state(f) == "not graded"}),
            "not_reached_checks": sorted({f.check for f in counted_of(entry) if check_state(f) == "not reached"}),
-           "check_counts": dict(Counter(check_state(f) for f in counted_of(entry))),
+           "check_counts": dict(Counter(check_state(f) for f in counted_of(entry))), **view_counts(entry),
            "issues": issue_rows(entry)}
     if entry.after_feedback is not None:
         row["after_feedback"] = after_feedback_row(entry)
