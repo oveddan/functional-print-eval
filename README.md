@@ -251,10 +251,10 @@ Not run with test prints, ranked by their first print without them: GLM 5.3 Flas
 
 | Model | First print, no test prints | Second print, after hearing how the first came out | Asking for test prints first | Change from the first print |
 |---|---|---|---|---|
-| Gemini 4 Argon | 48% (19/40) | 78% | 82% (23/28) | +35 points |
+| Gemini 4 Argon | 50% (20/40) | 80% | 82% (23/28) | +32 points |
 | GPT-6.1 Sol | 50% (20/40) | 52% | 62% (25/40) | +12 points |
 | Gemini 3.8 Flash | 45% (18/40) | 62% | 56% (14/25) | +11 points |
-| Opus 5.5 | 40% (16/40) | 60% | 52% (21/40) | +12 points |
+| Opus 5.5 | 40% (16/40) | 68% | 52% (21/40) | +12 points |
 | Sonnet 5.5 | 35% (14/40) | 50% | 50% (20/40) | +15 points |
 | DeepSeek V4.1 Flash | 39% (16/41) | 61% | 38% (10/26) | -1 points |
 | Haiku 5.5 | 2% (1/40) | not replayed | 15% (3/20) | +12 points |
@@ -263,7 +263,7 @@ In 155 of these 219 trials the person answered at least one test piece with "I c
 <!-- scorecard:end --> 
 
 <!-- scorecard-note:start (written by scripts/scorecard.py; don't edit by hand) -->
-Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Sonnet 5.5 1 of its 6. Gemini 4 Argon, Gemini 3.8 Flash, DeepSeek V4.1 Flash, Opus 5.5 and GPT-6.1 Sol had none.
+Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Sonnet 5.5 1 of its 6. Gemini 4 Argon, Opus 5.5, Gemini 3.8 Flash, DeepSeek V4.1 Flash and GPT-6.1 Sol had none.
 
 **The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 1 of 30 designs pass on the first print. After the person says how the box came out, 1 of the 26 failures replayed passes. Asking for test prints first, 0 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
 <!-- scorecard-note:end -->
@@ -308,8 +308,8 @@ What's still not graded, how many trials produced each, and the print that would
 |---|---|---|---|
 | A tripod head recess under 5 mm deep | <img src="docs/media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 3"><br><sub>Haiku 5.5, tripod plate, trial 3</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
 | A nut pocket with ribs, clips or a lip unlike any printed | <img src="docs/media/not-graded/a-nut-pocket-with-ribs-clips-or-a-lip-unlike-any-printed.png" width="160" alt="A nut pocket with ribs, clips or a lip unlike any printed: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 29 | That rib shape and bite. Round 3 printed 3 and 6 round ribs, 6 flat ribs and two lips; each model's ribs differ, so one print settles only designs like it |
-| A roof ledge 1.5 to 2 mm wide | <img src="docs/media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 12 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
 | A nut pocket no recorded print settles | <img src="docs/media/not-graded/a-nut-pocket-no-recorded-print-settles.png" width="160" alt="A nut pocket no recorded print settles: DeepSeek V4.1 Flash, knob M5, trial 6"><br><sub>DeepSeek V4.1 Flash, knob M5, trial 6</sub> | 12 | A print of that pocket |
+| A roof ledge 1.5 to 2 mm wide | <img src="docs/media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 11 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
 | A plate width outside 37 to 39 mm | <img src="docs/media/not-graded/a-plate-width-outside-37-to-39-mm.png" width="160" alt="A plate width outside 37 to 39 mm: DeepSeek V4.1 Flash, tripod plate, trial 2"><br><sub>DeepSeek V4.1 Flash, tripod plate, trial 2</sub> | 11 | Dovetail plates from 34 to 45 mm tried in the clamp |
 | A pocket shape the checker can't read | <img src="docs/media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 2 | None: the checker needs fixing |
 | A test print whose pockets are ribbed or unsettled | <img src="docs/media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Sonnet 5.5, knob M3, trial 5"><br><sub>Sonnet 5.5, knob M3, trial 5</sub> | 2 | The ribbed pockets above, and coupon B2's finer steps |

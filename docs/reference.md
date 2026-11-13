@@ -253,16 +253,16 @@ The scorecard: every listed model's first print, its print after feedback, and t
 <!-- scorecard:start (written by scripts/scorecard.py; don't edit by hand) -->
 | Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | First print | After feedback | Not graded | pass^10 | Tokens per trial | Cost per pass | Print hours per pass | Filament per pass |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Gemini 4 Argon | 3/10 → 10/10 | 6/10 → 6/10 | 1/10 → 5/10 | 9/10 → 10/10 | 48% (19/40) | **78%** (31/40) | 0 | 50% | 21k | $0.20 | 0.5 h | 15 g |
+| Gemini 4 Argon | 3/10 → 10/10 | 7/10 → 7/10 | 1/10 → 5/10 | 9/10 → 10/10 | 50% (20/40) | **80%** (32/40) | 0 | 50% | 21k | $0.19 | 0.4 h | 14 g |
+| Opus 5.5 | 1/10 → 7/10 | 1/10 → 6/10 | 4/10 → 4/10 | 10/10 → 10/10 | 40% (16/40) | **68%** (27/40) | 5 | 25% | 22k | $0.36 | 0.6 h | 22 g |
 | Gemini 3.8 Flash | 4/10 → 6/10 | 4/10 → 4/10 | 1/10 → 5/10 | 9/10 → 10/10 | 45% (18/40) | **62%** (25/40) | 1 | 25% | 51k | $0.25 | 0.4 h | 15 g |
 | DeepSeek V4.1 Flash | 1/10 → 4/10 | 1/10 → 6/10 | 5/10 → 5/10 | 9/11 → 10/11 | 39% (16/41) | **61%** (25/41) | 4 | 0% | 172k | $0.09 | 0.9 h | 29 g |
-| Opus 5.5 | 1/10 → 4/10 | 1/10 → 6/10 | 4/10 → 4/10 | 10/10 → 10/10 | 40% (16/40) | **60%** (24/40) | 5 | 25% | 22k | $0.41 | 0.7 h | 25 g |
 | GPT-6.1 Sol | 1/10 → 1/10 | 8/10 → 9/10 | 2/10 → 2/10 | 9/10 → 9/10 | 50% (20/40) | **52%** (21/40) | 5 | 0% | 27k | $0.17 | 0.6 h | 19 g |
 | Sonnet 5.5 | 0/10 → 2/10 | 0/10 → 2/10 | 5/10 → 6/10 | 9/10 → 10/10 | 35% (14/40) | **50%** (20/40) | 4 | 25% | 25k | $0.29 | 0.9 h | 31 g |
 | GLM 5.3 Flash | 0/10 | 0/10 | 4/10 | 5/10 | **22% (9/40)** | not run | 2 | 0% | 246k | $0.17 | 0.9 h | 29 g |
 | GPT-6 Luna | 0/10 | 0/10 | 0/10 | 3/10 | **8% (3/40)** | not run | 1 | 0% | 26k | $0.06 | 2.6 h | 91 g |
 | DeepSeek V4 Pro | 0/10 | 1/10 | 1/10 | 0/10 | **5% (2/40)** | not run | 4 | 0% | 70k | $2.75 | 3.1 h | 104 g |
-| Qwen 3.8 Flash | 0/10 | 1/10 | 0/10 | 0/5 | **3% (1/35)** | not run | 0 | 0% | 299k | $1.77 | 6.9 h | 235 g |
+| Qwen 3.8 Flash | 0/10 | 1/10 | 0/10 | 0/5 | **3% (1/35)** | not run | 1 | 0% | 299k | $1.77 | 6.9 h | 235 g |
 | Haiku 5.5 | 0/10 | 0/10 | 0/10 | 1/10 | **2% (1/40)** | not run | 3 | 0% | 34k | $0.22 | 6.9 h | 260 g |
 
 ![Verified pass rate against cost per trial, one dot per model](media/scorecard.svg)
@@ -274,10 +274,10 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
-| `can_ask` | 525 | 175 | 296 | 36 | 10 | 8 | $47.07 |
+| `can_ask` | 525 | 176 | 294 | 37 | 10 | 8 | $47.07 |
 | `can_run_code` | 19 | 3 | 11 | 0 | 5 | 0 | $2.55 |
 | `can_test` | 296 | 124 | 109 | 16 | 3 | 44 | $33.48 |
-| **all** | **850** | 303 | 423 | 53 | 19 | 52 | $84.22 |
+| **all** | **850** | 304 | 421 | 54 | 19 | 52 | $84.22 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
@@ -289,7 +289,7 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | `can_ask` | deepseek/deepseek-v4-pro-0813 | 10 | 1 | 9 | 0 | 0 | 0 | $0.78 |
 | `can_ask` | deepseek/deepseek-v4.1-flash | 10 | 1 | 9 | 0 | 0 | 0 | $0.63 |
 | `can_ask` | google/gemini-3.8-flash | 10 | 4 | 6 | 0 | 0 | 0 | $1.11 |
-| `can_ask` | google/gemini-4-argon | 10 | 6 | 4 | 0 | 0 | 0 | $1.47 |
+| `can_ask` | google/gemini-4-argon | 10 | 7 | 3 | 0 | 0 | 0 | $1.47 |
 | `can_ask` | openai/gpt-6-luna | 10 | 0 | 10 | 0 | 0 | 0 | $0.04 |
 | `can_ask` | openai/gpt-6.1-sol | 10 | 8 | 2 | 0 | 0 | 0 | $0.90 |
 | `can_ask` | qwen/qwen3.8-flash | 10 | 1 | 9 | 0 | 0 | 0 | $0.51 |
@@ -392,7 +392,7 @@ Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not grad
 | `can_ask` | google/gemini-4-argon | 10 | 9 | 1 | 0 | 0 | 0 | $0.79 |
 | `can_ask` | openai/gpt-6-luna | 10 | 3 | 7 | 0 | 0 | 0 | $0.04 |
 | `can_ask` | openai/gpt-6.1-sol | 10 | 9 | 0 | 1 | 0 | 0 | $0.66 |
-| `can_ask` | qwen/qwen3.8-flash | 5 | 0 | 4 | 0 | 0 | 1 | $0.26 |
+| `can_ask` | qwen/qwen3.8-flash | 5 | 0 | 3 | 1 | 0 | 1 | $0.26 |
 | `can_ask` | x-ai/grok-4.7 | 1 | 0 | 0 | 1 | 0 | 0 | $0.48 |
 | `can_ask` | z-ai/glm-5.3-flash | 10 | 5 | 4 | 0 | 0 | 1 | $0.46 |
 | `can_test` | anthropic/claude-haiku-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $0.03 |
@@ -467,8 +467,8 @@ Counts are trials, from the saved runs; a trial can fail more than one way. The 
 | Dovetail upside down: the bolt head's recess is on the camera's side | 27 |
 | No usable bolt hole | 24 |
 | Declined: handed in only a test print, because the clamp's size isn't known | 19 |
+| A roof or ledge too wide to bridge, with no hole through it | 10 |
 | Code didn't run | 10 |
-| A roof or ledge too wide to bridge, with no hole through it | 9 |
 | Bolt doesn't reach far enough into the camera | 9 |
 | A part in pieces | 7 |
 | No design handed in | 5 |
@@ -492,7 +492,7 @@ The bridge check's picture of GPT-6 Luna's roof (`pilot-tripod` t1, 449 mm² at 
 
 | What went wrong | Trials |
 |---|---|
-| A roof with the bolt's hole cut through it (`bridges`), over the seat that opens at the bed | 75 |
+| A roof with the bolt's hole cut through it (`bridges`), over the seat that opens at the bed | 74 |
 | Bearing seat a size the prints don't take | 32 |
 | Other wheel geometry | 16 |
 | Code didn't run | 14 |
@@ -514,12 +514,12 @@ The bridge check's picture of GPT-6 Luna's roof (`pilot-tripod` t1, 449 mm² at 
 | No design handed in | 30 |
 | The pocket is closed, so the nut can't be pressed in | 29 |
 | Code didn't run | 16 |
-| A roof with the bolt's hole cut through it | 4 |
+| A roof with the bolt's hole cut through it | 5 |
 | A part in pieces | 3 |
-| A roof or ledge too wide to bridge, with no hole through it | 2 |
+| A roof or ledge too wide to bridge, with no hole through it | 1 |
 | Its test print labelled as a final part | 1 |
 
-Most knob trials that didn't pass weren't failed: 167 pass, 121 fail and 38 are not graded, mostly for the pockets below.
+Most knob trials that didn't pass weren't failed: 167 pass, 120 fail and 39 are not graded, mostly for the pockets below.
 <!-- wrong-nut-knob:end -->
 
 | No clearance | A closed pocket |
@@ -543,8 +543,8 @@ A check is not graded when no recorded print decides it. A trial can have more t
 |---|---|---|---|
 | A tripod head recess under 5 mm deep | <img src="media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 3"><br><sub>Haiku 5.5, tripod plate, trial 3</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
 | A nut pocket with ribs, clips or a lip unlike any printed | <img src="media/not-graded/a-nut-pocket-with-ribs-clips-or-a-lip-unlike-any-printed.png" width="160" alt="A nut pocket with ribs, clips or a lip unlike any printed: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 29 | That rib shape and bite. Round 3 printed 3 and 6 round ribs, 6 flat ribs and two lips; each model's ribs differ, so one print settles only designs like it |
-| A roof ledge 1.5 to 2 mm wide | <img src="media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 12 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
 | A nut pocket no recorded print settles | <img src="media/not-graded/a-nut-pocket-no-recorded-print-settles.png" width="160" alt="A nut pocket no recorded print settles: DeepSeek V4.1 Flash, knob M5, trial 6"><br><sub>DeepSeek V4.1 Flash, knob M5, trial 6</sub> | 12 | A print of that pocket |
+| A roof ledge 1.5 to 2 mm wide | <img src="media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 11 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
 | A plate width outside 37 to 39 mm | <img src="media/not-graded/a-plate-width-outside-37-to-39-mm.png" width="160" alt="A plate width outside 37 to 39 mm: DeepSeek V4.1 Flash, tripod plate, trial 2"><br><sub>DeepSeek V4.1 Flash, tripod plate, trial 2</sub> | 11 | Dovetail plates from 34 to 45 mm tried in the clamp |
 | A pocket shape the checker can't read | <img src="media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 2 | None: the checker needs fixing |
 | A test print whose pockets are ribbed or unsettled | <img src="media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Sonnet 5.5, knob M3, trial 5"><br><sub>Sonnet 5.5, knob M3, trial 5</sub> | 2 | The ribbed pockets above, and coupon B2's finer steps |
@@ -592,7 +592,7 @@ These are treated as true without a print that shows them for that exact case. T
 |---|---|---|
 | The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (144 pass, 9 fail), so all 32 tripod passes |
 | One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (131 pass, 28 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 105 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
+| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 104 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
 | Each hole's centre is at the middle of where Dan's readings put it, 16.85 mm out. Source: the middle of 16.60 to 17.11, from Dan's calipers; no reading pins it closer. | estoa-light R1 | Graded apart: 5 pass, 0 fail of the estoa-light designs it decides |
 | The disk's board is 1.6 mm thick, and each hole's centre is 16.85 mm out. Source: 1.6 mm is the standard circuit board thickness and what the Estoa model used; the holes as in R1's assumption. | estoa-light R2 | Graded apart: 2 pass, 2 fail of the estoa-light designs it decides |
 <!-- assumptions:end -->
