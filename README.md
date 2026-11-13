@@ -1,6 +1,6 @@
 # Functional 3D Printing Eval
 
-**Contents:** [How this started](#how-this-started) · [How the agent works](#how-the-agent-works) · [How a trial runs](#how-a-trial-runs) · [Constraints](#constraints) · [What the eval tests: failure classes](#what-the-eval-tests-failure-classes) · [The test prints behind the checks](#the-test-prints-behind-the-checks) · [The tasks](#the-tasks) · [Results](#results) · [What we couldn't grade](#what-we-couldnt-grade) · [Run it](#run-it) · [Limits](#limits) · [Prior work and comparable evals](#prior-work-and-comparable-evals) · [Tools used](#tools-used) · [More](#more)
+**Contents:** [How this started](#how-this-started) · [How the agent works](#how-the-agent-works) · [How a trial runs](#how-a-trial-runs) · [Constraints](#constraints) · [What the eval tests: failure classes](#what-the-eval-tests-failure-classes) · [The test prints behind the checks](#the-test-prints-behind-the-checks) · [The tasks](#the-tasks) · [Results](#results) · [Run it](#run-it) · [Limits](#limits) · [Prior work and comparable evals](#prior-work-and-comparable-evals) · [Tools used](#tools-used) · [More](#more)
 
 The code as submitted to the hackathon is at the [`hackathon-submission` tag](https://github.com/oveddan/functional-print-eval/tree/hackathon-submission); this README describes the eval as it is now.
 
@@ -118,7 +118,7 @@ uv run python -m pbe.run examples/arca-plate/original.yaml examples/arca-plate/f
 
 These test prints provide the ground truth for parts of the 3D printing simulation. Each print tests the ground truth of one thing. For example, if there's a roof over a hole, will it print successfully? We printed nut pockets at different sizes, using different techniques, to see which size a nut would fit into snugly without falling out.
 
-What each print tests, why we printed it, and what happened, from the test-print code (`coupons/coupons.py`) and the records of both rounds with my notes (`results/predictions/`):
+What each print tests, why we printed it, and what happened, from the test-print code (`coupons/coupons.py`) and the records of each round with my notes (`results/predictions/`):
 
 | Round one, printing | Round two, printing |
 |---|---|
@@ -129,6 +129,15 @@ What each print tests, why we printed it, and what happened, from the test-print
 | ![Pressing nuts into the nut-pocket test print, Oct 29, at 2.5 times speed](https://media.danoved.xyz/print-build-eval/nogit/854da3b2/nut-test-print.gif) | **Nut pockets.** I wanted to find the actual best size to print the opening so it holds the nut. I took nuts of different sizes (M3, M5, M8 and 1/4-20), pressed them into pockets from exactly the nut's size to 0.3 mm over, and saw which one was the most snug while still realistic to push in (Oct 29, at 2.5 times speed) | In the past, I'd had nuts that wouldn't fit snugly into an opening in a 3D print, and when you turned the part a certain way, the nut would fall out | M3 needs 0.2 mm over ("goes in with pushing, snug"); at 0.1 it "really struggles". M5 holds at 0 and 0.1 mm over, and is loose at 0.2. M8 and 1/4-20 hold only at the nut's exact size |
 | ![The roof strip: square pockets roofed at 20 to 50 mm, walls on all four sides](https://media.danoved.xyz/print-build-eval/nogit/ddb66572/test-print-roof-strip.jpg) ![The underside of the tunnel print: the roof printed as loose strands](https://media.danoved.xyz/print-build-eval/nogit/d2483df5/IMG_5409.jpg) | **Bridges and overhangs.** I wanted to test different scenarios to see what kind of overhang prints work and which ones fail and result in strands: roofs over pockets 20 to 50 mm wide with walls on all four sides, one with a hole cut through it, and tunnels open at their ends | I've had a bunch of successes and failures when printing with overhangs and bridges | When there are no walls on one side, it fails, as you can see here in both attempts, but if there are walls on four sides, it seems to be pretty successful, even when you get pretty wide. The roofs with four walls printed clean up to 50 mm (the 40 mm one sagged in round one and printed clean in round two); the roof with a hole through it tangled; the tunnels printed as strands both times |
 | | **Bearing seats.** 608 bearing seats from 22.0 to 22.3 mm, and 8 mm pegs for the bearing's bore | The closet-door wheel task: does a bearing press in and stay in, and at what size? | The 22.0 mm seat wouldn't take the bearing; 22.1, 22.2 and 22.3 took it and held it upside down. Only the tightest 8 mm peg was snug |
+
+**Round three**, on 2026-11-11 and 12, went after the designs the first two rounds couldn't grade: crush-ribbed nut pockets, narrow roof ledges, bolt holes and bearing seats between the sizes I'd printed, and six roofs cut straight out of the models' own Estoa designs. Five of the six roofs strung as the bridge check predicted.
+
+![Each round 3 test print from above, every hole outlined by what happened when I tried it](docs/media/test-print-maps.png)
+
+| Bridges and roofs cut from the models' designs | GPT's roof, the one that printed clean | Ring roofs: stepped clean, plain tangled | A tightened M5 nut on the 1.3 mm ledge |
+|---|---|---|---|
+| ![The undersides of the 60, 80 and 100 mm bridges and five roof crops, every one strung across](https://media.danoved.xyz/print-build-eval/nogit/16e6737/46cc720f/bridges-and-roof-crops-underside.jpg) | ![GPT-6.1 Sol's roof crop held up: a short roof with a clean underside](https://media.danoved.xyz/print-build-eval/nogit/16e6737/5828c4a9/gpt-roof-crop-clean.jpg) | ![The ring-roof plate from underneath: the stepped roofs printed solid, the plain ones over the bigger pockets tangled](https://media.danoved.xyz/print-build-eval/nogit/16e6737/86844df7/ring-roofs-underside.jpg) | ![An M5 bolt through ring roof 5 with its nut tightened underneath, sitting slightly proud on the strands](https://media.danoved.xyz/print-build-eval/nogit/16e6737/5e7b512a/ring-roof-cell5-m5-nut.jpg) |
+| All strung: the bridge check failed each of these, and the 50 mm span limit stands | Its longest unsupported strand is 6.8 mm, so short-strand roofs now pass | 9 of 10 cells came out as the bridge check predicted | It holds, just not flush: the miss the short-strand rule fixes |
 
 ## The tasks
 
@@ -241,34 +250,6 @@ Some of the gain after feedback comes from a gap in the simulation, not from wha
 
 The models design a print without really understanding the constraints of 3D printing. A lot of them design roofs over open space that can't print without supports. They design a place to slot in a nut without any kind of gap, so the nut won't go in. The models do make test prints, but they test the wrong thing. On the wheel they tested if the bearing fits, and mostly got that right. Then the wheel failed on stuff they never tested, like not leaving room for both bearings, the bolt not fitting through, or a roof printed over air.
 
-## What we couldn't grade
-
-The first results left every design no test print covered as **not graded**: crush ribs to hold a nut, narrow roof ledges, bolt holes and bearing seats between the sizes I'd printed, the USB-C plug's head. Not graded is never a pass, because we don't know the truth.
-
-Back at the printer on 2026-11-11 and 12, I printed a third round of test prints aimed at those gaps, and six roofs cut straight out of the models' own Estoa designs, and measured my USB-C plug. The checks now read those records, and every saved trial was regraded (`CHANGELOG.md`, 2026-11-12, has each rule and its evidence). 127 trial results moved from what was published before: 64 nut knobs and 3 bearing wheels that were not graded now pass, and 40 not graded now fail; 10 knobs that passed now fail, because their pockets are tighter than round 3's tightest that took a nut. Five of the six roof crops failed as the bridge check predicted, and the sixth, a short-span roof, printed clean, so roofs whose strands are all 6.8 mm or shorter now pass. The Estoa light box stays at 1 pass in 48: its other failures, mostly keyholes and roofs that really tangle, still stand.
-
-![Each round 3 test print from above, every hole outlined by what happened when I tried it](docs/media/test-print-maps.png)
-
-| Bridges and roofs cut from the models' designs | GPT's roof, the one that printed clean | Ring roofs: stepped clean, plain tangled | A tightened M5 nut on the 1.3 mm ledge |
-|---|---|---|---|
-| ![The undersides of the 60, 80 and 100 mm bridges and five roof crops, every one strung across](https://media.danoved.xyz/print-build-eval/nogit/16e6737/46cc720f/bridges-and-roof-crops-underside.jpg) | ![GPT-6.1 Sol's roof crop held up: a short roof with a clean underside](https://media.danoved.xyz/print-build-eval/nogit/16e6737/5828c4a9/gpt-roof-crop-clean.jpg) | ![The ring-roof plate from underneath: the stepped roofs printed solid, the plain ones over the bigger pockets tangled](https://media.danoved.xyz/print-build-eval/nogit/16e6737/86844df7/ring-roofs-underside.jpg) | ![An M5 bolt through ring roof 5 with its nut tightened underneath, sitting slightly proud on the strands](https://media.danoved.xyz/print-build-eval/nogit/16e6737/5e7b512a/ring-roof-cell5-m5-nut.jpg) |
-| All strung: the bridge check failed each of these, and the 50 mm span limit stands | Its longest unsupported strand is 6.8 mm, so short-strand roofs now pass | 9 of 10 cells came out as the bridge check predicted | It holds, just not flush: the miss the short-strand rule fixes |
-
-What's still not graded, how many trials produced each, and the print that would settle it:
-
-<!-- not-graded:start (written by scripts/failure_tables.py; don't edit by hand) -->
-| Not graded because | Example | Trials | The print that would settle it |
-|---|---|---|---|
-| A tripod head recess under 5 mm deep | <img src="docs/media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 3"><br><sub>Haiku 5.5, tripod plate, trial 3</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
-| A nut pocket with ribs, clips or a lip unlike any printed | <img src="docs/media/not-graded/a-nut-pocket-with-ribs-clips-or-a-lip-unlike-any-printed.png" width="160" alt="A nut pocket with ribs, clips or a lip unlike any printed: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 29 | That rib shape and bite. Round 3 printed 3 and 6 round ribs, 6 flat ribs and two lips; each model's ribs differ, so one print settles only designs like it |
-| A nut pocket no recorded print settles | <img src="docs/media/not-graded/a-nut-pocket-no-recorded-print-settles.png" width="160" alt="A nut pocket no recorded print settles: DeepSeek V4.1 Flash, knob M5, trial 6"><br><sub>DeepSeek V4.1 Flash, knob M5, trial 6</sub> | 12 | A print of that pocket |
-| A roof ledge 1.5 to 2 mm wide | <img src="docs/media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 11 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
-| A plate width outside 37 to 39 mm | <img src="docs/media/not-graded/a-plate-width-outside-37-to-39-mm.png" width="160" alt="A plate width outside 37 to 39 mm: DeepSeek V4.1 Flash, tripod plate, trial 2"><br><sub>DeepSeek V4.1 Flash, tripod plate, trial 2</sub> | 11 | Dovetail plates from 34 to 45 mm tried in the clamp |
-| A pocket shape the checker can't read | <img src="docs/media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 2 | None: the checker needs fixing |
-| A test print whose pockets are ribbed or unsettled | <img src="docs/media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Sonnet 5.5, knob M3, trial 5"><br><sub>Sonnet 5.5, knob M3, trial 5</sub> | 2 | The ribbed pockets above, and coupon B2's finer steps |
-| A bearing seat between printed sizes, or ribbed | <img src="docs/media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: GLM 5.3 Flash, bearing wheel, trial 2"><br><sub>GLM 5.3 Flash, bearing wheel, trial 2</sub> | 1 | Seats at 22.1 and 22.3 mm, and lobed seats: 22.05 wouldn't take a 608, 22.2 held, 22.4 fell out |
-<!-- not-graded:end -->
-
 ## Run it
 
 From a clone, with [uv](https://docs.astral.sh/uv/) installed and no API key:
@@ -299,7 +280,7 @@ It saves the conversation, the design and every check's result under `results/ru
 
 ## Limits
 
-Many designs couldn't be graded without more test prints ([What we couldn't grade](#what-we-couldnt-grade)).
+Some designs still can't be graded, because no test print I've made is close enough to decide them. They count as not graded, never as a pass; [the reference](docs/reference.md#what-wasnt-graded-and-the-prints-that-would-settle-it) lists each reason, how many trials it affects and the print that would settle it.
 
 The replies only come from my test prints. For a size I never printed, the person can only say "I can't tell you how that one came out," so models switch to sizes I did print. That wouldn't happen in real life.
 

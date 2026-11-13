@@ -1,5 +1,4 @@
-"""docs/reference.md's counts of what went wrong and what wasn't graded, task by task, from the saved runs, and the
-not-graded list in README.md too.
+"""docs/reference.md's counts of what went wrong and what wasn't graded, task by task, from the saved runs.
 No model calls.
 
     uv run python scripts/failure_tables.py           # print the sections
@@ -27,8 +26,6 @@ from pbe.runner.trial_record import TrialRecord  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "results/runs"
 DOC = ROOT / "docs/reference.md"
-README = ROOT / "README.md"  # carries the not-graded list too
-README_NOT_GRADED = "not-graded (README)"  # the same list, its pictures linked from the repository's root
 HOLED = ROOT / "results/holed_roofs.json"
 FAMILIES = ["tripod-plate", "bearing-wheel", "nut-knob", "m5-spacer"]
 HEADINGS = {"tripod-plate": "`tripod-plate`", "bearing-wheel": "`bearing-wheel`", "nut-knob": "`nut-knob` (M3 and M5)",
@@ -193,7 +190,6 @@ def sections(from_meshes: bool, save_cache: bool = False) -> dict[str, str]:
     trials, wrong, not_graded, verdicts = tally(from_meshes, save_cache)
     found = {f"wrong-{family}": family_section(family, trials, wrong, verdicts) for family in FAMILIES}
     found["not-graded"] = not_graded_section(not_graded)
-    found[README_NOT_GRADED] = not_graded_section(not_graded, "docs/media")  # README.md sits a folder up from docs/
     return found
 
 
@@ -221,18 +217,17 @@ def main():
     if not (args.write or args.check):
         print("\n\n".join(found.values()))
         return
-    readme_list = found.pop(README_NOT_GRADED)
-    docs = {DOC: found, README: {"not-graded": readme_list}}
+    docs = {DOC: found}
     updated = {doc: doc_with(doc.read_text(), sections_for, doc) for doc, sections_for in docs.items()}
     if args.check:
         stale = [doc.relative_to(ROOT).as_posix() for doc, text in updated.items() if text != doc.read_text()]
         if stale:
             sys.exit(f"{', '.join(stale)}: failure counts don't match results/runs/: run scripts/failure_tables.py --write")
-        print("docs/reference.md's and README.md's failure counts match results/runs/")
+        print("docs/reference.md's failure counts match results/runs/")
         return
     for doc, text in updated.items():
         doc.write_text(text)
-    print("docs/reference.md's and README.md's failure counts updated")
+    print("docs/reference.md's failure counts updated")
 
 
 if __name__ == "__main__":

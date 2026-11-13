@@ -3,7 +3,7 @@ Writes coupons/out/*.stl (gitignored).
 
     uv run python coupons/round3.py
 
-Each piece answers one row of "What we couldn't grade" in the README.
+Each piece answers one row of the not-graded list in docs/reference.md.
 F  bolt holes:   through holes for the M8 bolt at 8.0 to 8.4 mm and for the 1/4-20 bolt at
                  6.35 to 6.8 mm. The ends of each row repeat a limit the checks already use.
 G  ring roofs:   pockets open at the bed with a bolt hole through the roof. Six with a ledge of
