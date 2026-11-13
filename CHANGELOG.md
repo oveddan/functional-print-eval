@@ -2,6 +2,12 @@
 
 Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
 
+## 2026-11-13: README edited to open with the problem; results table in markdown (no result changed)
+
+- The problem, the three questions and what the repo does come straight after the opening paragraph, with a link to the `hackathon-submission` tag; the Estoa story follows under "How this started". "How the agent works" got a heading and links to `pbe/runner/agent.py`, `measure.py`, `coupon_loop.py` and `pbe/graders/`.
+- Removed: "The takeaway", the pseudocode for two checks, "How we used AI", the AI tools in "Tools used", and the hackathon-travel and ZIP wording.
+- `scripts/scorecard.py` writes the test-first results as a markdown table (a row per model, best first, the best in each column bold, compared as shown) in place of `docs/media/results-table.svg`, which is deleted.
+
 ## 2026-11-12: Main's tests green again after round 3's review fixes
 
 - PR #7's last two fixes (the short-strand rule checks every direction, with at least 24% anchored; the test-print loop's person answers from coupon B only) went in without a regrade, and main's CI failed two tests on it. Every run and loop replay is regraded on main's code, `tests/test_servo_mount.py`'s on-edge plate now passes (its channel ledges are short-strand roofs), and two trials that no longer fail on roofs alone are dropped from `NOT_HOLED_ROOFS` (Qwen 3.8 Flash knob t5, Gemini 4 Argon wheel t5 clears on regrade).

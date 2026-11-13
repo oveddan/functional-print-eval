@@ -1,8 +1,18 @@
 # Functional 3D Printing Eval
 
-**Contents:** [How a trial runs](#how-a-trial-runs) · [Constraints](#constraints) · [What the eval tests: failure classes](#what-the-eval-tests-failure-classes) · [The test prints behind the checks](#the-test-prints-behind-the-checks) · [The tasks](#the-tasks) · [Results](#results) · [What we couldn't grade](#what-we-couldnt-grade) · [Run it](#run-it) · [Limits](#limits) · [Prior work and comparable evals](#prior-work-and-comparable-evals) · [Tools used](#tools-used) · [How we used AI](#how-we-used-ai) · [More](#more)
+**Contents:** [How this started](#how-this-started) · [How the agent works](#how-the-agent-works) · [How a trial runs](#how-a-trial-runs) · [Constraints](#constraints) · [What the eval tests: failure classes](#what-the-eval-tests-failure-classes) · [The test prints behind the checks](#the-test-prints-behind-the-checks) · [The tasks](#the-tasks) · [Results](#results) · [What we couldn't grade](#what-we-couldnt-grade) · [Run it](#run-it) · [Limits](#limits) · [Prior work and comparable evals](#prior-work-and-comparable-evals) · [Tools used](#tools-used) · [More](#more)
+
+The code as submitted to the hackathon is at the [`hackathon-submission` tag](https://github.com/oveddan/functional-print-eval/tree/hackathon-submission); this README describes the eval as it is now.
 
 3d printing is becoming far more accessible to the general public, as state of the art printers have become cheaper while increasing their capabilities, and LLMs can generate designs using open source tools, without a user needing to learn 3d modeling or purchase expensive software.  
+
+In the design process, these models often make mistakes, which are costly both in time and money, as prints can take hours to complete, and physical material is consumed. If there are errors, another print needs to be made, thus wasting the time and material spent.
+
+How can we determine which models produce the best designs, with the least amount of tokens spent, material consumed, and time waited for printing?  How can we simulate the result of each print design, and know if it will be successful or not before printing it?  How can we build a feedback loop that allows a model to correct its mistakes, and measure if its fix got us closer to the final answer?
+
+This repository builds a framework for simulating and measuring the success when LLMs are designing [functional prints](https://www.reddit.com/r/functionalprint/) based on a prompt, measurements, available materials, and simulated results.
+
+## How this started
 
 ![The Estoa enclosure in OpenSCAD: its code on the left, written with an LLM, and the 3D model it renders on the right](https://media.danoved.xyz/print-build-eval/nogit/b08d6d81/estoa-openscad.jpg)
 
@@ -14,15 +24,9 @@ Over the past month, I've been working on a bunch of 3D printing projects at hom
 |---|---|---|
 | The gallery piece, coming apart and back together | Its frosted wall, after a test print showed the layer lines | A test print for the heat-set inserts |
 
-In the design process, these models often make mistakes, which are costly both in time and money, as prints can take hours to complete, and physical material is consumed. If there are errors, another print needs to be made, thus wasting the time and material spent.
-
 ![One of the art installation's insert posts (left), warped where the brass insert was pressed in, and the whole back plate (right)](https://media.danoved.xyz/print-build-eval/nogit/bca67479/back-plate-insert-warp-closeup-first.jpg)
 
 *An example of a print that failed, and cost lots of time and money: the back plate for an art installation, which had inserts. The poles for the inserts did not have enough give, causing them to warp when the inserts were pressed in. This was a costly and timely mistake. We fixed it later, but had to reprint the whole plate again.*
-
-How can we determine which models produce the best designs, with the least amount of tokens spent, material consumed, and time waited for printing?  How can we simulate the result of each print design, and know if it will be successful or not before printing it?  How can we build a feedback loop that allows a model to correct its mistakes, and measure if its fix got us closer to the final answer?
-
-This repository builds a framework for simulating and measuring the success when LLMs are designing [functional prints](https://www.reddit.com/r/functionalprint/) based on a prompt, measurements, available materials, and simulated results.
 
 Examples of functional printing tasks would be:
 
@@ -35,7 +39,9 @@ Examples of functional printing tasks would be:
 
 Or: *"Can we design a custom robotic arm that mounts to my desk?"*
 
-Here's how the agent works (we can link to the agent code):
+## How the agent works
+
+The loop is in [`pbe/runner/agent.py`](pbe/runner/agent.py). The person's answers come from [`measure.py`](pbe/runner/measure.py) (measurements) and [`coupon_loop.py`](pbe/runner/coupon_loop.py) (how test prints came out), and the checks on the final print are in [`pbe/graders/`](pbe/graders/).
 
 1. A person asks in plain language for a printed fix: a camera plate, a knob with a nut pressed in, a wheel with bearings
 2. The model is given a 3d printer, filament, and list of available hardware. It writes each part as code (CadQuery, in Python), which it can't run or look at.
@@ -87,7 +93,7 @@ In each trial, nothing actually gets printed. We have checks, run by code, that 
 
 ## What the eval tests: failure classes
 
-Every one of our checks comes from failures that happened on my real builds. We used AI to scrape my existing sessions, found 57 failures, and categorized them into 10 classes ([every check](docs/reference.md#the-failure-classes-the-tasks-test)). Six of the classes were tested in these trials.
+Every one of our checks comes from failures that happened on my real builds. Going back through my past build sessions, I found 57 failures and categorized them into 10 classes ([every check](docs/reference.md#the-failure-classes-the-tasks-test)). Six of the classes were tested in these trials.
 
 | Class | From Dan's builds | A real failure | How the code checks it |
 |---|---|---|---|
@@ -97,49 +103,6 @@ Every one of our checks comes from failures that happened on my real builds. We 
 | **C5** Mating-part envelopes | ![The ESP32's USB-C opening in the Estoa box, sized to the port, not the plug](https://media.danoved.xyz/print-build-eval/nogit/c524a219/IMG_4884.jpg) | Estoa's USB opening fit the port, but a real plug's head is wider than the hole. | It places the real hardware against the part (the clamp's jaws, both bearings, the perfboard, a USB-C plug) and checks each one fits. |
 | **C6** Printability in the orientation printed | ![The underside of the tripod's Arca plate: the roof over the bolt's recess printed as a tangle](https://media.danoved.xyz/print-build-eval/nogit/1e41d9fa/IMG_5045.jpg) | The bottom of the camera plate: the plastic printed over the bolt's recess collapsed into loose strands. | It cuts the part into layers as printed and lays strands across every overhang. If too few land on solid at both ends, the roof fails. Each part must also be one piece and fit the bed. |
 | **C7** Works in the orientation it's used | no photo | Estoa's keyhole slots ran down, so it couldn't hang on its screws. | It reads which way is up from the design and checks each keyhole's slot runs up from its entry. |
-
-<details>
-<summary>How two of the checks use my test prints, in pseudocode</summary>
-
-**C2, does the nut fit its pocket** (`pbe/graders/nuts.py`), against the nut-pocket test print:
-
-```text
-recorded = my nut-pocket test print: for each nut size, each pocket's clearance and what the nut did
-           (won't go in / snug, holds upside down / falls out)
-
-for each layer of the model's part, from the bed up:
-    find a hexagonal hole about the size of the nut
-pocket = the widest across-flats of that hole
-if the pocket has ribs, clips or a lip:  compare it with round 3's pocket of the same shape and bite;
-                                          not graded if none is close
-clearance = pocket - the nut's across-flats size (ISO table)
-
-if a recorded pocket is within 0.01 mm of clearance:  use what that nut did
-elif clearance is between two recorded pockets that did the same thing:  use that
-elif it's tighter than one that wouldn't go in, or looser than one that fell out:  use that
-else:  not graded  (no print says)
-pass only if the nut goes in by hand and holds upside down
-```
-
-**C6, does a roof print over air** (`pbe/graders/bridges.py`), against the roof test prints:
-
-```text
-longest_clean_span = the longest roof my test prints bridged cleanly (50 mm)
-
-slice the part into 0.2 mm layers, from the bed up
-for each layer:
-    unsupported = this layer minus the layer below
-    skip anything within a short overhang of the layer below
-    for each unsupported region:
-        for strand directions every few degrees:
-            lay strands 0.4 mm apart across the region
-            a strand is good if both ends land on the layer below, within longest_clean_span
-        if some direction has (nearly) every strand good:  the roof prints
-if no direction works:  fail  (a hole cut through a roof always fails: strands end at the hole)
-a ledge narrower than any that tangled in a test print:  not graded
-```
-
-</details>
 
 Not tested yet: C4 tool and hand access, C8 test-plan coverage, C9 manual correctness, C10 print settings.
 
@@ -153,9 +116,7 @@ uv run python -m pbe.run examples/arca-plate/original.yaml examples/arca-plate/f
 
 ## The test prints behind the checks
 
-The hackathon started on Oct 30, but I was flying away from home that day and would be away from my 3D printer for the whole hackathon. So on Oct 28, I began creating test prints that could provide the ground truth for parts of the 3D printing simulation, shown below.
-
-Each print tests the ground truth of one thing. For example, if there's a roof over a hole, will it print successfully? We printed nut pockets at different sizes, using different techniques, to see which size a nut would fit into snugly without falling out.
+These test prints provide the ground truth for parts of the 3D printing simulation. Each print tests the ground truth of one thing. For example, if there's a roof over a hole, will it print successfully? We printed nut pockets at different sizes, using different techniques, to see which size a nut would fit into snugly without falling out.
 
 What each print tests, why we printed it, and what happened, from the test-print code (`coupons/coupons.py`) and the records of both rounds with my notes (`results/predictions/`):
 
@@ -231,9 +192,17 @@ We ran out of time to make the test-print loop work on this task. Some example f
 ## Results
 
 <!-- scorecard:start (written by scripts/scorecard.py; don't edit by hand) -->
-![Pass rate per task and cost per working part for each model when it can ask for test prints, the best in each row in green](docs/media/results-table.svg)
+| Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | All four tasks | Estoa light box (harder) | Print hours per pass | Filament per pass | Cost per pass |
+|---|---|---|---|---|---|---|---|---|---|
+| Gemini 4 Argon | **70% (7/10)** | 75% (6/8) | **100% (5/5)** | **100% (5/5)** | **82% (23/28)** | 0% (0/3) | **0.4 h** | **13 g** | $0.19 |
+| GPT-6.1 Sol | 20% (2/10) | 70% (7/10) | 60% (6/10) | **100% (10/10)** | 62% (25/40) | 0% (0/3) | 0.5 h | 18 g | $0.08 |
+| Gemini 3.8 Flash | 20% (2/10) | **100% (5/5)** | 60% (3/5) | 80% (4/5) | 56% (14/25) | 0% (0/3) | **0.4 h** | 14 g | $0.26 |
+| Opus 5.5 | 30% (3/10) | 40% (4/10) | 50% (5/10) | 90% (9/10) | 52% (21/40) | 0% (0/3) | 0.5 h | 17 g | $0.29 |
+| Sonnet 5.5 | 10% (1/10) | 0% (0/10) | 90% (9/10) | **100% (10/10)** | 50% (20/40) | 0% (0/3) | 0.7 h | 23 g | $0.21 |
+| DeepSeek V4.1 Flash | 33% (3/9) | 40% (2/5) | 20% (1/5) | 57% (4/7) | 38% (10/26) | 0% (0/3) | 1.0 h | 35 g | $0.16 |
+| Haiku 5.5 | 0% (0/5) | 0% (0/5) | 40% (2/5) | 20% (1/5) | 15% (3/20) | not run | 2.0 h | 74 g | **$0.04** |
 
-In these results the model can ask for test prints before its final design, as in [How a trial runs](#how-a-trial-runs). Each column is a model, best first; the best in each row is in green. A pass means every check passes on my recorded test prints. Time, filament and cost per pass count everything the model printed, test prints included, divided by the parts that work.
+In these results the model can ask for test prints before its final design, as in [How a trial runs](#how-a-trial-runs). Each row is a model, best first; the best in each column is bold. A pass means every check passes on my recorded test prints. Time, filament and cost per pass count everything the model printed, test prints included, divided by the parts that work.
 
 **Best to worst, when the model can ask for test prints** (7 models, 5 or more trials on each of the four tasks):
 
@@ -272,25 +241,9 @@ Some of the gain after feedback comes from a gap in the simulation, not from wha
 
 The models design a print without really understanding the constraints of 3D printing. A lot of them design roofs over open space that can't print without supports. They design a place to slot in a nut without any kind of gap, so the nut won't go in. The models do make test prints, but they test the wrong thing. On the wheel they tested if the bearing fits, and mostly got that right. Then the wheel failed on stuff they never tested, like not leaving room for both bearings, the bolt not fitting through, or a roof printed over air.
 
-### The takeaway
-
-With 3D printing, there's a lot of things people can now do. It's getting more accessible, but you still need to have some knowledge of how it works. You want the model to be able to do some testing with you to test what it knows, so it can know what it doesn't know. It's the same as unit testing, except you're printing a small piece of material. The test print isn't that great, actually. It's almost like it's writing a unit test, but the unit test isn't testing the edge cases or the risky part.
-
-Designing a 3D model with AI reveals similar issues as when you write code. It can appear visually correct, but there can be all these internal issues that come up without a human experienced in 3D printing knowing the errors, that occurred due to a lack of testing before delivering the final version.
-
-Sending the 3D model to the slicer is like compilation: it tells you how long and expensive it will be to print.
-
-A test print is like a unit test of code. An experienced 3D print designer would know the edge cases of what can go wrong, and would make a test that minimally tests a specific error. A good test print, like a good unit test, tests just one thing, and can save loads of time when printing the final result.
-
-The final print is like deploying a release, except the consequences of being wrong are more expensive than in software, in both time and material.
-
-Another takeaway is that all these failures that we are now able to predict would be great to use on their own. This can be like a suite that I could use in the future when I'm doing my 3D modeling, because I can catch errors that I know are going to happen.
-
-With more test prints around all these designs that the model makes, I can really have a better ground truth, and even skip doing a physical test print, because I know if it's going to fail or not.
-
 ## What we couldn't grade
 
-During the hackathon I was away from my 3D printer, so the first results left every design no test print covered as **not graded**: crush ribs to hold a nut, narrow roof ledges, bolt holes and bearing seats between the sizes I'd printed, the USB-C plug's head. Not graded is never a pass, because we don't know the truth.
+The first results left every design no test print covered as **not graded**: crush ribs to hold a nut, narrow roof ledges, bolt holes and bearing seats between the sizes I'd printed, the USB-C plug's head. Not graded is never a pass, because we don't know the truth.
 
 Back at the printer on 2026-11-11 and 12, I printed a third round of test prints aimed at those gaps, and six roofs cut straight out of the models' own Estoa designs, and measured my USB-C plug. The checks now read those records, and every saved trial was regraded (`CHANGELOG.md`, 2026-11-12, has each rule and its evidence). 127 trial results moved from what was published before: 64 nut knobs and 3 bearing wheels that were not graded now pass, and 40 not graded now fail; 10 knobs that passed now fail, because their pockets are tighter than round 3's tightest that took a nut. Five of the six roof crops failed as the bridge check predicted, and the sixth, a short-span roof, printed clean, so roofs whose strands are all 6.8 mm or shorter now pass. The Estoa light box stays at 1 pass in 48: its other failures, mostly keyholes and roofs that really tangle, still stand.
 
@@ -318,7 +271,7 @@ What's still not graded, how many trials produced each, and the print that would
 
 ## Run it
 
-From the unzipped folder, with [uv](https://docs.astral.sh/uv/) installed and no API key:
+From a clone, with [uv](https://docs.astral.sh/uv/) installed and no API key:
 
 ```bash
 uv sync
@@ -354,7 +307,7 @@ In my own 3D printing workflow, I'm constantly adding to a self-learning knowled
 
 Our test prints were done on my Bambu Lab X1C, only in PLA, with a single print setting. To make the eval broader, we would do test prints in different materials and on different 3D printers.
 
-I worked with Opus 5.5 to go through and decide on assumptions about results that would enable us to grade some of the unknowns.  These are captured in [the reference](docs/reference.md#assumptions-calls-and-known-limits).
+The assumptions that let us grade some of the unknowns are in [the reference](docs/reference.md#assumptions-calls-and-known-limits).
 
 ## Prior work and comparable evals
 
@@ -372,18 +325,7 @@ Code from BenchCAD (MIT) is used for its CadQuery sandbox; CADEngBench has no li
 - **Building and checking parts**: CadQuery (the models write their parts in it), trimesh, manifold3d and shapely for the geometry, bubblewrap or `sandbox-exec` to run model code in a sandbox.
 - **Print time and filament**: Bambu Studio's slicer, offline.
 - **Test prints**: a Bambu Lab X1C, PLA.
-- **Writing the code**: Claude Code (Opus 5.5), with reviews by Codex.
-- **README**: Pangram to check which parts read as AI-written.
-
-## How we used AI
-
-* Claude Code and Opus 5.5 wrote pretty much all the code, did the refactoring, wrote all the checks and the test cases, and helped me edit the docs.
-* It also ran all the evals, set up the connection to OpenRouter, and helped me scrape my old printing sessions for failures.
-* I was able to use AI to run a suite of evals in the cloud while I was away from my computer.
-* I used Codex to review the code Opus 5.5 generated.
-* I also had Opus 5.5 generate sample renders and pages so I could review how the evals ran and give human feedback on how they were being scored.
-* I wrote or dictated most of the README's text myself. Claude wrote the generated tables, the failure-class table and some captions, and edited the rest.
 
 ## More
 
-The full results, every check, what went wrong task by task and the prior art are in [docs/reference.md](docs/reference.md). MIT licence, in `LICENSE`. `docs/context/` is my private material, isn't covered, and is left out of the submission ZIP.
+The full results, every check, what went wrong task by task and the prior art are in [docs/reference.md](docs/reference.md). MIT licence, in `LICENSE`.

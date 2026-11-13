@@ -39,7 +39,6 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "results/runs"
 README = ROOT / "README.md"
 CHART = ROOT / "docs/media/scorecard.svg"
-RESULTS_TABLE = ROOT / "docs/media/results-table.svg"  # the README's headline picture: test-first, best per row in green
 REFERENCE = ROOT / "docs/reference.md"  # carries the full scorecard table and the chart
 HARDER = ("estoa-light", "Estoa light box (harder)")  # in the test-first table as its own row, not in the four-task total
 TEST_FIRST = "test-first"  # the run where the model may ask for test prints before its final design (agent.TEST_CONDITION)
@@ -377,96 +376,56 @@ def improvement(listed: list[Row]) -> str:
     return "\n".join(lines)
 
 
-TABLE_STYLE = ("<style>.bg{fill:#ffffff}text{fill:#1f262b}.sub{fill:#66727b}.line{stroke:#dde3e8}.rule{stroke:#9aa7b1}"
-               ".total{fill:#f1f4f6}.track{fill:#e7ecef}.bar{fill:#8c9cab}.top{fill:#2e7d4f}text.top{fill:#2e7d4f}"
-               "@media (prefers-color-scheme: dark){.bg{fill:#15191c}text{fill:#e4e9ec}.sub{fill:#9aa6ad}.line{stroke:#2b3338}"
-               ".rule{stroke:#56636c}.total{fill:#1c2226}.track{fill:#262d32}.bar{fill:#6f8191}.top{fill:#5fbf8a}"
-               "text.top{fill:#6fd09a}}</style>")
-
-
-HEADER_CHARS = 15  # about what fits in a column at 15 px bold; a longer name goes on two lines
-
-
-def header_cell(name: str, x: int, head_h: int) -> str:
-    """A model's name over its column, on two lines when it's too long for one."""
-    if len(name) <= HEADER_CHARS or " " not in name:
-        return f'<text x="{x}" y="{head_h - 20}" font-size="15" font-weight="700">{name}</text>'
-    first, last = name.rsplit(" ", 1)
-    return (f'<text x="{x}" y="{head_h - 30}" font-size="15" font-weight="700">{first}'
-            f'<tspan x="{x}" dy="18">{last}</tspan></text>')
-
-
 def results_table(listed: list[Row]) -> str:
-    """The test-first results as a picture: a column per model, best first, a row per task and per cost (Dan's layout,
-    2026-11-07, in the eval's own look since 2026-11-08). Each pass rate has a bar; the best in each row is in green,
-    as the galleries mark a pass, and the top model's name is underlined in green."""
+    """The test-first results as a markdown table: a row per model, best first, so GitHub's alternate-row shading
+    separates the models; a column per task, then the costs per working part. The best in each column is bold, and a
+    0% tie wins nothing. (A picture with the best cell in green until 2026-11-13, when Dan asked for markdown.)"""
     tested = tested_order(listed)
     harder = [(HARDER[1], "pass", HARDER[0])] if any(row.tested.get(HARDER[0]) for row in tested) else []
-    rows = [(name, "pass", task) for task, name in TASKS.items()] + [("All four tasks", "pass", None)] + harder + [
-            ("Print hours per pass", "print_s", None), ("Filament per pass", "grams", None), ("Cost per pass", "cost", None)]
-    label_w, col_w, head_h, row_h = 190, 148, 52, 54
-    width, height = label_w + col_w * len(tested) + 2, head_h + row_h * len(rows) + 2
+    columns = [(name, "pass", task) for task, name in TASKS.items()] + [("All four tasks", "pass", None)] + harder + [
+               ("Print hours per pass", "print_s", None), ("Filament per pass", "grams", None),
+               ("Cost per pass", "cost", None)]
 
     def value(row: Row, kind: str, task):
-        return row.tested_rate(task) if kind == "pass" else row.tested_per_pass(kind)
+        """As shown, so two cells that read the same tie."""
+        v = row.tested_rate(task) if kind == "pass" else row.tested_per_pass(kind)
+        rounding = {"print_s": lambda x: round(x / 3600, 1) * 3600, "grams": round, "cost": lambda x: round(x, 2)}
+        return v if v is None or kind == "pass" else rounding[kind](v)
 
-    def shown(row: Row, kind: str, task) -> tuple[str, str]:
+    def shown(row: Row, kind: str, task) -> str:
         v = value(row, kind, task)
         if kind == "pass":
             trials = row.tested.get(task, []) if task else row.tested_trials()
-            if v is None:
-                return "not run", ""
-            return percent(v), f"{sum(t.passed() for t in trials)}/{len(trials)} trials"
+            return "not run" if v is None else f"{percent(v)} ({sum(t.passed() for t in trials)}/{len(trials)})"
         if v is None:
-            return ("no pass", "") if not any(t.passed() for t in row.tested_trials()) else ("not sliced", "")
-        return {"print_s": (f"{v / 3600:.1f} h", "test prints included"), "grams": (f"{v:.0f} g", "test prints included"),
-                "cost": (f"${v:.2f}", "OpenRouter")}[kind]
+            return "no pass" if not any(t.passed() for t in row.tested_trials()) else "not sliced"
+        return {"print_s": f"{v / 3600:.1f} h", "grams": f"{v:.0f} g", "cost": f"${v:.2f}"}[kind]
 
-    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" '
-           'font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">', TABLE_STYLE,
-           f'<rect class="bg" x="0" y="0" width="{width}" height="{height}"/>']
-    bar_w = col_w - 28
-    for r, (name, kind, task) in enumerate(rows):
+    def winners(kind: str, task) -> list[bool]:
         values = [value(row, kind, task) for row in tested]
         present = [v for v in values if v is not None]
         best = (max(present) if kind == "pass" else min(present)) if present else None
-        y = head_h + r * row_h
-        winners = [v is not None and v == best and (kind != "pass" or v > 0) for v in values]  # a 0% tie wins nothing
-        total = task is None and kind == "pass"
-        if total:
-            out.append(f'<rect class="total" x="0" y="{y}" width="{width}" height="{row_h}"/>')
-        weight = ' font-weight="700"' if total else ""
-        out.append(f'<text x="14" y="{y + 32}" font-size="15"{weight}>{name}</text>')
-        for c, row in enumerate(tested):
-            x = label_w + c * col_w + 14
-            big, small = shown(row, kind, task)
-            top = ' class="top" font-weight="700"' if winners[c] else ""
-            out.append(f'<text x="{x}" y="{y + 23}" font-size="16"{top}>{big}</text>')
-            if small:
-                out.append(f'<text class="sub" x="{x}" y="{y + 38}" font-size="11">{small}</text>')
-            if kind == "pass" and values[c] is not None:
-                out.append(f'<rect class="track" x="{x}" y="{y + 44}" width="{bar_w}" height="4" rx="2"/>')
-                if values[c] > 0:
-                    out.append(f'<rect class="{"top" if winners[c] else "bar"}" x="{x}" y="{y + 44}" '
-                               f'width="{max(bar_w * values[c], 4):.1f}" height="4" rx="2"/>')
-        rule = r + 1 < len(rows) and kind == "pass" and rows[r + 1][1] != "pass"  # between the pass rates and the costs
-        out.append(f'<line class="{"rule" if rule else "line"}" x1="0" x2="{width}" y1="{y + row_h}" y2="{y + row_h}" stroke-width="1"/>')
-    for c, row in enumerate(tested):
-        out.append(header_cell(SHORT.get(row.model, row.model), label_w + c * col_w + 14, head_h))
-    out.append(f'<line class="rule" x1="0" x2="{width}" y1="{head_h}" y2="{head_h}" stroke-width="1"/>')
-    out.append(f'<rect class="top" x="{label_w + 14}" y="{head_h - 6}" width="{bar_w}" height="3" rx="1.5"/>')
-    out.append("</svg>")
-    return "\n".join(out) + "\n"
+        return [v is not None and v == best and (kind != "pass" or v > 0) for v in values]
+
+    bold = [winners(kind, task) for _, kind, task in columns]
+    lines = ["| Model | " + " | ".join(name for name, _, _ in columns) + " |",
+             "|---|" + "---|" * len(columns)]
+    for r, row in enumerate(tested):
+        cells = []
+        for c, (_, kind, task) in enumerate(columns):
+            cell = shown(row, kind, task)
+            cells.append(f"**{cell}**" if bold[c][r] else cell)
+        lines.append(f"| {SHORT.get(row.model, row.model)} | " + " | ".join(cells) + " |")
+    return "\n".join(lines)
 
 
 def headline(listed: list[Row]) -> str:
     """What the README's results section shows between its markers: the picture, its legend and the ranking."""
     if not any(row.tested_trials() for row in listed):
         return markdown(listed)
-    return ("![Pass rate per task and cost per working part for each model when it can ask for test prints, the best "
-            "in each row in green](docs/media/results-table.svg)\n\n"
+    return (results_table(listed) + "\n\n"
             "In these results the model can ask for test prints before its final design, as in [How a trial runs]"
-            "(#how-a-trial-runs). Each column is a model, best first; the best in each row is in green. A pass means "
+            "(#how-a-trial-runs). Each row is a model, best first; the best in each column is bold. A pass means "
             "every check passes on my "
             "recorded test prints. Time, filament and cost per pass count everything the model printed, test prints "
             "included, divided by the parts that work.\n\n" + ranking(listed) + "\n\n" + improvement(listed) + "\n\n"
@@ -511,8 +470,6 @@ def main():
     listed = rows()
     table, top = markdown(listed), headline(listed)
     pictures = {CHART: chart(listed)}
-    if any(row.tested_trials() for row in listed):
-        pictures[RESULTS_TABLE] = results_table(listed)
     if not (args.write or args.check):
         print(top if top != table else table)
         return
