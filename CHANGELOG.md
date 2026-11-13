@@ -63,6 +63,74 @@ Dan's outcomes for round 3 (`results/predictions/round3-coupons.yaml`), the 3b r
 - **Estoa's R6, any common wall screw (Dan, 2026-11-11: "a generic wall screw, should work with different kinds of screws").** Claude's scoring call: the entry must pass a 9.9 mm head (a #10 pan head, 0.373 in, plus 0.2 a side for printed holes coming out small) and the slot must carry it clear of the entry; the slot passes a #8 shank (4.17) and holds a #6 pan head (6.5 mm). Not a #10 shank: Estoa's own 4.8 mm slots hung it. Head sizes are from supplier listings citing ASME B18.6.3 and B18.16.3, not the standard's table.
 - **Regrade of the 48 saved Estoa trials on a copy** (published results unchanged): 14 R6 verdicts moved, 9 not graded to fail (slots too short to carry a #10 head clear, or wider than a #6 head), 4 not graded to pass, 1 fail to pass (slots that ran down). Trials: Opus 5.5 `pilot-estoa` can_ask t2 goes from not graded to the first Estoa pass (entry 10.0 against the 9.9 limit, so it rests on the 0.2 mm margin); Opus t1 and Sonnet t2 from not graded to fail; Haiku t4 from fail to not graded.
 
+## 2026-11-12: servo R3 fails a plate with no gap for the rib, whichever way it's seated
+
+Dan, 2026-11-12: "if there's no gap printed for the rib (no slot), then it's a failure." Until now R3 took the best of three routes, and a plate with no room for the rib on either face, seated from above with more than test print D's 0.25 past the case end, came back not graded, since the cable exit was never measured. Six saved servo-mount plates were not graded that way (GPT-6.1 Sol four times, Sonnet 5.5 twice; 0.30 to 0.50 past the case end), all designs that forgot the rib, the miss the task is built to catch. A page drawing all eight not-graded plates from their STLs showed it.
+
+- **The rule** (`servo.flush`): if neither face gives the rib room, R3 fails, with the cable route's detail kept. A plate with rib room is unchanged, and so is a miss under the tabs where another part's place isn't recorded. Applies to servo-arm's R3 too, which uses the same grader.
+- **Regraded** offline: servo-mount, 29 trials, 4 pass, 17 fail, 8 not graded became 4 pass, 23 fail, 2 not graded. The two left are Gemini 4 Argon's `can_ask_datasheet` plate (R2, blind screw holes) and GPT-6.1 Sol's `all_given` plate in `servo-first-look-2` (R2 and R3, separate rails whose place isn't recorded). servo-arm's first look: Sonnet 5.5 `can_ask` went from not graded to fail on R3; 6 fail, 1 not graded (DeepSeek). Other R3 details changed wording only.
+- **What it rests on:** Dan's rule, not a print. Seated from above the rib faces away from the plate, and what stops that route is the cable, never measured; the brief says so under known limits. `docs/servo-arm-horn-request.md`'s cable-exit gap row now says it decides no saved trial.
+
+Evidence: `tests/test_servo_mount.py` (no rib room fails with a 0.4 plain cutout and with a cable notch, both not graded before), 72 passing in the servo files.
+
+**Restacked on main after #7:** servo-arm's R5 takes round 3's H records as bearing-wheel's R3 does (22.05 too tight, 22.4 and up too loose; `wheel._holds` gained `too_loose`). A 22.6 seat now fails instead of being not graded. Saved servo-arm trials not regraded for it (a follow-up); round3-coupons.yaml is main's copy.
+
+**Codex review fix** (PR 4, `arm.py`): R7 counted an end of the arm's bore as open if its centre was clear, so a horn pocket under a 3.4 mm screw hole could go on from the screw's side too, which the hub can't. An end now counts as open only if the hub's whole circle clears it. Test: `test_a_horn_pocket_under_a_screw_hole_goes_on_one_way_only` (fails before the fix). Regraded servo-arm's first look: no finding changed.
+
+Scoring walk:
+- **Real-world relevance:** unchanged.
+- **Task design:** the trap now catches what it was built for; weak: most models still seat from above, where the rib only fails by rule.
+- **Grader reliability:** six not-graded verdicts settled; weak: by Dan's rule rather than a printed record of the cable.
+- **Evidence of model limitations:** R3 now fails in 21 of the 29 servo-mount trials; models that leave a rib channel are still rare (4 passes).
+- **Reproducibility:** regrade needs no key.
+- **Human expertise and review:** the rule is Dan's.
+- **Insight:** a picture of the plates made the call obvious that a table of "not graded" didn't.
+
+## 2026-11-12: round 3's servo test prints settle servo-mount's R1 band, its rib channel, and servo-arm's horn pocket
+
+Dan recorded round 3's M and N pieces on 2026-11-12 (`results/predictions/round3-coupons.yaml`, copied unchanged from branch `claude/test-first-ten`, where it's uncommitted; whichever lands second takes the other's copy).
+
+- **R1, the cutout** (servo-mount and servo-arm): M3's frames went over the MG996R's body at 0.0 a side ("fits very snugly") and 0.1 ("fits snugly, but not as snug"). The band between the body's size and test print D's 0.25, not graded until now, passes: `fits: [0.0, 0.1]`. Under 0 a side still fails.
+- **R3, the rib's channel:** M1 (0.295 a side) and M2 (0.05 and 0.15 a side), channels 2.2 deep, plate grooved face up: every channel took the rib and the tabs sat flush. The pass moves from the rib plus 0.25 a side (carried over from R1, no relieved plate printed) to the rib plus 0.05 (`rib.room`), and narrower down to the rib's own width passes as assumed from 0.05, within the assumption tolerance. The depth rule is unchanged: 1.8, the rib's height.
+- **R2, the 10 mm across a tab:** M's 3.4 holes at 10 showed clear through all four tab holes with the servo seated ("visually it is a clear hole, there is no obstruction"). That confirms 10 to about ±0.6 mm, not exactly; no screw was tried. No verdict moves: R2 already used 10.
+- **R4 on the horn** (servo-arm): N's 14.76 pocket "fits nicely: cozy, a bit loose but doesn't fall out" (Dan: "a bit loose is fine"); 15.16 and 15.66 "too big". The outcome words gain "fits" (works, read before "loose"), "too big" (too loose) and "too small" (too tight), Claude's call. A pocket from the hub's 14.66 to 14.96 passes (14.76 printed, the rest assumed from it); 15.0 and up fails (assumed from 15.16 below it).
+- **Planning miss, from round 3:** the cable leaves the case below the tabs, so a close cutout only takes the servo shaft end first from the side the tabs land on. The brief now says so; R3's "from underneath" is that seating, named for the plate.
+
+Regraded every saved servo-mount and servo-arm trial offline. servo-mount, 29 trials: 1 pass, 17 fail, 11 not graded became 4 pass, 17 fail, 8 not graded. The three new passes are `servo-first-look` `all_given` Gemini 4 Argon, and `servo-first-look-2` `all_given` Opus 5.5 and `can_ask` Gemini 4 Argon, all on R1, with cutouts 0.12 to 0.19 a side. R1 went from not graded to pass in 13 of the 29. No R3 verdict changed. servo-arm's first look: no trial's outcome changed; R1 passed in three more trials, and Haiku `all_given`'s 15.06 horn pocket went from not graded to fail on R4, too loose, assumed from 15.16. `docs/reference.md`'s servo-mount row is updated.
+
+Evidence: `tests/test_servo_mount.py` (a 0.0 and a 0.1 cutout pass; 1.7 and 1.55 channels pass, the second as assumed) and `tests/test_servo_arm.py` (the recorded pockets: 14.8 passes, 15.0 fails), 73 passing in those files; full suite 639 passed, 52 skipped.
+
+Scoring walk (`docs/scoring.md`, and section 5 of the hackathon's eval design guide):
+- **Real-world relevance:** Dan's own servo and horn, on the printer he uses. Weak: one servo and one horn.
+- **Task design:** unchanged; only the limits moved.
+- **Grader reliability:** two not-graded bands closed from printed records, with three trials moving to pass. Weak: the horn's pass below 14.76 and R3 under 0.05 a side rest on the assumption tolerance, not prints; the outcome words are matched by keyword.
+- **Evidence of model limitations:** most models chose a cutout 0.1 to 0.2 a side, tighter than D's 0.25, and that band now passes, so the R1 trap mostly didn't catch anyone; failures left on servo-mount are R2 and R3.
+- **Reproducibility:** the records are a committed file; the regrade needs no key.
+- **Human expertise and review:** Dan's outcomes; reading "fits nicely ... a bit loose" as works, and the frame orientation as R3's "from underneath", are Claude's.
+- **Insight:** a test print planned around one direction of assembly can be answered in the other: round 3's frames were meant to be pushed up from underneath, the cable stopped that, and the result still settled R1 because sliding a frame over the body is the same fit.
+
+## 2026-11-11: servo-arm brought onto the current history; R4 grades an arm on the horn from round 3's pockets once they're recorded
+
+servo-arm was built on the history before 2026-11-08's rewrite and never merged. Its files are ported by hand onto main (branch `claude/servo-arm-horn`); the old branches (`claude/servo-arm`, `claude/servo-arm-assembly-plan`) aren't rebased or pushed. servo-mount was already on main (#47), identical to `claude/servo-mount`, so nothing of it is ported.
+
+- **Ported:** `tasks/servo-arm/`, `pbe/graders/arm.py`, `catalog/datasheet_estimates.yaml`, `docs/servo-arm-assembly-plan.md`, `tests/test_servo_arm.py`, the first look (`results/first-look/servo-arm-first-look`), and its two changes to `servo.py` (the cutout reader's run ends where the overlap can't take the body; the closest fit wins), with their two servo-mount tests. The task's `prompt.yaml` is now `format.yaml`, as main moved prompt rules there; the datasheet paths and the servos left out are the same. CI's reference loop includes servo-arm.
+- **R4 follows main's assumption tolerance** (`assumed.py`, 2026-11-08), as every other fit check does: a bore within 0.2 mm of test print E's 5.94, 6.04 or 6.14 takes that print's result, so 5.74 to 6.13 passes and 6.14 and up fails. R5 already had it through `wheel._holds`. Two tests changed with it: the spline's own 5.84 and 6.09 now pass, labelled as assumed; the not-graded cases moved to 5.70 and a 22.6 seat.
+- **R4 for an arm on the aluminium horn** (`arm.horn_records`, `arm.horn_fit`): the arm's hub pocket is graded from round 3's piece N (14.76, 15.16, 15.66 mm pockets, 2 mm deep), read from `results/predictions/round3-coupons.yaml`. That file isn't on this branch yet and its outcomes are empty, so every horn arm stays not graded, saying round 3 has no recorded outcome. Which words mean what is Claude's call, in `requirements.yaml`: the hub has to go in and centre the arm, so "won't go in" reads as too tight and "loose" as too loose; "tight" and "play" work. A failure keeps which way it failed: no bigger than a too-tight pocket, or no smaller than a too-loose one, fails; a size on a pocket that worked, or between two that did, passes; otherwise the nearest within 0.2 mm decides. Horn-shaped pockets and pockets under 1.8 mm deep aren't graded: only round 2 mm pockets were printed. The horn's two screw holes weren't on the piece, and nothing reads them.
+- **Regraded** the first look offline with both: no trial's outcome changed. Two R4 findings went from not graded to pass under the tolerance: Haiku `can_ask` (5.90 bore) and DeepSeek `can_ask` (5.75), both assumed from 5.94's hard push. The earlier verdicts stay in each `grades.json` under `regrades`.
+- **Codex review fixes** (PR 4), each with a test: a pocket's failure no longer rules out the other side (with only the loose 15.66 recorded, a 14.76 pocket had failed as "tighter than a pocket that didn't work"); a bore with a narrow slot or small teeth isn't plain (area alone missed a 0.5 mm slot, so the widest-span check `wheel._is_round` uses is added); and R5 passes if any seat holds the 608, since the design uses one, instead of letting another opening its size, such as a servo cutout, make it not graded. Regraded: no trial's outcome changed; R5 went from not graded to pass for Haiku `all_given` (22.29 seat) and Opus `all_given` (22.24).
+- **Proposed request** (`docs/servo-arm-horn-request.md`): the arm driven through the horn, and what changes in the checks. Not run; no run until the wording is approved.
+
+Evidence: `tests/test_servo_arm.py`, 29 tests, including a horn arm not graded with round 3 unrecorded and passing with a fixture where 15.16 worked, and pocket sizes against the fixture's records. `tests/test_servo_mount.py` and `tests/test_prompt_rule.py` pass: 95 in those three files. Full suite: 635 passed, 52 skipped before the review fixes; the servo and bearing-wheel files (95) after. `--reference --task servo-arm` passes every check.
+
+Scoring walk (`docs/scoring.md`, and section 5 of the hackathon's eval design guide):
+- **Real-world relevance:** Dan's own horn, on the arm he's building. Weak: one person's hardware.
+- **Task design:** unchanged until the new wording is approved; the proposal keeps the function in the person's words and leaves the mechanism open.
+- **Grader reliability:** the horn pocket's limits will come from a print record, read by code; until then not graded, never a pass. Weak: the screw holes aren't graded, the outcome words are matched by keyword, and horn-shaped pockets are left out.
+- **Evidence of model limitations:** no new runs.
+- **Reproducibility:** the grader reads a committed file; no key needed.
+- **Human expertise and review:** the outcome words, the "loose fails" call and the 1.8 mm depth floor are Claude's, for Dan to review.
+- **Insight:** a test print only settles what it has on it: piece N decides the hub but not the screw holes, so R4 on the horn can pass on centring while whether the arm turns with the horn stays open.
+
 ## 2026-11-08: The game spinner task removed
 
 - Dan's call, for the submission: the game spinner (PR 44) is taken out whole: its task, grader (`pbe/graders/combined.py`), first-look runs and tests. It was written before the assumption tolerance and broke against it (20 failing tests, one a crash in its grader); none of the scored results used it.
@@ -77,6 +145,32 @@ Dan's outcomes for round 3 (`results/predictions/round3-coupons.yaml`), the 3b r
 - **Scorecard**: the results table in the eval's own look (Dan: not the reference's), a before-and-after table of first print against test prints, and the Estoa note.
 - **README**: the test-print section rebuilt from the records (`coupons/coupons.py`, `results/predictions/`) in Dan's words; a test-print storyboard and flowchart for the test-print loop; Estoa's example failures; the neutral OpenRouter key wording, the try-your-own-request note and `can_test` as `pbe.try_request`'s default (from the skill session, Dan's request).
 - **Submission ZIP**: `results/runs/**/transcript.json` is left out (143 MB of the repo's 165), so the ZIP is under 50 MB; the transcripts stay in the repository.
+
+## 2026-11-07: New task `servo-arm`, an arm on the MG996R that swings both ways, graded from the test prints and an estimate off the datasheet drawing
+
+A second task on Dan's servo, after he asked for something more mechanical than a plate. The request is his own wording, approved on 2026-11-07: "I want to prototype the first version of a robot arm. I have an MG996R servo and a 608 bearing to work with. It should swing both ways, and the arm should be about 100 mm long." He first asked for 90° either way, and loosened it to "swing both ways" once the swing turned out to need the shaft's position, which no one measured. No model has been run on it.
+
+- **Task** (`tasks/servo-arm/`): servo-mount's prompt rule (the `servos` section left out, the readings in `hidden_facts.yaml`) and its datasheet pages for `can_ask_datasheet`. The hidden facts add the spline (5.84), where the shaft is in words, the listing's 120° and the horns in the box. The reference is servo-mount's plate plus a flat arm with a 6.0 bore on the spline and a 22.2 seat for the 608, 100 mm to its tip.
+- **Checks**: R1 to R3 are servo-mount's. New in `pbe/graders/arm.py`: R4 the bore on the shaft (test print E: 5.94 a hard push, 6.04 snug, 6.14 loose), R5 the 608's seat (round 2: 22.0 too tight, 22.1 to 22.3 held), R6 the length (85 to 115, a reading of "about 100", for Dan to change), R7 the swing: a clear 120° arc around the shaft (the datasheet's "approximately 120 degrees (60 in each direction)"), past the mount's part and the servo's case, at every shaft position and arm height the estimates allow.
+- **Estimates** (`catalog/datasheet_estimates.yaml`, new): the shaft 10.3 mm from one case end, on the centre line, measured in pixels off the datasheet drawing, used as 9.3 to 11.3 because the drawing isn't to scale; the arm anywhere 0 to 10 mm above the case top, because the drawing's heights disagree with Dan's readings by about 2 mm. In a separate file because `hardware.yaml` is in every task's prompt: adding them there changed all 18 recorded prompt hashes.
+- `servo.Mount` records the plate's axis and where its layers start, so R7 can place the servo's case. No servo-mount verdict changes.
+
+**First look** (`results/first-look/servo-arm-first-look`, 2026-11-07, Dan asked for it): the six lineup models in `can_ask` and `all_given`, one trial each, $3.75. OpenRouter's credits ran out after 8 of the 12 trials; Sonnet, DeepSeek, Gemini and GPT in `all_given` errored with HTTP 402 before a call was made and still have to be run. Of the 8, after the fixes below: no pass, 5 fail (2 on R3, 3 only on `bridges`), 2 not graded, 1 declined (GPT-6.1 Sol: final parts stop on `raise` until shaft_x and the horn are measured).
+- Four of the eight arms use Dan's aluminium horn rather than a printed bore. The checks found the arm only by a bore on the spline, so they read the horn's screw hole as a loose bore: Opus's and Sonnet's `can_ask` arms failed R4 on it. Dan pointed out the horn wasn't being used (2026-11-07), and asked to assume its holes are threaded for M3 (not yet in the hidden facts: the run's last four trials have to see the same facts).
+- **Horn route** (`arm._horn_pocket`): with no bore on the spline, a pocket whose clear circle is the horn's 14.66 hub stands in for the shaft's axis, so R6 and R7 grade the arm; R4 is not graded for it. A hole on the pocket's axis is the horn's. Tests: an arm on the horn, a 6.5 hole on its axis, and an arm with neither.
+- **servo-mount's cutout reader** (`servo._runs`) intersected a run's opening with any overlapping opening in the next layer, however little overlapped, so a gap behind the servo's window shrank the window to the overlap: Opus's `can_ask` frame, a wall with a 41.2 x 20.4 window, read 2.94 mm a side too small and failed R1. Now a run ends where the overlap can't take the body. That exposed a second fault: of several body-sized openings, `find_mount` took the roomiest, and Gemini's `can_ask` frame has a 2.3 a side gap with nothing for the tabs beside its 0.29 a side window. Now the servo goes in the closest fit the body passes (`servo._preference`). Tests: a gap behind the window, and a roomier window beside the cutout. Regrading every servo-mount trial (`servo-first-look`, `servo-first-look-2`, `servo-datasheet`, 29 trials) after both changed no verdict; Opus's frame now reads 0.29 a side and passes R1 and R2.
+- After both fixes, regraded: Sonnet `can_ask` fail → not graded; Opus `can_ask` loses R1 and R4, keeps a `bridges` fail. Multi-part designs dominate: 6 of the 7 that built have a part the format can't place, so R7 passed only for Haiku's two-part design.
+
+Evidence: `tests/test_servo_arm.py`, 20 tests: the reference passes everything; a loose bore, a 22.0 seat and a short arm each fail only their own check; posts around the shaft fail R7 when they stand past any arm height, pass when two leave room, and are not graded when they're low enough that the arm's height decides; a third part the format can't place makes R7 not graded; a blind bore goes on one way only. The prompt hashes in `tests/test_prompt_rule.py` still match.
+
+Scoring walk (`docs/scoring.md`, and section 5 of the hackathon's eval design guide):
+- **Real-world relevance:** Dan's own servo and bearing, in his own words, for the arm he's building. Weak: one person's hardware.
+- **Task design:** the request names the function and leaves the mechanism to the model. Weak: the swing rests on estimates, so many designs will come back not graded on R7, and horn-mounted arms aren't graded on R4, R6 or R7 at all.
+- **Grader reliability:** every fit limit cites a print record; the shaft position and height are labelled estimates with their bands; tests cover each mistake alone and the gaps. Weak: bearing alignment, load and horn fits aren't graded, and a 0.5 mm grid reads near misses as contact (never as a pass).
+- **Evidence of model limitations:** none yet: no runs.
+- **Reproducibility:** grading needs no key; the reference grades in about a minute.
+- **Human expertise and review:** the request is Dan's and he approved it; the limits, the 85 to 115 band and the estimate's ±1 mm are Claude's calls, for Dan to review.
+- **Insight:** with "swing both ways" instead of 90°, the servo's published range sets the bar, and the spline lets the arm start at any angle, so the check needs no rest position from the model.
 
 ## 2026-11-07: Test prints before the final design (`can_test`), and the README rebuilt around it
 

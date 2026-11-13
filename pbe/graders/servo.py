@@ -13,6 +13,7 @@ import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
 
+from pbe.graders import assumed
 from pbe.graders.checks import Verdict
 from pbe.graders.sections import clear_width, holes_in, sections_by_layer
 from pbe.parts import catalog
@@ -62,6 +63,8 @@ class Mount:
     cutout: Polygon  # clear through every one of those layers
     frame: Frame
     per_side: float  # the clearance a side around the body; negative if it doesn't fit, -inf if by over 3 mm
+    axis: int = 2  # the part's axis along the plate's thickness
+    low: float = 0.0  # where the first layer starts along it
 
 
 # --- finding the cutout ---------------------------------------------------------------------------
@@ -164,16 +167,28 @@ def _runs(openings_by_layer, body):
         carried = []
         for opening in candidates:
             run = next((run for run in open_runs if run[1].intersects(opening)), None)
-            if run is None:
-                carried.append([index, opening])
-            else:
-                open_runs.remove(run)
-                carried.append([run[0], run[1].intersection(opening)])
+            if run is not None:
+                cleared = run[1].intersection(opening)
+                if isinstance(cleared, Polygon) and _could_take(cleared, body):
+                    open_runs.remove(run)
+                    carried.append([run[0], cleared])
+                    continue
+                # too little overlap for the body: a different opening behind this one, so the run ends here
+            carried.append([index, opening])
         for start, cleared in open_runs:
             runs.append((range(start, index), cleared))
         open_runs = carried
     runs += [(range(start, len(openings_by_layer)), cleared) for start, cleared in open_runs]
     return [(layers, cleared) for layers, cleared in runs if isinstance(cleared, Polygon) and not cleared.is_empty]
+
+
+def _preference(per_side):
+    """Which of several openings the servo goes in: one the body fits through before one it doesn't, and
+    of those it fits, the closest fit, since a frame can have bigger openings too (Gemini 4 Argon's servo-arm
+    frame: a 0.29 a side window, and a 2.3 a side gap behind it with nothing for the tabs). Of those it
+    doesn't fit, the nearest to fitting."""
+    fits = per_side >= -TOL
+    return (fits, -per_side if fits else per_side)
 
 
 def _mount_along(part_id, mesh, axis, body):
@@ -190,13 +205,13 @@ def _mount_along(part_id, mesh, axis, body):
         per_side = _per_side(cutout, frame, body)
         if per_side is None:  # more than 3 mm a side too small
             per_side = -np.inf
-        if best is None or (per_side, len(plate)) > (best.per_side, len(best.plate)):
-            best = Mount(part_id, layer_h, layers, plate, cutout, frame, per_side)
+        if best is None or (_preference(per_side), len(plate)) > (_preference(best.per_side), len(best.plate)):
+            best = Mount(part_id, layer_h, layers, plate, cutout, frame, per_side, axis, float(mesh.bounds[0][axis]))
     return best
 
 
 def find_mount(sub, built, body):
-    """The final part and plate the servo mounts in, with the roomiest cutout: (Mount or None, why not)."""
+    """The final part and plate the servo mounts in, by _preference: (Mount or None, why not)."""
     finals = [part for part in sub.parts if part.role == "final"]
     if not finals:
         return None, "no final part"
@@ -207,7 +222,7 @@ def find_mount(sub, built, body):
         mesh = built[part.id].mesh
         for axis in np.argsort(mesh.extents):
             mount = _mount_along(part.id, mesh, int(axis), body)
-            if mount is not None and (best is None or mount.per_side > best.per_side):
+            if mount is not None and (best is None or _preference(mount.per_side) > _preference(best.per_side)):
                 best = mount
     if best is None:
         return None, f"no opening near the servo body's {body.length} x {body.width} mm in any final part"
@@ -216,9 +231,10 @@ def find_mount(sub, built, body):
 
 # --- R1: the body goes through ----------------------------------------------------------------------
 
-def cutout(sub, built, body, seats):
+def cutout(sub, built, body, seats, fits=None):
     """The body passes through the cutout. Looser than the test print isn't graded down: the tabs and
-    their screws hold the servo, not the cutout's sides."""
+    their screws hold the servo, not the cutout's sides. `fits` are the tighter cutouts the body also went
+    through (round 3's frames); with them, anything from the tightest up passes."""
     servo = Body(*body, seats)
     mount, why = find_mount(sub, built, servo)
     if mount is None:
@@ -229,9 +245,11 @@ def cutout(sub, built, body, seats):
         return False, f"the {servo.length} x {servo.width} mm body doesn't fit through: the opening is over 3 mm a side too small"
     if clearance < -TOL:
         return False, detail + ": the body doesn't fit through"
-    if clearance < seats - TOL:
+    tightest = min(fits) if fits else seats
+    if clearance < tightest - TOL:
         return None, detail + f": between the body's size and the {seats} a side it seated at, and nothing printed there"
-    return True, detail + f"; it seated at {seats} a side"
+    printed = ", ".join(f"{size:g}" for size in sorted(fits or [])) + (" and " if fits else "") + f"{seats:g}"
+    return True, detail + f"; the body went through cutouts at {printed} a side"
 
 
 # --- R2: screws land in the plate ------------------------------------------------------------------
@@ -384,7 +402,9 @@ def _seat(mount, order, servo, tabs):
 
 def _rib_route(mount, order, face, servo, tabs, rib, margin) -> Verdict:
     """Seated with the tab's top face against `face`: the rib between each tab's holes needs room
-    `rib["protrudes"]` deep and `rib["width"]` wide, plus `margin` a side to pass."""
+    `rib["protrudes"]` deep and `rib["width"]` wide. `margin` a side is the tightest channel printed that
+    took it; less than that, but no less than the rib, passes as assumed from it when it's within the
+    assumption tolerance."""
     contact, why = _seat(mount, order, servo, tabs)
     if contact is None:
         return Verdict(False, f"from the {face}: {why}")
@@ -399,6 +419,9 @@ def _rib_route(mount, order, face, servo, tabs, rib, margin) -> Verdict:
     if deepest_loose >= rib["protrudes"] - TOL:
         return Verdict(True, f"from the {face}: room for the rib, {rib['width']} wide with {margin} a side, {rib['protrudes']} deep")
     if deepest_tight >= rib["protrudes"] - TOL:
+        if margin <= assumed.ASSUMED_WITHIN:
+            return Verdict(True, f"from the {face}: room for the rib, {rib['width']} wide, {rib['protrudes']} deep, "
+                                 f"under {margin} a side ({assumed.note(margin)} a side)")
         return Verdict(None, f"from the {face}: room for the rib, but less than {margin} a side, and no relieved plate was printed")
     return Verdict(False, f"from the {face}: the rib stands {rib['protrudes']} mm proud of the tab and has {deepest_tight:.1f} mm of room")
 
@@ -422,7 +445,9 @@ def _cable_route(mount, servo, tabs, cable_stopped) -> Verdict:
 
 def flush(sub, built, body, seats, pitch, pair, tab_hole, rib, cable_stopped):
     """The tabs sit flush on the plate, seated either way: from underneath, the tab's top face meets the
-    plate, so the rib needs room; from above, its underside does, and the cable has to pass the cutout."""
+    plate, so the rib needs room; from above, its underside does, and the cable has to pass the cutout.
+    A plate with no room for the rib on either face fails, whatever the cable route says (Dan, 2026-11-12:
+    "if there's no gap printed for the rib, then it's a failure")."""
     servo, tabs = Body(*body, seats), Tabs(tuple(pitch), pair, tab_hole)
     mount, why = find_mount(sub, built, servo)
     if mount is None or mount.per_side < -TOL:
@@ -430,10 +455,12 @@ def flush(sub, built, body, seats, pitch, pair, tab_hole, rib, cable_stopped):
     up = list(range(len(mount.layers)))
     others = _other_finals(sub, mount)
     routes = [_maybe_elsewhere(route, others) for route in (
-        _rib_route(mount, up, "low face", servo, tabs, rib, seats),
-        _rib_route(mount, up[::-1], "high face", servo, tabs, rib, seats),
+        _rib_route(mount, up, "low face", servo, tabs, rib, rib.get("room", seats)),
+        _rib_route(mount, up[::-1], "high face", servo, tabs, rib, rib.get("room", seats)),
         _cable_route(mount, servo, tabs, cable_stopped))]
     detail = "; ".join(route.detail for route in routes)
+    if all(route.ok is False for route in routes[:2]):
+        return False, detail + "; with no room for the rib on either face, it fails either way it's seated"
     for wanted in (True, None):
         if any(route.ok is wanted for route in routes):
             return wanted, detail
