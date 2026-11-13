@@ -636,7 +636,7 @@ Also:
 - `seeds/`: the real failures behind the tasks (tripod, Estoa, side projects, the test prints), each tagged with a failure class from `seeds/classes.yaml`. They're evidence, not tasks, and their `grader:` fields are planned, not built.
 - `catalog/`: the hardware bin (`hardware.yaml`, with real thread lengths) and the printer (`printer.yaml`).
 - `coupons/`: the test print designs and the scripts that predicted their outcomes.
-- `docs/`: `scoring.md` (the quality bar), `limitations.md`, and the write-ups of each experiment. `plan.md` is the working plan and `CHANGELOG.md` ties every change to its evidence.
+- `docs/`: `scoring.md` (the quality bar), `limitations.md`, and the write-ups of each experiment. `plan.md` is the working plan. `changes/` (one file per change, built into `CHANGELOG.md` by `scripts/changelog.py`) ties every change to its evidence.
 - `scripts/`: the results page, the README's results table, the reproduce script and the experiments.
 - `examples/arca-plate/`: the Arca plate before and after its first print.
 

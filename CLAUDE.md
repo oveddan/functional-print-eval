@@ -2,7 +2,7 @@
 
 Start with `docs/plan.md` (phases, constraints, Dan's open decisions), then `docs/scoring.md` (the quality bar every task and grader is held to).
 
-- Keep `CHANGELOG.md` current: one entry per change that affects results, with the evidence behind it.
+- Record every change that affects results in its own change file, `changes/<YYYY-MM-DD>-<slug>.md`, with the evidence behind it (format in `changes/README.md`). Never edit `CHANGELOG.md`: it's git-ignored and built from `changes/` by `scripts/changelog.py`. One new file per PR means parallel and stacked PRs don't conflict there. CI fails a PR that changes `results/`, `pbe/graders/` or `catalog/` without one.
 - Never print, echo or commit API keys. Read them from 1Password at run time.
 - Don't copy code from repos with no license (CADEngBench, the BenchCAD 2.0 harness). Reimplement and cite.
 - Dan's private source material (pasted articles, posts, guides, his notes) lives in Dan's explorations inbox (its path is in his global notes), not in this repo: the repo is public, and `docs/context/` was removed from it and its history on 2026-11-08. `docs/context/` is git-ignored; never commit it or copy pasted material into the repo. Read a source from the inbox when you need it.
@@ -21,4 +21,5 @@ A cloud session gets this file but not Dan's local Claude settings or the memory
 - The goal is a reusable framework and honest lessons, built from a few failure classes (`seeds/classes.yaml`) and scenarios generated from them, not the best final task set. Requests describe the function in a person's own words and leave the mechanism to the model.
 - Pastes from Dan go to the explorations inbox, which a cloud session can't reach. Don't save them here: say what still needs saving.
 - In a cloud session `OPENROUTER_API_KEY` is a placeholder and the proxy attaches the real key, so `op` isn't needed. Spend a run with `--budget`. Commit and push results as you go, because a reclaimed VM keeps only the conversation, and `results/runs/**/parts/` isn't committed at all.
+- Each PR adds its own change file under `changes/` (see `changes/README.md`) and never edits `CHANGELOG.md`, which isn't committed. When rebasing a branch made before 2026-11-13 that still edits `CHANGELOG.md`, move its entry into a change file and `git rm CHANGELOG.md`.
 - Codex reviews are requested by hand, because its usage is limited. When a PR is ready for review, with CI passing and no more pushes planned, comment `@codex review` once. Don't request one for each push, or for a change with no code in it. Check each finding against the code before acting on it, and reply on the PR with the fix or why it doesn't apply.

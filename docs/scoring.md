@@ -26,7 +26,7 @@ is the one worth keeping.
 | Problem and user value | A consumer at home asking for a printed fix. "I want to film myself at my desk" is a clear user with a clear bottleneck. |
 | Solution and engineering | Structured output so graders are code; layered gates; the hidden-error printer. |
 | End-to-end quality | From the consumer's brief to a printed, tested, assembled object. Real prints in the demo. |
-| Measured improvement | A fair baseline, and `CHANGELOG.md` tying each change to task, grader or result evidence. |
+| Measured improvement | A fair baseline, and the changelog (`changes/`, one file per change) tying each change to task, grader or result evidence. |
 | Reproducibility | A clean environment can run the eval and the baseline and reach the main result. |
 | Insight | One observed failure mode turned into a practical lesson, e.g. "models don't plan for what they can't know before printing." |
 

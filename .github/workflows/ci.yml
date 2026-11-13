@@ -20,6 +20,20 @@ concurrency:
 # files get a job each, every other test file shares one (so a new file is never left out),
 # and the reference checks get their own.
 jobs:
+  # A PR that changes what's graded adds its own change file (changes/README.md). Fails rather
+  # than warns: CLAUDE.md requires the entry, and a warning on a green PR goes unread.
+  changes:
+    name: change file
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: A change file where grades can move, and every change file well formed
+        run: python3 scripts/changelog.py --check --pr-base "origin/${{ github.base_ref }}"
+
   check:
     name: ${{ matrix.part.name }}
     runs-on: ubuntu-24.04

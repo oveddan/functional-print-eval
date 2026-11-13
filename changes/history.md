@@ -1,11 +1,3 @@
-# Changelog
-
-Each entry: what changed, why, and the evidence (a run, a failure, a measurement).
-
-## 2026-11-13: README's "What we couldn't grade" section removed (no result changed)
-
-- With round 3 most of the not-graded trials were settled, so the section went. Round 3's photos and a two-sentence note moved to "The test prints behind the checks", Limits says what's still not graded and links the full list in `docs/reference.md`, and `scripts/failure_tables.py` no longer writes a copy into the README.
-
 ## 2026-11-13: README edited to open with the problem; results table in markdown (no result changed)
 
 - The problem, the three questions and what the repo does come straight after the opening paragraph, with a link to the `hackathon-submission` tag; the Estoa story follows under "How this started". "How the agent works" got a heading and links to `pbe/runner/agent.py`, `measure.py`, `coupon_loop.py` and `pbe/graders/`.

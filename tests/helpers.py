@@ -34,7 +34,7 @@ def a_record(**fields):
                           "elapsed_s": 0.0, "settings": settings, "calls": [], **fields})
 
 
-# The prompt changes made after the saved trials ran, each in CHANGELOG.md: (the saved trials' words, today's).
+# The prompt changes made after the saved trials ran, each in the changelog (changes/): (the saved trials' words, today's).
 # A test comparing today's prompt with a saved one applies these and expects nothing else to differ.
 BRIDGE_LINE = "- Longest bridge seen to print cleanly on this setup: 50 mm\n"
 PROMPT_CHANGES_SINCE_SAVED = [

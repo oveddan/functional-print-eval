@@ -21,7 +21,7 @@ How to let the eval's iterate loop (run, read failures, fix a grader or prompt, 
 3. **Skip the Workflow tool** for this loop, and use `/loop` only as the local driver if wanted. A single session with an explicit loop in its prompt (below) is simpler and is what both targets run.
 4. A scheduled routine is a backstop at most: hourly minimum, fresh clone each run, so it can only continue from what is committed to a branch.
 
-Checked in the first cloud session (2026-11-03, `CHANGELOG.md`): (a) Python 3.12 is there; (b) the Linux CadQuery wheels import; (c) the VM allows bubblewrap's namespaces; the first session's setup script lacked `bubblewrap`, and in a second session, with the `apt-get` line below, it was there from the start; (d) the proxy replaces the placeholder key; (e) every reference passes, though nothing saved compares the numbers with the Mac's. Still unknown: (f) maximum session length.
+Checked in the first cloud session (2026-11-03, `changes/history.md`): (a) Python 3.12 is there; (b) the Linux CadQuery wheels import; (c) the VM allows bubblewrap's namespaces; the first session's setup script lacked `bubblewrap`, and in a second session, with the `apt-get` line below, it was there from the start; (d) the proxy replaces the placeholder key; (e) every reference passes, though nothing saved compares the numbers with the Mac's. Still unknown: (f) maximum session length.
 
 ## Option: the home server (`ovedai`)
 
@@ -94,13 +94,13 @@ A run stopped by a reclaimed VM resumes: trials already saved are skipped. Resul
 
 ## What one overnight iteration does
 
-1. Read `CLAUDE.md`, `docs/plan.md`, `docs/scoring.md` and the tail of `CHANGELOG.md`, and add up the saved `cost_usd` of runs so far.
+1. Read `CLAUDE.md`, `docs/plan.md`, `docs/scoring.md` and the newest entries in `changes/` (`uv run python scripts/changelog.py | head -200`), and add up the saved `cost_usd` of runs so far.
 2. Run the test suite (`uv run pytest`). If it fails before any change, stop.
 3. Run the eval on the current tasks and models with `--budget`, writing under `results/`.
 4. Read every failure transcript. Classify each as format, design, grader bug, or task bug.
 5. Make at most one fix: a grader bug, a task or prompt wording, or a measurement-table entry. Do not change what is being scored to make scores rise, and do not weaken a check without a regression test.
 6. Re-run the tests and the affected tasks. Keep the change only if tests pass and no previously passing reference now fails; otherwise revert it.
-7. Append a `CHANGELOG.md` entry with the evidence (run ids under `results/`, before and after), then commit once to the overnight branch.
+7. Add a change file, `changes/<YYYY-MM-DD>-<slug>.md` (see `changes/README.md`), with the evidence (run ids under `results/`, before and after), then commit once to the overnight branch.
 
 **Stops when any of these holds:** total spend reaches the cap; 6 iterations done; tests fail and cannot be fixed in the same iteration, or fail after a revert; two iterations in a row find no failure worth fixing; a call fails with auth or credit errors; or 8 hours elapsed. On stopping it writes `results/overnight-<date>.md` (what ran, spend, what changed, what is left) and commits it.
 
@@ -117,13 +117,13 @@ A run stopped by a reclaimed VM resumes: trials already saved are skipped. Resul
 ```
 You are running the print-build-eval iterate loop unattended overnight. Nobody can answer questions until morning, so decide with the rules below and write down what you decided.
 
-Setup: read CLAUDE.md, docs/plan.md, docs/scoring.md, the end of CHANGELOG.md, and docs/overnight-runs.md. Create/confirm branch overnight/<today's date> and work only there. Never touch main. Do not push (local) / push only this branch (cloud). Do not change settings or create repos.
+Setup: read CLAUDE.md, docs/plan.md, docs/scoring.md, the newest entries in changes/, and docs/overnight-runs.md. Create/confirm branch overnight/<today's date> and work only there. Never touch main. Do not push (local) / push only this branch (cloud). Do not change settings or create repos.
 
 Secrets: the key is in OPENROUTER_API_KEY. Never print, echo, log, or commit it, and never run env/printenv or any command that would show it.
 
 Budget: hard cap $3.00 total OpenRouter spend. Pass --budget to each run and add up the runs' saved cost_usd before starting another. Max 6 iterations, 8 hours.
 
-Each iteration: (1) uv run pytest; (2) run the eval on the current tasks, saving under results/; (3) read every failing transcript and classify it as format, design, grader bug, or task bug; (4) make at most one fix to a grader, task wording, or measurement table, never lowering a bar just to raise scores and adding a regression test for any grader change; (5) re-run tests and the affected tasks, and revert the fix if anything that passed now fails; (6) append a CHANGELOG.md entry with the evidence (run ids, before/after) and commit once.
+Each iteration: (1) uv run pytest; (2) run the eval on the current tasks, saving under results/; (3) read every failing transcript and classify it as format, design, grader bug, or task bug; (4) make at most one fix to a grader, task wording, or measurement table, never lowering a bar just to raise scores and adding a regression test for any grader change; (5) re-run tests and the affected tasks, and revert the fix if anything that passed now fails; (6) add a change file under changes/ (format in changes/README.md) with the evidence (run ids, before/after) and commit once.
 
 Stop when: spend reaches the cap, 6 iterations are done, tests are red and not fixable within the iteration, two iterations in a row find nothing worth fixing, a call fails on auth/credit, or 8 hours pass. Then write results/overnight-<date>.md (what ran, spend, what changed, what is left, anything you were unsure about) and commit it. Do not start another iteration after writing it.
 ```
