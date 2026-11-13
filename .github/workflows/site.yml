@@ -1,0 +1,59 @@
+# Builds the results site from the saved runs and publishes it to GitHub Pages. No model is
+# called and no part is built: scripts/results_site.py reads results/ and the media manifest
+# (scripts/results_site_media.json), whose pictures and meshes are already on the media host.
+name: Results site
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # on a pull request this only proves the site still builds from a clean clone
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # libgl1 for the CAD kernel the generator's imports load; nothing is built here
+      - name: System packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1 fontconfig fonts-dejavu-core
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install the project
+        run: uv sync --frozen
+
+      - name: Build the site
+        run: uv run python scripts/results_site.py
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: results/local/site
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -200,6 +200,8 @@ We ran out of time to make the test-print loop work on this task. Some example f
 
 ## Results
 
+**[Browse every trial on the results site](https://oveddan.github.io/functional-print-eval/)**: pick a condition and a part, then open any model's design to see its render, each check with its reason, the test prints it asked for, its code and its transcript.
+
 <!-- scorecard:start (written by scripts/scorecard.py; don't edit by hand) -->
 | Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | All four tasks | Estoa light box (harder) | Print hours per pass | Filament per pass | Cost per pass |
 |---|---|---|---|---|---|---|---|---|---|
