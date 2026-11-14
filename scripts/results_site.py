@@ -9,6 +9,9 @@ Writes results/local/site/ (git-ignored):
 - data/trials/<slug>.json: one trial's detail (findings and their diagnoses, test prints and the simulated person's
   answers, measurements, cost, tokens, slicer estimates, the design's code, a transcript excerpt), loaded on demand.
 - data/system_prompts.json: the system prompts, once each; a transcript excerpt points at one by its hash.
+- data/checks.json: the "How the checks work" page (checks.html): the explanations in scripts/results_site_checks.yaml,
+  with links to the grader functions they name, counts from the counted first prints, and each example's finding and
+  drawing (failing ones from the views manifest, passing ones from scripts/results_site_check_views.json).
 - the frontend files from scripts/results_site/, copied as they are.
 
 What is read, and from where:
@@ -779,6 +782,7 @@ def finding_rows(entry: Entry, findings: list[CheckResult], declined: str | None
     for finding in findings:
         counted = not finding.test_print and not declined
         rows.append(view_of(entry, finding, declined) | {"check": finding.check, "part": finding.part, "ok": finding.ok, "detail": clip(finding.detail, CAP["detail"]),
+                     "explained": explained_href(entry.task, finding.check),
                      "test_print": finding.test_print, "counted": counted, "state": check_state(finding),
                      "title": meanings.get(finding.check, {}).get("title", finding.check),
                      "meaning": meanings.get(finding.check, {}).get("text"),
@@ -1481,6 +1485,179 @@ def scorecard_file(index: dict) -> dict:
             "groups": [g for g in index["groups"] if g["category"] == HEADLINE]}
 
 
+# ---- the "How the checks work" page (checks.html, data/checks.json) ----
+
+EXPLAINED = Path(__file__).with_name("results_site_checks.yaml")  # the page's hand-written text and chosen examples
+CHECK_VIEWS = Path(__file__).with_name("results_site_check_views.json")  # drawings of the passing examples
+CHECKS_PAGE = "checks.html"
+EVERY_PART = "*"
+FAMILY_NAMES = {EVERY_PART: "Every printed part", "tripod-plate": "Tripod plate", "bearing-wheel": "Closet door wheel",
+                "nut-knob": "Hand knob (M3 and M5)", "estoa-light": "Estoa light box"}
+
+
+@cache
+def explained() -> dict:
+    """scripts/results_site_checks.yaml, or {} without it."""
+    return yaml.safe_load(EXPLAINED.read_text()) if EXPLAINED.exists() else {}
+
+
+def check_anchor(family: str, check: str) -> str:
+    """The section id on checks.html: the check's id for one every part gets, else task family and check."""
+    return check if family == EVERY_PART else f"{family}-{check}"
+
+
+@cache
+def explained_anchors() -> dict[tuple[str, str], str]:
+    return {(entry["task"], entry["check"]): check_anchor(entry["task"], entry["check"]) for entry in explained().get("checks") or []}
+
+
+def explained_href(task: str, check: str) -> str | None:
+    """The link from a check in a trial's detail to its section on checks.html, if the check is explained there."""
+    anchor = explained_anchors().get((task.split("/")[0], check)) or explained_anchors().get((EVERY_PART, check))
+    return f"{CHECKS_PAGE}#{anchor}" if anchor else None
+
+
+def code_line(file: str, function: str) -> int | None:
+    """The line a function (or Class.method) is defined on in a repository file, or None if it isn't there."""
+    import ast
+    path = ROOT / file
+    if not path.exists():
+        return None
+    scope, name = (function.split(".", 1) if "." in function else (None, function))
+    tree = ast.parse(path.read_text())
+    body = tree.body
+    if scope:
+        body = next((node.body for node in tree.body if isinstance(node, ast.ClassDef) and node.name == scope), [])
+    return next((node.lineno for node in body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name), None)
+
+
+@cache
+def check_views() -> dict[tuple[str, str, str], dict]:
+    """The examples' drawings (scripts/results_site_check_views.py), keyed by (design, check, part)."""
+    if not CHECK_VIEWS.exists():
+        return {}
+    return {(view["design"], view["check"], view["part"]): view for view in json.loads(CHECK_VIEWS.read_text())["views"]}
+
+
+def check_applies(family: str, task: str) -> bool:
+    return family == EVERY_PART or task.split("/")[0] == family
+
+
+# a grader's own shorthand that reads oddly on its own, in plainer words, on the checks page only
+PLAIN_WORDS = (("round 3's prints of that shape say not measured", "no round 3 print of that shape settles this size"),
+               ("prints say not measured", "no recorded print settles this size"))
+TEMPLATE_RESCUE = "a template or test print checks the holes"  # enclosure.board_holes's words when its rescue passes
+
+
+def plain_detail(text: str) -> str:
+    for old, new in PLAIN_WORDS:
+        text = text.replace(old, new)
+    return text
+
+
+def crashed(finding: CheckResult) -> bool:
+    """A check whose grader raised: requirements._run_grader and agent._check_error record it as a fail."""
+    return finding.ok is False and (finding.detail or "").startswith(("grader error", "check error"))
+
+
+# A fit check that passes only because the design's own test print would find a size that holds, in the grader's words
+# (wheel.fit's and nuts.fit's rescue).
+RESCUED = re.compile(r"; (test coupon \S+ (?:would find a size|has \d+ pocket).*)$")
+
+
+def via_test_print(finding: CheckResult) -> bool:
+    """A pass that rests on the design's test print or template, not on its size as drawn."""
+    return finding.ok is True and (bool(RESCUED.search(finding.detail or "")) or TEMPLATE_RESCUE in (finding.detail or ""))
+
+
+def example_of(example: dict, family: str, check: str, by_id: dict[str, Entry]) -> dict:
+    """One saved design shown for a check: its finding, its state today, and the drawing of what the check read."""
+    entry = by_id.get(example["trial"])
+    if entry is None:
+        return {"outcome": example["outcome"], "missing": True, "trial_id": example["trial"]}
+    part = example.get("part", "-")
+    finding = next((f for f in counted_of(entry) if f.check == check and (f.part or "-") == part), None)
+    shown = {"outcome": example["outcome"], "label": example.get("label"), "trial_id": entry.id, "trial_slug": entry.slug,
+             "href": f"./?trial={entry.slug}", "model_short": short_name(entry.model), "task": entry.task,
+             "task_label": TASK_NAMES.get(entry.task, entry.task), "trial": entry.trial, "verdict": entry.verdict, "part": part,
+             "note": example.get("note"), "state": check_state(finding) if finding else None,
+             "detail": plain_detail(reader_words(finding.detail)) if finding else None,
+             "via_test_print": via_test_print(finding) if finding else False, "view": None, "no_view_reason": None}
+    if finding is None:
+        return shown | {"missing": True}
+    if check == "builds":
+        shown["no_view_reason"] = None if shown["state"] == "pass" else "the code didn't run, so there is no shape to draw"
+        return shown
+    drawn = check_views().get((entry.id, check, part))
+    if drawn:
+        shown["view"] = {"url": drawn["view"], "caption": drawn["caption"], "width": drawn["width"], "height": drawn["height"],
+                         "kind": drawn["kind"]}
+        shown["drawing_note"] = drawn.get("note") or None
+    else:
+        shown["no_view_reason"] = "no drawing of this example is saved"
+    return shown
+
+
+def check_counts(entries: list[Entry], rows: list[dict], family: str, check: str, overlap: str | None = None) -> dict:
+    """Counted first prints this check could apply to, how many it failed or left not graded (from the same issue rows
+    the home page counts reasons from), and what's inside those numbers."""
+    firsts = [row for row in rows if row["group"] == "first" and row["counted"] and check_applies(family, row["task"])]
+    first_ids = {row["id"] for row in firsts}
+    failed = {row["id"] for row in firsts for issue in row["issues"] if issue["check"] == check and issue["kind"] == "failed"}
+    ungraded = {row["id"] for row in firsts for issue in row["issues"] if issue["check"] == check and issue["kind"] == "not graded"}
+    reasons = Counter()
+    kinds = {}
+    for row in firsts:
+        for key, kind in {(issue["reason_group"], issue["kind"]) for issue in row["issues"] if issue["check"] == check}:
+            reasons[key] += 1
+            kinds[key] = kind
+    designs = [entry for entry in entries if entry.id in first_ids]
+    mine = {entry.id: [f for f in counted_of(entry) if f.check == check] for entry in designs}
+    states = {entry_id: {check_state(f) for f in found} for entry_id, found in mine.items()}
+    found = {"first_prints": len(firsts), "failed": len(failed), "not_graded": len(ungraded),
+             "passed": sum(bool(s) and s <= {"pass"} for s in states.values()),
+             "not_reached": sum("not reached" in s and not s & {"fail", "not graded"} for s in states.values()),
+             # an every-part check has no finding on a part whose code didn't run, so a design none of whose parts ran has none
+             "no_part_built": sum(not states[row["id"]] and row["verdict"] not in ("declined", "no design", "error") for row in firsts),
+             "declined": sum(row["verdict"] == "declined" for row in firsts),
+             "no_design": sum(row["verdict"] in ("no design", "error") for row in firsts),
+             "crashed": sum(any(crashed(f) for f in fs) for fs in mine.values()),
+             "via_test_print": sum(any(via_test_print(f) for f in fs) for fs in mine.values()),
+             "reasons": [{"key": key, "label": REASON_GROUP_LABELS.get(key, key), "kind": kinds[key], "trials": count,
+                          "href": f"./?reason={key}"} for key, count in reasons.most_common()]}
+    if overlap:
+        other = {entry.id for entry in designs if any(f.check == overlap and f.ok is False for f in counted_of(entry))}
+        found["overlap"] = {"check": overlap, "trials": len((failed | ungraded) & other)}
+    return found
+
+
+def checks_page(entries: list[Entry], rows: list[dict]) -> dict:
+    """data/checks.json: the explanations from results_site_checks.yaml, with the code links, counts, examples and
+    photos filled in from the code and the saved results."""
+    source = explained()
+    by_id = {entry.id: entry for entry in entries}
+    sections = []
+    for entry in source.get("checks") or []:
+        family, check = entry["task"], entry["check"]
+        titles = CHECK_TITLES["*"] | CHECK_TITLES.get(family, {})
+        photo = references().get(entry["photo"]) if entry.get("photo") else None
+        sections.append({
+            "anchor": check_anchor(family, check), "check": check, "task": family,
+            "task_label": FAMILY_NAMES.get(family, family),
+            "title": titles.get(check, check), "tests": entry["tests"], "how": entry["how"], "record": entry["record"],
+            "not_graded": entry["not_graded"], "weak": entry.get("weak"), "inference": entry.get("inference"),
+            "code": [{"file": code["file"], "function": code["function"], "line": code_line(code["file"], code["function"]),
+                      "url": f"{REPO}{pinned_ref()}/{code['file']}" + (f"#L{line}" if (line := code_line(code["file"], code["function"])) else "")}
+                     for code in entry["code"]],
+            "photo": photo | {"reason": entry["photo"]} if photo else None,
+            "counts": check_counts(entries, rows, family, check, entry.get("overlap")),
+            "examples_note": entry.get("examples_note"),
+            "examples": [example_of(example, family, check, by_id) for example in entry.get("examples") or []]})
+    return {"schema_version": SCHEMA_VERSION, "intro": source.get("intro") or [], "claude": source.get("claude"),
+            "states": source.get("states") or {}, "denominators": source.get("denominators"),
+            "nearest_print": source.get("nearest_print"), "checks": sections}
+
+
 # ---- writing ----
 
 def redact(text: str, hits: Counter, where: str) -> str:
@@ -1589,7 +1766,8 @@ def build(out: Path = OUT, details: bool = True) -> dict:
     hits = Counter()
     index = index_of(entries, listed, sliced)
     sizes = {"index": write_json(data / "index.json", index, hits, "index.json"),
-             "scorecard": write_json(data / "scorecard.json", scorecard_file(index), hits, "scorecard.json")}
+             "scorecard": write_json(data / "scorecard.json", scorecard_file(index), hits, "scorecard.json"),
+             "checks": write_json(data / "checks.json", checks_page(entries, index["trials"]), hits, "checks.json")}
     if details:
         by_id, prompts, trial_sizes = {entry.id: entry for entry in entries}, {}, []
         for entry in entries:

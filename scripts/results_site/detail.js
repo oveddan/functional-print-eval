@@ -371,7 +371,9 @@ function checkCard(finding, media) {
   const diagnosis = finding.diagnosis;
   return h("li", { class: `check ${VERDICT[finding.state].cls}` },
     h("div", { class: "check-head" }, badge(finding.state, { small: true }), h("span", { class: "check-title" }, finding.title || finding.check),
-      h("code", { class: "check-id", title: "The check's id in the eval's code" }, finding.check),
+      finding.explained
+        ? h("a", { class: "check-id-link", href: finding.explained, title: "How this check works, with examples" }, h("code", { class: "check-id" }, finding.check))
+        : h("code", { class: "check-id", title: "The check's id in the eval's code" }, finding.check),
       finding.part && finding.part !== "-" ? h("span", { class: "check-part" }, "on ", h("code", {}, finding.part)) : null),
     finding.view ? viewFigure(finding) : null,
     !finding.view && finding.meaning && finding.meaning !== finding.title ? h("p", { class: "check-meaning" }, finding.meaning) : null,
@@ -384,7 +386,9 @@ function checkCard(finding, media) {
 }
 
 function checkLine(finding) {
-  return h("li", {}, h("span", { class: "check-title" }, finding.title || finding.check), " ", h("code", { class: "check-id" }, finding.check),
+  const id = h("code", { class: "check-id" }, finding.check);
+  return h("li", {}, h("span", { class: "check-title" }, finding.title || finding.check), " ",
+    finding.explained ? h("a", { class: "check-id-link", href: finding.explained, title: "How this check works, with examples" }, id) : id,
     finding.part && finding.part !== "-" ? [" on ", h("code", {}, finding.part)] : null, finding.detail ? h("span", { class: "check-found" }, `: ${finding.detail}`) : null);
 }
 
