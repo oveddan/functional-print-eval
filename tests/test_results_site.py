@@ -310,13 +310,20 @@ def test_view_audit_is_optional(monkeypatch, tmp_path):
         results_site.view_audit.cache_clear()
 
 
+# Photos kept for a reason no saved design has now, each with why, so a misspelled key can't hide here.
+PARKED_REASON_PHOTOS = {
+    "insert-posts-thinner-than-any-printed",  # Estoa R4 passes for now (Dan, 2026-11-13); back when R4 is tightened
+}
+
+
 def test_reference_photos_belong_to_real_reasons_and_cite_a_record(index):
-    """Each recorded photo is keyed by a reason group the page shows, says what kind of print it is and names the
-    file its caption comes from."""
+    """Each recorded photo is keyed like a reason group, says what kind of print it is and names the file its caption
+    comes from. One whose reason no design has now (a check relaxed in a regrade) is kept but not shown."""
     photos = results_site.references()
-    assert photos
+    active = results_site.active_references()
+    assert active and set(active) <= set(index["reason_groups"])
+    assert set(photos) - set(active) <= PARKED_REASON_PHOTOS, "a photo for a reason no design has: misspelled, or park it here"
     for key, photo in photos.items():
-        assert key in index["reason_groups"], key
         assert photo["kind"] in ("test print", "Dan's own build"), key
         assert photo["url"].startswith("https://media.danoved.xyz/") and photo["thumb"].startswith("https://media.danoved.xyz/"), key
         assert photo["caption"] and photo["source"] and photo["width"] and photo["height"], key
@@ -326,7 +333,7 @@ def test_reference_photos_belong_to_real_reasons_and_cite_a_record(index):
 def test_reason_pictures_are_a_recorded_photo_or_a_drawing_of_a_counted_design(index):
     by_slug = {row["slug"]: row for row in index["trials"]}
     pictures = index["reason_pictures"]
-    assert set(results_site.references()) <= set(pictures)
+    assert set(results_site.active_references()) <= set(pictures)
     for key, picture in pictures.items():
         assert key in index["reason_groups"], key
         if picture["kind"] == "drawing":
