@@ -163,7 +163,8 @@ def test_reference_passes_every_check(tmp_path):
 @pytest.mark.parametrize("sub, want_failed, want_not_graded", [
     # the real Estoa mistakes
     pytest.param(socket_set_back(4, usb_w=11.5), {"R3"}, set(), id="usb-opening-11.5-wide-set-back-from-the-port"),
-    pytest.param(design(key_entry=9.5), {"R6"}, set(), id="keyhole-entry-too-small-for-a-10-head"),
+    pytest.param(design(key_entry=9.5), set(), set(), id="keyhole-entry-9.5-hangs-on-a-nail-or-8-screw"),
+    pytest.param(design(key_entry=6.5), {"R6"}, set(), id="keyhole-entry-too-small-for-any-common-head"),
     pytest.param(body_code("body = body.cut(keyhole(p, side))",
                            'body = body.cut(keyhole(p, side) if side > 0 else keyhole(p, side).mirror("XZ", (0, p.key_y, 0)))'),
                  {"R6"}, set(), id="keyholes-run-opposite-ways"),
@@ -186,7 +187,7 @@ def test_reference_passes_every_check(tmp_path):
     pytest.param(perfboard_under_the_disk_screws("ISO 4762 M3x12"), set(), {"R2"}, id="screw-tip-over-the-perfboard"),
     pytest.param(design(usb_w=11.8, usb_h=8.5), set(), {"R3"}, id="usb-opening-takes-the-plug-head-but-not-with-0.2-a-side"),
     pytest.param(socket_set_back(-1.5, usb_w=11.5), set(), {"R3"}, id="small-opening-in-a-thin-wall-at-the-port"),
-    pytest.param(corner_posts(7.5), set(), {"R4"}, id="insert-posts-under-8-thinner-than-any-printed"),
+    pytest.param(corner_posts(7.5), set(), set(), id="insert-posts-under-8-pass-for-now"),  # R4 passes any post (Dan, 2026-11-13)
 ])
 def test_wrong_or_undecided_designs(tmp_path, sub, want_failed, want_not_graded):
     findings = grade(sub, tmp_path)

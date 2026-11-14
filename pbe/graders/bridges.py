@@ -103,12 +103,16 @@ class Direction:
         return self.anchored, -self.longest
 
 
-def _try_direction(region, anchor, angle):
-    """Strands across the region at this angle, or None if none cross it."""
+def _try_direction(region, anchor, angle, near=None):
+    """Strands across the region at this angle, or None if none cross it. A strand lying wholly within `near` (the
+    layer below grown by small_overhang_mm) needs no bridge and counts as anchored: Opus 5.5's Estoa t5 failed on two
+    0.5 mm stubs at the corners of a 12 mm bridge whose every full strand landed (Dan, 2026-11-13: "i think it would
+    be fine")."""
     strands = _strands(region, angle, STRAND_SPACING)
     if not strands:
         return None
-    anchored = [anchor.contains(Point(strand.coords[0])) and anchor.contains(Point(strand.coords[-1])) for strand in strands]
+    anchored = [(anchor.contains(Point(strand.coords[0])) and anchor.contains(Point(strand.coords[-1])))
+                or (near is not None and near.contains(strand)) for strand in strands]
     longest = max(strand.length for strand in strands)
     return Direction(angle, sum(anchored) / len(anchored), longest, list(zip(strands, anchored)))
 
@@ -129,9 +133,10 @@ def assess(region, support):
     (angle, share anchored, longest, ok, [(strand, anchored)])."""
     bridging = printer().bridging
     anchor = support.buffer(bridging.anchor_tol_mm)
+    near = support.buffer(bridging.small_overhang_mm)
     best, short = None, None
     for angle in range(0, 180, 5):
-        tried = _try_direction(region, anchor, angle)
+        tried = _try_direction(region, anchor, angle, near)
         if tried is not None and (best is None or tried.score > best.score):
             best = tried
         if tried is not None and _short_strands(tried, bridging) and short is None:

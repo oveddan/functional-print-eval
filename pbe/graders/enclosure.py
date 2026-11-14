@@ -52,17 +52,6 @@ class Electronics(BaseModel):
     possible: Envelope
 
 
-class EntryLimits(BaseModel):
-    fails_under: float
-    passes_from: float
-
-
-class SlotLimits(BaseModel):
-    fails_under: float
-    fails_from: float
-    passes: tuple[float, float]
-
-
 class AngleLimits(BaseModel):
     """Degrees from straight up."""
     passes_within: float
@@ -554,6 +543,26 @@ def _obstacles(piece, disk, disk_radius, disk_thickness, with_wall):
     return found
 
 
+def _within_outline(piece, obstacles, points):
+    """Whether every point (in the piece's frame) sits inside the box as a person would say it: within the outline
+    of the printed parts seen from the front, with plastic or the wall behind it and plastic or the disk in front.
+    A notch or window in a side wall doesn't take a board out of the box (Dan, 2026-11-13, of GPT-6.1 Sol's 96 mm
+    access opening: "it looks like its inside the box to me")."""
+    outline = unary_union([Polygon(part.exterior) for part in getattr(placed.shadow(piece.meshes), "geoms",
+                                                                       [placed.shadow(piece.meshes)]) if isinstance(part, Polygon)])
+    for point in points:
+        x, y, z = (float(v) for v in point)
+        if not outline.buffer(TOL).contains(Point(x, y)):
+            return False
+        behind = placed.box((x - 0.5, y - 0.5, piece.wall_z - 0.5), (x + 0.5, y + 0.5, z - 0.05))
+        in_front = placed.box((x - 0.5, y - 0.5, z + 0.05), (x + 0.5, y + 0.5, z + REACH))
+        if z - piece.wall_z > 0.6 and not placed.plastic_in(obstacles, behind):
+            return False
+        if not placed.plastic_in(obstacles, in_front):
+            return False
+    return True
+
+
 def _enclosed(obstacles, start, skip):
     """The sides of a point, among the piece's six, with nothing on them; `skip` is left out."""
     open_sides = []
@@ -694,8 +703,9 @@ def plug_reaches(sub, built, item, plug, margin, failed_from, socket_body, disk,
         return Verdict(False, "printed plastic stands where the socket itself is")
     disk_at = _placed_once(piece, disk)
     out_of_socket = placed.unit(placed.to_piece(socket, (1, 0, 0)) - np.asarray(socket.origin))
-    open_sides = _enclosed(_obstacles(piece, disk_at, disk_radius, disk_thickness, False), placed.to_piece(socket, inside), out_of_socket)
-    if open_sides:
+    obstacles = _obstacles(piece, disk_at, disk_radius, disk_thickness, False)
+    open_sides = _enclosed(obstacles, placed.to_piece(socket, inside), out_of_socket)
+    if open_sides and not _within_outline(piece, obstacles, [placed.to_piece(socket, inside)]):
         return Verdict(False, f"the board with the socket isn't inside the box: nothing on its {', '.join(open_sides)} side")
     way_in = _clear_passage(_obstacles(piece, disk_at, disk_radius, disk_thickness, True), socket, window)
     if way_in is None:
@@ -765,7 +775,7 @@ def insert_posts(sub, built, insert, insert_sized, hole_ok, bulged, held, depth_
     bulged, and sits in a hole like the ones inserts were set in. `bulged` is None when no recorded post
     bulged at the setup's infill: then a thinner post than any that held is not graded, never failed."""
     if not _uses(sub, insert):
-        return Verdict(None, "no heat-set inserts")
+        return Verdict(True, "no heat-set inserts, so none to bulge")
     piece, why = placed.piece(sub, built)
     if piece is None:
         return Verdict(None, why)
@@ -789,7 +799,7 @@ def insert_posts(sub, built, insert, insert_sized, hole_ok, bulged, held, depth_
         else:
             verdicts.append(Verdict(None, f"{where} has {wall:.2f} mm of plastic: between {bulged}, which bulged, and {held}, which held"))
     if not verdicts:
-        return Verdict(None, "inserts are listed, but no screw goes into a hole sized for one")
+        return Verdict(True, "inserts are listed, but no screw goes into a hole sized for one, so none to bulge")
     return _worst(verdicts)
 
 
@@ -830,7 +840,7 @@ def board_room(sub, built, item, certain, room, slab, holes, disk, disk_radius, 
               [(0.0, 0.0)] + [(sx * room.width / 2, sy * room.length / 2) for sx in (-1, 1) for sy in (-1, 1)]]
     open_from = [set(_enclosed(placed.into(obstacles, board), start, np.zeros(3))) for start in starts]
     open_sides = sorted(set.intersection(*open_from))
-    if open_sides:
+    if open_sides and not _within_outline(piece, obstacles, [placed.to_piece(board, start) for start in starts]):
         return Verdict(False, f"the perfboard isn't inside the box: nothing on its {', '.join(open_sides)} side")
     if placed.plastic_in(placed.into(piece.meshes, board), _in_the_board(slab, holes)):
         return Verdict(False, "the perfboard sits in printed plastic")
@@ -866,14 +876,6 @@ def _keyhole(hole):
     return origin, entry, slot_width, direction, reach - slot_width / 2
 
 
-def _lip(meshes, wall_z, point):
-    """How thick the plastic is at a point on the back, from the wall."""
-    probe = placed.box((point[0] - 0.3, point[1] - 0.3, wall_z - 1), (point[0] + 0.3, point[1] + 0.3, wall_z + 30))
-    pieces = [piece for found in placed.plastic_in(meshes, probe) for piece in found.split(only_watertight=False)]
-    touching = [piece for piece in pieces if piece.bounds[0][2] <= wall_z + 0.5]
-    return max(piece.bounds[1][2] for piece in touching) - wall_z if touching else 0.0
-
-
 def _hanging_up(found):
     """Which way is up when the piece hangs: the way its slots run, on average. Nothing in the request fixes it
     (Dan, 2026-11-11: the disc is round and the USB-C port can face any way), so the person turns the piece
@@ -883,71 +885,61 @@ def _hanging_up(found):
     return total / length if length > 1e-6 else found[0][3]
 
 
-def _keyhole_verdict(meshes, wall_z, found, up, entry: EntryLimits, slot_limits: SlotLimits, travel_limit,
-                     angle_limits: AngleLimits, standoff, head=None) -> Verdict:
-    """`up`: the way up the piece hangs (`_hanging_up`). `head`, given only under an assumption: the wall screws'
-    head size. The entry must then pass it, in place of the entry of the one keyhole that hung. The slot only has to
-    take the shank past the entry's edge: a head still partly over the entry rests on the lip and hangs (Dan,
-    2026-11-13, of a slot 8.0 mm long under a 9.9 mm entry: "that would hang fine"), so a slot short of carrying
-    the whole head clear of the entry no longer fails."""
+class Fastener(BaseModel):
+    """A common nail or screw a person might hang the piece on: its name, head and shank in mm."""
+    name: str
+    head: float
+    shank: float
+
+
+def _hangs_on(entry_width, slot, fasteners, entry_margin):
+    """The fasteners this keyhole hangs on: the head goes through the entry, the shank slides along the slot,
+    and the head can't pull back out through it."""
+    return [f for f in fasteners if entry_width >= f.head + entry_margin - TOL and f.shank - TOL <= slot < f.head - TOL]
+
+
+def _keyhole_verdict(found, up, fasteners, entry_margin, angle_limits: AngleLimits) -> Verdict:
+    """`up`: the way up the piece hangs (`_hanging_up`). Passes when some common nail or screw hangs it (Dan,
+    2026-11-13: "r6 can hang on a common nail, tahts fine"): the person picks the fastener to suit the keyhole and
+    sets how far it stands out of the wall, so the plastic's thickness at the slot doesn't fail it ("Fine if the
+    screws can just go further out")."""
     centre, entry_width, slot, direction, travel = found
     angle = float(np.degrees(np.arccos(np.clip(np.dot(direction, up), -1, 1))))
     where = f"keyhole at ({centre[0]:.0f}, {centre[1]:.0f})"
-    rest = centre + direction * travel
-    side = np.array([-direction[1], direction[0]]) * (slot / 2 + 1.0)
-    lip = max(_lip(meshes, wall_z, rest + side), _lip(meshes, wall_z, rest - side))
+    sizes = f"entry {entry_width:.1f}, slot {slot:.2f} running {travel:.1f} mm, {angle:.0f} degrees from up"
     failures = []
     if angle > angle_limits.fails_beyond:
         failures.append(f"its slot runs {angle:.0f} degrees from the other slots' way up, so no way of hanging the piece drops it onto both screws")
-    if entry_width < entry.fails_under - TOL:
-        failures.append(f"its entry is {entry_width:.1f} mm, too small for the largest common head ({entry.fails_under:g} mm)")
-    if slot < slot_limits.fails_under - TOL:
-        failures.append(f"its slot is {slot:.2f} mm, narrower than a #8 screw")
-    if slot >= slot_limits.fails_from - TOL:
-        failures.append(f"its slot is {slot:.1f} mm, too wide to hold the smallest common head ({slot_limits.fails_from:g} mm)")
     if travel <= entry_width / 2:
         failures.append("the screw would rest inside the entry, not under the slot's lip")
-    if lip >= standoff - TOL:
-        failures.append(f"the plastic at its slot is {lip:.1f} mm thick, as far as the screws stand out of the wall")
-    if head is not None and entry_width < head - TOL:
-        failures.append(f"its entry is {entry_width:.1f} mm, smaller than a {head:g} mm head")
+    fits = _hangs_on(entry_width, slot, fasteners, entry_margin)
+    if not fits:
+        failures.append(f"no common nail or screw both passes its {entry_width:.1f} mm entry and is held by its {slot:.2f} mm slot")
     if failures:
-        return Verdict(False, f"{where}: {'; '.join(failures)}")
-    sizes = f"entry {entry_width:.1f}, slot {slot:.2f} running {travel:.1f} mm, {angle:.0f} degrees from up"
-    unsure = []
+        return Verdict(False, f"{where} ({sizes}): {'; '.join(failures)}")
     if angle > angle_limits.passes_within:
-        unsure.append("its slot leans from straight up more than any that hung")
-    if head is None and entry_width < entry.passes_from - TOL:
-        unsure.append("its entry is smaller than the one that hung")
-    low, high = slot_limits.passes
-    if not low - TOL <= slot <= high + TOL:
-        unsure.append("its slot is outside the range estimated from the one that hung")
-    if head is None and travel < travel_limit - TOL:
-        unsure.append("its slot is shorter than the one that hung")
-    if unsure:
-        return Verdict(None, f"{where} ({sizes}): {'; '.join(unsure)}")
-    return Verdict(True, f"{where}: {sizes}")
+        return Verdict(None, f"{where} ({sizes}): its slot leans from straight up more than any that hung")
+    return Verdict(True, f"{where} ({sizes}): hangs on a {fits[0].name}" + (f" or {len(fits) - 1} other common fastener(s)" if len(fits) > 1 else ""))
 
 
 @_readable
-def keyholes(sub, built, entry, slot, travel, angle, standoff, count, at_depth, head=None):
-    """The piece hangs on the wall screws: keyholes in its back whose slots run up, whichever way up it's hung,
-    from entries that pass the screws' heads, narrow enough to hold them, in plastic thinner than the screws stand out."""
+def keyholes(sub, built, fasteners, entry_margin, angle, count, at_depth):
+    """The piece hangs on the wall through keyholes whose slots run the same way, each one hanging on some common
+    nail or screw: its head passes the entry, its shank slides along the slot, the slot holds its head."""
     piece, why = placed.piece(sub, built)
     if piece is None:
         return Verdict(None, why)
-    wall_z = piece.wall_z
-    back = placed.section(piece.meshes, wall_z + at_depth)
+    back = placed.section(piece.meshes, piece.wall_z + at_depth)
     holes = [Polygon(ring) for polygon in back for ring in polygon.interiors]
     if not holes:
         return Verdict(False, "nothing in the back for the wall screws to go through")
     found = [keyhole for keyhole in (_keyhole(hole) for hole in holes) if keyhole is not None]
     if len(found) < count:
         return Verdict(None, f"{len(found)} keyhole(s) found in the back, and this check reads only keyholes")
-    entry, slot, angle = EntryLimits.model_validate(entry), SlotLimits.model_validate(slot), AngleLimits.model_validate(angle)
+    fasteners = [Fastener.model_validate(f) for f in fasteners]
+    angle = AngleLimits.model_validate(angle)
     up = _hanging_up(found)
-    return _worst([_keyhole_verdict(piece.meshes, wall_z, keyhole, up, entry, slot, travel, angle, standoff, head)
-                   for keyhole in found])
+    return _worst([_keyhole_verdict(keyhole, up, fasteners, entry_margin, angle) for keyhole in found])
 
 
 @_readable

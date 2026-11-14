@@ -204,11 +204,11 @@ We ran out of time to make the test-print loop work on this task. Some example f
 | Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | All four tasks | Estoa light box (harder) | Print hours per pass | Filament per pass | Cost per pass |
 |---|---|---|---|---|---|---|---|---|---|
 | Gemini 4 Argon | **70% (7/10)** | 75% (6/8) | **100% (5/5)** | **100% (5/5)** | **82% (23/28)** | 0% (0/3) | **0.4 h** | **13 g** | $0.19 |
-| GPT-6.1 Sol | 20% (2/10) | 70% (7/10) | 60% (6/10) | **100% (10/10)** | 62% (25/40) | 0% (0/3) | 0.5 h | 18 g | $0.08 |
+| GPT-6.1 Sol | 20% (2/10) | 70% (7/10) | 60% (6/10) | **100% (10/10)** | 62% (25/40) | **67% (2/3)** | 0.5 h | 18 g | $0.08 |
 | Gemini 3.8 Flash | 20% (2/10) | **100% (5/5)** | 60% (3/5) | 80% (4/5) | 56% (14/25) | 0% (0/3) | **0.4 h** | 14 g | $0.26 |
 | Opus 5.5 | 30% (3/10) | 40% (4/10) | 50% (5/10) | 90% (9/10) | 52% (21/40) | 0% (0/3) | 0.5 h | 17 g | $0.29 |
-| Sonnet 5.5 | 10% (1/10) | 0% (0/10) | 90% (9/10) | **100% (10/10)** | 50% (20/40) | 0% (0/3) | 0.7 h | 23 g | $0.21 |
-| DeepSeek V4.1 Flash | 33% (3/9) | 40% (2/5) | 20% (1/5) | 57% (4/7) | 38% (10/26) | 0% (0/3) | 1.0 h | 35 g | $0.16 |
+| Sonnet 5.5 | 10% (1/10) | 0% (0/10) | 90% (9/10) | **100% (10/10)** | 50% (20/40) | 33% (1/3) | 0.7 h | 23 g | $0.21 |
+| DeepSeek V4.1 Flash | 33% (3/9) | 40% (2/5) | 20% (1/5) | 57% (4/7) | 38% (10/26) | 33% (1/3) | 1.0 h | 35 g | $0.16 |
 | Haiku 5.5 | 0% (0/5) | 0% (0/5) | 40% (2/5) | 20% (1/5) | 15% (3/20) | not run | 2.0 h | 74 g | **$0.04** |
 
 In these results the model can ask for test prints before its final design, as in [How a trial runs](#how-a-trial-runs). Each row is a model, best first; the best in each column is bold. A pass means every check passes on my recorded test prints. Time, filament and cost per pass count everything the model printed, test prints included, divided by the parts that work.
@@ -243,7 +243,7 @@ In 155 of these 219 trials the person answered at least one test piece with "I c
 <!-- scorecard-note:start (written by scripts/scorecard.py; don't edit by hand) -->
 Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Sonnet 5.5 1 of its 6. Gemini 4 Argon, Opus 5.5, Gemini 3.8 Flash, DeepSeek V4.1 Flash and GPT-6.1 Sol had none.
 
-**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 1 of 30 designs pass on the first print. After the person says how the box came out, 5 of the 26 failures replayed pass. Asking for test prints first, 0 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
+**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 5 of 30 designs pass on the first print. After the person says how the box came out, 12 of the 26 failures replayed pass. Asking for test prints first, 4 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
 <!-- scorecard-note:end -->
 
 ### Where models fail
