@@ -146,11 +146,14 @@ const condShort = (cond) => COND[cond]?.short || lookup.groups.get(cond)?.label 
 
 // ---- URL state ----
 
+const ECHO_MAX = 40;  // how much of an unrecognised URL value the page repeats back
+
 function readUrl() {
   const params = new URLSearchParams(location.search);
   const next = { ...DEFAULTS };
   notices = [];
-  const unknown = (name, value) => notices.push(`${name} “${value}”`);
+  // A link can carry any text in a parameter; the notice repeats only its first few characters, as text.
+  const unknown = (name, value) => notices.push(`${name} “${value.length > ECHO_MAX ? `${value.slice(0, ECHO_MAX)}…` : value}”`);
   const trial = params.get("trial");
   if (trial) { if (lookup.bySlug.has(trial)) next.trial = trial; else unknown("trial", trial); }
   const condParam = params.get("cond");

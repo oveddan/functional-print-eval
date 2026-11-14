@@ -421,3 +421,47 @@ def test_the_chart_draws_pass_rate_as_bar_length_not_counts():
     assert "width:${(100 * segment.n / cell.trials)" in row
     assert "segments.filter((segment) => segment.drawn)" in row
     assert "--n:${segment.n}" not in row
+
+
+def test_every_three_js_file_the_site_loads_is_pinned_by_hash():
+    """The 3D library comes from a CDN. Each file the page's scripts import, and the one file GLTFLoader imports in
+    turn, has an integrity hash in the import map, so a changed file is refused instead of run."""
+    import json
+    import re
+
+    frontend = ROOT / "scripts/results_site"
+    block = re.search(r'<script type="importmap">\s*(\{.*?\})\s*</script>', (frontend / "index.html").read_text(), re.S)
+    importmap = json.loads(block.group(1))
+    three, addons = importmap["imports"]["three"], importmap["imports"]["three/addons/"]
+    assert re.search(r"/three@\d+\.\d+\.\d+/", three), "the version is exact, not a range"
+    wanted = {addons + "utils/BufferGeometryUtils.js"}  # GLTFLoader's own import
+    for script in frontend.glob("*.js"):
+        for name in re.findall(r'import\("(three[^"]*)"\)', script.read_text()):
+            wanted.add(three if name == "three" else addons + name.removeprefix("three/addons/"))
+    assert len(wanted) >= 5
+    for url in wanted:
+        assert importmap["integrity"].get(url, "").startswith("sha384-"), url
+
+
+def test_a_3d_view_that_finishes_loading_late_is_thrown_away():
+    """Security review, 2026-11-14: the stage is reused by every view of a trial, so a mount that finished after the
+    reader switched tabs landed in the wrong view. Each mount now knows its turn."""
+    detail = (ROOT / "scripts/results_site/detail.js").read_text()
+    teardown = detail[detail.index("export function teardown()"):detail.index("export function teardown()") + 120]
+    assert "mountSeq += 1" in teardown
+    assert "const mine = ++mountSeq;" in detail
+    assert "if (mine !== mountSeq || !stage.isConnected) { mounted.dispose(); return; }" in detail
+
+
+def test_only_the_deploy_job_can_publish():
+    import yaml
+
+    workflow = yaml.safe_load((ROOT / ".github/workflows/site.yml").read_text())
+    assert workflow["permissions"] == {"contents": "read"}
+    assert "permissions" not in workflow["jobs"]["build"]
+    assert workflow["jobs"]["deploy"]["permissions"] == {"pages": "write", "id-token": "write"}
+
+
+def test_an_unrecognised_url_value_is_repeated_only_in_part():
+    app = (ROOT / "scripts/results_site/app.js").read_text()
+    assert "const ECHO_MAX = 40;" in app and "value.slice(0, ECHO_MAX)" in app

@@ -7,10 +7,12 @@ import {
 } from "./util.js";
 
 let viewer = null;       // the open 3D view's controller, if any
+let mountSeq = 0;        // goes up at every teardown and every 3D mount: a mount that finishes after the view moved on is stale
 let prefer3d = false;    // the reader chose 3D: keep it across parts and trials until they go back to the picture
 let systemPrompts = null;
 
 export function teardown() {
+  mountSeq += 1;
   viewer?.dispose();
   viewer = null;
 }
@@ -194,13 +196,17 @@ function mediaSection(row, detail) {
 
   const open3d = async (view) => {
     const spec = view.kind === "scene" ? sceneSpec(media) : { label: view.part.id, items: [{ url: view.part.mesh, layer: "part" }], highlight: view.part.highlight, layers: [] };
+    // The stage and its controls are reused by every view of this trial, so "is the stage still on the page" can't
+    // tell a mount that finished late from the one the reader is now waiting for. Its turn number can.
+    const mine = ++mountSeq;
     const status = h("p", { class: "stage-msg", role: "status" }, "Loading the 3D view…");
     stage.append(status);
     const back = view.kind === "part" ? h("button", { type: "button", class: "btn", onclick: () => { prefer3d = false; mode = "picture"; show(); } }, "Back to the picture") : null;
     try {
       const { mountViewer } = await import("./viewer.js");
+      if (mine !== mountSeq) return;
       const mounted = await mountViewer(stage, spec);
-      if (!stage.isConnected) { mounted.dispose(); return; }
+      if (mine !== mountSeq || !stage.isConnected) { mounted.dispose(); return; }
       status.remove();
       viewer = mounted;
       const toggle = (label, swatch, on, change) => {
@@ -221,6 +227,7 @@ function mediaSection(row, detail) {
         : "Drag to turn it; click it first to zoom with the wheel; right-drag to move. With the view focused: arrow keys turn, + and - zoom, Home resets. Z is up and the grid is the printer's bed, in 10 mm squares."));
     } catch (error) {
       console.error("3D view failed", error);
+      if (mine !== mountSeq) return;  // the reader has moved on: this view's error isn't theirs to see
       const text = /Failed to fetch|import|module/i.test(String(error.message)) ? "The 3D library couldn't be fetched. Check the connection and try again." : `The reason given: ${error.message || error}.`;
       stage.replaceChildren(h("div", { class: "stage-msg", role: "alert" },
         h("p", {}, h("strong", {}, "The 3D view didn't load. "), text),
