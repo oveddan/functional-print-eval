@@ -4,6 +4,11 @@ red. No model calls.
 
     uv run --with pyvista python scripts/results_site_media.py              # build, render, upload, write the manifest
     uv run --with pyvista python scripts/results_site_media.py --no-upload  # everything but the upload
+    uv run --with pyvista python scripts/results_site_media.py --rounds     # only the test prints asked for before a design
+
+--rounds draws the test prints a model asked the person for before its design (print_test), one set per request,
+built again from the code in the saved transcript, for the site's timeline. Their URLs go to their own manifest,
+scripts/results_site_media_rounds.json; the designs' manifest isn't touched.
 
 A design is any folder under results/runs holding a submission.yaml: a trial, or one arm of a coupon loop replay
 (baseline, feedback, neutral), whose parts are built without its test prints, as the loop graded them. parts/ isn't
@@ -59,6 +64,10 @@ OBJECTS = WORK / "objects"
 LEDGER = WORK / "uploaded.txt"
 MANIFEST = Path(__file__).with_suffix(".json")
 BUILD_NOTE = ".site-build.json"  # in parts/: what the rebuild made of each part, so a failed build isn't retried
+ROUNDS_MANIFEST = Path(__file__).with_name("results_site_media_rounds.json")
+ROUND_RECORDS = WORK / "rounds"
+ROUND_PARTS = WORK / "round-parts"  # each asked-for test print, built again from the code in the transcript
+ROUNDS_VERSION = 1
 
 BUCKET = "danoved-media"
 KEY_PREFIX = "print-build-eval/site"
@@ -693,6 +702,92 @@ def stale(folders):
     return [folder for folder in folders if keys.get(rel(folder)) != design_key(folder)]
 
 
+# ---- the test prints a model asked for before its design (the site's timeline) ----
+
+def round_folders():
+    """Every trial that asked the person for test prints (print_test, in the can_test condition)."""
+    found = []
+    for path in sorted(RUNS.glob("**/grades.json")):
+        if json.loads(path.read_text()).get("test_prints") and (path.parent / "transcript.json").exists():
+            found.append(path.parent)
+    return found
+
+
+def round_record_path(folder):
+    return ROUND_RECORDS / (re.sub(r"[^\w.-]+", "__", rel(folder)) + ".json")
+
+
+def round_pieces(folder):
+    """One Submission per print_test call the person answered, in order, as the runner built them."""
+    from pbe.runner.agent import asked_test_prints
+    return asked_test_prints(task_of(folder), json.loads((folder / "transcript.json").read_text()))
+
+
+def _round_work(folder):
+    asked = json.loads((folder / "grades.json").read_text())["test_prints"]
+    pieces = round_pieces(folder)
+    if [[part.id for part in sub.parts] for sub in pieces] != [test["parts"] for test in asked]:
+        return {"rel": rel(folder), "version": ROUNDS_VERSION, "rounds": [],
+                "error": "the transcript's print_test calls don't match the record's test prints"}
+    rounds = []
+    for number, sub in enumerate(pieces, 1):
+        holder = ROUND_PARTS / re.sub(r"[^\w.-]+", "__", rel(folder)) / f"r{number}"
+        errors = ensure_built(holder, sub)
+        parts = [part_entry(holder, part.id, "coupon", [], task_of(folder)) for part in sub.parts
+                 if not errors.get(part.id) and (holder / "parts" / f"{part.id}.stl").exists()]
+        rounds.append({"round": number, "parts": parts,
+                       "not_built": {part_id: short_reason(error) for part_id, error in sorted(errors.items()) if error}})
+    return {"rel": rel(folder), "version": ROUNDS_VERSION, "rounds": rounds, "error": None}
+
+
+def round_work(folder):
+    """One trial's test-print rounds, each part rendered, unless its record is current. Never raises."""
+    path = round_record_path(folder)
+    if path.exists() and json.loads(path.read_text()).get("version") == ROUNDS_VERSION:
+        return json.loads(path.read_text())
+    try:
+        record = _round_work(folder)
+    except Exception as e:  # a round that can't be drawn mustn't stop the rest
+        record = {"rel": rel(folder), "version": ROUNDS_VERSION, "rounds": [], "error": short_reason(f"{type(e).__name__}: {e}")}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, indent=1, sort_keys=True))
+    return record
+
+
+def write_rounds_manifest(records):
+    trials = {record["rel"]: {"error": record["error"], "rounds": [
+        {"round": entry["round"], "parts": [manifest_part(part) for part in entry["parts"]], "not_built": entry["not_built"]}
+        for entry in record["rounds"]]} for record in records}
+    text = json.dumps({"trials": trials}, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
+    assert "/Users/" not in text and str(Path.home()) not in text
+    ROUNDS_MANIFEST.write_text(text)
+
+
+def rounds_main(args):
+    """--rounds: only the test prints asked for before a design. The designs' own manifest is left as it is."""
+    ROUND_RECORDS.mkdir(parents=True, exist_ok=True)
+    OBJECTS.mkdir(parents=True, exist_ok=True)
+    folders = [folder for folder in round_folders() if not args.only or args.only in rel(folder)]
+    folders = folders[:args.limit] if args.limit else folders
+    print(f"{len(folders)} trials with test prints", file=sys.stderr)
+    with Pool(args.workers, maxtasksperchild=20) as pool:
+        for count, _ in enumerate(pool.imap_unordered(round_work, folders), 1):
+            if count % 25 == 0:
+                print(f"  {count}/{len(folders)}", file=sys.stderr)
+    wanted = {rel(folder) for folder in round_folders()}
+    records = [json.loads(path.read_text()) for path in sorted(ROUND_RECORDS.glob("*.json"))]
+    records = [record for record in records if record["rel"] in wanted and record.get("version") == ROUNDS_VERSION]
+    parts = [part for record in records for entry in record["rounds"] for part in entry["parts"]]
+    print(f"trials {len(records)}, rounds {sum(len(r['rounds']) for r in records)}, parts drawn {len(parts)}, "
+          f"parts not built {sum(len(e['not_built']) for r in records for e in r['rounds'])}, "
+          f"trials with an error {sum(1 for r in records if r['error'])}", file=sys.stderr)
+    objects = sorted({part[key] for part in parts for key in ("thumb", "mesh") if part.get(key)})
+    if not args.no_upload:
+        uploaded, failures = upload(objects, args.upload_workers)
+        print(f"uploaded {uploaded}; {len(failures)} failed", file=sys.stderr)
+    write_rounds_manifest(records)
+
+
 def saved_records():
     """Every record on disk drawn from what's saved now for a design still in results/runs."""
     keys = {rel(folder): design_key(folder) for folder in design_folders()}
@@ -729,7 +824,11 @@ def main():
     parser.add_argument("--upload-workers", type=int, default=6, help="more hit Cloudflare's rate limit")
     parser.add_argument("--all", action="store_true", help="redo designs whose committed entry is already current too")
     parser.add_argument("--check", action="store_true", help="exit 1 if any committed entry is out of date; draws nothing")
+    parser.add_argument("--rounds", action="store_true",
+                        help="only the test prints a model asked for before its design (results_site_media_rounds.json)")
     args = parser.parse_args()
+    if args.rounds:
+        return rounds_main(args)
     folders = [folder for folder in design_folders() if not args.only or args.only in rel(folder)]
     if args.check:
         sys.exit(report_stale(stale(folders), MANIFEST.name))

@@ -20,7 +20,9 @@ What is read, and from where:
 - a diagnosis for each check that didn't pass: scripts/results_page.py (issues_of), with whether a failed bridge check
   is a roof with the bolt's hole cut through it read from results/holed_roofs.json rather than from meshes;
 - the task's request: scripts/gallery.py (brief_of); what each check means: tasks/<family>/requirements.yaml;
-- renders and meshes: scripts/results_site_media.json, written by another script, and optional;
+- renders and meshes: scripts/results_site_media.json, written by another script, and optional; the same for the
+  test prints a model asked for before its design: scripts/results_site_media_rounds.json (its --rounds), optional;
+- each trial's `timeline`, its phases in order: scripts/results_site_timeline.py;
 - a drawn view of each failing or ungraded check: scripts/results_site_views.json (scripts/results_site_views.py), optional;
   with, as `view.audit`, an LLM judge's answer to whether it shows the failure legibly: scripts/results_site_view_audit.json
   (scripts/results_site_view_audit.py), optional.
@@ -45,6 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import failure_tables  # noqa: E402  the README's not-graded table: its reasons and grouping
 import gallery  # noqa: E402  brief_of, FRONTIER
 import results_page  # noqa: E402  issues_of, KIND, HELP: the same diagnoses as the older results page
+import results_site_timeline  # noqa: E402  a trial's phases in order, and the renders of the test prints it asked for
 import scorecard  # noqa: E402  the README's counting rules
 
 import yaml  # noqa: E402
@@ -989,7 +992,7 @@ def test_prints_of(entry: Entry) -> list[dict]:
         rounds.append({"round": number_, "parts": [{"id": part, "code": parts_code.get(part)} for part in test["parts"]],
                        "params": test.get("params") or {},
                        "answers": {part: [answer_line(line) for line in lines] for part, lines in test["reply"].items()}})
-    return rounds
+    return results_site_timeline.with_media(entry.id, rounds)
 
 
 @cache
@@ -1193,7 +1196,8 @@ def detail(entry: Entry, sliced: dict, by_id: dict[str, Entry], prompts: dict[st
             "tokens": tokens_of(record.calls), "slicer_estimate": slicing(entry, sliced),
             "findings": finding_rows(entry, record.findings, getattr(record, "declined", None)),
             "measures": measures_of(entry), "submission": submission_of(entry.folder),
-            "transcript": transcript_of(entry.folder, prompts), "media": media_detail(entry)}
+            "transcript": transcript_of(entry.folder, prompts), "media": media_detail(entry),
+            "timeline": results_site_timeline.timeline(entry, by_id, lambda e: [row["reason"] for row in issue_rows(e)])}
     out |= dates_of(entry) | parts_built(entry, record) | handed_in(out["submission"])
     if entry.kind == "trial":
         out |= trial_detail(entry, record)

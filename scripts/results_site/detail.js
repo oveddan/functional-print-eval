@@ -6,6 +6,7 @@ import {
   h, add, clear, icon, badge, VERDICT, ISSUE_VERDICT, money, int, tokens, duration, grams, dateOnly, copyButton, plural,
 } from "./util.js";
 import { sceneIntro, fitCaption, fitControls, noSceneNote } from "./fit.js";
+import { timelineControl, phaseInUrl } from "./timeline.js";
 
 let viewer = null;       // the open 3D view's controller, if any
 let mountSeq = 0;        // goes up at every teardown and every 3D mount: a mount that finishes after the view moved on is stale
@@ -43,7 +44,11 @@ function barOf(row, context) {
   return h("div", { class: "td-bar" },
     h("div", { class: "td-nav" }, nav(context.prev, "Previous trial in the list", "prev"), nav(context.next, "Next trial in the list", "next"), position),
     h("div", { class: "td-actions" },
-      copyButton(() => new URL(context.listHref({ trial: row.slug }), location.href).href, "Copy link"),
+      copyButton(() => {
+        const url = new URL(context.listHref({ trial: row.slug }), location.href);
+        if (phaseInUrl(row.slug)) url.searchParams.set("phase", phaseInUrl(row.slug));  // the link opens on the phase now shown
+        return url.href;
+      }, "Copy link"),
       h("button", { type: "button", class: "btn btn-icon", "aria-label": "Close", title: "Close (Esc)", onclick: context.close }, icon("close"))));
 }
 
@@ -79,15 +84,42 @@ export function updateShell(body, row, context) {
 
 export function renderDetail(body, row, detail, context) {
   const content = clear(body.querySelector(".td-content"));
+  const phases = detail.timeline || [];
+  if (phases.length > 1) return renderWithTimeline(content, row, detail, context, phases);
   const media = mediaSection(row, detail);
-  const sections = [
+  const sections = lowerSections(row, detail, context);
+  add(content, requestBlock(detail),
+    h("div", { class: "td-top" }, media.el, checksSection(detail, context, media)),
+    tocOf(sections), sections.map(([, el]) => el));
+}
+
+// A trial with more than one phase: the timeline, then the chosen phase where the picture and checks otherwise are.
+function renderWithTimeline(content, row, detail, context, phases) {
+  const sections = lowerSections(row, detail, context);
+  let shown = 0;  // a slower phase (another trial's detail, still loading) mustn't draw over a later choice
+  const control = timelineControl(phases, detail.slug, (phase, now) => {
+    const turn = ++shown;
+    teardown();
+    // Only the latest choice draws, and only while its panel is on the page: a late load for a trial that was closed or
+    // replaced would otherwise call teardown() and dispose the next trial's 3D view (Codex on PR 30)
+    drawPhase(control.panel, now, phase, row, detail, context, () => turn === shown && control.panel.isConnected);
+  });
+  add(content, requestBlock(detail), control.el, control.panel, tocOf(sections), sections.map(([, el]) => el));
+  control.start(phaseInUrl(detail.slug));
+}
+
+function lowerSections(row, detail, context) {
+  return [
     ["What it asked and tried", askedSection(detail)],
     [row.kind === "trial" ? "Second print" : row.kind === "crash_replay" ? "The trial it retries" : "First and second print", pairSection(row, detail, context)],
     ["Design and code", designSection(detail)],
     ["Transcript", transcriptSection(row, detail)],
     ["Cost and record", recordSection(row, detail, context)],
   ].filter(([, el]) => el);
-  const toc = h("nav", { class: "td-toc", "aria-label": "Sections of this trial" }, sections.map(([label, el]) => h("button", {
+}
+
+function tocOf(sections) {
+  return h("nav", { class: "td-toc", "aria-label": "Sections of this trial" }, sections.map(([label, el]) => h("button", {
     type: "button", class: "toc-btn",
     onclick: () => {
       if (el.tagName === "DETAILS") el.open = true;
@@ -95,9 +127,91 @@ export function renderDetail(body, row, detail, context) {
       el.querySelector("h3")?.focus({ preventScroll: true });
     },
   }, label)));
-  add(content, requestBlock(detail),
-    h("div", { class: "td-top" }, media.el, checksSection(detail, context, media)),
-    toc, sections.map(([, el]) => el));
+}
+
+// ---- one phase of the timeline, drawn where the picture and the checks are ----
+
+const SIM_NOTE = "The person is a program. It answers measurements from a fixed list and says how a print came out only from Dan's recorded test prints, or the bridge check's prediction where none was printed. Nothing was printed for this trial.";
+
+function drawPhase(panel, now, phase, row, detail, context, still) {
+  const own = phase.slug === detail.slug;
+  const draw = (source) => {
+    if (!still()) return;
+    const sourceRow = own ? row : context.rowOf(phase.slug) || source;
+    panel.className = `tl-panel tl-panel-${phase.kind}`;
+    clear(panel);
+    if (!own) {
+      // The step belongs to the other trial of the pair (a first print's second, or a second's first): say so and link it.
+      const title = lowerFirst(sourceRow.title || "that trial");
+      now.querySelector(".tl-now-title").append(h("a", {
+        class: "tl-open", href: context.hrefFor({ trial: sourceRow.slug }), title: `This step is saved as its own trial, ${title}. Open it.`,
+        onclick: (event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.button) return; event.preventDefault(); context.openOther(sourceRow.slug); },
+      }, `Open ${title}`, icon("arrow")));
+    }
+    if (phase.kind === "design") designPhase(panel, sourceRow, source, context);
+    else if (phase.kind === "round") roundPhase(panel, sourceRow, source, phase);
+    else if (phase.kind === "asked") askedPhase(panel, source, phase);
+    else toldPhase(panel, source, phase);
+  };
+  if (own) { draw(detail); return; }
+  add(clear(panel), h("p", { class: "loading", role: "status" }, "Loading this step…"));
+  context.fetchDetail(phase.slug).then(draw).catch((error) => {
+    if (still()) add(clear(panel), h("p", { role: "alert" }, `This step's detail didn't load (${error.message || error}).`));
+  });
+}
+
+function designPhase(panel, row, detail, context) {
+  const media = mediaSection(row, detail);
+  panel.classList.add("td-top");
+  add(panel, media.el, checksSection(detail, context, media));
+}
+
+// A round of test prints the model asked for: a render of each piece beside what the simulated person said.
+function roundPhase(panel, row, detail, phase) {
+  const round = detail.test_prints[phase.round - 1];
+  const notBuilt = Object.entries(round.not_built || {});
+  const media = round.media
+    ? mediaSection({ ...row, verdict: null }, { media: round.media, findings: [], parts_not_built: [] },
+      { label: "The test prints it asked for", note: "a render of the piece the model asked for; it wasn't printed" })
+    : { el: h("section", { class: "td-media", "aria-label": "The test prints it asked for" }, h("div", { class: "stage stage-none" }, h("p", {}, h("strong", {}, `${round.media_none || "No render of these test prints is saved"}.`)))) };
+  if (notBuilt.length) {
+    media.el.append(h("div", { class: "callout" },
+      h("p", {}, h("strong", {}, `No picture of ${plural(notBuilt.length, "piece")}: `), "the code didn't run when it was built again for this page."),
+      h("ul", { class: "not-built" }, notBuilt.map(([id, error]) => h("li", {}, h("code", {}, id), ": ", h("code", {}, error))))));
+  }
+  const cant = Object.values(round.answers || {}).flat().some((line) => line.cant_tell);
+  panel.classList.add("td-top");
+  add(panel, media.el, h("section", { class: "td-checks", "aria-label": "What the person said" },
+    h("h3", { tabindex: "-1" }, "What the person said", cant ? [" ", h("span", { class: "tag tag-ng" }, "Includes “I can't tell you how that one came out”")] : null),
+    h("p", { class: "section-note" }, SIM_NOTE),
+    answersBlock(round.answers),
+    round.parts.filter((part) => part.code).map((part) => codeFold(`Code for test print ${part.id}`, part.code))));
+}
+
+function askedPhase(panel, detail, phase) {
+  const asked = (detail.measures || []).slice(phase.first, phase.first + phase.count);
+  add(panel, h("section", { class: "td-checks", "aria-label": "What it asked the person" },
+    h("h3", { tabindex: "-1" }, `Measurements it asked for (${asked.length})`),
+    h("p", { class: "section-note" }, "No picture for this step: the model asked questions and hadn't yet drawn a part. ", SIM_NOTE),
+    h("ul", { class: "measures" }, asked.map(measureItem))));
+}
+
+function toldPhase(panel, detail, phase) {
+  const kids = [];
+  if (phase.arm === "crash") {
+    kids.push(h("h3", { tabindex: "-1" }, "What the model was sent"),
+      h("p", { class: "section-note" }, "No picture for this step: the first design's code didn't build, so the model was sent the error and asked to fix it."),
+      h("pre", { class: "said simulated" }, detail.message || ""));
+  } else {
+    const cant = Object.values(detail.report || {}).flat().some((line) => line.cant_tell);
+    kids.push(h("h3", { tabindex: "-1" }, "What the person said after the first print", cant ? [" ", h("span", { class: "tag tag-ng" }, "Includes “I can't tell you how that one came out”")] : null),
+      h("p", { class: "section-note" }, "No picture for this step: it is a message, not a part. The person is a program and answers from Dan's recorded prints, or the bridge check's prediction where none was printed. The message says “I printed what you sent” because that is what the model was told; nothing was printed."),
+      detail.note ? h("p", { class: "callout" }, detail.note) : null,
+      phase.arm === "neutral" ? h("p", { class: "callout" }, "In this version the person only asked for the design again, without saying how the first came out.") : null,
+      answersBlock(detail.report),
+      detail.reply ? h("pre", { class: "said simulated" }, detail.reply) : null);
+  }
+  add(panel, h("section", { class: "td-checks", "aria-label": "What the model was told" }, kids));
 }
 
 function section(title, ...kids) {
@@ -120,8 +234,8 @@ function requestBlock(detail) {
 
 // ---- pictures and the 3D view ----
 
-function mediaSection(row, detail) {
-  const box = h("section", { class: "td-media", "aria-label": "What it designed" });
+function mediaSection(row, detail, options = {}) {
+  const box = h("section", { class: "td-media", "aria-label": options.label || "What it designed" });
   const media = detail.media;
   const notBuilt = detail.parts_not_built || [];
   const notBuiltNote = notBuilt.length
@@ -180,7 +294,7 @@ function mediaSection(row, detail) {
     }
     clear(stage); clear(caption); clear(controls);
     stage.classList.toggle("stage-3d", mode === "3d");
-    if (view.kind === "part") partCaption(caption, view.part, titleOf);
+    if (view.kind === "part") partCaption(caption, view.part, titleOf, options.note);
     else sceneCaption(caption, media.scene);
     if (mode === "3d") { open3d(view); return; }
     const part = view.part;
@@ -257,10 +371,10 @@ function pictureAlt(row, part) {
   return `Render of ${part.id}, the ${roleLabel(part)} ${row.model_short} designed${marked}`;
 }
 
-function partCaption(caption, part, titleOf) {
+function partCaption(caption, part, titleOf, note = "a render of the design; it wasn't printed") {
   const size = part.size_mm?.some((value) => value) ? `${part.size_mm.map((value) => +value.toFixed(1)).join(" × ")} mm` : null;
   add(caption,
-    h("p", {}, h("code", {}, part.id), `, ${roleLabel(part)}`, size ? ` · ${size}` : null, h("span", { class: "caption-note" }, " · a render of the design; it wasn't printed")),
+    h("p", {}, h("code", {}, part.id), `, ${roleLabel(part)}`, size ? ` · ${size}` : null, h("span", { class: "caption-note" }, ` · ${note}`)),
     part.highlight_checks?.length
       ? h("p", { class: "caption-red" }, h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "Red: ",
         part.highlight_checks.map((check, at) => [at ? "; " : null, RED_MEANS[check] || `where “${titleOf(check)}” fails`]), ".")
