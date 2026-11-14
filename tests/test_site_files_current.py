@@ -88,7 +88,7 @@ def test_writing_the_media_manifest_keeps_other_designs_and_drops_removed_ones(s
                                                       "run/gone": {"built": True}},
                                           "keys": {"run/kept": "k", "run/redone": "old", "run/gone": "g"}}))
     record = {"rel": "run/redone", "built": False, "error": "no parts", "parts": [], "scene": None,
-              "key": media.content_key(redone, media.VERSION)}
+              "key": media.design_key(redone)}
     media.write_manifest([record])
     saved = json.loads(media.MANIFEST.read_text())
     assert set(saved["designs"]) == {"run/kept", "run/redone"} and saved["designs"]["run/kept"] == {"built": True}

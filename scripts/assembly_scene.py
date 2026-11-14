@@ -23,8 +23,17 @@ ESP32 = {"length": 63.17, "width": 28.25, "board": 1.5, "port": (7.35, 8.94, 3.2
 DISK_HOLES_X = 16.85  # the middle of Dan's readings
 PLUG = (30.0, 14.0, 8.5)  # how far out, and the 14 x 8.5 mm opening that let a plug seat in Estoa
 
-LAYERS = {"printed": "Printed parts", "disk": "LED disk", "yours": "Perfboard and ESP32", "screws": "Screws",
+LAYERS = {"printed": "Printed parts", "disk": "LED disk", "yours": "Perfboard and ESP32", "plug": "USB-C plug", "screws": "Screws",
           "problem": "Fails", "assumed": "Fails under an assumption"}
+
+
+def plug_head():
+    """Dan's measured plug head (catalog/connectors.yaml, the one R3 reads), in the port's frame: from the port's
+    mouth out PLUG[0] mm, width across, thickness up. Its length out and the cable behind it were never measured."""
+    from pbe.graders.enclosure import measured_plug
+    head = measured_plug("usb_c_plug_overmold")
+    return _box((0.0, -head.head_width_mm / 2, -head.head_thickness_mm / 2),
+                (PLUG[0], head.head_width_mm / 2, head.head_thickness_mm / 2))
 
 
 def _box(low, high):
@@ -169,12 +178,14 @@ def scene(sub, record, assumed, parts_dir: Path, out_dir: Path, slug: str, part_
              if ref != "own:led-disk" and (shape := own_part(ref)) is not None]
     screws = [screw_mesh(screw, _screw_d(sub, screw.item)) for screw in piece.screws]
     failed = [finding for finding in record.counted_findings if finding.ok is False]
+    plugged = any(finding.check == "R3" and finding.ok is True for finding in record.counted_findings)
+    plug = [_along(plug_head(), placed.matrix(port)) for port in [_placed(piece, "own:esp32")] if plugged and port is not None]
     problem = bridge_marks(failed, built, part_placements)
     for finding in failed:
         problem += problem_marks(sub, piece, finding.check, finding.detail, part_placements)
     under = [finding for finding in (assumed.findings if assumed else []) if finding.ok is False]
     assumed_marks = [mark for finding in under for mark in problem_marks(sub, piece, finding.check, finding.detail, part_placements)]
-    for key, color, meshes in (("disk", "#e9e4d8", disk), ("yours", "#4f9a72", yours), ("screws", "#3a4148", screws),
+    for key, color, meshes in (("disk", "#e9e4d8", disk), ("yours", "#4f9a72", yours), ("plug", "#2b2f33", plug), ("screws", "#3a4148", screws),
                                ("problem", "#d23c2f", problem), ("assumed", "#e08a1e", assumed_marks)):
         if meshes:
             name = f"scene-{slug}-{key}"

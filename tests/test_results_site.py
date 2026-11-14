@@ -6,8 +6,10 @@ import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -621,3 +623,110 @@ def test_the_checks_page_is_linked_from_the_home_page_and_shares_its_styles():
     page = (ROOT / "scripts/results_site/checks.html").read_text()
     assert 'href="style.css"' in page and 'src="checks.js"' in page
     assert 'from "./util.js"' in (ROOT / "scripts/results_site/checks.js").read_text()
+
+
+# ---- the assembled views of the wheel, the tripod plate and the knob (scripts/hardware_scene.py) ----
+
+HARDWARE_TASKS = ("bearing-wheel", "tripod-plate", "nut-knob")
+SAVED_FINDINGS = ("grades.json", "loop.json", "replay.json")
+
+
+def saved_record(design_id):
+    for name in SAVED_FINDINGS:
+        path = RUNS / design_id / name
+        if path.exists():
+            return json.loads(path.read_text())
+    return None
+
+
+def test_a_fit_outcome_comes_only_from_the_saved_words():
+    import hardware_scene
+    said = lambda check, ok, detail: SimpleNamespace(check=check, ok=ok, detail=detail)  # noqa: E731
+    assert hardware_scene.wheel_outcome(said("R3", True, "22.14 mm: it presses in and holds upside down")) == (22.14, "seats")
+    assert hardware_scene.wheel_outcome(said("R3", True, "21.98 mm: a 22.05 mm seat wouldn't take the bearing; test coupon c "
+                                                         "would find a size that holds, and d moves the seat")) == (21.98, "stops")
+    assert hardware_scene.wheel_outcome(said("R3", False, "22.39 mm: from 22.4 mm the bearing was too loose and fell out"))[1] == "falls"
+    assert hardware_scene.wheel_outcome(said("R3", None, "22.07 mm: between 22.05, too tight, and 22.1, which held")) == (None, None)
+    assert hardware_scene.wheel_outcome(said("R3", None, "no seat to read")) == (None, None)
+    assert hardware_scene.nut_outcome(said("R4", True, "pocket 8.00 across flats, +0.00 over the 8.0 nut: prints say holds")) == "seats"
+    assert hardware_scene.nut_outcome(said("R4", False, "pocket 5.40 across flats, -0.10 over the 5.5 nut: prints say won't go in; x")) == "stops"
+    assert hardware_scene.nut_outcome(said("R4", False, "pocket 8.30 across flats, +0.30 over the 8.0 nut: prints say falls out")) == "falls"
+    assert hardware_scene.nut_outcome(said("R4", None, "pocket 8.20 across flats, +0.20 over the 8.0 nut: prints say loose")) is None
+    assert hardware_scene.nut_outcome(said("R4", None, "pocket with ribs: round 3's prints of that shape say not measured")) is None
+    through = said("R3", True, "6.60 mm clear at its tightest: the bolt goes through by hand (round 3)")
+    assert hardware_scene.tripod_outcome(through, said("R4", True, "recess 15.2 mm across and 5.0 mm deep"))[0] == "seats"
+    assert hardware_scene.tripod_outcome(through, said("R4", False, "recess 13.00 mm across: the 13 mm one was too tight for this head"))[:2] == ("stops", "head")
+    assert hardware_scene.tripod_outcome(said("R3", False, "6.20 mm clear at its tightest: a 6.35 mm bolt won't pass"), None)[:2] == ("stops", "tip")
+    assert hardware_scene.tripod_outcome(said("R3", False, "6.35 mm clear at its tightest: round 3's 1/4-20 only screwed through"), None)[0] is None
+
+
+def test_assembled_scenes_draw_the_hardware_where_the_saved_findings_say():
+    """Every built wheel, plate and knob design has an assembled view or a stated reason. A view's printed part has a
+    matrix, its hardware has its own colours, and a fit is played only with the outcome the saved finding's words give,
+    the same outcome on every piece, along a unit axis, stopping short of seated only when it stops."""
+    import hardware_scene
+    media = results_site.media()
+    outcome_of = {"bearing-wheel": lambda f: hardware_scene.wheel_outcome(f)[1], "nut-knob": hardware_scene.nut_outcome}
+    scenes = 0
+    for design_id, design in media.items():
+        record = saved_record(design_id)
+        family = (record or {}).get("task", "").split("/")[0]
+        if family not in HARDWARE_TASKS or not design["built"]:
+            continue
+        scene = design["scene"]
+        assert scene or design.get("scene_none"), design_id
+        if not scene:
+            continue
+        scenes += 1
+        layers = {layer["key"]: layer for layer in scene["layers"]}
+        assert layers["printed"]["parts"][0]["part"] and len(layers["printed"]["parts"][0]["matrix"]) == 16
+        assert len({layer["color"] for layer in scene["layers"]}) == len(scene["layers"])
+        assert {"bolt"} <= set(layers) <= {"printed", "bearings", "bolt", "nut"}
+        fits = [part["fit"] for layer in scene["layers"] for part in layer["parts"] if part.get("fit")]
+        assert bool(fits) == bool(scene.get("fit")), design_id
+        assert scene.get("fit") or scene.get("fit_note"), design_id
+        if not fits:
+            continue
+        saved = {f["check"]: f for f in (record.get("findings") or []) if not f.get("test_print")}
+        named = saved[scene["fit"]["check"]]
+        assert scene["fit"]["detail"] == named["detail"]
+        if family in outcome_of:
+            assert outcome_of[family](SimpleNamespace(**named)) == scene["fit"]["outcome"]
+        else:
+            r4 = SimpleNamespace(**saved["R4"]) if "R4" in saved else None
+            assert hardware_scene.tripod_outcome(SimpleNamespace(**saved["R3"]), r4)[0] == scene["fit"]["outcome"]
+        for fit in fits:
+            assert fit["outcome"] == scene["fit"]["outcome"]
+            assert abs(sum(v * v for v in fit["axis"]) - 1) < 1e-4 and fit["travel"] > 0
+            assert (fit["stop"] is not None) == (fit["outcome"] == "stops")
+            if fit["stop"] is not None:
+                assert 0 < fit["stop"] < fit["travel"]
+    if scenes == 0:
+        pytest.skip("the media manifest here has no wheel, plate or knob scenes")
+
+
+def test_estoa_scenes_show_the_led_disk_and_the_plug_only_where_r3_passed():
+    media = results_site.media()
+    estoa = 0
+    for design_id, design in media.items():
+        record = saved_record(design_id)
+        if not design.get("scene") or (record or {}).get("task") != "estoa-light":
+            continue
+        estoa += 1
+        keys = {layer["key"] for layer in design["scene"]["layers"]}
+        sub = yaml.safe_load((RUNS / design_id / "submission.yaml").read_text())
+        disks = {item["id"] for item in sub.get("hardware") or [] if item.get("ref") == "own:led-disk"}
+        placed_disk = any(item.get("item") in disks for item in (sub.get("assembly") or {}).get("items") or [])
+        assert ("disk" in keys) == placed_disk, design_id
+        counted = [] if record.get("declined") else [f for f in record.get("findings") or [] if not f.get("test_print")]
+        if "plug" in keys:
+            assert any(f["check"] == "R3" and f["ok"] is True for f in counted), design_id
+    if estoa == 0:
+        pytest.skip("the media manifest here has no Estoa scenes")
+
+
+def test_a_scene_says_marked_in_red_only_when_it_has_a_red_layer():
+    """Codex on PR 26: the hardware views list failed checks but draw no red, so the caption mustn't point at red."""
+    detail = (ROOT / "scripts/results_site/detail.js").read_text()
+    assert 'layer.key === "problem" && layer.parts.some((part) => part.mesh)' in detail
+    assert "not marked in this view" in detail

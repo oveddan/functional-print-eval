@@ -19,7 +19,10 @@ Each design's files are made from its submission, saved findings and assumptions
 content key (content_key), kept in each local record and, per design, under the committed manifest's "keys". A run
 does only the designs whose committed key isn't current (after a regrade, the ones whose findings changed), reuses
 a local record only when its key matches, and overlays what it did on the committed manifest, so a run over some
-designs keeps every other one. --all redoes every design; bump VERSION when the drawing code changes. --check exits 1
+designs keeps every other one. The committed key (design_key) also holds SCENE_VERSION and a digest of the catalog
+files the drawings read; a record whose renders are current under parts_key (VERSION and the catalog, no
+SCENE_VERSION) gets only its assembled view drawn again. --all redoes every design; bump VERSION when the rendering
+code changes and SCENE_VERSION when the assembled-view code (scripts/hardware_scene.py, assembly_scene.py) does. --check exits 1
 if a committed entry is out of date, drawing nothing and needing no network (scripts/update_tables.sh --check runs it).
 
 A highlight marks where a failed check looked, using the same code the grader ran, never a second grading:
@@ -64,6 +67,8 @@ CACHE_CONTROL = "public, max-age=31536000, immutable"
 CONTENT_TYPES = {".webp": "image/webp", ".glb": "model/gltf-binary"}
 
 VERSION = 1  # bump to re-render every design
+SCENE_VERSION = 4  # bump to redraw only the assembled views (a design whose record is otherwise current keeps its renders)
+SCENE_TASKS = ("estoa-light", "bearing-wheel", "tripod-plate", "nut-knob")
 THUMB = (640, 512)
 SUPERSAMPLE = 2
 PART_RGB = (176, 186, 196)
@@ -116,6 +121,25 @@ def content_key(folder, version) -> str:
             if spec and spec.is_dir() else None,
             "findings": [{key: finding.get(key) for key in FINDING_KEYS} for finding in findings]}
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:16]
+
+
+# Shared inputs the drawings read: the hardware's sizes (a nut's across-flats, a bearing's, the plug head's). A change to
+# either file changes every key, so it redraws, as a VERSION bump would.
+CATALOG_FILES = ("catalog/hardware.yaml", "catalog/connectors.yaml")
+
+
+def catalog_digest() -> str:
+    return hashlib.sha256(b"".join((ROOT / name).read_bytes() for name in CATALOG_FILES)).hexdigest()[:8]
+
+
+def parts_key(folder) -> str:
+    """The key of a design's renders and meshes: its content key at VERSION and the catalog."""
+    return content_key(folder, f"{VERSION}.{catalog_digest()}")
+
+
+def design_key(folder) -> str:
+    """The key of everything committed for a design: its renders, and its assembled view at SCENE_VERSION."""
+    return content_key(folder, f"{VERSION}.{SCENE_VERSION}.{catalog_digest()}")
 
 
 def task_of(folder):
@@ -425,6 +449,24 @@ def part_entry(folder, part_id, role, failed, task):
             "size_mm": [round(float(v), 2) for v in mesh.extents]}
 
 
+def hardware_scene_entry(folder, sub, findings, declined, task):
+    """A wheel's, tripod plate's or knob's assembled view (scripts/hardware_scene.py), each hardware mesh saved as a
+    GLB: (scene, None), (None, why there's none) or (None, None) for a task it doesn't draw."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import hardware_scene
+    counted = [] if declined else [SimpleNamespace(**finding) for finding in findings if not finding.get("test_print")]
+    drawn, why = hardware_scene.scene(sub, task, counted, folder / "parts")
+    if drawn is None:
+        return None, why
+    for layer in drawn["layers"]:
+        for part in layer["parts"]:
+            if layer["key"] == "printed":
+                part["part"] = part.pop("name")
+            else:
+                part["mesh"] = store(glb_bytes(part.pop("mesh_obj")), f"scene-{layer['key']}.glb")
+    return drawn, None
+
+
 def scene_entry(folder, sub, findings, declined, slug):
     """The assembled view (scripts/assembly_scene.py) with each layer saved as a GLB, or None."""
     if sub.assembly is None:
@@ -490,26 +532,59 @@ def _process(folder):
         error = error or ("no final part: the design holds only test prints" if not sub.parts else "no parts")
         return {"rel": rel(folder), "version": VERSION, "built": False, "error": error, "parts": [],
                 "scene": None}
+    parts.sort(key=lambda part: (part["role"] != "final", part["id"]))
+    record = {"rel": rel(folder), "version": VERSION, "built": True, "error": error, "parts": parts}
+    return record | scenes(folder, sub, findings, declined, task)
+
+
+def scenes(folder, sub, findings, declined, task):
+    """The record's assembled view: {scene, scene_none (why a wheel, plate or knob has none), scene_version}."""
     try:
-        scene = scene_entry(folder, sub, findings, declined, safe(rel(folder)))
+        scene, why = hardware_scene_entry(folder, sub, findings, declined, task)
+        if scene is None and why is None:
+            scene = scene_entry(folder, sub, findings, declined, safe(rel(folder)))
     except Exception as e:  # the view helps read a design; one that can't be drawn mustn't lose the parts
         print(f"no scene for {rel(folder)}: {type(e).__name__}: {e}", file=sys.stderr)
-        scene = None
-    parts.sort(key=lambda part: (part["role"] != "final", part["id"]))
-    return {"rel": rel(folder), "version": VERSION, "built": True, "error": error, "parts": parts, "scene": scene}
+        drawn_here = task.split("/")[0] in hardware_scene_tasks()
+        scene, why = None, (f"the grader's geometry couldn't be read on this design ({type(e).__name__})" if drawn_here else None)
+    return {"scene": scene, "scene_none": why, "scene_version": SCENE_VERSION}
+
+
+def hardware_scene_tasks():
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import hardware_scene
+    return hardware_scene.TASKS
+
+
+def redraw_scene(folder, record):
+    """A record whose renders are current, with its assembled view drawn again."""
+    try:
+        sub = submission_to_build(folder)
+        findings, declined = saved_findings(folder)
+        return record | scenes(folder, sub, findings, declined, task_of(folder))
+    except Exception as e:
+        print(f"no scene for {rel(folder)}: {type(e).__name__}: {e}", file=sys.stderr)
+        return record | {"scene": None, "scene_none": None, "scene_version": SCENE_VERSION}
 
 
 def work(folder, force=False):
     """Process one design unless its record is current (same version and content key) and force (--all) isn't set,
-    and save the record."""
+    and save the record. A record whose renders are current but whose assembled view isn't (part_key matches, key
+    doesn't) gets only its view drawn again."""
     path = record_path(folder)
-    key = content_key(folder, VERSION)
+    key, part_key = design_key(folder), parts_key(folder)
     if path.exists():
         saved = json.loads(path.read_text())
         if not force and saved.get("version") == VERSION and saved.get("key") == key:
             return saved
+        if not force and saved.get("version") == VERSION and saved.get("part_key") == part_key:
+            # only the assembled view's inputs moved (SCENE_VERSION): keep the renders, draw the view again
+            record = redraw_scene(folder, saved) if saved["built"] and task_of(folder).split("/")[0] in SCENE_TASKS else saved
+            record |= {"key": key, "part_key": part_key}
+            path.write_text(json.dumps(record, indent=1, sort_keys=True))
+            return record
     record = process(folder)
-    record["key"] = key
+    record |= {"key": key, "part_key": part_key}
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=1, sort_keys=True))
     return record
@@ -581,9 +656,11 @@ def manifest_scene(scene, parts):
     layers = []
     for layer in scene["layers"]:
         drawn = [{"mesh": meshes.get(part["part"]) if "part" in part else url_of(part["mesh"]), "matrix": part["matrix"],
-                  **({"part": part["part"]} if "part" in part else {})} for part in layer["parts"]]
+                  **({"part": part["part"]} if "part" in part else {}), **({"fit": part["fit"]} if part.get("fit") else {})}
+                 for part in layer["parts"]]
         layers.append({"key": layer["key"], "label": layer["label"], "color": layer["color"], "parts": drawn})
-    return {"layers": layers, "fails": scene["fails"], "assumed_fails": scene["assumed_fails"]}
+    extra = {key: scene[key] for key in ("fit", "fit_note", "notes") if key in scene}
+    return {"layers": layers, "fails": scene["fails"], "assumed_fails": scene["assumed_fails"], **extra}
 
 
 def committed():
@@ -602,7 +679,8 @@ def write_manifest(records):
     for record in records:
         designs[record["rel"]] = {"built": record["built"], "error": record["error"],
                                   "parts": [manifest_part(part) for part in record["parts"]],
-                                  "scene": manifest_scene(record.get("scene"), record["parts"])}
+                                  "scene": manifest_scene(record.get("scene"), record["parts"]),
+                                  **({"scene_none": record["scene_none"]} if record.get("scene_none") else {})}
         keys[record["rel"]] = record["key"]
     text = json.dumps({"designs": designs, "keys": keys}, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
     assert "/Users/" not in text and str(Path.home()) not in text
@@ -612,12 +690,12 @@ def write_manifest(records):
 def stale(folders):
     """The designs whose committed entry wasn't drawn from what's saved now."""
     keys = committed()["keys"]
-    return [folder for folder in folders if keys.get(rel(folder)) != content_key(folder, VERSION)]
+    return [folder for folder in folders if keys.get(rel(folder)) != design_key(folder)]
 
 
 def saved_records():
     """Every record on disk drawn from what's saved now for a design still in results/runs."""
-    keys = {rel(folder): content_key(folder, VERSION) for folder in design_folders()}
+    keys = {rel(folder): design_key(folder) for folder in design_folders()}
     records = [json.loads(path.read_text()) for path in sorted(RECORDS.glob("*.json"))]
     return [record for record in records if record.get("version") == VERSION and record.get("key") == keys.get(record["rel"])]
 
@@ -628,8 +706,9 @@ def report(records):
     reasons = Counter(re.sub(r"[\d.]+", "N", (record["error"] or "").split(": ", 1)[-1])[:70]
                       for record in records if not record["built"])
     checks = Counter(check for part in parts for check in part["highlight_checks"])
-    sizes = sorted((OBJECTS / part["mesh"]).stat().st_size for part in parts if part["mesh"])
-    thumbs = sorted((OBJECTS / part["thumb"]).stat().st_size for part in parts if part["thumb"])
+    # files another machine drew and uploaded aren't kept here; they count only where they are
+    sizes = sorted((OBJECTS / part["mesh"]).stat().st_size for part in parts if part["mesh"] and (OBJECTS / part["mesh"]).exists())
+    thumbs = sorted((OBJECTS / part["thumb"]).stat().st_size for part in parts if part["thumb"] and (OBJECTS / part["thumb"]).exists())
     print(f"designs {len(records)}, built {len(built)}, failed {len(records) - len(built)}; parts {len(parts)}", file=sys.stderr)
     print(f"highlights by check: {dict(checks)}; scenes {sum(1 for r in built if r.get('scene'))}", file=sys.stderr)
     if sizes:
@@ -647,7 +726,7 @@ def main():
     parser.add_argument("--only", help="only designs whose path under results/runs contains this")
     parser.add_argument("--no-upload", action="store_true", help="build and render, but don't upload")
     parser.add_argument("--workers", type=int, default=6, help="more can run the GPU out of memory, and offscreen renders come back empty")
-    parser.add_argument("--upload-workers", type=int, default=8)
+    parser.add_argument("--upload-workers", type=int, default=6, help="more hit Cloudflare's rate limit")
     parser.add_argument("--all", action="store_true", help="redo designs whose committed entry is already current too")
     parser.add_argument("--check", action="store_true", help="exit 1 if any committed entry is out of date; draws nothing")
     args = parser.parse_args()
@@ -670,7 +749,7 @@ def main():
     records = saved_records()
     report(records)
     objects = sorted({obj for record in records for obj in objects_in(record)})
-    total = sum((OBJECTS / obj).stat().st_size for obj in objects)
+    total = sum((OBJECTS / obj).stat().st_size for obj in objects if (OBJECTS / obj).exists())
     print(f"{len(objects)} objects, {total / 1e6:.1f} MB", file=sys.stderr)
     if not args.no_upload:
         uploaded, failures = upload(objects, args.upload_workers)
