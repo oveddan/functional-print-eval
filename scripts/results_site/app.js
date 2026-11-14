@@ -339,6 +339,25 @@ function wireFailingExample() {
 
 // ---- why first prints don't pass ----
 
+// A reason's picture: Dan's photo of a recorded print where there is one, else a check's drawing of one design.
+function whyThumb(key) {
+  const picture = index.reason_pictures?.[key];
+  if (!picture) return h("span", { class: "why-thumb why-thumb-none", "aria-hidden": "true" });
+  const image = h("img", { src: picture.thumb, alt: "", decoding: "async", width: "96", height: "72" });
+  const box = h("span", { class: `why-thumb${picture.kind === "drawing" ? " why-thumb-drawing" : ""}`, "aria-hidden": "true" }, image);
+  image.addEventListener("error", () => box.classList.add("why-thumb-none"), { once: true });
+  return box;
+}
+
+// What the picture is, in words a reader sees without hovering: whose it is, and that a design wasn't printed.
+function whyTag(key) {
+  const picture = index.reason_pictures?.[key];
+  if (!picture) return null;
+  const text = picture.kind === "drawing" ? "Picture: the check's drawing of one design (not printed)"
+    : picture.kind === "test print" ? "Picture: one of Dan's test prints" : "Picture: from Dan's own build";
+  return h("small", { class: "why-tag" }, text);
+}
+
 function renderWhy() {
   const entries = lookup.entries.get("first").filter((entry) => entry.counted);
   const notPassing = entries.filter((entry) => entry.verdict !== "pass").length;
@@ -349,7 +368,8 @@ function renderWhy() {
   for (const reason of reasons) {
     const verdict = ISSUE_VERDICT[reason.kind];
     list.append(h("li", {}, cellLink(`why ${reason.key}`, { reason: reason.key }, { trials: reason.count }, { class: `why-row ${VERDICT[verdict].cls}` }, [
-      h("span", { class: "why-label" }, icon(VERDICT[verdict].icon), h("span", {}, reason.text)),
+      whyThumb(reason.key),
+      h("span", { class: "why-label" }, icon(VERDICT[verdict].icon), h("span", { class: "why-words" }, h("span", { class: "why-text" }, reason.text), whyTag(reason.key))),
       h("span", { class: "why-track", "aria-hidden": "true" }, h("span", { class: `why-bar${verdict === "not graded" ? " why-bar-ng" : ""}`, style: `width:${(100 * reason.count / most).toFixed(1)}%` })),
       h("span", { class: "why-n" }, String(reason.count), h("span", { class: "sr-only" }, ` designs, ${VERDICT[verdict].label.toLowerCase()}`)),
     ])));
