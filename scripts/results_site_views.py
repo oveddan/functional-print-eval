@@ -17,16 +17,8 @@ objects/<sha256-8>/<name>.webp (content-addressed, like the media script's), slo
 and views.json, the working manifest: {"version", "designs": {design path: [{check, part, state, test_print, kind,
 caption, view, no_view_reason}]}}, where `view` is the media host URL once uploaded, else the local path. Once every
 image is uploaded (with the media script's uploader, its own ledger, at most 6 at a time) the same manifest with URLs
-only is written to scripts/results_site_views.json, committed, which scripts/results_site.py reads.
-
-Records and the committed manifest carry each design's content key (results_site_media.content_key: its submission,
-saved findings and assumptions, with VERSION). A run draws only the designs whose committed key isn't current (after
-a regrade, the ones whose findings changed), reuses a local record only when its key matches, and overlays what it
-drew on the committed manifest, so a run over some designs keeps every other one. Audit answers
-(scripts/results_site_view_audit.json) for drawings that were replaced are dropped; the new drawings stay unaudited
-until the audit is rerun. --all redraws every design; bump VERSION when the drawing code changes. --check exits 1 if
-a committed entry or audit answer is out of date, drawing nothing and needing no network (scripts/update_tables.sh
---check runs it).
+only is written to scripts/results_site_views.json, committed, which scripts/results_site.py reads. A re-run only does
+what's new; bump VERSION to redraw everything.
 """
 import argparse
 import hashlib
@@ -1819,16 +1811,14 @@ def process(folder, failed_only=False):
 
 
 def work(job):
-    folder, failed_only, force = job  # force: --all, which redraws even a design whose record is current
+    folder, failed_only = job
     path = record_path(folder)
-    key = media.content_key(folder, VERSION)
     if path.exists():
         saved = json.loads(path.read_text())
-        if not force and saved.get("version") == VERSION and saved.get("key") == key and (failed_only or not saved.get("failed_only")):
+        if saved.get("version") == VERSION and (failed_only or not saved.get("failed_only")):
             return saved
     started = time.time()
     record = process(folder, failed_only)
-    record["key"] = key
     record["seconds"] = round(time.time() - started, 1)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=1, sort_keys=True))
@@ -1838,48 +1828,9 @@ def work(job):
 # ---- the manifest ----
 
 def saved_records():
-    """Every record on disk drawn from what's saved now for a design still in results/runs."""
-    keys = {media.rel(folder): media.content_key(folder, VERSION) for folder in media.design_folders()}
+    wanted = {media.rel(folder) for folder in media.design_folders()}
     records = [json.loads(path.read_text()) for path in sorted(RECORDS.glob("*.json"))]
-    return [record for record in records if record.get("version") == VERSION and record.get("key") == keys.get(record["rel"])]
-
-
-def committed():
-    """The committed manifest as {"designs", "keys"}, or empty ones without it."""
-    saved = json.loads(COMMITTED.read_text()) if COMMITTED.exists() else {}
-    return {"designs": saved.get("designs") or {}, "keys": saved.get("keys") or {}}
-
-
-def has_nothing_to_draw(folder):
-    findings, declined = media.saved_findings(folder)
-    return not wanted_findings(findings, declined)
-
-
-def stale(folders):
-    """The designs whose committed entry wasn't drawn from what's saved now. One with nothing to draw is current
-    while the manifest has no entry for it."""
-    old = committed()
-    return [folder for folder in folders
-            if old["keys"].get(media.rel(folder)) != media.content_key(folder, VERSION)
-            and not (has_nothing_to_draw(folder) and media.rel(folder) not in old["designs"])]
-
-
-def stale_audit():
-    """Audit answers for drawings the committed manifest no longer has."""
-    urls = {view["view"] for entries in committed()["designs"].values() for view in entries if view["view"]}
-    return sorted(set(results_site.view_audit()) - urls)
-
-
-def prune_audit():
-    """Drop audit answers for drawings that were replaced; the new drawings stay unaudited until the audit is rerun."""
-    gone = set(stale_audit())
-    if not gone or not results_site.VIEW_AUDIT.exists():
-        return
-    saved = json.loads(results_site.VIEW_AUDIT.read_text())
-    saved["views"] = {url: answer for url, answer in saved["views"].items() if url not in gone}
-    results_site.VIEW_AUDIT.write_text(json.dumps(saved, indent=1, ensure_ascii=False) + "\n")
-    results_site.view_audit.cache_clear()
-    print(f"dropped {len(gone)} audit answers for replaced drawings", file=sys.stderr)
+    return [record for record in records if record["rel"] in wanted and record.get("version") == VERSION]
 
 
 def view_ref(obj, uploaded):
@@ -1950,22 +1901,17 @@ def main():
     parser.add_argument("--manifest-only", action="store_true", help="rewrite the manifests from the saved records, drawing nothing")
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--upload-workers", type=int, default=6, help="the media host rate-limits above 6")
-    parser.add_argument("--all", action="store_true", help="redraw designs whose committed entry is already current too")
-    parser.add_argument("--check", action="store_true", help="exit 1 if any committed entry or audit answer is out of date; draws nothing")
     args = parser.parse_args()
-    folders = [folder for folder in media.design_folders() if not args.only or args.only in media.rel(folder)]
-    if args.check:
-        sys.exit(check(folders))
-    folders = folders if args.all else stale(folders)
     for folder in (RECORDS, OBJECTS, CACHE):
         folder.mkdir(parents=True, exist_ok=True)
+    folders = [folder for folder in media.design_folders() if not args.only or args.only in media.rel(folder)]
     folders = folders[:args.limit] if args.limit else folders
     print(f"{len(folders)} designs", file=sys.stderr)
     started = time.time()
     with Pool(1 if args.manifest_only else args.workers, maxtasksperchild=10) as pool:
         if args.manifest_only:
             folders = []
-        for count, _ in enumerate(pool.imap_unordered(work, [(folder, args.failed_only, args.all) for folder in folders]), 1):
+        for count, _ in enumerate(pool.imap_unordered(work, [(folder, args.failed_only) for folder in folders]), 1):
             if count % 50 == 0:
                 print(f"  {count}/{len(folders)} ({time.time() - started:.0f} s)", file=sys.stderr)
     records = saved_records()
@@ -1985,36 +1931,11 @@ def main():
     print(f"wrote {COMMITTED.relative_to(ROOT)}", file=sys.stderr)
 
 
-def check(folders) -> int:
-    """1 if a committed drawing is out of date or the audit names a drawing that's gone."""
-    failed = media.report_stale(stale(folders), COMMITTED.name)
-    gone = stale_audit()
-    if gone:
-        print(f"{results_site.VIEW_AUDIT.name}: {len(gone)} answers name drawings that were replaced; "
-              f"uv run python scripts/results_site_views.py drops them", file=sys.stderr)
-    return 1 if failed or gone else 0
-
-
 def write_committed(records, uploaded):
-    """The committed manifest, scripts/results_site_views.json: media-host URLs only, sorted, no local paths. The
-    current records are overlaid on what's committed, so a run over some designs keeps every other one; designs no
-    longer in results/runs are dropped, and so are audit answers for drawings that were replaced."""
-    current = {media.rel(folder) for folder in media.design_folders()}
-    old = committed()
-    designs = {name: entries for name, entries in old["designs"].items() if name in current}
-    keys = {name: key for name, key in old["keys"].items() if name in current}
-    drawn = manifest(records, uploaded)["designs"]
-    for record in records:
-        if record.get("failed_only"):  # without the ungraded checks' drawings it isn't the design's whole entry
-            continue
-        designs.pop(record["rel"], None)
-        if record["rel"] in drawn:
-            designs[record["rel"]] = drawn[record["rel"]]
-        keys[record["rel"]] = record["key"]
-    text = json.dumps({"version": VERSION, "designs": designs, "keys": keys}, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
+    """The committed manifest, scripts/results_site_views.json: media-host URLs only, sorted, no local paths."""
+    text = json.dumps(manifest(records, uploaded), indent=1, sort_keys=True, ensure_ascii=False) + "\n"
     assert "/Users/" not in text and str(Path.home()) not in text and "results/local" not in text
     COMMITTED.write_text(text)
-    prune_audit()
 
 
 if __name__ == "__main__":

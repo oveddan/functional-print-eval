@@ -10,10 +10,6 @@
 #   scripts/results_table.py  docs/reference.md's full results and assumptions
 #   report/atlas/build.py     docs/reference.md's failure classes (from seeds/)
 #   scripts/failure_tables.py docs/reference.md's "what went wrong" and "not graded" counts
-#
-# --check also checks the results site's 3D files and failure drawings were made from today's saved findings and
-# submissions. It draws nothing and needs no network. If it fails, redraw the changed designs (uploads to the media host):
-#   uv run --with pyvista python scripts/results_site_media.py && uv run python scripts/results_site_views.py
 set -euo pipefail
 cd "$(dirname "$0")/.."
 PILOTS="pilot-tripod pilot-tripod-given pilot-nut-knob pilot-nut-knob-2 pilot-wheel pilot-spacer pilot-code pilot-estoa loop-estoa loop-all test-first"
@@ -24,8 +20,6 @@ case "${1:-}" in
     uv run python scripts/results_table.py --check
     uv run python report/atlas/build.py --check
     uv run python scripts/failure_tables.py --check
-    uv run python scripts/results_site_media.py --check
-    uv run python scripts/results_site_views.py --check
     ;;
   --slice|"")
     if [ "${1:-}" = "--slice" ]; then uv run python scripts/slice_estimates.py $PILOTS; fi

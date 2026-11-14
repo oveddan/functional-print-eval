@@ -4,13 +4,19 @@
 
 The code as submitted to the hackathon is at the [`hackathon-submission` tag](https://github.com/oveddan/functional-print-eval/tree/hackathon-submission); this README describes the eval as it is now.
 
-3d printing is becoming far more accessible to the general public, as state of the art printers have become cheaper while increasing their capabilities, and LLMs can generate designs using open source tools, without a user needing to learn 3d modeling or purchase expensive software.  
+**[Browse every trial on the results site](https://oveddan.github.io/functional-print-eval/)**: each model's design, every check with its reason, the test prints it asked for, its code and its transcript.
 
-In the design process, these models often make mistakes, which are costly both in time and money, as prints can take hours to complete, and physical material is consumed. If there are errors, another print needs to be made, thus wasting the time and material spent.
+This is an open-source eval of how well LLMs design functional 3D prints: things that have to do a job once they're printed and put together. A functional print is rarely one shape. A robot arm, a light enclosure or a camera mount is several printed parts joined with screws, nuts, heat-set inserts or bearings, and it only works if every part prints, fits the hardware, and fits the other parts.
 
-How can we determine which models produce the best designs, with the least amount of tokens spent, material consumed, and time waited for printing?  How can we simulate the result of each print design, and know if it will be successful or not before printing it?  How can we build a feedback loop that allows a model to correct its mistakes, and measure if its fix got us closer to the final answer?
+The tasks so far start smaller: a camera plate for a tripod, a hand knob with a nut pressed in, and a closet-door wheel on two bearings, each a printed part that has to print without supports and fit real hardware, plus a harder multi-part enclosure for a wall light. The assembly steps the model writes aren't graded yet.
 
-This repository builds a framework for simulating and measuring the success when LLMs are designing [functional prints](https://www.reddit.com/r/functionalprint/) based on a prompt, measurements, available materials, and simulated results.
+Each task gives a model a request in a person's own words, with the measurements and hardware on hand. The model writes the CAD code for each part, picks the fasteners and writes the assembly steps. The eval then grades the design in code before anything is printed. Will each part print? Will the screws reach their inserts? Will the plug fit through its hole? The answers come from test prints I've actually made.
+
+Printing is slow, and a wrong design costs hours and material before you find out. So the questions are:
+
+- Which models get a design right on the first print, and at what cost in tokens, material and waiting?
+- Can we tell whether a print will work before printing it?
+- When a model is told what went wrong, the way a test print would tell you, does its fix get closer?
 
 ## How this started
 
@@ -88,7 +94,7 @@ In each trial, nothing actually gets printed. We have checks, run by code, that 
 ## Constraints
 
 * The print shouldn't require any supports
-* The model has up to 12 turns
+* The model has up to 12 turns when it can ask for test prints, and 8 otherwise
 * We are currently restricting to high-speed PLA.
 
 ## What the eval tests: failure classes
@@ -99,7 +105,7 @@ Every one of our checks comes from failures that happened on my real builds. Goi
 |---|---|---|---|
 | **C1** Designing from unmeasured dimensions | ![Estoa's back-box skeleton with the real power bank on it: the bay drawn from a guessed size was too small](https://media.danoved.xyz/print-build-eval/nogit/243658bb/IMG_4861.jpg) | The Estoa battery bay was drawn from a guessed 154 mm length; the battery didn't fit. | The person's measurements are only given if the model asks. The checks compare the design against the real ones, such as the bolt head's real size in the tripod plate's recess. |
 | **C2** Fit clearance wrong for the printer | ![A fit test on Oct 22: a bolt and nut tried in a printed block's pockets](https://media.danoved.xyz/print-build-eval/nogit/8d028eda/fit-test-bolt-nut.gif) | Nut pockets 0.3 mm over the nut; every nut fell out. | It measures the nut pocket or bearing seat in the built part and looks that size up in the recorded test prints: went in and held, fell out, or wouldn't go in. |
-| **C3** Fastener stack-up | ![A lid-screw post after its heat-set insert went in: too thin, it bent and flared](https://media.danoved.xyz/print-build-eval/nogit/efec6749/IMG_4928.jpg) | Estoa's posts for the heat-set inserts (brass threaded sleeves melted into the plastic) were too thin; they bent and the inserts sat crooked. | It adds up each bolt's path from the part and the catalog's real thread lengths: does the bolt reach the camera, pass through the nut, or bottom out before it tightens; is there enough plastic around each insert. |
+| **C3** Fastener stack-up | ![A lid-screw post after its heat-set insert went in: too thin, it bent and flared](https://media.danoved.xyz/print-build-eval/nogit/efec6749/IMG_4928.jpg) | Estoa's posts for the heat-set inserts (brass threaded sleeves melted into the plastic) were too thin; they bent and the inserts sat crooked. | It adds up each bolt's path from the part and the catalog's real thread lengths: does the bolt reach the camera, pass through the nut, or bottom out before it tightens; does each heat-set insert sit in a hole sized for one (whether its post has enough plastic is passed for now, so the Estoa build's bent posts aren't caught yet). |
 | **C5** Mating-part envelopes | ![The ESP32's USB-C opening in the Estoa box, sized to the port, not the plug](https://media.danoved.xyz/print-build-eval/nogit/c524a219/IMG_4884.jpg) | Estoa's USB opening fit the port, but a real plug's head is wider than the hole. | It places the real hardware against the part (the clamp's jaws, both bearings, the perfboard, a USB-C plug) and checks each one fits. |
 | **C6** Printability in the orientation printed | ![The underside of the tripod's Arca plate: the roof over the bolt's recess printed as a tangle](https://media.danoved.xyz/print-build-eval/nogit/1e41d9fa/IMG_5045.jpg) | The bottom of the camera plate: the plastic printed over the bolt's recess collapsed into loose strands. | It cuts the part into layers as printed and lays strands across every overhang. If too few land on solid at both ends, the roof fails. Each part must also be one piece and fit the bed. |
 | **C7** Works in the orientation it's used | no photo | Estoa's keyhole slots ran down, so it couldn't hang on its screws. | It finds the keyholes in the back and checks both slots run the same way, so the box can drop onto both screws, and that each entry passes a common screw head. |
@@ -206,38 +212,38 @@ We ran out of time to make the test-print loop work on this task. Some example f
 | Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | All four tasks | Estoa light box (harder) | Print hours per pass | Filament per pass | Cost per pass |
 |---|---|---|---|---|---|---|---|---|---|
 | Gemini 4 Argon | **70% (7/10)** | 75% (6/8) | **100% (5/5)** | **100% (5/5)** | **82% (23/28)** | 0% (0/3) | **0.4 h** | **13 g** | $0.19 |
-| GPT-6.1 Sol | 20% (2/10) | 70% (7/10) | 60% (6/10) | **100% (10/10)** | 62% (25/40) | **67% (2/3)** | 0.5 h | 18 g | $0.08 |
+| GPT-6.1 Sol | 20% (2/10) | 70% (7/10) | 60% (6/10) | **100% (10/10)** | 63% (25/40) | **67% (2/3)** | 0.5 h | 18 g | $0.08 |
 | Gemini 3.8 Flash | 20% (2/10) | **100% (5/5)** | 60% (3/5) | 80% (4/5) | 56% (14/25) | 0% (0/3) | **0.4 h** | 14 g | $0.26 |
-| Opus 5.5 | 30% (3/10) | 40% (4/10) | 50% (5/10) | 90% (9/10) | 52% (21/40) | 0% (0/3) | 0.5 h | 17 g | $0.29 |
+| Opus 5.5 | 30% (3/10) | 40% (4/10) | 50% (5/10) | 90% (9/10) | 53% (21/40) | 0% (0/3) | 0.5 h | 17 g | $0.29 |
 | Sonnet 5.5 | 10% (1/10) | 0% (0/10) | 90% (9/10) | **100% (10/10)** | 50% (20/40) | 33% (1/3) | 0.7 h | 23 g | $0.21 |
 | DeepSeek V4.1 Flash | 33% (3/9) | 40% (2/5) | 20% (1/5) | 57% (4/7) | 38% (10/26) | 33% (1/3) | 1.0 h | 35 g | $0.16 |
 | Haiku 5.5 | 0% (0/5) | 0% (0/5) | 40% (2/5) | 20% (1/5) | 15% (3/20) | not run | 2.0 h | 74 g | **$0.04** |
 
-In these results the model can ask for test prints before its final design, as in [How a trial runs](#how-a-trial-runs). Each row is a model, best first; the best in each column is bold. A pass means every check passes on my recorded test prints. Time, filament and cost per pass count everything the model printed, test prints included, divided by the parts that work.
+In these results the model can ask for test prints before its final design, as in [How a trial runs](#how-a-trial-runs). Each row is a model, best first; the best in each column is bold. A pass means every check passes against my recorded test prints, under the assumptions listed in [the reference](docs/reference.md#assumptions-the-verdicts-rest-on). Print hours and filament are slicer estimates and cost is what the API charged; each counts everything the model asked to print, test prints included, divided by the designs that pass. Nothing a model designed was printed.
 
 **Best to worst, when the model can ask for test prints** (7 models, 5 or more trials on each of the four tasks):
 
 1. **Gemini 4 Argon**, 82% of trials pass (23/28): $0.19 and 0.4 print hours per working part
-2. **GPT-6.1 Sol**, 62% of trials pass (25/40): $0.08 and 0.5 print hours per working part
+2. **GPT-6.1 Sol**, 63% of trials pass (25/40): $0.08 and 0.5 print hours per working part
 3. **Gemini 3.8 Flash**, 56% of trials pass (14/25): $0.26 and 0.4 print hours per working part
-4. **Opus 5.5**, 52% of trials pass (21/40): $0.29 and 0.5 print hours per working part
+4. **Opus 5.5**, 53% of trials pass (21/40): $0.29 and 0.5 print hours per working part
 5. **Sonnet 5.5**, 50% of trials pass (20/40): $0.21 and 0.7 print hours per working part
 6. **DeepSeek V4.1 Flash**, 38% of trials pass (10/26): $0.16 and 1.0 print hours per working part
 7. **Haiku 5.5**, 15% of trials pass (3/20): $0.04 and 2.0 print hours per working part
 
-Not run with test prints, ranked by their first print without them: GLM 5.3 Flash 22%, GPT-6 Luna 8%, DeepSeek V4 Pro 5%, Qwen 3.8 Flash 3%. Grok 4.7 was left out because it was too expensive to run 10 trials on.
+Not run with test prints, ranked by their first print without them: GLM 5.3 Flash 23%, GPT-6 Luna 8%, DeepSeek V4 Pro 5%, Qwen 3.8 Flash 3%. Grok 4.7 was left out because it was too expensive to run 10 trials on.
 
 **What asking for test prints changed.** Across these 7 models, 37% of first prints pass without test prints, and 53% pass when the model can ask for test prints before its final design.
 
 | Model | First print, no test prints | Second print, after hearing how the first came out | Asking for test prints first | Change from the first print |
 |---|---|---|---|---|
 | Gemini 4 Argon | 50% (20/40) | 80% | 82% (23/28) | +32 points |
-| GPT-6.1 Sol | 50% (20/40) | 52% | 62% (25/40) | +12 points |
-| Gemini 3.8 Flash | 45% (18/40) | 62% | 56% (14/25) | +11 points |
-| Opus 5.5 | 40% (16/40) | 68% | 52% (21/40) | +12 points |
+| GPT-6.1 Sol | 50% (20/40) | 53% | 63% (25/40) | +13 points |
+| Gemini 3.8 Flash | 45% (18/40) | 63% | 56% (14/25) | +11 points |
+| Opus 5.5 | 40% (16/40) | 68% | 53% (21/40) | +13 points |
 | Sonnet 5.5 | 35% (14/40) | 50% | 50% (20/40) | +15 points |
 | DeepSeek V4.1 Flash | 39% (16/41) | 61% | 38% (10/26) | -1 points |
-| Haiku 5.5 | 2% (1/40) | not replayed | 15% (3/20) | +12 points |
+| Haiku 5.5 | 3% (1/40) | not replayed | 15% (3/20) | +13 points |
 
 In 155 of these 219 trials the person answered at least one test piece with "I can't tell you how that one came out", for a size my test prints never tried. 78 of the 116 passes came after such an answer, so some may owe part of the pass to moving to a size I did print (see Limits).
 <!-- scorecard:end --> 
@@ -245,7 +251,7 @@ In 155 of these 219 trials the person answered at least one test piece with "I c
 <!-- scorecard-note:start (written by scripts/scorecard.py; don't edit by hand) -->
 Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Sonnet 5.5 1 of its 6. Gemini 4 Argon, Opus 5.5, Gemini 3.8 Flash, DeepSeek V4.1 Flash and GPT-6.1 Sol had none.
 
-**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 5 of 30 designs pass on the first print. After the person says how the box came out, 12 of the 26 failures replayed pass. Asking for test prints first, 4 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
+**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 5 of 30 designs pass on the first print. After the person says how the box came out, 12 of the 26 designs replayed (every one that had failed when the replays ran) pass. Asking for test prints first, 4 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
 <!-- scorecard-note:end -->
 
 ### Where models fail

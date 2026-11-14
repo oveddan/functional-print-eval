@@ -1,6 +1,6 @@
 # Print-and-Build Eval: reference
 
-Everything behind the [README](../../README.md): the failure classes, how to run each step, the tasks, how grading works, the full results, what went wrong, the assumptions and the known limits.
+Everything behind the [README](../README.md): the failure classes, how to run each step, the tasks, how grading works, the full results, what went wrong, the assumptions and the known limits.
 
 ## The failure classes the tasks test
 
@@ -125,11 +125,11 @@ sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 Then:
 
 ```bash
-git clone https://github.com/oveddan/print-build-eval.git
+git clone https://github.com/oveddan/functional-print-eval.git
 ```
 
 ```bash
-cd print-build-eval && uv sync
+cd functional-print-eval && uv sync
 ```
 
 ### Everything at once
@@ -147,8 +147,8 @@ It runs the six steps below in order and stops at the first one that fails. Expe
 | 1. Install | `uv sync` | Python 3.12 and the locked dependencies installed | 7 s, with a fast network |
 | 2. Tests | `uv run pytest` | all pass; the three Bambu Studio tests skip where it isn't installed. Sandbox tests run in the sandbox a trial would use here; `--all-sandboxes` runs them in Docker too | 509 passed, 3 skipped (Linux cloud session, `-n 4`) |
 | 3. Every reference | `uv run python -m pbe.eval --reference --task tripod-plate` (and `m5-spacer`, `bearing-wheel`, `nut-knob/M3`, `nut-knob/M5`, `nut-knob/M8`) | each task's reference design passes every check; exit code 0 | 29 s for all six |
-| 4. Regrade every saved trial, on a copy | see below | every run's `summary.csv` unchanged | 16 min 35 s for all 13 runs (151 trials) |
-| 5. Results page | `uv run python scripts/results_page.py` | `results/local/results-page/index.html`: the `can_ask` and `all_given` trials on the knob, wheel and tripod (120 on the clean run), each with its parts in 3D and every check. It leaves out the spacer and the `can_run_code` runs | 8 min 10 s, most of it rebuilding parts |
+| 4. Regrade every saved trial, on a copy | see below | every run's `summary.csv` unchanged | 16 min 35 s for all 13 runs (151 trials), on an earlier clean run; there are more runs now |
+| 5. Results page | `uv run python scripts/results_page.py` | `results/local/results-page/index.html`: the `can_ask` and `all_given` trials on the knob, wheel and tripod (120 on an earlier clean run; the public results site, `scripts/results_site.py`, has every condition), each with its parts in 3D and every check. It leaves out the spacer and the `can_run_code` runs | 8 min 10 s, most of it rebuilding parts |
 | 6. README results | `uv run python scripts/results_table.py --check` | "README.md's results and assumptions match results/runs/" | under 1 s |
 
 Regrading reads each saved design and grades it again with today's checks, without calling a model. Point it at a copy so `results/` isn't touched:
@@ -220,7 +220,7 @@ Each task is a folder in `tasks/`: the person's request (`brief.md`), the facts 
 | `nut-knob` (M3, M5, M8) | A hand knob with a hex nut pressed in, which must stay in upside down | one part; about the right size; a pocket that takes the nut, stops it turning and stops it going through; the nut presses in and holds on this printer, or a test print would find a size that does; the bolt passes through | draft, not approved: runs are exploratory. M8 has a reference but no runs |
 | `bearing-wheel` | A closet-door roller wheel on two 608 bearings and an M8 bolt | about the old wheel's size; room for both bearings; the bearings press in and stay, or a test print would find a size; the bolt goes through | written by Claude and not reviewed by Dan; the door is invented: runs are exploratory |
 | `m5-spacer` | A 20 mm spacer for an M5 bolt, everything stated | one part; size; a clearance hole; round | a control: if models fail it, the harness is broken |
-| `estoa-light` | The box behind Dan's Estoa wall light | 7 checks on the assembled box | built on PR #23, approved by Dan, **not merged and not run**: no results |
+| `estoa-light` | The box behind Dan's Estoa wall light | 7 checks on the assembled box | merged; 30 `can_ask` trials (`pilot-estoa`) and 18 `can_test` trials (`test-first`), in the README's results |
 | `phone-stand` | A desk-clamp phone stand | its `requirements.yaml` names checks that were never built | **can't run** |
 
 Why each is hard, and every limit's source, is in its `brief.md`. The fit limits come from test prints made on one Bambu Lab X1C in one PLA, recorded with predictions committed before printing (`results/predictions/`). Photos of those prints are hosted, not committed; `docs/media/photos.md` indexes them.
@@ -255,15 +255,15 @@ The scorecard: every listed model's first print, its print after feedback, and t
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Gemini 4 Argon | 3/10 → 10/10 | 7/10 → 7/10 | 1/10 → 5/10 | 9/10 → 10/10 | 50% (20/40) | **80%** (32/40) | 0 | 50% | 21k | $0.19 | 0.4 h | 14 g |
 | Opus 5.5 | 1/10 → 7/10 | 1/10 → 6/10 | 4/10 → 4/10 | 10/10 → 10/10 | 40% (16/40) | **68%** (27/40) | 5 | 25% | 22k | $0.36 | 0.6 h | 22 g |
-| Gemini 3.8 Flash | 4/10 → 6/10 | 4/10 → 4/10 | 1/10 → 5/10 | 9/10 → 10/10 | 45% (18/40) | **62%** (25/40) | 1 | 25% | 51k | $0.25 | 0.4 h | 15 g |
+| Gemini 3.8 Flash | 4/10 → 6/10 | 4/10 → 4/10 | 1/10 → 5/10 | 9/10 → 10/10 | 45% (18/40) | **63%** (25/40) | 1 | 25% | 51k | $0.25 | 0.4 h | 15 g |
 | DeepSeek V4.1 Flash | 1/10 → 4/10 | 1/10 → 6/10 | 5/10 → 5/10 | 9/11 → 10/11 | 39% (16/41) | **61%** (25/41) | 4 | 0% | 172k | $0.09 | 0.9 h | 29 g |
-| GPT-6.1 Sol | 1/10 → 1/10 | 8/10 → 9/10 | 2/10 → 2/10 | 9/10 → 9/10 | 50% (20/40) | **52%** (21/40) | 5 | 0% | 27k | $0.17 | 0.6 h | 19 g |
+| GPT-6.1 Sol | 1/10 → 1/10 | 8/10 → 9/10 | 2/10 → 2/10 | 9/10 → 9/10 | 50% (20/40) | **53%** (21/40) | 5 | 0% | 27k | $0.17 | 0.6 h | 19 g |
 | Sonnet 5.5 | 0/10 → 2/10 | 0/10 → 2/10 | 5/10 → 6/10 | 9/10 → 10/10 | 35% (14/40) | **50%** (20/40) | 4 | 25% | 25k | $0.29 | 0.9 h | 31 g |
-| GLM 5.3 Flash | 0/10 | 0/10 | 4/10 | 5/10 | **22% (9/40)** | not run | 2 | 0% | 246k | $0.17 | 0.9 h | 29 g |
+| GLM 5.3 Flash | 0/10 | 0/10 | 4/10 | 5/10 | **23% (9/40)** | not run | 2 | 0% | 246k | $0.17 | 0.9 h | 29 g |
 | GPT-6 Luna | 0/10 | 0/10 | 0/10 | 3/10 | **8% (3/40)** | not run | 1 | 0% | 26k | $0.06 | 2.6 h | 91 g |
 | DeepSeek V4 Pro | 0/10 | 1/10 | 1/10 | 0/10 | **5% (2/40)** | not run | 4 | 0% | 70k | $2.75 | 3.1 h | 104 g |
 | Qwen 3.8 Flash | 0/10 | 1/10 | 0/10 | 0/5 | **3% (1/35)** | not run | 1 | 0% | 299k | $1.77 | 6.9 h | 235 g |
-| Haiku 5.5 | 0/10 | 0/10 | 0/10 | 1/10 | **2% (1/40)** | not run | 3 | 0% | 34k | $0.22 | 6.9 h | 260 g |
+| Haiku 5.5 | 0/10 | 0/10 | 0/10 | 1/10 | **3% (1/40)** | not run | 3 | 0% | 34k | $0.22 | 6.9 h | 260 g |
 
 ![Verified pass rate against cost per trial, one dot per model](media/scorecard.svg)
 <!-- scorecard:end -->
@@ -500,10 +500,10 @@ The bridge check's picture of GPT-6 Luna's roof (`pilot-tripod` t1, 449 mm² at 
 | A part in pieces | 9 |
 <!-- wrong-bearing-wheel:end -->
 
-| Fails: a flat roof | Not graded: a narrow ledge | Passes: a cone |
+| Fails: a flat roof | Fails since round 3: a narrow ledge | Passes: a cone |
 |---|---|---|
 | ![Sonnet's wheel t1, cut through the middle, with two bearings and the bolt drawn in](../docs/media/failures/wheel-flat-roof.png) | ![Sonnet's wheel t3, cut through the middle](../docs/media/failures/wheel-narrow-ledge.png) | ![Opus's wheel t1, cut through the middle](../docs/media/failures/wheel-cone.png) |
-| Sonnet 5.5 t1. A flat ring of 230 mm² over the lower bearing; 22% of strands anchored. | Sonnet 5.5 t3. A 157 mm² ledge, about 2.5 mm wide: narrower than any roof seen to tangle, so not graded. | Opus 5.5 t1. The roof is a cone stepping in about 0.2 mm a layer, so nothing has to bridge. |
+| Sonnet 5.5 t1. A flat ring of 230 mm² over the lower bearing; 22% of strands anchored. | Sonnet 5.5 t3. A 157 mm² ledge, about 2.5 mm wide. It wasn't graded until round 3, where a 2 mm ledge round a bolt hole tangled; now it fails. | Opus 5.5 t1. The roof is a cone stepping in about 0.2 mm a layer, so nothing has to bridge. |
 
 <!-- wrong-nut-knob:start (written by scripts/failure_tables.py; don't edit by hand) -->
 ### `nut-knob` (M3 and M5): 356 trials
@@ -536,7 +536,7 @@ The control. 55 of 57 trials pass.
 
 ## What wasn't graded, and the prints that would settle it
 
-A check is not graded when no recorded print decides it. A trial can have more than one. No print is planned before publishing (Dan, 2026-10-30), so this is future work; `docs/limitations.md` has the full list.
+A check is not graded when no recorded print decides it. A trial can have more than one. Dan's call on 2026-10-30 was no more prints before publishing; he later printed a third round (2026-11-11 and 12), and what the records still can't decide is future work; `docs/limitations.md` has the full list.
 
 <!-- not-graded:start (written by scripts/failure_tables.py; don't edit by hand) -->
 | Not graded because | Example | Trials | The print that would settle it |
@@ -548,10 +548,10 @@ A check is not graded when no recorded print decides it. A trial can have more t
 | A roof ledge 1.5 to 2 mm wide | <img src="media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 10 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
 | A pocket shape the checker can't read | <img src="media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 2 | None: the checker needs fixing |
 | A test print whose pockets are ribbed or unsettled | <img src="media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Sonnet 5.5, knob M3, trial 5"><br><sub>Sonnet 5.5, knob M3, trial 5</sub> | 2 | The ribbed pockets above, and coupon B2's finer steps |
-| A bearing seat between printed sizes, or ribbed | <img src="media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: GLM 5.3 Flash, bearing wheel, trial 2"><br><sub>GLM 5.3 Flash, bearing wheel, trial 2</sub> | 1 | Seats at 22.1 and 22.3 mm, and lobed seats: 22.05 wouldn't take a 608, 22.2 held, 22.4 fell out |
+| A bearing seat between printed sizes, or ribbed | <img src="media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: GLM 5.3 Flash, bearing wheel, trial 2"><br><sub>GLM 5.3 Flash, bearing wheel, trial 2</sub> | 1 | A ribbed, lobed or slotted seat: only plain round seats were printed (22.1 to 22.3 mm took a 608 and held it) |
 <!-- not-graded:end -->
 
-Ribbed pockets are the biggest gap. Two models' answers, cut where the nut is tightest, with the M5 nut's outline dashed:
+Ribbed pockets were the biggest gap. Two models' answers, cut where the nut is tightest, with the M5 nut's outline dashed. Round 3 printed crush ribs, so Opus's now passes; Sol's clips are still not graded:
 
 | Crush ribs | Clips |
 |---|---|
@@ -562,11 +562,11 @@ Ribbed pockets are the biggest gap. Two models' answers, cut where the nut is ti
 
 I wanted to run evals on the real-world scenarios that I had done in the past, and I tried to start with that. It would have been very long and expensive to try to get these eval steps right, so I decided to start with much simpler tasks that I know are more clear-cut. You can get to the answer quicker as far as which models perform well. Then the plan was, after that, to move to the more complicated tasks, but even the simpler tasks needed a lot of tuning to get right. So they took longer than expected, and I only got to the more complicated tasks near the end of the hackathon. With more time, I feel like I could have gotten them better, including more test printing at home that validates it's able to grade more of the results.
 
-Estoa has merged, and its trials are in the results above. Servo mount is on an unmerged branch. Its graders haven't had the audit or the verdict review the other tasks had, so its numbers aren't in the results; its count comes from the runs saved on that branch.
+Estoa has merged, and its trials are in the results above. Servo mount has merged too, but its graders haven't had the audit or the verdict review the other tasks had, so its numbers aren't in the results; its count comes from its own runs.
 
 | Task | Branch | What it tests | Model trials | Result | Cost |
 |---|---|---|---|---|---|
-| Estoa light | merged in [a04b153](https://github.com/oveddan/functional-print-eval/commit/a04b153), run `pilot-estoa` | A solid enclosure that hangs on the wall for an ESP32 that powers an LED disc | 18 | 0 pass, 14 fail, 3 not graded, 1 with no design | $6.03 |
+| Estoa light | merged in [a04b153](https://github.com/oveddan/functional-print-eval/commit/a04b153), run `pilot-estoa` | A solid enclosure that hangs on the wall for an ESP32 that powers an LED disc | 30 + 18 | first print 5 of 30 pass; with test prints first 4 of 18 (README, Results) | $20.25 |
 | Servo mount | merged in [e7dc82b](https://github.com/oveddan/functional-print-eval/commit/e7dc82b), runs `servo-first-look`, `servo-first-look-2`, `servo-datasheet` | A 3D-printed mount for a servo that's going to drive a robotic arm | 29 | 4 pass, 23 fail, 2 not graded (regraded 2026-11-12 on round 3's frames and channels, and Dan's rule that no gap for the rib fails) | $4.81 |
 
 ### Estoa light
@@ -600,12 +600,12 @@ These are treated as true without a print that shows them for that exact case. T
 ### Whose calls these are
 
 From the audit of the saved failures (issue 15):
-- **Dan's:** a test print can't fail a trial on its own; declining is its own verdict, never a pass; a roof with the bolt's hole cut through it fails `bridges`; nothing new is printed or measured before publishing, so what the records can't decide is not graded; one printer and one filament; M3 at +0.1 mm goes in by hand "with force", so it counts as holding (his memory of one print); the person answers the clamp's width as 38 mm, the Arca-Swiss standard his plate fit (new runs only); the test-print loop may print the final plate, not only the model's test prints.
+- **Dan's:** a test print can't fail a trial on its own; declining is its own verdict, never a pass; a roof with the bolt's hole cut through it fails `bridges`; nothing new is printed or measured before publishing (2026-10-30; he later offered round 3), so what the records can't decide is not graded; one printer and one filament; M3 at +0.1 mm goes in by hand "with force", so it counts as holding (his memory of one print); the person answers the clamp's width as 38 mm, the Arca-Swiss standard his plate fit (new runs only); the test-print loop may print the final plate, not only the model's test prints.
 - **Claude's, delegated by Dan** ("do what you think is best"): DeepSeek V4.1 Flash's M5 test print labelled `final` stays a fail, which Dan reviewed and kept. These aren't Dan's expert judgment. Also Claude's: one official set of counts, with no second, more optimistic score (issue 35).
 
 ### Known limits
 
-- **Pilots, not pass rates.** Five `can_ask` trials per model on the five older tasks for 11 models (Grok 4.7 has one), and one to three on `estoa-light` and in the other conditions.
+- **Small samples.** Ten `can_ask` trials per model on each of the four scored tasks for 11 models (Grok 4.7 has two), five on `estoa-light`, and fewer in some other conditions. One pass more or less moves a task's rate by 10 points.
 - **One printer, one filament.** The fit and bridge limits hold for a Bambu Lab X1C in one PLA only.
 - **One person's projects.** The tasks come from Dan's builds and mostly one agent's mistakes. Only the tripod's request was approved before it ran.
 - **The phone stand can't run**, and print-settings mistakes (failure class C10) aren't tested: a submission has no field for them, and nothing is sliced.
@@ -614,7 +614,7 @@ From the audit of the saved failures (issue 15):
 
 ## What's built and what isn't
 
-Built: the four runnable task families above with references and checks; the runner with the lookup-table person and three conditions; sandboxed builds; regrading; the test-print loop and the crash replay; the results page; the test print designs and their recorded outcomes (`coupons/`, `results/predictions/`).
+Built: the four runnable task families above with references and checks; the runner with the lookup-table person and its conditions (`can_ask`, `all_given`, `can_run_code`, `can_test`); sandboxed builds; regrading; the test-print loop and the crash replay; the results page; the test print designs and their recorded outcomes (`coupons/`, `results/predictions/`).
 
 Not built: an assembly simulation (parts moving into place along the manual's steps); a printer simulator with a hidden error; any score beyond pass, fail, not graded and declined; a comparison with a hand ranking; a simulated builder. The failure atlas (`report/atlas/`) builds only on Dan's Mac: it uses `sips` and points at local photos.
 
