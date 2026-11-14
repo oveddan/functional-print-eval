@@ -404,3 +404,10 @@ def test_after_feedback_counts_only_models_whose_failed_prints_were_sent_back(in
     # larger pooled set also narrows it (under "test prints first" every listed model is a headline model)
     assert "fedHere || state.model === FED" in app and "!fedModels().includes(model)" in app
     assert "each one that didn't pass was sent back once\"" not in app  # the old caption, false for a model not replayed
+
+
+def test_the_stl_download_is_offered_only_for_a_passing_designs_final_part():
+    detail = (ROOT / "scripts/results_site/detail.js").read_text()
+    assert 'row.verdict !== "pass" || !part.mesh || part.role !== "final"' in detail
+    assert "It hasn't been printed." in detail
+    assert (ROOT / "scripts/results_site/stl.js").exists()
