@@ -110,28 +110,38 @@ def rotation_between(source, target):
     return trimesh.geometry.align_vectors(np.asarray(source, float), np.asarray(target, float))[:3, :3]
 
 
-def fit_entry(axis, travel, outcome, stop_at):
-    """What the viewer needs to play one fit, in the scene's frame: the way in (unit vector), how far the piece
-    travels from LEAD mm outside to seated, the outcome, and for one that stops, how far it gets."""
-    return {"axis": [round(float(v), 6) for v in axis], "travel": round(float(travel), 3), "outcome": outcome,
-            "stop": round(float(stop_at), 3) if outcome == "stops" else None}
+def fit_entry(axis, start, outcome):
+    """What the viewer needs to play one fit, in the scene's frame: the way in (unit vector), how far back along it
+    the piece starts from where it rests, and the outcome. A piece rests where the record leaves it: seated when it
+    went in (and, for "falls", before the part is turned over), at the opening when it wouldn't go in. So the still
+    view never shows a fit the record says can't happen."""
+    return {"axis": [round(float(v), 6) for v in axis], "start": round(float(start), 3), "outcome": outcome,
+            "rest": "stopped" if outcome == "stops" else "seated"}
 
 
 class Scene:
     """Layers in the scene's frame. The printed part is the design's own mesh with a matrix; hardware is a mesh
     already in place, with an optional fit."""
 
-    def __init__(self, transform):
+    def __init__(self, transform, kind):
         self.transform = np.asarray(transform, float)
+        self.kind = kind
         self.layers = {}
 
     def add(self, key, mesh, fit=None):
+        """A hardware mesh drawn seated, in the part's frame. fit = (way in, travel from LEAD mm outside to seated,
+        outcome, how far in it gets when it stops): a piece that stops is moved back to where it stops."""
         mesh = mesh.copy()
-        mesh.apply_transform(self.transform)
-        entry = {"mesh_obj": mesh, "matrix": None}
+        entry = {"matrix": None}
         if fit is not None:
             axis, travel, outcome, stop_at = fit
-            entry["fit"] = fit_entry(self.transform[:3, :3] @ axis, travel, outcome, stop_at)
+            start = travel
+            if outcome == "stops":
+                mesh.apply_translation(-np.asarray(axis, float) * (travel - stop_at))
+                start = stop_at
+            entry["fit"] = fit_entry(self.transform[:3, :3] @ axis, start, outcome)
+        mesh.apply_transform(self.transform)
+        entry["mesh_obj"] = mesh
         self.layers.setdefault(key, []).append(entry)
 
     def result(self, part_id, fit, fit_note, notes, failed):
@@ -139,8 +149,12 @@ class Scene:
                    "parts": [{"name": part_id, "matrix": column_major(self.transform)}]}]
         for key, parts in self.layers.items():
             layers.append({"key": key, "label": LABELS[key], "color": COLORS[key], "parts": parts})
+        if fit is None:
+            notes = [{"wheel": "The bearings are drawn where they would sit, to show where they go; no recorded print says whether they go in.",
+                      "plate": "The bolt is drawn where it would sit, to show where it goes; no recorded print says whether it goes in.",
+                      "knob": "The nut is drawn where it would sit, to show where it goes; no recorded print says whether it goes in."}[self.kind]] + notes
         return {"layers": layers, "fails": [f"{f.check}: {f.detail}" for f in failed], "assumed_fails": [],
-                "fit": fit, "fit_note": fit_note, "notes": notes}
+                "kind": self.kind, "fit": fit, "fit_note": fit_note, "notes": notes}
 
 
 def finding(findings, check):
@@ -148,8 +162,19 @@ def finding(findings, check):
 
 
 def saying(found, outcome, note=None):
-    """The fit's caption record: the check, its saved words and the outcome they give."""
-    return {"check": found.check, "detail": found.detail, "outcome": outcome, **({"note": note} if note else {})}
+    """The fit's caption record: the check, its saved words, the outcome they give, and whether that outcome is
+    assumed from the nearest recorded print (assumed.note's words) rather than a print of that size."""
+    return {"check": found.check, "detail": found.detail, "outcome": outcome,
+            "assumed": "assumed from the" in found.detail.split(";")[0], **({"note": note} if note else {})}
+
+
+def rescued(found):
+    """A note when the check passes only because the design's test print would find a size that holds, while the
+    size as drawn doesn't (wheel.fit's and nuts.fit's rescue: "; test coupon ... would find a size" / "... holding")."""
+    if found is not None and found.ok is True and re.search(r"; test coupon \S+ (would find a size|has \d+ pocket)", found.detail):
+        return (f"{found.check} passes because the design's test print would find a size that holds; the size as drawn "
+                "doesn't, so it would have to be set from that test print first.")
+    return None
 
 
 # ---- the wheel ----
@@ -197,35 +222,38 @@ def wheel_scene(sub, built, findings):
     seat_range, width, bearings = args["seat_range"], args["bearing_width"], args["bearings"]
     finals = [part for part in sub.parts if part.role == "final" and part.id in built and built[part.id].ok]
     if len(finals) < sum(part.role == "final" for part in sub.parts) or not finals:
-        return None, "a final part didn't build"
+        return None, "a printed part of the design didn't build"
     wheels = [part for part in finals if wheel._middle_side(built[part.id].mesh) >= seat_range[1]]
     if len(wheels) != 1:
-        return None, (f"the wheel is in {len(wheels)} printed pieces, and nothing saved says how they go together"
-                      if wheels else "no printed part is big enough to be the wheel")
+        return None, (f"the wheel is printed in {len(wheels)} pieces, and nothing saved says how they fit together, "
+                      "so they aren't drawn assembled" if wheels else "no printed part is big enough to be the wheel")
     part = wheels[0]
     mesh = built[part.id].mesh
     seats, layers, layer, axis = wheel_seats(mesh, seat_range, width, bearings)
     holding = [entry for entry in seats if entry[0].bearings]
     if not holding:
-        return None, "the grader found no bearing seat in the wheel"
+        return None, "the bearing check found no seat for a bearing in the wheel"
     size = bearing_608()
     low, high = mesh.bounds[:, axis]
     transform = stand(mesh, rotation_between(unit(axis), (1, 0, 0)))  # the axle level, the wheel on its edge
-    scene = Scene(transform)
+    scene = Scene(transform, "wheel")
     across, outcome = wheel_outcome(finding(findings, "R3"))
-    notes, fits, closed_match = [], 0, False
+    notes, fits, closed_match, drawn = [], 0, False, 0
     # a bearing in each of two seats, else both in the one seat
     plan = [(entry, 1) for entry in holding[:2]] if len(holding) >= 2 else [(holding[0], min(holding[0][0].bearings, bearings))]
     for (seat, first, last, centre), count in plan:
         start, end = low + first * layer, low + (last + 1) * layer
         opens_low, opens_high = first == 0, last == layers - 1
-        # pressed in flush with the face the seat opens to, as the failure drawing of R2 and R3 places them
-        # (results_site_views._draw_bearings): from the low face if it opens there, else from the high face
+        # pressed in until it meets the shoulder where the bore narrows, standing proud of the face if the seat is
+        # shallower than the bearing (wheel._read_seat's `proud`); a seat open at both ends has no shoulder, so
+        # the bearings go in flush from the low face
         groups = []  # (low, high, way in or None)
-        if opens_low:
+        if opens_low and opens_high:
             groups = [(start, start + width * count, 1.0)]
+        elif opens_low:
+            groups = [(end - width * count, end, 1.0)]
         elif opens_high:
-            groups = [(end - width * count, end, -1.0)]
+            groups = [(start, start + width * count, -1.0)]
         else:
             middle = (start + end) / 2
             groups = [(middle - width * count / 2, middle + width * count / 2, None)]
@@ -241,6 +269,10 @@ def wheel_scene(sub, built, findings):
                 fit = (unit(axis, sign), lead + LEAD, outcome, LEAD)
                 fits += 1
             scene.add("bearings", shape, fit)
+            drawn += count if len(groups) == 1 else 1
+    if drawn < bearings:
+        notes.append(f"Only {drawn} of the {bearings} bearings is drawn: the design has a seat for {drawn}, and the "
+                     "other has nowhere to go.")
     unmatched = outcome and not fits
     if outcome and 0 < fits < len(scene.layers["bearings"]):
         notes.append("Only the seat R3 names is played; the saved finding gives no outcome for the other.")
@@ -260,15 +292,8 @@ def wheel_scene(sub, built, findings):
         fit_note = (f"No fit is played: R3 says “{found.detail}”, and no recorded test print decides what a bearing does in that seat."
                     if found is not None else "No fit is played: R3 has no saved result.")
     failed = [f for f in findings if f.ok is False and f.check in ("R2", "R3", "R4")]
-    fit = saying(found, outcome, _rescued(found)) if outcome and fits else None
+    fit = saying(found, outcome, rescued(found)) if outcome and fits else None
     return scene.result(part.id, fit, fit_note, notes, failed), None
-
-
-def _rescued(found):
-    """A note when the check passed only because a test print would find a size, while the size drawn doesn't hold."""
-    if found is not None and found.ok is True and "would find a size" in found.detail:
-        return "R3 passes because the design's test print would find a size that holds; the seat as drawn doesn't."
-    return None
 
 
 def _screw_head(size):
@@ -279,16 +304,21 @@ def _screw_head(size):
 # ---- the tripod plate ----
 
 def tripod_outcome(r3, r4):
-    """(outcome, which part stops, note) from the saved R3 and R4, or (None, None, why not)."""
+    """(outcome, which part stops, note) from the saved R3 (the shank through the hole) and R4 (the head in its
+    recess), or (None, None, why not). The bolt seats only when both say it goes in."""
     if r3 is None or r3.ok is None:
         return None, None, "R3 has no result for the bolt hole" if r3 is None else f"R3 says “{r3.detail}”"
-    if "goes through by hand" in r3.detail:
-        if r4 is not None and r4.ok is False and "too tight for this head" in r4.detail:
-            return "stops", "head", None
-        return "seats", None, None
     if "won't pass" in r3.detail:
         return "stops", "tip", None
-    return None, None, f"R3 says “{r3.detail}”, which isn't about the bolt pushing in"
+    if "goes through by hand" not in r3.detail:
+        return None, None, f"R3 says “{r3.detail}”, which isn't about the bolt pushing in"
+    if r4 is not None and r4.ok is False and "too tight for this head" in r4.detail:
+        return "stops", "head", None
+    if r4 is not None and r4.ok is True:
+        return "seats", None, None
+    head = f"R4 says “{r4.detail}”" if r4 is not None else "R4 has no result"
+    return None, None, (f"the shank goes through by hand (R3), but {head}, and no recorded print decides whether the "
+                        "head fits its recess")
 
 
 def tripod_scene(sub, built, findings):
@@ -300,18 +330,21 @@ def tripod_scene(sub, built, findings):
     r5 = requirement_args("tripod-plate", "R5")
     plate, axis = bolted._plate(sub, built)
     if plate is None:
-        return None, "no plate built"
+        return None, "the plate didn't build"
     if r3["bolt"] not in [item.ref for item in sub.hardware]:
         return None, "the design doesn't use the person's bolt, so there's no bolt of known size to draw"
     mesh = plate.mesh
     bore = bolted._main_bore(mesh, axis, r3["too_tight"], sentence_saying_to_clear_it(sub) is not None)
     if bore is None:
-        return None, "the grader found no hole through the plate"
+        return None, "the bolt check found no hole through the plate"
     import results_site_views  # the bore's holes, followed again as its failure drawing does
     holes = results_site_views._bore_holes(mesh, axis, bore)
     if holes is None:
-        return None, "the grader's bore couldn't be found again to place the bolt in"
-    centre, _ = clear_circle(min(holes, key=lambda hole: clear_circle(hole)[1]))
+        return None, "the hole the bolt check read couldn't be traced through the plate again to put the bolt in"
+    centre = bolt_centre(min(holes, key=lambda hole: clear_circle(hole)[1]), r5_across=requirement_args("tripod-plate", "R5")["bolt_across"])
+    notes = []
+    if any(opens_to_the_edge(mesh, axis, hole, frac) for hole, frac in zip(holes, bolted._layers(mesh, axis))):
+        notes.append("The bolt check took a notch open to the plate's edge for the bolt's hole, so the bolt is drawn in it.")
     fracs = bolted._layers(mesh, axis)
     low_bound, high_bound = mesh.bounds[:, axis]
     span = high_bound - low_bound
@@ -340,36 +373,72 @@ def tripod_scene(sub, built, findings):
     if outcome:
         stop_at = travel - length if stopper == "tip" else travel - depth
         fit = (unit(axis, inward), travel, outcome, stop_at)
-    scene = Scene(transform)
+    scene = Scene(transform, "plate")
     scene.add("bolt", bolt, fit)
-    notes = ["The bolt is drawn 15 mm across the head and 5 mm tall (the person's answer) with the 10 mm length R5 "
-             "assumes; nobody measured it. The tripod's clamp isn't drawn: no record says more about it than the 38 mm "
-             "plate it takes."]
+    notes.append("The bolt is drawn 15 mm across the head and 5 mm tall (the person's answer) with the 10 mm length R5 "
+                 "assumes; nobody measured it. The tripod's clamp isn't drawn: no record says more about it than the 38 mm "
+                 "plate it takes.")
     caption = None
     if outcome:
         check = finding(findings, "R4") if stopper == "head" else finding(findings, "R3")
-        caption = saying(check, outcome)
+        head = finding(findings, "R4")
+        caption = saying(check, outcome, f"R4 says the head fits its recess: “{head.detail}”." if outcome == "seats" else None)
     fit_note = None if outcome else f"No fit is played: {why}."
     failed = [f for f in findings if f.ok is False and f.check in ("R3", "R4", "R5")]
     return scene.result(plate.part_id, caption, fit_note, notes, failed), None
 
 
+def bolt_centre(hole, r5_across):
+    """Where the bolt goes in the bore's tightest hole: its middle (centroid) when the bolt fits there, as in a slot
+    whose largest clear circle can sit anywhere along it; otherwise the middle of that circle."""
+    from pbe.graders.sections import clear_circle
+    middle = hole.centroid
+    if hole.contains(middle) and hole.boundary.distance(middle) >= r5_across / 2 - 0.05:
+        return middle
+    return clear_circle(hole)[0]
+
+
+def opens_to_the_edge(mesh, axis, hole, frac):
+    """Is this bore hole a gap in the plate's outline rather than a hole inside it (bolted._gaps)?"""
+    from shapely.ops import unary_union
+
+    from pbe.graders.sections import section
+    outline = unary_union(section(mesh, axis, frac))
+    filled = unary_union([type(poly)(poly.exterior) for poly in getattr(outline, "geoms", [outline])])
+    return not filled.buffer(0.01).contains(hole)
+
+
 # ---- the nut knob ----
 
 def nut_outcome(found):
-    if found is None:
+    """The outcome R4's saved words give, or None. A check that isn't graded plays nothing, whatever its words say
+    of the size as drawn."""
+    if found is None or found.ok is None:
         return None
     said = re.search(r"say (holds|won't go in|falls out|loose|goes in|not measured)", found.detail)
     return NUT_SAYS.get(said.group(1)) if said else None
 
 
-def nut_turn(mesh, pocket, af):
-    """The nut the grader fits in the pocket's tightest hex layer (nuts._nut_in), as a polygon, or None."""
+def nut_outline(centre, af, degrees):
+    """An ISO 4032 nut's outline: a hexagon af across its flats, its corners chamfered to the standard's smallest
+    across-corners (nuts.NUT_CORNERS of a sharp hexagon's), turned to put a corner at `degrees`."""
+    from shapely.geometry import Polygon
+
+    from pbe.graders import nuts
+    radius = af / 2 / math.cos(math.radians(30))
+    corners = [math.radians(degrees + corner * 60) for corner in range(6)]
+    sharp = Polygon([(centre.x + radius * math.cos(a), centre.y + radius * math.sin(a)) for a in corners])
+    return sharp.intersection(centre.buffer(nuts.NUT_CORNERS * radius, 64))
+
+
+def pocket_hex_layers(mesh, pocket, af):
+    """The pocket's hex layers as the grader reads them (nuts._read_pocket's hex_layers: nut-sized holes round the
+    pocket's centre that a nut fits in, corners and all): [(z low, z high, hole, width)], bottom first."""
     from pbe.graders import nuts
     from pbe.graders.sections import clear_width, holes_in, sections_by_layer
     layer_h, sections = sections_by_layer(mesh, 2, nuts.LAYER)
     bottom = mesh.bounds[0, 2]
-    best = None
+    found = []
     for index, polys in enumerate(sections):
         z = bottom + (index + 0.5) * layer_h
         if not pocket.z[0] <= z <= pocket.z[1]:
@@ -378,13 +447,18 @@ def nut_turn(mesh, pocket, af):
             if not hole.buffer(0.01).contains(Point(pocket.centre)):
                 continue
             width = clear_width(hole)
-            if nuts._nut_sized(width, af) and nuts._is_hex(hole, width) and (best is None or width < best[0]):
-                best = (width, hole)
-    if best is None:
-        return None
-    fitted = nuts._nut_in(best[1], best[0])
+            if nuts._nut_sized(width, af) and nuts._is_hex(hole, width):
+                found.append((z - layer_h / 2, z + layer_h / 2, hole, width))
+    return found
+
+
+def nut_turn(pocket, hex_layers, af):
+    """The nut, at the catalog's size, turned the way the grader fits one in the tightest hex layer (nuts._nut_in)."""
+    from pbe.graders import nuts
+    _, _, hole, width = min(hex_layers, key=lambda layer: layer[3])
+    fitted = nuts._nut_in(hole, width)
     corner = np.asarray(fitted.exterior.coords[0]) - np.asarray(fitted.centroid.coords[0])
-    return nuts._hexagon(Point(pocket.centre), af, math.degrees(math.atan2(corner[1], corner[0])))
+    return nut_outline(Point(pocket.centre), af, math.degrees(math.atan2(corner[1], corner[0])))
 
 
 def knob_scene(sub, built, findings, variant):
@@ -393,24 +467,29 @@ def knob_scene(sub, built, findings, variant):
     from pbe.parts import catalog
     part, why = single_final(sub, built)
     if part is None:
-        return None, ("the knob didn't build" if why.endswith("got 0") else why)
+        count = re.search(r"got (\d+)", why)
+        return None, ("the knob didn't build" if count and count.group(1) == "0" else
+                      f"the design is {count.group(1)} printed parts, and the knob checks read only one" if count else why)
     nut = catalog.resolve(f"ISO 4032 {variant}")
     af, height = nut["af"], nut["h"]
     mesh = part.mesh
     pocket = nuts._nuts_pocket(mesh, af)
     if pocket is None:
-        return None, "the grader found no hex pocket for the nut"
-    hexagon = nut_turn(mesh, pocket, af)
-    if hexagon is None:
-        return None, "the grader's pocket has no hex layer to turn the nut by"
+        return None, "the nut check found no hex pocket for the nut"
+    hex_layers = pocket_hex_layers(mesh, pocket, af)
+    if not hex_layers:
+        return None, "the nut check's pocket has no hex-shaped layer to set the nut in"
+    hexagon = nut_turn(pocket, hex_layers, af)
+    hex_low, hex_high = hex_layers[0][0], hex_layers[-1][1]
     bottom, top = mesh.bounds[:, 2]
     notes = []
+    # the nut sits on the hex's floor, entering through the hex's mouth (a chamfer or lead-in above it isn't the seat)
     if pocket.opens == ["top"]:
-        seat_low, way_in, face, mouth = pocket.z[0], -1.0, top, pocket.z[1]
+        seat_low, way_in, face, mouth = hex_low, -1.0, top, hex_high
     elif pocket.opens == ["bed"]:
-        seat_low, way_in, face, mouth = pocket.z[1] - height, 1.0, bottom, pocket.z[0]
+        seat_low, way_in, face, mouth = hex_high - height, 1.0, bottom, hex_low
     else:
-        seat_low, way_in, face, mouth = (pocket.z[0] + pocket.z[1] - height) / 2, None, None, None
+        seat_low, way_in, face, mouth = (hex_low + hex_high - height) / 2, None, None, None
         notes.append("The pocket opens to both faces, so nothing stops the nut; it's drawn in the middle."
                      if pocket.opens else "The pocket is closed, so a nut can't be pressed in; it's drawn where the pocket is.")
     shape = trimesh.creation.extrude_polygon(hexagon.difference(Point(pocket.centre).buffer(nut_bore(variant) / 2, 32)), height)
@@ -423,7 +502,7 @@ def knob_scene(sub, built, findings, variant):
         travel = lead + LEAD
         fit = (np.array([0, 0, way_in]), travel, outcome, travel - (lead - reaches))
     # a knob has no one way up in use: show the face the nut goes in from on top, where the view looks from
-    scene = Scene(stand(mesh, np.diag([1.0, -1.0, -1.0]) if pocket.opens == ["bed"] else np.eye(3)))
+    scene = Scene(stand(mesh, np.diag([1.0, -1.0, -1.0]) if pocket.opens == ["bed"] else np.eye(3)), "knob")
     scene.add("nut", shape, fit)
     d = nut_bore(variant)
     scene.add("bolt", at(rod(d, bottom - 6, top + 6), (pocket.centre.x, pocket.centre.y), 2))
@@ -434,11 +513,13 @@ def knob_scene(sub, built, findings, variant):
             fit_note = "No fit is played: R4 has no saved result."
         elif way_in is None:
             fit_note = "No fit is played: the nut has no face to go in from."
+        elif found.ok is None:
+            fit_note = f"No fit is played: R4 isn't graded (“{found.detail}”), so no recorded test print decides whether the nut goes in and stays."
         else:
             fit_note = f"No fit is played: R4 says “{found.detail}”, and no recorded test print decides whether the nut goes in and stays."
     notes.append("The bolt is drawn as a plain rod through the nut; only its size is in the task.")
     failed = [f for f in findings if f.ok is False and f.check in ("R3", "R4", "R5")]
-    return scene.result(part.part_id, saying(found, outcome) if fit else None, fit_note, notes, failed), None
+    return scene.result(part.part_id, saying(found, outcome, rescued(found)) if fit else None, fit_note, notes, failed), None
 
 
 def nut_bore(variant):

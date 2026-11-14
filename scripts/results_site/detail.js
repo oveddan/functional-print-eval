@@ -280,7 +280,12 @@ function mediaSection(row, detail, options = {}) {
     });
     return button;
   };
-  const stlNote = (part) => (stlButton(part) ? h("p", { class: "stage-help" }, "This design passes every check against the recorded test prints. It hasn't been printed.") : null);
+  const rescued = detail.rests_on_test_print || [];
+  const stlNote = (part) => (!stlButton(part) ? null : rescued.length
+    ? h("div", { class: "stage-help" }, h("p", {}, h("strong", {}, "Set the size from its test print before printing. "),
+      "It passes every check, but only because its test print would find a size that holds. As drawn, the size doesn't, in the check's own words:"),
+      h("ul", {}, rescued.map((found) => h("li", {}, `${found.check}: ${found.as_drawn}; ${found.rescue}`))), h("p", {}, "It hasn't been printed."))
+    : h("p", { class: "stage-help" }, "This design passes every check against the recorded test prints. It hasn't been printed."));
 
   const show = () => {
     teardown();

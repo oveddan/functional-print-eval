@@ -31,8 +31,9 @@ const NICE_MM = [1, 2, 5, 10, 20, 50, 100, 200, 500];
 
 // spec: {label, items: [{url, matrix, layer, color, problem, opacity, fit}], layers: [{key, label, color}], highlight: url|null,
 //        frame: a layer key to frame the camera on (else everything)}
-// An item's fit ({axis, travel, outcome, stop}) lets playFit() show it going in along axis: it seats, stops `stop` mm
-// in, or seats and falls out when the part is turned over (fit.js offers it; the scene data says which).
+// An item's fit ({axis, start, outcome, rest}) lets playFit() show it going in along axis from `start` mm back: it
+// seats, it stops at the opening, or it seats and falls out when the part is turned over (fit.js offers it; the scene
+// data says which). Each item's mesh is already where it rests, so the still view is the record's end state.
 export async function mountViewer(stage, spec) {
   const { THREE, OrbitControls, GLTFLoader } = await loadLibraries();
   const colors = themeColors();
@@ -315,17 +316,19 @@ export async function mountViewer(stage, spec) {
   resize();
   reset();
 
-  const fitPlayer = makeFitPlayer(THREE, { world, layerGroups, fitted, center, radius, draw });
+  const fitPlayer = makeFitPlayer(THREE, { world, layerGroups, fitted, center, draw, bed: () => grid.position.z });
 
   return {
     hasHighlight: Boolean(marked),
     canPlayFit: fitted.length > 0,
     playFit: fitPlayer.play,
     endFit: fitPlayer.end,
+    onLayerShown: fitPlayer.onLayerShown,
+    layerShown(key) { return Boolean(layerGroups.get(key)?.visible); },
     canFocusProblem: Boolean(problemBox && !problemBox.isEmpty() && spec.frame),
     layers: (spec.layers || []).map((layer) => ({ ...layer, color: layer.color || colors.red })),
     setHighlight(on) { highlight.visible = on; draw(); },
-    setLayer(key, on) { const group = layerGroups.get(key); if (group) { group.visible = on; draw(); } },
+    setLayer(key, on) { const group = layerGroups.get(key); if (group) { group.visible = on; fitPlayer.forget(group); draw(); } },
     reset,
     focusProblem,
     dispose() {
@@ -340,21 +343,24 @@ export async function mountViewer(stage, spec) {
   };
 }
 
-// The fit, played: each fitted item starts fit.travel mm back along its way in and moves in. "seats" ends seated;
-// "stops" ends fit.stop mm in, after a small push against what stops it; "falls" seats, then the part turns so the
-// opening faces down and the item drops out. Layers with no fit (a bolt that goes in afterwards) are hidden while it
-// plays. With reduced motion, play() shows the end state at once.
-function makeFitPlayer(THREE, { world, layerGroups, fitted, center, radius, draw }) {
+// The fit, played: each fitted item starts fit.start mm back along its way in and moves to where it rests. "seats"
+// ends seated; "stops" ends at the opening, after a small push against what stops it; "falls" seats, then the part
+// turns so the opening faces down and the item drops onto the bed. Layers with no fit (a bolt that goes in afterwards)
+// are hidden while it plays and come back when the fit seats; onLayerShown tells the page's checkboxes. With reduced
+// motion, play() shows the end state at once.
+function makeFitPlayer(THREE, { world, layerGroups, fitted, center, draw, bed }) {
   let token = 0;
-  let hidden = [];
+  let hidden = [];          // layers this player hid, that the reader hasn't touched since
+  const listeners = [];
   const down = new THREE.Vector3(0, 0, -1);
+  const keyOf = (group) => [...layerGroups].find(([, found]) => found === group)?.[0];
+  const show = (group, on) => { group.visible = on; for (const listener of listeners) listener(keyOf(group), on); };
   const turnTo = (quaternion) => {
     world.quaternion.copy(quaternion);
     world.position.copy(center).sub(center.clone().applyQuaternion(quaternion));
     world.updateMatrixWorld(true);
   };
-  const place = (entry, travelled) => entry.holder.position.copy(entry.axis).multiplyScalar(-(entry.fit.travel - travelled));
-  const target = (entry) => (entry.fit.outcome === "stops" ? entry.fit.stop : entry.fit.travel);
+  const place = (entry, back) => entry.holder.position.copy(entry.axis).multiplyScalar(-back);  // mm out from where it rests (-axis is the way out)
   const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
   const wait = (ms, mine) => new Promise((resolve) => setTimeout(() => resolve(mine === token), ms));
   const run = (ms, step, mine) => new Promise((resolve) => {
@@ -374,57 +380,66 @@ function makeFitPlayer(THREE, { world, layerGroups, fitted, center, radius, draw
     for (const entry of fallers()) if (!seen.some((axis) => axis.dot(entry.axis) > 0.99)) seen.push(entry.axis);
     return seen.map((axis) => new THREE.Quaternion().setFromUnitVectors(axis.clone().negate(), down));
   };
-  const drop = Math.max(radius * 0.9, 10);
+  const going = (turn) => fallers().filter((entry) => entry.axis.clone().negate().applyQuaternion(turn).dot(down) > 0.7);
+  const height = (entry) => {   // how far it falls: from where it rests, turned over, down to the bed
+    world.updateMatrixWorld(true);
+    return Math.max(new THREE.Box3().setFromObject(entry.holder).min.z - bed(), 0);
+  };
+  const restore = () => { for (const group of hidden) show(group, true); hidden = []; };
 
   function end() {
     token += 1;
-    for (const entry of fitted) entry.holder.position.set(0, 0, 0);
-    for (const group of hidden) group.visible = true;
-    hidden = [];
+    for (const entry of fitted) place(entry, 0);
+    restore();
     turnTo(new THREE.Quaternion());
     draw();
   }
+
+  // The end state of a turn: those whose opening now faces down lie on the bed.
+  const dropAll = (turn) => { const falling = going(turn); const drops = falling.map(height); falling.forEach((entry, at) => place(entry, drops[at])); };
 
   async function play({ reduced = false } = {}) {
     end();
     const mine = token;
     const keep = new Set(fitted.map((entry) => entry.layer));
     for (const [key, group] of layerGroups) {
-      if (key !== "printed" && !keep.has(key) && group.visible) { group.visible = false; hidden.push(group); }
+      if (key !== "printed" && !keep.has(key) && group.visible) { show(group, false); hidden.push(group); }
     }
+    const seated = !fitted.some((entry) => entry.fit.outcome !== "seats");
     if (reduced) {
-      for (const entry of fitted) place(entry, target(entry));
-      const last = turns().pop();
-      if (last) { turnTo(last); for (const entry of fallers()) place(entry, -drop); }
+      for (const turn of turns()) { turnTo(turn); dropAll(turn); }
+      if (seated) restore();
       draw();
-      return true;
+      return seated;
     }
-    for (const entry of fitted) place(entry, 0);
+    for (const entry of fitted) place(entry, entry.fit.start);
     draw();
     if (!(await wait(350, mine))) return false;
-    if (!(await run(1300, (t) => { for (const entry of fitted) place(entry, ease(t) * target(entry)); }, mine))) return false;
+    if (!(await run(1300, (t) => { for (const entry of fitted) place(entry, (1 - ease(t)) * entry.fit.start); }, mine))) return false;
     const stoppers = fitted.filter((entry) => entry.fit.outcome === "stops");
     if (stoppers.length) {   // pushed twice against the edge it can't pass
-      if (!(await run(700, (t) => { for (const entry of stoppers) place(entry, entry.fit.stop - 0.8 * Math.abs(Math.sin(t * 2 * Math.PI))); }, mine))) return false;
+      if (!(await run(700, (t) => { for (const entry of stoppers) place(entry, 0.8 * Math.abs(Math.sin(t * 2 * Math.PI))); }, mine))) return false;
     }
     let from = new THREE.Quaternion();
     for (const turn of turns()) {
       if (!(await wait(450, mine))) return false;
       const start = from.clone();
       if (!(await run(1100, (t) => turnTo(start.clone().slerp(turn, ease(t))), mine))) return false;
-      const going = fallers().filter((entry) => entry.axis.clone().negate().applyQuaternion(turn).dot(down) > 0.7);
-      if (!(await run(650, (t) => { for (const entry of going) place(entry, entry.fit.travel - (entry.fit.travel + drop) * t * t); }, mine))) return false;
+      const falling = going(turn);
+      const drops = falling.map(height);
+      if (!(await run(650, (t) => { falling.forEach((entry, at) => place(entry, drops[at] * t * t)); }, mine))) return false;
       from = turn;
     }
-    if (!stoppers.length && !fallers().length) {   // seated: the rest of the hardware goes back in
-      for (const group of hidden) group.visible = true;
-      hidden = [];
-      draw();
-    }
-    return true;
+    if (seated) { restore(); draw(); }
+    return seated;
   }
 
-  return { play, end };
+  return {
+    play,
+    end,
+    forget(group) { hidden = hidden.filter((found) => found !== group); },
+    onLayerShown(listener) { listeners.push(listener); },
+  };
 }
 
 // The area-weighted sum of a mesh's face normals: which way its faces look, on the whole.
