@@ -202,3 +202,75 @@ def test_matched_trial_numbers_use_only_trials_both_conditions_have(index):
     block = index["scorecard"]["matched_trial_numbers"]
     models = set(index["scorecard"]["test_first_order"])
     assert block["first"]["trials"] == block["test_first"]["trials"] == len({k for k in first & tested if k[0] in models})
+
+
+@pytest.fixture(scope="module")
+def drawn_views():
+    if not results_site.VIEWS.exists():
+        pytest.skip("scripts/results_site_views.json isn't written here")
+    return results_site.views()
+
+
+def test_every_counted_failure_has_a_view_or_says_why(index, drawn_views):
+    """Each counted failed check carries a drawn view's URL or a reason there is none, and the index row's counts agree."""
+    entries = {entry.id: entry for entry in results_site.collect()}
+    rows = {row["id"]: row for row in index["trials"]}
+    for entry_id, entry in entries.items():
+        failed = [finding for finding in results_site.counted_of(entry) if finding.ok is False]
+        found = [results_site.view_of(entry, finding) for finding in failed]
+        for finding, view in zip(failed, found):
+            assert view["view"] or view["no_view_reason"], (entry_id, finding.check, finding.part)
+            if view["view"]:
+                assert view["view"]["url"].startswith("https://") and view["view"]["state"] == "fail"
+        drawn = sum(bool(view["view"]) for view in found)
+        assert (rows[entry_id]["views"], rows[entry_id]["views_missing"]) == (drawn, len(failed) - drawn)
+
+
+def test_view_counts_match_the_views_manifest(index, drawn_views):
+    """Per design, the drawn views the site attaches to counted failures are the manifest's counted failures with a view."""
+    rows = {row["id"]: row for row in index["trials"]}
+    for design, entries in drawn_views.items():
+        if design not in rows:
+            continue
+        in_manifest = sum(1 for view in entries if view["state"] == "fail" and not view["test_print"] and view["view"])
+        assert rows[design]["views"] == in_manifest, design
+    assert sum(row["views"] for row in index["trials"]) > 500
+
+
+def test_a_failed_check_in_a_trial_detail_carries_its_view(drawn_views):
+    entries = {entry.id: entry for entry in results_site.collect()}
+    entry = entries["pilot-estoa/estoa-light/can_ask/anthropic__claude-opus-5.5/t4"]
+    rows = results_site.finding_rows(entry, entry.record.findings, getattr(entry.record, "declined", None))
+    bridges = next(row for row in rows if row["check"] == "bridges" and row["part"] == "back_box")
+    assert bridges["view"]["kind"] == "bridge-layer" and bridges["view"]["url"].endswith(".webp")
+    assert bridges["view"]["width"] == 900 and bridges["view"]["height"] > 200  # the page reserves this shape
+    assert next(row for row in rows if row["check"] == "R1").get("view", "absent") == "absent"  # a pass has no view keys
+
+
+def test_view_audit_attaches_only_to_existing_views(drawn_views):
+    """Each audit entry names a drawn view in the manifest, p is a probability, and view_of carries it as view.audit."""
+    audit = results_site.view_audit()
+    if not audit:
+        pytest.skip("scripts/results_site_view_audit.json isn't written here")
+    urls = {view["view"] for entries in drawn_views.values() for view in entries if view["view"]}
+    assert set(audit) <= urls
+    for answer in audit.values():
+        assert 0.0 <= answer["p"] <= 1.0 and isinstance(answer["shows_failure"], bool) and answer["model"]
+    entries = {entry.id: entry for entry in results_site.collect()}
+    attached = 0
+    for entry in entries.values():
+        for finding in entry.record.findings:
+            view = results_site.view_of(entry, finding).get("view")
+            if view and "audit" in view:
+                assert view["audit"] == audit[view["url"]]
+                attached += 1
+    assert attached > 0
+
+
+def test_view_audit_is_optional(monkeypatch, tmp_path):
+    monkeypatch.setattr(results_site, "VIEW_AUDIT", tmp_path / "absent.json")
+    results_site.view_audit.cache_clear()
+    try:
+        assert results_site.view_audit() == {}
+    finally:
+        results_site.view_audit.cache_clear()

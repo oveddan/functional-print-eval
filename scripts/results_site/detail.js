@@ -257,12 +257,69 @@ function sceneSpec(media) {
 
 // ---- checks, beside the picture ----
 
-function markNote(finding, media) {
-  if (finding.state !== "fail") return null;
+// A judge model rated whether each drawing shows its failure (view.audit). The rating proved unreliable: it said
+// yes to 98.5% of drawings, and on a hand check most of its "no" answers were wrong. So the "may not show the
+// failure clearly" flag stays off; the code path is kept for a better judge.
+const SHOW_VIEW_AUDIT_FLAG = false;
+
+// Each drawing carries its pixel size, so its exact shape is held before it loads. Only when a view has none does
+// this fallback apply: the tallest height seen for its kind at 900 px wide.
+const VIEW_H = {
+  "bridge-layer": 1020, "pocket-fit": 880, "wheel-seat-fit": 902, "port-view": 919, "pocket-cut": 720, pieces: 678, "plate-profile": 597,
+  "plate-bolt-cut": 806, "wheel-cut": 715, "wheel-bolt": 751, "bolt-path": 720, "disk-plan": 720, "screw-cut": 852, "back-keyholes": 1004,
+  "enclosure-cut": 720, "board-cut": 863, "screw-proud": 871, "plan-width": 904, "final-parts": 798, bed: 720, "wheel-size": 722,
+};
+
+let lightbox = null;
+
+// The drawing at full size, over the trial. Esc or the button closes it; the trial stays open underneath.
+function openLightbox(view) {
+  if (!lightbox) {
+    lightbox = h("dialog", { class: "lightbox", "aria-label": "The drawing at full size" });
+    lightbox.addEventListener("click", (event) => { if (event.target === lightbox) lightbox.close(); });
+    document.body.append(lightbox);
+  }
+  add(clear(lightbox),
+    h("div", { class: "lightbox-bar" },
+      h("a", { class: "btn btn-small", href: view.url, target: "_blank", rel: "noopener" }, "Open the image in a new tab", icon("out")),
+      h("button", { type: "button", class: "btn btn-icon", "aria-label": "Close the drawing", onclick: () => lightbox.close() }, icon("close"))),
+    h("div", { class: "lightbox-scroll", tabindex: "0" }, h("img", { src: view.url, alt: view.caption, width: String(view.width || 900), height: view.height ? String(view.height) : null })));
+  lightbox.showModal();
+}
+
+// The drawn view of what a check looked at: held at a fixed shape, loaded when near the screen, opened at full size
+// on a click. Its caption is drawn inside the image, so the alt text carries it and the page doesn't repeat it.
+function viewFigure(finding) {
+  const view = finding.view;
+  const [width, height] = view.width && view.height ? [view.width, view.height] : [900, VIEW_H[view.kind] || 800];
+  const link = h("a", { class: "view-link", href: view.url, target: "_blank", rel: "noopener", title: "Open the drawing at full size" },
+    h("img", { src: view.url, alt: view.caption, loading: "lazy", decoding: "async", width: String(width), height: String(height) }),
+    h("span", { class: "view-zoom", "aria-hidden": "true" }, icon("zoom"), h("span", { class: "zoom-mouse" }, "Click to enlarge"), h("span", { class: "zoom-touch" }, "Tap to enlarge")));
+  link.addEventListener("click", (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    openLightbox(view);
+  });
+  const image = link.querySelector("img");
+  image.addEventListener("error", () => link.replaceWith(h("p", { class: "view-none" }, "The drawing didn't load.")), { once: true });
+  const doubt = SHOW_VIEW_AUDIT_FLAG && view.audit && view.audit.shows_failure === false;
+  const tip = doubt ? `A model was asked whether this drawing shows the failure, and judged that it may not${typeof view.audit.p === "number" ? ` (its confidence: ${Math.round(100 * view.audit.p)}%)` : ""}. The check's result comes from the grader's numbers, not from the picture.` : "";
+  return h("figure", { class: `view view-${finding.state === "fail" ? "fail" : "ng"}`, style: `--view-ratio: ${width} / ${height}` },
+    link,
+    doubt ? h("figcaption", { class: "view-flag", title: tip, tabindex: "0" }, icon("question"), h("span", {}, "This picture may not show the failure clearly"), h("span", { class: "sr-only" }, ` ${tip}`)) : null);
+}
+
+// Where a reader can see the failure: drawn here, marked in red on the render, both, or neither (and why not).
+function whereNote(finding, media) {
+  if (finding.state !== "fail" && finding.state !== "not graded") return null;
   const where = media.marked.get(finding.check);
-  if (!where) return h("p", { class: "mark-note" }, "Not shown on the picture: this check has no red mark.");
-  return h("p", { class: "mark-note mark-note-red" }, h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "Marked in red on ",
-    h("button", { type: "button", class: "linkish", onclick: () => media.showPart(where) }, where), ".");
+  const onRender = where ? ["marked in red on the render of ", h("button", { type: "button", class: "linkish", onclick: () => media.showPart(where) }, where)] : null;
+  if (finding.view) {
+    if (finding.state !== "fail") return null;
+    return h("p", { class: "mark-note" }, where ? [h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "Drawn above, and ", onRender, "."] : "Drawn above. The render has no red mark for this check.");
+  }
+  const none = finding.no_view_reason ? `No drawing: ${finding.no_view_reason}.` : "No drawing of this check.";
+  return h("p", { class: "mark-note" }, where ? [h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "M", onRender[0].slice(1), onRender[1], ". ", none] : none);
 }
 
 function checkCard(finding, media) {
@@ -271,12 +328,13 @@ function checkCard(finding, media) {
     h("div", { class: "check-head" }, badge(finding.state, { small: true }), h("span", { class: "check-title" }, finding.title || finding.check),
       h("code", { class: "check-id", title: "The check's id in the eval's code" }, finding.check),
       finding.part && finding.part !== "-" ? h("span", { class: "check-part" }, "on ", h("code", {}, finding.part)) : null),
-    finding.meaning && finding.meaning !== finding.title ? h("p", { class: "check-meaning" }, finding.meaning) : null,
+    finding.view ? viewFigure(finding) : null,
+    !finding.view && finding.meaning && finding.meaning !== finding.title ? h("p", { class: "check-meaning" }, finding.meaning) : null,
     finding.detail ? h("p", { class: "check-detail" }, h("span", { class: "check-label" }, "Found: "), finding.detail) : null,
     diagnosis ? h("p", { class: "check-why" }, h("span", { class: "check-label" }, "Why: "), String(diagnosis.reason || diagnosis.text).replace(/\.$/, ""), ".",
       diagnosis.kind === "decided" ? " Dan ruled that this kind of case fails." : diagnosis.kind === "gap" ? " No recorded test print decides it." : diagnosis.kind === "open" ? " Still to be decided." : "") : null,
     diagnosis?.would_help ? h("p", { class: "check-why" }, h("span", { class: "check-label" }, "What would have helped: "), diagnosis.would_help) : null,
-    markNote(finding, media));
+    whereNote(finding, media));
 }
 
 function checkLine(finding) {

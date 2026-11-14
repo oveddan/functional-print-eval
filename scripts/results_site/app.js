@@ -100,9 +100,24 @@ function useIndex(data) {
   AFTER_GROUP.trials = lookup.entries.get(AFTER_GROUP.key).length;
 }
 
+// Every failing or not-graded check in a loaded trial says where to see it: a drawing, or the reason there is none.
+const detailCheck = { details: 0, checks: 0, problems: [] };
+function verifyDetail(detail) {
+  detailCheck.details += 1;
+  for (const finding of detail.findings || []) {
+    if (finding.state !== "fail" && finding.state !== "not graded") continue;
+    detailCheck.checks += 1;
+    const drawn = finding.view && typeof finding.view.url === "string" && finding.view.caption;
+    if (!drawn && !finding.no_view_reason) detailCheck.problems.push(`${detail.id} ${finding.check} on ${finding.part}: neither a drawing nor a reason for none`);
+  }
+  if (detailCheck.problems.length) console.error("Detail check: a failing check has neither a drawing nor a reason", detailCheck.problems.slice(-1)[0]);
+  if (window.resultsSiteCheck) window.resultsSiteCheck.detail = detailCheck;
+  return detail;
+}
+
 export function fetchDetail(slug) {
   if (!details.has(slug)) {
-    const promise = getJson(`data/trials/${encodeURIComponent(slug)}.json`);
+    const promise = getJson(`data/trials/${encodeURIComponent(slug)}.json`).then(verifyDetail);
     promise.catch(() => details.delete(slug));
     details.set(slug, promise);
   }
@@ -305,7 +320,7 @@ function renderFinding() {
 // The hero's "See a failing design": a first print of a scored part that fails, with its failing region marked.
 function wireFailingExample() {
   const firsts = lookup.entries.get("first").map((entry) => entry.row).filter((row) => row.verdict === "fail" && row.thumb && row.thumb_role === "final");
-  const pick = firsts.find((row) => row.issues.length === 1 && row.issues[0].reason_group === "holed-roof" && row.task === "tripod-plate") || firsts[0];
+  const pick = firsts.find((row) => row.issues.length === 1 && row.issues[0].reason_group === "holed-roof" && row.task === "tripod-plate" && row.views > 0) || firsts[0];
   if (!pick) return;
   for (const link of [$("see-failing"), $("hero-example")]) {
     link.href = listHref({ task: pick.task, verdict: "fail", trial: pick.slug });
@@ -705,6 +720,12 @@ function rowSummary(task, model, entries) {
       onclick: () => navigate({ reason: state.reason === reason.key ? "" : reason.key }),
     }, h("b", {}, `${reason.count} ×`), " ", reason.text))), reasons.length > 3 ? h("li", { class: "row-more" }, `and ${plural(reasons.length - 3, "other reason")}`) : null));
   }
+  const drawn = entries.find((entry) => entry.verdict === "fail" && entry.row.views > 0);
+  if (drawn) {
+    const link = h("a", { class: "row-see", href: hrefFor({ trial: drawn.row.slug }) }, `See where trial ${drawn.row.trial} fails`);
+    link.addEventListener("click", (event) => { if (!plainClick(event)) return; event.preventDefault(); navigate({ trial: drawn.row.slug }, { opened: true }); });
+    lines.push(h("p", { class: "row-line" }, link));
+  }
   const tested = entries.filter((entry) => entry.row.condition_key === "can_test" && entry.row.kind === "trial" && entry.verdict !== "error");
   if (tested.length) {
     const asked = tested.filter((entry) => entry.row.test_print_rounds_asked > 0).length;
@@ -992,7 +1013,7 @@ function verifyCounts() {
     same(`link “${link.label}” trials`, list.length, link.trials);
     if ("passes" in link) same(`link “${link.label}” passes`, list.filter((item) => item.verdict === "pass").length, link.passes);
   }
-  const result = { compared, links, problems };
+  const result = { compared, links, problems, detail: detailCheck };
   if (problems.length) console.error(`Counts check: ${problems.length} of ${compared} comparisons disagree`, problems);
   else console.info(`Counts check: ${compared} comparisons between the page's filtering and the data's aggregates, all equal (${links} scorecard links each open a list with the cell's own numbers).`);
   window.resultsSiteCheck = result;
