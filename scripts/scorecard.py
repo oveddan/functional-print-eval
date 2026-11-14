@@ -28,6 +28,7 @@ What it counts (Claude's calls, delegated by Dan on 2026-11-07):
 
 import argparse
 import csv
+import math
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -195,8 +196,13 @@ def rows() -> list[Row]:
     return sorted(listed, key=lambda row: (-row.pass_rate(after=True), row.cost(after=True)))
 
 
+def whole(value: float) -> int:
+    """Half rounds up, as the results site rounds (Python's round() sends 62.5 to 62)."""
+    return math.floor(value + 0.5 + 1e-9)
+
+
 def percent(share: float) -> str:
-    return f"{round(100 * share)}%"
+    return f"{whole(100 * share)}%"
 
 
 def task_cell(trials: list[Trial], replayed: bool) -> str:
@@ -274,7 +280,7 @@ def estoa_line() -> str:
     tested_passes = sum(record.verdict == "pass" for record in tested)
     return (f"**The Estoa light box**, the harder task, isn't in the four-task total: {len(models)} models, "
             f"{len(records)} trials. {first} of {len(records)} designs pass on the first print. After the person says "
-            f"how the box came out, {after} of the {len(arms)} failures replayed {'passes' if after == 1 else 'pass'}. "
+            f"how the box came out, {after} of the {len(arms)} designs replayed (every one that had failed when the replays ran) {'passes' if after == 1 else 'pass'}. "
             f"Asking for test prints first, {tested_passes} of {len(tested)} pass (its row in the table). We ran out of "
             f"time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).")
 
@@ -369,7 +375,7 @@ def improvement(listed: list[Row]) -> str:
              "Asking for test prints first | Change from the first print |", "|---|---|---|---|---|"]
     for row in tested:
         after = percent(row.pass_rate(after=True)) if row.replayed() else "not replayed"
-        change = round(100 * (row.tested_rate() - row.pass_rate()))
+        change = whole(100 * (row.tested_rate() - row.pass_rate()))
         lines.append(f"| {SHORT.get(row.model, row.model)} | {percent(row.pass_rate())} ({row.passes()}/{len(row.all_trials())}) "
                      f"| {after} | {percent(row.tested_rate())} ({sum(t.passed() for t in row.tested_trials())}/"
                      f"{len(row.tested_trials())}) | {'+' if change > 0 else ''}{change} points |")
@@ -426,9 +432,10 @@ def headline(listed: list[Row]) -> str:
     return (results_table(listed) + "\n\n"
             "In these results the model can ask for test prints before its final design, as in [How a trial runs]"
             "(#how-a-trial-runs). Each row is a model, best first; the best in each column is bold. A pass means "
-            "every check passes on my "
-            "recorded test prints. Time, filament and cost per pass count everything the model printed, test prints "
-            "included, divided by the parts that work.\n\n" + ranking(listed) + "\n\n" + improvement(listed) + "\n\n"
+            "every check passes against my recorded test prints, under the assumptions listed in "
+            "[the reference](docs/reference.md#assumptions-the-verdicts-rest-on). Print hours and filament are "
+            "slicer estimates and cost is what the API charged; each counts everything the model asked to print, test "
+            "prints included, divided by the designs that pass. Nothing a model designed was printed.\n\n" + ranking(listed) + "\n\n" + improvement(listed) + "\n\n"
             + cant_tell_line(listed))
 
 

@@ -12,15 +12,8 @@ sandbox (pbe/parts/build.py).
 
 The images and meshes go to the R2 media host under content-addressed keys (print-build-eval/site/<sha256-8>/<name>),
 never into the repo. Only the manifest of their URLs is committed: scripts/results_site_media.json. Work is kept under
-results/local/site-media/ (one record per design, the rendered files, the upload ledger). pyvista comes in with
-`uv run --with` so the project's own dependencies don't change.
-
-Each design's files are made from its submission, saved findings and assumptions; their hash with VERSION is its
-content key (content_key), kept in each local record and, per design, under the committed manifest's "keys". A run
-does only the designs whose committed key isn't current (after a regrade, the ones whose findings changed), reuses
-a local record only when its key matches, and overlays what it did on the committed manifest, so a run over some
-designs keeps every other one. --all redoes every design; bump VERSION when the drawing code changes. --check exits 1
-if a committed entry is out of date, drawing nothing and needing no network (scripts/update_tables.sh --check runs it).
+results/local/site-media/ (one record per design, the rendered files, the upload ledger), so a re-run only does what's
+new. pyvista comes in with `uv run --with` so the project's own dependencies don't change.
 
 A highlight marks where a failed check looked, using the same code the grader ran, never a second grading:
 - bridges: the faces of every overhang pbe.graders.bridges.overhangs finds unbridgeable (not ok, not a narrow ledge);
@@ -42,7 +35,6 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Pool
 from pathlib import Path
-from functools import partial
 from types import SimpleNamespace
 
 import numpy as np
@@ -71,8 +63,6 @@ RED_RGB = (222, 52, 40)
 EDGE_RGB = "#2f3a45"
 WEBP_QUALITY = 80
 FINDINGS_FILES = ("grades.json", "loop.json", "replay.json")
-FINDING_KEYS = ("check", "part", "ok", "detail", "test_print")  # what a drawing or highlight can depend on
-ASSUMED_FILE = "assumed.json"  # pbe.assumptions.FILE_NAME, read by the assembled view
 LOOP_ARM_FILE = "loop.json"
 
 
@@ -100,24 +90,6 @@ def saved_findings(folder):
     return [], False
 
 
-def content_key(folder, version) -> str:
-    """What a design's site files are drawn from: its submission, its saved findings (and which file holds them), its
-    saved assumptions, its task's spec files and the drawing code's version. A record or committed entry with another
-    key is out of date. A regrade that leaves the findings as they were leaves the key alone. Shared inputs (the
-    catalog, the site's caption tables) aren't in it: bump VERSION when a change to them should redraw."""
-    findings, declined = saved_findings(folder)
-    def digest(path):
-        return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
-    task = task_of(folder)
-    spec = ROOT / "tasks" / task.split("/")[0] if task else None
-    blob = {"version": version, "submission": digest(folder / "submission.yaml"), "assumed": digest(folder / ASSUMED_FILE),
-            "declined": declined, "task": task, "findings_file": next((name for name in FINDINGS_FILES if (folder / name).exists()), None),
-            "task_spec": {path.relative_to(spec).as_posix(): digest(path) for path in sorted(spec.rglob("*")) if path.is_file()}
-            if spec and spec.is_dir() else None,
-            "findings": [{key: finding.get(key) for key in FINDING_KEYS} for finding in findings]}
-    return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:16]
-
-
 def task_of(folder):
     for name in FINDINGS_FILES:
         if (folder / name).exists():
@@ -142,20 +114,14 @@ def ensure_built(folder, sub):
     from pbe.parts.build import build_parts
     parts = folder / "parts"
     note = parts / BUILD_NOTE
-    submission = hashlib.sha256((folder / "submission.yaml").read_bytes()).hexdigest()
     if note.exists():
-        saved = json.loads(note.read_text())
-        if saved.get("submission") == submission:
-            return saved["errors"]
-    elif all((parts / f"{part.id}.stl").exists() for part in sub.parts):  # built before, by another script
+        return json.loads(note.read_text())
+    if all((parts / f"{part.id}.stl").exists() for part in sub.parts):  # built before, by another script
         errors = {part.id: "" for part in sub.parts}
-        parts.mkdir(parents=True, exist_ok=True)
-        note.write_text(json.dumps({"submission": submission, "errors": errors}, indent=1))
-        return errors
-    # a note from another submission (or the old format, which didn't say): build again from this one
-    errors = {part_id: built.error for part_id, built in build_parts(sub, parts).items()}
+    else:
+        errors = {part_id: built.error for part_id, built in build_parts(sub, parts).items()}
     parts.mkdir(parents=True, exist_ok=True)
-    note.write_text(json.dumps({"submission": submission, "errors": errors}, indent=1))
+    note.write_text(json.dumps(errors, indent=1))
     return errors
 
 
@@ -499,17 +465,14 @@ def _process(folder):
     return {"rel": rel(folder), "version": VERSION, "built": True, "error": error, "parts": parts, "scene": scene}
 
 
-def work(folder, force=False):
-    """Process one design unless its record is current (same version and content key) and force (--all) isn't set,
-    and save the record."""
+def work(folder):
+    """Process one design unless its record is current, and save the record."""
     path = record_path(folder)
-    key = content_key(folder, VERSION)
     if path.exists():
         saved = json.loads(path.read_text())
-        if not force and saved.get("version") == VERSION and saved.get("key") == key:
+        if saved.get("version") == VERSION:
             return saved
     record = process(folder)
-    record["key"] = key
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, indent=1, sort_keys=True))
     return record
@@ -586,40 +549,22 @@ def manifest_scene(scene, parts):
     return {"layers": layers, "fails": scene["fails"], "assumed_fails": scene["assumed_fails"]}
 
 
-def committed():
-    """The committed manifest as {"designs", "keys"}, or empty ones without it."""
-    saved = json.loads(MANIFEST.read_text()) if MANIFEST.exists() else {}
-    return {"designs": saved.get("designs") or {}, "keys": saved.get("keys") or {}}
-
-
 def write_manifest(records):
-    """Overlay the current records on the committed manifest, so a run over some designs keeps every other one, and
-    drop designs no longer in results/runs."""
-    current = {rel(folder) for folder in design_folders()}
-    old = committed()
-    designs = {name: entry for name, entry in old["designs"].items() if name in current}
-    keys = {name: key for name, key in old["keys"].items() if name in current}
+    designs = {}
     for record in records:
         designs[record["rel"]] = {"built": record["built"], "error": record["error"],
                                   "parts": [manifest_part(part) for part in record["parts"]],
                                   "scene": manifest_scene(record.get("scene"), record["parts"])}
-        keys[record["rel"]] = record["key"]
-    text = json.dumps({"designs": designs, "keys": keys}, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
+    text = json.dumps({"designs": designs}, indent=1, sort_keys=True, ensure_ascii=False) + "\n"
     assert "/Users/" not in text and str(Path.home()) not in text
     MANIFEST.write_text(text)
 
 
-def stale(folders):
-    """The designs whose committed entry wasn't drawn from what's saved now."""
-    keys = committed()["keys"]
-    return [folder for folder in folders if keys.get(rel(folder)) != content_key(folder, VERSION)]
-
-
 def saved_records():
-    """Every record on disk drawn from what's saved now for a design still in results/runs."""
-    keys = {rel(folder): content_key(folder, VERSION) for folder in design_folders()}
+    """Every current record on disk whose design is still in results/runs."""
+    wanted = {rel(folder) for folder in design_folders()}
     records = [json.loads(path.read_text()) for path in sorted(RECORDS.glob("*.json"))]
-    return [record for record in records if record.get("version") == VERSION and record.get("key") == keys.get(record["rel"])]
+    return [record for record in records if record["rel"] in wanted and record.get("version") == VERSION]
 
 
 def report(records):
@@ -648,23 +593,14 @@ def main():
     parser.add_argument("--no-upload", action="store_true", help="build and render, but don't upload")
     parser.add_argument("--workers", type=int, default=6, help="more can run the GPU out of memory, and offscreen renders come back empty")
     parser.add_argument("--upload-workers", type=int, default=8)
-    parser.add_argument("--all", action="store_true", help="redo designs whose committed entry is already current too")
-    parser.add_argument("--check", action="store_true", help="exit 1 if any committed entry is out of date; draws nothing")
     args = parser.parse_args()
-    folders = [folder for folder in design_folders() if not args.only or args.only in rel(folder)]
-    if args.check:
-        sys.exit(report_stale(stale(folders), MANIFEST.name))
-    folders = folders if args.all else stale(folders)
-    try:
-        import pyvista  # noqa: F401  (rendering needs it; without it every design would be saved as unbuilt)
-    except ImportError:
-        sys.exit("pyvista is missing: run this as uv run --with pyvista python scripts/results_site_media.py")
     RECORDS.mkdir(parents=True, exist_ok=True)
     OBJECTS.mkdir(parents=True, exist_ok=True)
+    folders = [folder for folder in design_folders() if not args.only or args.only in rel(folder)]
     folders = folders[:args.limit] if args.limit else folders
     print(f"{len(folders)} designs", file=sys.stderr)
     with Pool(args.workers, maxtasksperchild=20) as pool:
-        for count, _ in enumerate(pool.imap_unordered(partial(work, force=args.all), folders), 1):
+        for count, _ in enumerate(pool.imap_unordered(work, folders), 1):
             if count % 25 == 0:
                 print(f"  {count}/{len(folders)}", file=sys.stderr)
     records = saved_records()
@@ -675,25 +611,7 @@ def main():
     if not args.no_upload:
         uploaded, failures = upload(objects, args.upload_workers)
         print(f"uploaded {uploaded}; {len(failures)} failed", file=sys.stderr)
-    done = set(LEDGER.read_text().split()) if LEDGER.exists() else set()
-    missing = [obj for obj in objects if obj not in done]
-    if missing:  # the manifest names media-host URLs, so it waits until every one of them is there
-        print(f"{len(missing)} objects aren't uploaded, so {MANIFEST.name} is left as it was", file=sys.stderr)
-        return
     write_manifest(records)
-
-
-def report_stale(folders, manifest_name) -> int:
-    """Print the out-of-date designs and how to redo them; 1 if there are any."""
-    if not folders:
-        return 0
-    print(f"{manifest_name}: {len(folders)} designs were drawn from findings or submissions that have since changed:", file=sys.stderr)
-    for folder in folders[:20]:
-        print(f"  {rel(folder)}", file=sys.stderr)
-    if len(folders) > 20:
-        print(f"  ... and {len(folders) - 20} more", file=sys.stderr)
-    print("Redraw them: uv run --with pyvista python scripts/results_site_media.py && uv run python scripts/results_site_views.py", file=sys.stderr)
-    return 1
 
 
 if __name__ == "__main__":

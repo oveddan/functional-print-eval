@@ -70,7 +70,7 @@ NOT_GRADED = {
     "Not graded: wheel bolt hole between 8.0 and 8.4 mm, never printed":
         ("A wheel bolt hole between 8.0 and 8.1 mm", "An 8.05 mm hole: 8.0 screwed in, 8.1 went through"),
     "Not graded: bearing seat between printed sizes or ribbed":
-        ("A bearing seat between printed sizes, or ribbed", "Seats at 22.1 and 22.3 mm, and lobed seats: 22.05 wouldn't take a 608, 22.2 held, 22.4 fell out"),
+        ("A bearing seat between printed sizes, or ribbed", "A ribbed, lobed or slotted seat: only plain round seats were printed (22.1 to 22.3 mm took a 608 and held it)"),
     "Not graded: bearing a little proud, or no shoulder, never printed":
         ("A bearing more than 0.6 mm proud", "A seat leaving the bearing 0.8 to 1 mm proud: 0.2 to 0.6 held"),
     "Not graded: a nut pocket tighter than any printed":
