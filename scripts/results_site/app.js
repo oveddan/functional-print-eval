@@ -363,7 +363,8 @@ function renderWhy() {
   const notPassing = entries.filter((entry) => entry.verdict !== "pass").length;
   const reasons = reasonCounts(entries).filter((reason) => reason.kind === "failed" || reason.kind === "not graded").slice(0, 8);
   const most = Math.max(...reasons.map((reason) => reason.count), 1);
-  $("why-sub").textContent = `${notPassing} of ${entries.length} first prints don't pass. These are the most common reasons, by number of designs; a design can have more than one. Each opens the designs behind it.`;
+  const models = new Set(entries.map((entry) => entry.row.model)).size;
+  $("why-sub").textContent = `Across every model's first prints (all ${models} models, not only the ${pooledModels().length} in the numbers above), ${notPassing} of ${entries.length} don't pass. These are the most common reasons, by number of designs; a design can have more than one. Each opens the designs behind it.`;
   const list = clear($("why-body"));
   for (const reason of reasons) {
     const verdict = ISSUE_VERDICT[reason.kind];
@@ -651,7 +652,7 @@ function renderReasons() {
   const host = clear($("reasons"));
   const reasons = reasonCounts(scopeEntries(state).filter((entry) => verdictMatches(entry, state)));
   if (!reasons.length) return;
-  const open = state.reason || ["fail", "not-graded"].includes(state.verdict);
+  const open = !state.reason && ["fail", "not-graded"].includes(state.verdict);  // a chosen reason: go straight to its designs
   const settle = new Map(Object.values(index.not_graded_reasons).map((item) => [item.reason_group, item.settle]));
   const list = h("ul", { class: "reason-list" });
   for (const reason of reasons) {
