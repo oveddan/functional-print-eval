@@ -10,6 +10,8 @@
 //           (the first print if it passed or wasn't replayed, otherwise its second print)
 //   task    tripod-plate | bearing-wheel | knob-m3 | knob-m5 | estoa-light | m5-spacer | scored | all    default all
 //   verdict pass | fail | not-graded | declined | no-design | error | not-counted
+//           didnt-pass (fail, declined or no design together) | second-pass (after-feedback only: passes on the
+//           second print): the scorecard chart's pieces link with these two
 //   model   the model id after its slash, e.g. gemini-4-argon; or run-all-three-ways (the models in the headline)
 //   reason  a reason group's key, e.g. holed-roof or a-tripod-head-recess-under-5-mm-deep
 //   show    pictures | strips     overrides the automatic choice between picture cards and one line per model
@@ -156,7 +158,7 @@ function readUrl() {
   if (index.tasks[task] || task === "scored" || task === "all") next.task = task;
   else if (taskParam) unknown("part", taskParam);
   const verdict = params.get("verdict");
-  if (verdict === "not-counted" || verdictFromSlug(verdict)) next.verdict = verdict;
+  if (verdict === "not-counted" || VERDICT_SETS[verdict] || verdictFromSlug(verdict)) next.verdict = verdict;
   else if (verdict) unknown("verdict", verdict);
   const model = params.get("model");
   if (model === POOLED_SLUG) next.model = POOLED;
@@ -211,6 +213,7 @@ function normalise() {
   if (state.task === "scored" && inGroup.every((entry) => taskMatches(entry.row, "scored"))) state.task = "all";
   if (state.model && !inGroup.some((entry) => modelMatches(entry.row, state.model))) state.model = "";
   if (state.verdict === "not-counted" && (!isHeadline() || !inGroup.some((entry) => !entry.counted))) state.verdict = "";
+  if (VERDICT_SETS[state.verdict] && !VERDICT_SETS[state.verdict].applies(state.cond)) state.verdict = "";
 }
 
 function scrollToResults(focus) {
@@ -245,7 +248,17 @@ function scopeEntries(s, { task = true, model = true } = {}) {
   return (lookup.entries.get(s.cond) || []).filter((entry) => (!task || taskMatches(entry.row, s.task)) && (!model || modelMatches(entry.row, s.model)));
 }
 
+// Verdict filter values that aren't one verdict. The scorecard chart links with them, so each piece of a bar opens
+// exactly the designs it counts.
+const VERDICT_SETS = {
+  "didnt-pass": { label: "Didn't pass", title: "Fail, declined or no design. Not graded is counted apart.", applies: () => true,
+    match: (entry, cond) => countable(entry, cond) && !["pass", "not graded", "error"].includes(entry.verdict) },
+  "second-pass": { label: "Pass on the second print", title: "First prints that didn't pass and whose second print, after feedback, passes.", applies: (cond) => cond === "after_feedback",
+    match: (entry) => entry.verdict === "pass" && entry.via === "second" },
+};
+
 function verdictMatches(entry, s) {
+  if (VERDICT_SETS[s.verdict]) return VERDICT_SETS[s.verdict].match(entry, s.cond);
   if (!isHeadline(s.cond)) return !s.verdict || VERDICT[entry.verdict].slug === s.verdict;
   if (s.verdict === "not-counted") return !entry.counted;
   return entry.counted && (!s.verdict || VERDICT[entry.verdict].slug === s.verdict);
@@ -389,7 +402,7 @@ function renderScorecard() {
       h("th", { scope: "col" }, "After one round of feedback", h("small", {}, "passes first time, plus second prints that pass")),
       h("th", { scope: "col", "aria-sort": "descending" }, "Test prints first ", h("span", { class: "sort-mark", title: "Sorted by this column, highest first" }, "▼"),
         h("small", {}, `the person couldn't say how a test piece came out in ${tell.told} of ${tell.trials} trials; ${tell.passes_after_cant_tell} of the ${tell.passes} passes came after such an answer`)),
-      h("th", { scope: "col", class: "num" }, "Per passing design", h("small", {}, "with test prints: API cost; print time and filament are slicer estimates, nothing was printed")))));
+      h("th", { scope: "col", class: "num" }, "Per passing design, with test prints first", h("small", {}, "API cost; print time and filament are slicer estimates, nothing was printed")))));
   const body = h("tbody", {});
   const rate = (label, cell, patch, extra) => cellLink(label, patch, { trials: cell.trials, passes: cell.passes },
     { class: "cell", "aria-label": `${label}: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} trials.` },
@@ -419,7 +432,7 @@ function renderScorecard() {
       h("td", { "data-label": "First print" }, rate(`${entry.short}, first print`, entry.first, { cond: "first", task: "scored", model }), stoppedNote(entry.first.excluded)),
       h("td", { "data-label": "After one round of feedback" }, afterCell),
       h("td", { "data-label": "Test prints first" }, testCell),
-      h("td", { "data-label": "Per passing design (est.)", class: "td-per num" }, per)));
+      h("td", { "data-label": "Per passing design, with test prints first (est.)", class: "td-per num" }, per)));
   }
   table.append(body);
 
@@ -429,7 +442,7 @@ function renderScorecard() {
       h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: "bar-pass" })), "pass"),
       h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: "bar-pass2" })), "pass on the second print"),
       h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: "bar-ng" })), "not graded (never a pass)"),
-      h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: "bar-rest" })), "fail, declined or no design")),
+      h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: "bar-rest" })), "didn't pass (fail, declined or no design)")),
     h("p", {}, "Sorted by pass rate with test prints first, then lower cost per passing design; the models not run that way follow, by first-print pass rate. ",
       `Models need ${score.min_trials} or more trials on each part to be listed with test prints. A cell's total is the number of trials saved for that model, which isn't always 40. ${score.skipped}`),
     h("p", {}, "The three columns aren't a ranking of methods: the test-prints-first column has fewer trials, and a pass after “I can't tell you how that one came out” may owe something to the model moving to a size the records cover."),
@@ -439,8 +452,119 @@ function renderScorecard() {
       stateLink({ cond: "test_first", task: score.harder_task }, {}, "with test prints first", { fromDefaults: true, toResults: true }), "."));
 
   const host = $("scorecard-body");
-  add(clear(host), h("div", { class: "table-scroll" }, table), notes);
+  add(clear(host), renderScorecardChart(), h("h3", { class: "sc-table-h" }, "All three conditions, as a table"), h("div", { class: "table-scroll" }, table), notes);
   host.removeAttribute("aria-busy");
+}
+
+// ---- scorecard chart: one stacked bar per model, the first print and then one round of feedback ----
+
+const SHOW_COUNT_FROM = 0.06;  // a segment narrower than this share of its bar has no number on it (the line under it does)
+const FEW_PASSES = 5;          // a cost per passing design from fewer passes than this is shown muted, with the count
+const COST_LABEL = "API cost per passing design, first print plus feedback";
+const chartChecks = [];        // the numbers each chart row draws, checked against the trials once the index is in
+
+// The headline's models, added up from their own rows.
+function pooledChartCell(score) {
+  const rows = score.models.filter((entry) => score.pooled.model_ids.includes(entry.model)).map((entry) => entry.after_feedback);
+  const sum = (key) => rows.reduce((total, cell) => total + cell[key], 0);
+  const cell = { trials: sum("trials"), passes: sum("passes"), passed_first: sum("passed_first"), passed_after_feedback: sum("passed_after_feedback"), not_graded: sum("not_graded"), cost_usd: sum("cost_usd") };
+  return { ...cell, rate: cell.passes / cell.trials, cost_per_pass: cell.passes ? cell.cost_usd / cell.passes : null };
+}
+
+function chartCost(cell) {
+  const label = h("span", { class: "sc-cost-label" }, COST_LABEL);
+  if (cell.cost_per_pass === null || cell.cost_per_pass === undefined) return h("span", { class: "sc-cost" }, label, h("span", { class: "sc-cost-none" }, "no passing design, so no value"));
+  const few = cell.passes < FEW_PASSES;
+  return h("span", { class: `sc-cost${few ? " sc-cost-few" : ""}` }, label, h("b", {}, money2(cell.cost_per_pass)),
+    h("small", {}, few ? `from ${plural(cell.passes, "pass", "passes")}, ${money2(cell.cost_usd)} in all` : `${money2(cell.cost_usd)} over ${cell.passes} passes`));
+}
+
+// One row: the model, its bar of counted designs, how many pass after feedback, and what a passing design cost.
+function chartRow({ name, model, cell, note, pooled = false }) {
+  const rest = cell.trials - cell.passes - cell.not_graded;
+  const scope = { task: "scored", model };
+  const segments = [
+    { cls: "bar-pass", n: cell.passed_first, text: String(cell.passed_first), said: `${cell.passed_first} passed on the first print`,
+      line: `${cell.passed_first} on the first print`, patch: { cond: "first", verdict: "pass" }, passes: cell.passed_first },
+    { cls: "bar-pass2", n: cell.passed_after_feedback, text: `+${cell.passed_after_feedback}`, said: `${cell.passed_after_feedback} more passed on the second print, after feedback`,
+      line: `${cell.passed_after_feedback} more after feedback`, patch: { cond: "after_feedback", verdict: "second-pass" }, passes: cell.passed_after_feedback },
+    { cls: "bar-ng", n: cell.not_graded, text: String(cell.not_graded), said: `${cell.not_graded} not graded, never counted as a pass`,
+      line: `${cell.not_graded} not graded`, patch: { cond: "after_feedback", verdict: "not-graded" }, passes: 0 },
+    { cls: "bar-rest", n: rest, text: String(rest), said: `${rest} didn't pass: failed, declined or handed in no design`,
+      line: `${rest} didn't pass`, patch: { cond: "after_feedback", verdict: "didnt-pass" }, passes: 0 },
+  ].filter((segment) => segment.n > 0);
+  chartChecks.push({ name, model, trials: cell.trials, first: cell.passed_first, second: cell.passed_after_feedback, notGraded: cell.not_graded, rest, cost: cell.cost_usd, perPass: cell.cost_per_pass,
+    pieces: segments.map((segment) => ({ what: segment.line, n: segment.n, patch: { ...scope, ...segment.patch } })) });
+  const bar = h("span", { class: "sc-bar" }, segments.map((segment) => {
+    const said = `${name}: ${segment.said}, of ${cell.trials} counted designs. Opens ${segment.n === 1 ? "it" : `those ${segment.n}`}.`;
+    return cellLink(`chart, ${name}, ${segment.cls}`, { ...scope, ...segment.patch }, { trials: segment.n, passes: segment.passes },
+      { class: `sc-seg ${segment.cls}`, style: `--n:${segment.n}`, "aria-label": said, title: said },
+      segment.n / cell.trials >= SHOW_COUNT_FROM ? h("span", { class: "sc-n", "aria-hidden": "true" }, segment.text) : null);
+  }));
+  const total = cellLink(`chart, ${name}, after feedback`, { ...scope, cond: "after_feedback" }, { trials: cell.trials, passes: cell.passes },
+    { class: "sc-total", "aria-label": `${name}, after one round of feedback: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} designs.` },
+    [h("span", { class: "rate" }, pct(cell.rate)), h("span", { class: "frac" }, `${cell.passes} of ${cell.trials}`)]);
+  const title = stateLink({ model }, { class: "sc-name", "aria-label": `${name}: open ${pooled ? "these models'" : "this model's"} trials` }, name, { fromDefaults: true, toResults: true });
+  const line = [segments.map((segment) => segment.line).join(", "), note].filter(Boolean).join("; ");
+  return h("li", { class: `sc-row${pooled ? " sc-row-pooled" : ""}` }, title, bar, total, h("span", { class: "sc-line" }, line), chartCost(cell));
+}
+
+function renderScorecardChart() {
+  const score = card.scorecard;
+  chartChecks.length = 0;
+  const row = (entry) => chartRow({ name: entry.short, model: entry.model, cell: entry.after_feedback });
+  // score.models comes sorted by pass rate after feedback, then lower cost; without second prints that is the first print's
+  const replayed = score.models.filter((entry) => entry.replayed).sort((a, b) => b.after_feedback.rate - a.after_feedback.rate);
+  const firstOnly = score.models.filter((entry) => !entry.replayed).sort((a, b) => b.first.rate - a.first.rate);
+  const pooledFirstOnly = firstOnly.filter((entry) => score.pooled.model_ids.includes(entry.model)).length;
+  const rows = [
+    replayed.map(row),
+    firstOnly.length ? h("li", { class: "sc-divider" }, "First print only: no second prints were run") : null,
+    firstOnly.map(row),
+    chartRow({ name: `Headline, ${score.pooled.models} models`, model: POOLED, cell: pooledChartCell(score), pooled: true,
+      note: `the ${score.pooled.models} models also run with test prints first${pooledFirstOnly ? `, ${pooledFirstOnly} of them first print only` : ""}` }),
+  ];
+  const key = (cls, label) => h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: cls })), label);
+  return h("section", { class: "sc-chart", "aria-labelledby": "sc-chart-h" },
+    h("div", { class: "sc-head" },
+      h("h3", { id: "sc-chart-h" }, "First print, then one round of feedback"),
+      h("p", {}, "Each bar is all of a model's counted designs for the four scored parts. A first print that didn't pass was sent back once, with the simulated person saying how it came out, and its second print counts instead. Each piece of a bar opens exactly the designs it counts."),
+      h("p", { class: "sc-order" }, "Sorted by pass rate after feedback, highest first", firstOnly.length ? "; the models with no second prints follow, by first-print pass rate." : ".")),
+    h("p", { class: "bar-legend sc-legend" },
+      key("bar-pass", "pass on the first print"), key("bar-pass2", "pass on the second print, after feedback (+)"),
+      key("bar-ng", "not graded (never a pass)"), key("bar-rest", "didn't pass (fail, declined or no design)")),
+    h("div", { class: "sc-axis", "aria-hidden": "true" },
+      h("span", {}, "Model"),
+      h("span", { class: "sc-ticks" }, [0, 25, 50, 75, 100].map((tick) => h("span", { style: `left:${tick}%` }, `${tick}%`))),
+      h("span", {}, "Pass after feedback"),
+      h("span", { class: "sc-axis-cost" }, COST_LABEL)),
+    h("ul", { class: "sc-rows" }, rows),
+    h("p", { class: "sc-foot" }, `${COST_LABEL}: what the API provider charged for every first print in the bar, plus each second print that is counted in it, divided by the number of designs that pass after feedback; where no second prints were run it is the first prints' cost over the first prints that pass. A value from fewer than ${FEW_PASSES} passes is shown muted, with the number of passes: one more or one fewer pass would move it a lot. A model with no passing design would have no value, not zero. Print time and filament aren't in it, and nothing a model designed was printed. The table's cost column is for the runs with test prints first, a different condition, so its figures differ.`));
+}
+
+// The chart's numbers against the trials, counted by the page's own filtering.
+function verifyChart(same) {
+  for (const drawn of chartChecks) {
+    const list = selectEntries({ ...DEFAULTS, cond: "after_feedback", task: "scored", model: drawn.model });
+    const passes = list.filter((item) => item.verdict === "pass");
+    const notGraded = list.filter((item) => item.verdict === "not graded").length;
+    const spend = list.reduce((total, item) => total + item.first.cost_usd + (item.via === "second" ? item.row.cost_usd : 0), 0);
+    same(`chart ${drawn.name} designs`, list.length, drawn.trials);
+    same(`chart ${drawn.name} passed on the first print`, passes.filter((item) => item.via === "first").length, drawn.first);
+    same(`chart ${drawn.name} passed on the second print`, passes.filter((item) => item.via === "second").length, drawn.second);
+    same(`chart ${drawn.name} not graded`, notGraded, drawn.notGraded);
+    same(`chart ${drawn.name} the rest`, list.length - passes.length - notGraded, drawn.rest);
+    same(`chart ${drawn.name} API cost in cents`, Math.round(spend * 100), Math.round(drawn.cost * 100));
+    same(`chart ${drawn.name} cost per passing design`, passes.length ? money2(spend / passes.length) : null, drawn.perPass === null || drawn.perPass === undefined ? null : money2(drawn.perPass));
+    // each piece of the bar opens a list of exactly as many designs as the piece counts, and the pieces make the bar
+    for (const piece of drawn.pieces) same(`chart ${drawn.name} link “${piece.what}” opens`, selectEntries({ ...DEFAULTS, ...piece.patch }).length, piece.n);
+    same(`chart ${drawn.name} pieces add up`, drawn.pieces.reduce((total, piece) => total + piece.n, 0), drawn.trials);
+  }
+  const headline = chartChecks.find((drawn) => drawn.model === POOLED);
+  const pooled = index.scorecard.pooled;
+  same("chart headline first-print passes", headline.first, pooled.first.passes);
+  same("chart headline passes after feedback", headline.first + headline.second, pooled.after_feedback.passes);
+  same("chart headline designs", headline.trials, pooled.after_feedback.trials);
 }
 
 // ---- small multiples: one panel per model, parts down, the three conditions across ----
@@ -558,6 +682,12 @@ function renderFilters() {
     button.title = index.definitions["not counted"];
     verdictChips.push(button);
   }
+  if (VERDICT_SETS[state.verdict]) {
+    const set = VERDICT_SETS[state.verdict];
+    const button = chip("verdict:" + state.verdict, set.label, scope.filter((entry) => set.match(entry, state.cond)).length, true, { verdict: "", reason: "" });
+    button.title = set.title;
+    verdictChips.push(button);
+  }
   const meanings = h("details", { class: "meanings" }, h("summary", {}, "What these mean"),
     h("dl", {}, [...VERDICTS, "not counted"].map((name) => h("div", {}, h("dt", {}, VERDICT[name] ? badge(name, { small: true }) : h("span", { class: "tag tag-excluded" }, "Not counted")), h("dd", {}, index.definitions[name])))));
 
@@ -620,7 +750,7 @@ function summaryText() {
   else if (state.task !== "all") narrowed.push(taskLabel(state.task));
   if (state.model) narrowed.push(state.model === POOLED ? `the ${pooledModels().length} models run all three ways` : modelShort(state.model));
   const picked = [];
-  if (state.verdict) picked.push(state.verdict === "not-counted" ? "not counted" : VERDICT[verdictFromSlug(state.verdict)].label.toLowerCase());
+  if (state.verdict) picked.push(state.verdict === "not-counted" ? "not counted" : (VERDICT_SETS[state.verdict] || VERDICT[verdictFromSlug(state.verdict)]).label.toLowerCase());
   if (state.reason) picked.push(`reason: ${index.reason_groups[state.reason]}`);
   const scope = `${total.toLocaleString("en-US")} ${noun}${narrowed.length ? ` (${narrowed.join(", ")})` : ""}`;
   if (state.verdict === "not-counted") return `Showing ${shown.length} not counted, beside the ${scope}`;
@@ -1002,6 +1132,7 @@ function verifyCounts() {
       if (block.excluded) same(`${entry.short} ${cond} excluded`, scopeEntries({ cond, task: "scored", model: entry.model }).filter((item) => !item.counted).length, block.excluded.count);
     }
   }
+  verifyChart(same);
   // After feedback: the entry points at the print whose verdict the scorecard counts.
   for (const item of lookup.entries.get("after_feedback")) same(`after feedback verdict of ${item.first.id}`, item.row.verdict, item.verdict);
   // Every link drawn on the page (headline tiles, reasons chart, scorecard cells, by-part bars) opens a list with
