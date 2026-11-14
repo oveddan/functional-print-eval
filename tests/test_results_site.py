@@ -317,3 +317,23 @@ def test_a_check_gets_a_reference_photo_only_for_its_own_reason():
             if finding.ok is True:
                 assert (finding.check, finding.part or "-") not in groups
     assert seen
+
+
+def test_the_page_has_an_introduction_and_share_metadata():
+    page = (ROOT / "scripts/results_site/index.html").read_text()
+    for needed in ('<h1 class="title">', 'property="og:image"', 'property="og:title"', 'property="og:description"',
+                   'name="twitter:card" content="summary_large_image"', 'rel="canonical"'):
+        assert needed in page, needed
+    assert page.count("<h1") == 1
+    assert "coupon" not in page.lower()
+
+
+def test_a_shared_link_states_the_finding_from_the_scorecard(index):
+    pooled = index["scorecard"]["pooled"]
+    words = results_site.share_text(pooled)
+    first = round(100 * pooled["first"]["passes"] / pooled["first"]["trials"])
+    after = round(100 * pooled["after_feedback"]["passes"] / pooled["after_feedback"]["trials"])
+    assert f"{first}%" in words["share_title"]
+    assert f"{first}%" in words["share_description"] and f"{after}%" in words["share_description"]
+    page = results_site.with_share_text((ROOT / "scripts/results_site/index.html").read_text(), pooled)
+    assert "{{" not in page and words["share_title"] in page

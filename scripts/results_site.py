@@ -1509,6 +1509,22 @@ def index_of(entries: list[Entry], listed: list, sliced: dict) -> dict:
     }
 
 
+def share_text(pooled: dict) -> dict:
+    """The title and description a shared link shows, with the headline rates from the saved results."""
+    first, after = pooled["first"], pooled["after_feedback"]
+    percent = lambda cell: f"{round(100 * cell['passes'] / cell['trials'])}%"  # noqa: E731
+    return {"share_title": f"LLM-designed 3D prints pass {percent(first)} of the time on the first try",
+            "share_description": f"{pooled['models']} language models were asked, in a person's own words, for parts to 3D print. "
+                                 f"{percent(first)} of their designs pass on the first print and {percent(after)} after one round of "
+                                 "feedback, graded by code against real test prints. Every trial is here, with what failed and why."}
+
+
+def with_share_text(page: str, pooled: dict) -> str:
+    for key, text in share_text(pooled).items():
+        page = page.replace("{{" + key + "}}", text.replace("&", "&amp;").replace('"', "&quot;"))
+    return page
+
+
 def placeholder_page() -> str:
     return """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1554,6 +1570,8 @@ def build(out: Path = OUT, details: bool = True) -> dict:
             target = out / path.relative_to(FRONTEND)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, target)
+    page = out / "index.html"
+    page.write_text(with_share_text(page.read_text(), index["scorecard"]["pooled"]))
     return {"entries": len(entries), "sizes": sizes, "redactions": dict(hits), "index": index}
 
 
