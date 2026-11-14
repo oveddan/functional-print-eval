@@ -44,6 +44,9 @@ const AFTER_GROUP = {
 };
 const CATEGORY_LABEL = { "control or pilot": "Controls and pilots", "infrastructure check": "Infrastructure checks", "replay study": "Replay studies" };
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+const phone = matchMedia("(max-width: 760px)");  // where the scorecard table and the by-part panels fold away
+// A reason as a reader sees it: without the grader's own id on the end, "… cut through it (bridges)".
+const readerReason = (text) => String(text ?? "").replace(/ \([a-z][a-z0-9_]*\)$/, "");
 
 let card = null;    // data/scorecard.json
 let index = null;   // data/index.json
@@ -61,6 +64,8 @@ let sentinelWatch = null;
 let closingFromCode = false;
 let dialogSlug = null;
 let earlyDetail = null;       // a deep-linked trial's detail, fetched before the index
+let countProblems = [];       // what verifyCounts found, kept apart from the list's own check
+let listCheck = { links: 0, problems: [] };  // the links in the trial list now on the page
 
 // ---- data ----
 
@@ -203,7 +208,7 @@ export function hrefFor(patch = {}, base = state) {
 // A link to a list, from anywhere: starts from the defaults, not from the filters now set.
 const listHref = (patch) => hrefFor(patch, DEFAULTS);
 
-function navigate(patch, { replace = false, toResults = false, fromDefaults = false, opened = false } = {}) {
+function navigate(patch, { replace = false, toResults = false, fromDefaults = false, opened = false, stay = false } = {}) {
   const openingTrial = "trial" in patch;
   if (!openingTrial) notices = [];
   Object.assign(state, fromDefaults ? DEFAULTS : {}, patch);
@@ -214,7 +219,23 @@ function navigate(patch, { replace = false, toResults = false, fromDefaults = fa
   else history.pushState(opened ? { trialOpened: true } : null, "", url);
   render();
   if (toResults) scrollToResults(true);
-  else if (!openingTrial && $("results-top").getBoundingClientRect().top < 0) scrollToResults(false);
+  else if (!openingTrial && !stay && $("results-top").getBoundingClientRect().top < 0) scrollToResults(false);
+}
+
+// A filter set from inside the list. The list above the clicked row changes length (rows drop out, the reason's
+// picture comes in, the row's own reasons reorder), so the page is scrolled by exactly that much: the control that
+// was clicked stays under the cursor and keeps the focus.
+function navigateInPlace(patch, rowKey, focusSelector) {
+  const findRow = () => document.querySelector(`#results [data-row="${CSS.escape(rowKey)}"]`);
+  const find = () => { const row = findRow(); return row && (row.querySelector(focusSelector) || row.querySelector("a, button")); };
+  const before = find()?.getBoundingClientRect().top;
+  navigate(patch, { stay: true });
+  let guard = 0;
+  while (pending.length && !findRow() && guard++ < 200) renderResults.batch();
+  const control = find();
+  if (!control || before === undefined) { scrollToResults(true); return; }
+  scrollBy({ top: control.getBoundingClientRect().top - before, behavior: "instant" });
+  control.focus({ preventScroll: true });
 }
 
 // Keep the filters consistent with the chosen condition: a part or model with no entries there falls back to "all".
@@ -233,6 +254,10 @@ function scrollToResults(focus) {
   if (focus) target.focus({ preventScroll: true });
 }
 
+// A control that re-drew the list is usually gone afterwards: the focus goes to what took its place, never to the
+// top of the page.
+const refocus = (selector) => (document.querySelector(selector) || $("results-top")).focus({ preventScroll: true });
+
 const plainClick = (event) => !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0);
 
 // A link that changes the list without loading the page again; modified clicks still open a new tab. Before the
@@ -243,6 +268,7 @@ function stateLink(patch, attrs, kids, options = {}) {
     if (!plainClick(event) || !index) return;
     event.preventDefault();
     navigate(patch, options);
+    if (!link.isConnected && !options.toResults) $("results-top").focus({ preventScroll: true });
   });
   return link;
 }
@@ -367,7 +393,7 @@ function wireFailingExample() {
   const image = h("img", { src: pick.thumb, alt: "", width: "640", height: "512", decoding: "async" });
   image.addEventListener("error", () => image.remove());
   $("hero-thumb").replaceChildren(image);
-  $("hero-cap").textContent = `One failing design (${pick.model_short}, ${taskLabel(pick.task)}, trial ${pick.trial}): ${pick.issues[0].reason.replace(/ \(bridges\)$/, "")}, marked in red. Open it.`;
+  $("hero-cap").textContent = `One failing design (${pick.model_short}, ${taskLabel(pick.task)}, trial ${pick.trial}): ${readerReason(pick.issues[0].reason)}, marked in red. Open it.`;
   $("jump-trials").addEventListener("click", (event) => { if (plainClick(event)) { event.preventDefault(); scrollToResults(true); } });
 }
 
@@ -384,12 +410,12 @@ function whyThumb(key) {
 }
 
 // What the picture is, in words a reader sees without hovering: whose it is, and that a design wasn't printed.
+const pictureKind = (picture) => (picture.kind === "drawing" ? "Picture: the check's drawing of one design (not printed)"
+  : picture.kind === "test print" ? "Picture: one of Dan's test prints" : "Picture: from Dan's own build");
+
 function whyTag(key) {
   const picture = index.reason_pictures?.[key];
-  if (!picture) return null;
-  const text = picture.kind === "drawing" ? "Picture: the check's drawing of one design (not printed)"
-    : picture.kind === "test print" ? "Picture: one of Dan's test prints" : "Picture: from Dan's own build";
-  return h("small", { class: "why-tag" }, text);
+  return picture ? h("small", { class: "why-tag" }, pictureKind(picture)) : null;
 }
 
 function renderWhy() {
@@ -432,6 +458,27 @@ function stoppedNote(excluded) {
   return h("span", { class: "cell-note" }, `${excluded.count} more stopped and aren't counted: ${why}`);
 }
 
+// A model's name, linked to its trials the way the chart's names are.
+function modelLink(entry, where) {
+  return cellLink(`${entry.short}, name in the ${where}`, { model: entry.model }, { atLeast: 1 },
+    { class: "name-link", "aria-label": `${entry.short}: open this model's trials` }, entry.short);
+}
+
+// On a phone the chart above already shows every model, so what repeats them is folded away until asked for.
+function phoneFold(id, label, kids) {
+  return h("details", { id, class: "phone-fold", open: !phone.matches }, h("summary", {}, label), kids);
+}
+
+// A link to a folded part (#scorecard-table, #by-task) opens it.
+function openTargetedFold() {
+  let target = null;
+  try { target = location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null; } catch { return; }
+  const fold = target?.closest(".phone-fold") || (target?.matches("section") ? target.querySelector(":scope > .phone-fold") : null);
+  if (!fold || fold.open) return;
+  fold.open = true;
+  target.scrollIntoView({ block: "start" });
+}
+
 function renderScorecard() {
   const score = card.scorecard;
   const byModel = new Map(score.models.map((entry) => [entry.model, entry]));
@@ -464,13 +511,13 @@ function renderScorecard() {
     const testCell = test
       ? [rate(`${entry.short}, test prints first`, test, { cond: "test_first", task: "scored", model }),
         stoppedNote(test.excluded),
-        h("span", { class: "cell-note cell-note-ng" }, `the person couldn't tell in ${test.cant_tell.trials} of ${test.trials}`)]
+        h("span", { class: "cell-note" }, `the person couldn't tell in ${test.cant_tell.trials} of ${test.trials}`)]
       : h("span", { class: "cell-none" }, "Not run with test prints");
     const per = test
       ? h("span", { class: "per" }, h("span", { class: "per-cost" }, money2(test.cost_per_pass)), h("span", {}, `est. ${hours1(test.est_print_s_per_pass)} printing`), h("span", {}, `est. ${grams(test.est_grams_per_pass)} filament`))
       : h("span", { class: "cell-none" }, "n/a");
     body.append(h("tr", {},
-      h("th", { scope: "row" }, entry.short, h("small", {}, `${tokens(entry.tokens_per_trial)} tokens a trial`)),
+      h("th", { scope: "row" }, modelLink(entry, "table"), h("small", {}, `${tokens(entry.tokens_per_trial)} tokens a trial`)),
       h("td", { "data-label": "First print" }, rate(`${entry.short}, first print`, entry.first, { cond: "first", task: "scored", model }), stoppedNote(entry.first.excluded)),
       h("td", { "data-label": "After one round of feedback" }, afterCell),
       h("td", { "data-label": "Test prints first" }, testCell),
@@ -494,7 +541,8 @@ function renderScorecard() {
       stateLink({ cond: "test_first", task: score.harder_task }, {}, "with test prints first", { fromDefaults: true, toResults: true }), "."));
 
   const host = $("scorecard-body");
-  add(clear(host), renderScorecardChart(), h("h3", { class: "sc-table-h" }, "All three conditions, as a table"), h("div", { class: "table-scroll" }, table), notes);
+  add(clear(host), renderScorecardChart(), h("h3", { class: "sc-table-h" }, "All three conditions, as a table"),
+    phoneFold("scorecard-table", `The table: ${plural(byModel.size, "model")}, all three conditions`, [h("div", { class: "table-scroll" }, table), notes]));
   host.removeAttribute("aria-busy");
 }
 
@@ -514,7 +562,7 @@ function pooledChartCell(score) {
 }
 
 function chartCost(cell) {
-  const label = h("span", { class: "sc-cost-label" }, COST_LABEL);
+  const label = h("span", { class: "sc-cost-label" }, COST_LABEL, ": ");
   if (cell.cost_per_pass === null || cell.cost_per_pass === undefined) return h("span", { class: "sc-cost" }, label, h("span", { class: "sc-cost-none" }, "no passing design, so no value"));
   const few = cell.passes < FEW_PASSES;
   return h("span", { class: `sc-cost${few ? " sc-cost-few" : ""}` }, label, h("b", {}, money2(cell.cost_per_pass)),
@@ -551,11 +599,12 @@ function chartRow({ name, model, cell, note, pooled = false }) {
     { class: "sc-total", "aria-label": `${name}, after one round of feedback: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} designs.` },
     [h("span", { class: "rate" }, pct(cell.rate)), h("span", { class: "frac" }, `${cell.passes} of ${cell.trials}`)]);
   const title = stateLink({ model }, { class: "sc-name", "aria-label": `${name}: open ${pooled ? "these models'" : "this model's"} trials` }, name, { fromDefaults: true, toResults: true });
-  // The counts behind the percentages; the two kinds that aren't bar are links to their designs.
-  const counts = segments.map((segment) => (segment.drawn ? segment.line
-    : cellLink(`chart, ${name}, ${segment.cls}`, { ...scope, ...segment.patch }, { trials: segment.n, passes: 0 },
-      { class: `sc-count ${segment.cls === "bar-ng" ? "sc-count-ng" : ""}`, "aria-label": `${name}: ${segment.said}, of ${cell.trials} counted designs. ${opens(segment)}` }, segment.line)));
-  const line = h("span", { class: "sc-line" }, counts.flatMap((item, at) => (at ? [", ", item] : [item])), note ? `; ${note}` : null);
+  // The counts behind the percentages. Each opens its designs: the two that aren't bar have no other way in, and a
+  // thin piece of bar (one pass of 40) is too narrow to tap, so its count is the way in on a touch screen.
+  const counts = segments.map((segment) => cellLink(`chart count, ${name}, ${segment.cls}`, { ...scope, ...segment.patch }, { trials: segment.n, passes: segment.passes },
+    { class: `sc-count${segment.cls === "bar-ng" ? " sc-count-ng" : ""}`, "aria-label": `${name}: ${segment.said}${segment.drawn ? "" : `, of ${cell.trials} counted designs`}. ${opens(segment)}` }, segment.line));
+  const line = h("span", { class: "sc-line" }, counts.flatMap((item, at) => (at ? [h("span", { class: "sc-sep", "aria-hidden": "true" }, ", "), item] : [item])),
+    note ? h("span", { class: "sc-note" }, `; ${note}`) : null);
   return h("li", { class: `sc-row${pooled ? " sc-row-pooled" : ""}` }, title, bar, total, line, chartCost(cell));
 }
 
@@ -588,6 +637,7 @@ function renderScorecardChart() {
       h("span", { class: "sc-ticks" }, [0, 25, 50, 75, 100].map((tick) => h("span", { style: `left:${tick}%` }, `${tick}%`))),
       h("span", {}, "Pass after feedback"),
       h("span", { class: "sc-axis-cost" }, COST_LABEL)),
+    h("p", { class: "sc-cost-note" }, `The dollar figure in each row is the ${COST_LABEL}.`),
     h("ul", { class: "sc-rows" }, rows),
     h("p", { class: "sc-foot" }, `${COST_LABEL}: what the API provider charged for every first print in the bar, plus each second print that is counted in it, divided by the number of designs that pass after feedback; where no second prints were run it is the first prints' cost over the first prints that pass. A value from fewer than ${FEW_PASSES} passes is shown muted, with the number of passes: one more or one fewer pass would move it a lot. A model with no passing design would have no value, not zero. Print time and filament aren't in it, and nothing a model designed was printed. The table's cost column is for the runs with test prints first, a different condition, so its figures differ.`));
 }
@@ -655,12 +705,13 @@ function renderMultiples() {
       return h("tr", { class: harder ? "multi-harder" : "" }, h("th", { scope: "row" }, taskShort(task), harder ? h("small", {}, "not in the totals") : null), cells);
     });
     host.append(h("article", { class: "multi" },
-      h("h3", {}, entry.short),
+      h("h3", {}, modelLink(entry, "by-part panels")),
       h("table", {},
         h("thead", {}, h("tr", {}, h("th", { scope: "col" }, h("span", { class: "sr-only" }, "Part")), MULTI_CONDS.map(([, label]) => h("th", { scope: "col" }, label)))),
         h("tbody", {}, rows))));
   }
   host.removeAttribute("aria-busy");
+  $("by-task-fold").querySelector("summary").textContent = `The ${plural(host.children.length, "model")}, part by part`;
 }
 
 // ---- header and footer ----
@@ -811,8 +862,31 @@ function summaryText() {
   return picked.length ? `Showing ${shown.length.toLocaleString("en-US")} of ${scope}: ${picked.join("; ")}` : `Showing all ${scope}`;
 }
 
+// With a reason chosen (a shared ?reason= link, say), what that failure looks like comes before its designs: the same
+// picture, labelled the same way, as in "Why first prints don't pass".
+function reasonHeader() {
+  if (!state.reason) return null;
+  const picture = index.reason_pictures?.[state.reason];
+  const verdict = ISSUE_VERDICT[lookup.reasonKind.get(state.reason)] || "error";
+  let figure = null;
+  if (picture) {
+    const image = h("img", { src: picture.thumb, alt: "", decoding: "async", width: String(picture.width || 96), height: String(picture.height || 72) });
+    figure = h("a", { class: `reason-pic${picture.kind === "drawing" ? " reason-pic-drawing" : ""}`, href: picture.url, "aria-label": "The picture, full size" }, image);
+    image.addEventListener("error", () => figure.remove(), { once: true });
+  }
+  return h("div", { class: `reason-head ${VERDICT[verdict].cls}` }, figure,
+    h("div", { class: "reason-words" },
+      h("p", { class: "reason-kicker" }, badge(verdict, { small: true }), ` ${plural(shown.length, "design")} in this list, for one reason`),
+      h("h3", {}, index.reason_groups[state.reason] || state.reason),
+      // a drawing's caption already says whose it is and that it wasn't printed; a photo's gets the list's label first
+      picture ? h("p", { class: "reason-cap" }, picture.kind === "drawing" ? [h("b", {}, "Picture: "), picture.caption.replace(/^The /, "the ")]
+        : [h("b", {}, pictureKind(picture) + ". "), picture.caption]) : null,
+      h("p", {}, h("button", { type: "button", class: "btn btn-small", "data-k": "reason-clear", onclick: () => { navigate({ reason: "" }); refocus(".reasons > summary"); } }, "Show every reason"))));
+}
+
 function renderReasons() {
   const host = clear($("reasons"));
+  add(host, reasonHeader());
   const reasons = reasonCounts(scopeEntries(state).filter((entry) => verdictMatches(entry, state)));
   if (!reasons.length) return;
   const open = !state.reason && ["fail", "not-graded"].includes(state.verdict);  // a chosen reason: go straight to its designs
@@ -820,7 +894,7 @@ function renderReasons() {
   const list = h("ul", { class: "reason-list" });
   for (const reason of reasons) {
     const pressed = state.reason === reason.key;
-    list.append(h("li", {}, h("button", { type: "button", class: "reason", "aria-pressed": String(pressed), onclick: () => navigate({ reason: pressed ? "" : reason.key }) },
+    list.append(h("li", {}, h("button", { type: "button", class: "reason", "aria-pressed": String(pressed), onclick: () => { navigate({ reason: pressed ? "" : reason.key }); refocus(pressed ? ".reasons > summary" : '[data-k="reason-clear"]'); } },
       badge(ISSUE_VERDICT[reason.kind] || "error", { small: true }),
       h("span", { class: "reason-text" }, h("span", {}, reason.text), settle.get(reason.key) ? h("small", {}, "The print that would settle it: ", settle.get(reason.key)) : null),
       h("span", { class: "reason-n" }, String(reason.count)))));
@@ -859,23 +933,19 @@ function thumbBox(row) {
 
 function entryLabel(entry) {
   const row = entry.row;
-  const reason = row.issues[0] ? `. ${row.issues[0].reason}` : "";
+  const reason = row.issues[0] ? `. ${readerReason(row.issues[0].reason)}` : "";
   const how = state.cond === "after_feedback" ? (entry.via === "second" ? ", second print" : ", first print") : "";
   return `${row.model_short}, ${taskLabel(row.task)}, trial ${row.trial}${how}: ${VERDICT[entry.verdict].label}${reason}` + (isHeadline() && !entry.counted ? `. Not counted: ${row.excluded_reason}` : "");
 }
 
 function trialCard(entry) {
   const row = entry.row;
-  const link = h("a", { class: `card ${VERDICT[entry.verdict].cls}`, href: hrefFor({ trial: row.slug }), "data-slug": row.slug, "aria-label": entryLabel(entry) },
+  return openTrialOnClick(h("a", { class: `card ${VERDICT[entry.verdict].cls}`, href: hrefFor({ trial: row.slug }), "data-slug": row.slug, "aria-label": entryLabel(entry) },
     thumbBox(row),
-    h("span", { class: "card-body" }, badge(entry.verdict, { small: true }), h("span", { class: "card-trial" }, `Trial ${row.trial}`), entryFlag(entry)));
-  link.addEventListener("click", (event) => {
-    if (!plainClick(event)) return;
-    event.preventDefault();
-    navigate({ trial: row.slug }, { opened: true });
-  });
-  return link;
+    h("span", { class: "card-body" }, badge(entry.verdict, { small: true }), h("span", { class: "card-trial" }, `Trial ${row.trial}`), entryFlag(entry))), row.slug);
 }
+
+const rowKey = (task, model) => `${task}|${model}`;
 
 // Everything a model's row says once, so the cards don't have to repeat it.
 function rowSummary(task, model, entries) {
@@ -899,16 +969,18 @@ function rowSummary(task, model, entries) {
   if (entries.length !== all.length) stat += ` · ${entries.length} shown`;
   const reasons = reasonCounts(entries);
   if (reasons.length) {
-    lines.push(h("ul", { class: "row-reasons" }, reasons.slice(0, 3).map((reason) => h("li", {}, h("button", {
-      type: "button", class: "row-reason", "aria-pressed": String(state.reason === reason.key), title: "Show only the designs with this reason",
-      onclick: () => navigate({ reason: state.reason === reason.key ? "" : reason.key }),
-    }, h("b", {}, `${reason.count} ×`), " ", reason.text))), reasons.length > 3 ? h("li", { class: "row-more" }, `and ${plural(reasons.length - 3, "other reason")}`) : null));
+    lines.push(h("ul", { class: "row-reasons", "aria-label": "Reasons in this row. Each one filters the list." }, reasons.slice(0, 3).map((reason) => {
+      const pressed = state.reason === reason.key;
+      return h("li", {}, h("button", {
+        type: "button", class: "row-reason", "aria-pressed": String(pressed), "data-reason": reason.key,
+        title: pressed ? "Showing only the designs with this reason. Press to show every reason again." : "Show only the designs with this reason",
+        onclick: () => navigateInPlace({ reason: pressed ? "" : reason.key }, rowKey(task, model), `[data-reason="${CSS.escape(reason.key)}"]`),
+      }, icon(pressed ? "close" : "filter"), h("span", {}, h("b", {}, `${reason.count} ×`), " ", reason.text)));
+    }), reasons.length > 3 ? h("li", { class: "row-more" }, `and ${plural(reasons.length - 3, "other reason")}`) : null));
   }
   const drawn = entries.find((entry) => entry.verdict === "fail" && entry.row.views > 0);
   if (drawn) {
-    const link = h("a", { class: "row-see", href: hrefFor({ trial: drawn.row.slug }) }, `See where trial ${drawn.row.trial} fails`);
-    link.addEventListener("click", (event) => { if (!plainClick(event)) return; event.preventDefault(); navigate({ trial: drawn.row.slug }, { opened: true }); });
-    lines.push(h("p", { class: "row-line" }, link));
+    lines.push(h("p", { class: "row-line" }, openTrialOnClick(h("a", { class: "row-see", href: hrefFor({ trial: drawn.row.slug }) }, `See where trial ${drawn.row.trial} fails`), drawn.row.slug)));
   }
   const tested = entries.filter((entry) => entry.row.condition_key === "can_test" && entry.row.kind === "trial" && entry.verdict !== "error");
   if (tested.length) {
@@ -921,7 +993,7 @@ function rowSummary(task, model, entries) {
 
 function modelRow(task, model, entries, showTask) {
   const summary = rowSummary(task, model, entries);
-  return h("section", { class: "model-row", "aria-label": `${modelShort(model)}, ${taskLabel(task)}` },
+  return h("section", { class: "model-row", "data-row": rowKey(task, model), "aria-label": `${modelShort(model)}, ${taskLabel(task)}` },
     h("div", { class: "model-head" },
       h("h4", {}, modelShort(model), showTask ? h("small", {}, taskLabel(task)) : null),
       h("p", { class: "model-stat" }, summary.stat),
@@ -930,18 +1002,37 @@ function modelRow(task, model, entries, showTask) {
     h("div", { class: "cards" }, entries.map(trialCard)));
 }
 
-// One line per model: a strip of verdict marks and the main reason. Opens that model's row of pictures.
+// A trial's link opens it over the list.
+function openTrialOnClick(link, slug) {
+  link.addEventListener("click", (event) => {
+    if (!plainClick(event)) return;
+    event.preventDefault();
+    navigate({ trial: slug }, { opened: true });
+  });
+  return link;
+}
+
+// One line per model: its name opens that model's row of pictures, and each mark is one trial and opens it.
 function stripRow(task, model, entries) {
   const summary = rowSummary(task, model, entries);
   const top = reasonCounts(entries)[0];
-  const marks = h("span", { class: "marks", "aria-hidden": "true" }, entries.map((entry) => h("span", { class: `mark ${VERDICT[entry.verdict].cls}` }, icon(VERDICT[entry.verdict].icon))));
-  return stateLink({ task, model, show: "" }, { class: "strip", "aria-label": `${modelShort(model)}, ${taskLabel(task)}: ${verdictLine(countVerdicts(entries))}. Open these ${entries.length} designs.` }, [
-    h("span", { class: "strip-model" }, modelShort(model)),
+  const patch = { task, model, show: "" };
+  listCheck.links += 1 + entries.length;
+  const opens = selectEntries({ ...state, ...patch }).length;
+  if (opens !== entries.length) listCheck.problems.push(`strip ${modelShort(model)}, ${taskLabel(task)}: ${entries.length} marks, but its link opens ${opens} designs`);
+  const name = stateLink(patch, { class: "strip-model", "aria-label": `${modelShort(model)}, ${taskLabel(task)}: ${verdictLine(countVerdicts(entries))}. Open these ${entries.length} designs as pictures.` },
+    [modelShort(model), icon("next", "icon strip-go")]);
+  const marks = h("ul", { class: "marks", "aria-label": `${modelShort(model)}, ${taskLabel(task)}: ${plural(entries.length, "design")}, one mark each` }, entries.map((entry) => {
+    const said = entryLabel(entry);
+    if (!lookup.bySlug.has(entry.row.slug)) listCheck.problems.push(`strip mark with no trial: ${entry.row.slug}`);
+    return h("li", {}, openTrialOnClick(h("a", { class: `mark ${VERDICT[entry.verdict].cls}`, href: hrefFor({ trial: entry.row.slug }), "data-slug": entry.row.slug, "aria-label": said, title: said },
+      icon(VERDICT[entry.verdict].icon)), entry.row.slug));
+  }));
+  return h("div", { class: "strip", "data-row": rowKey(task, model) },
+    name,
     h("span", { class: "strip-stat" }, summary.stat),
     marks,
-    h("span", { class: "strip-reason" }, top ? [h("b", {}, `${top.count} ×`), " ", top.text] : ""),
-    icon("next", "icon strip-go"),
-  ]);
+    h("span", { class: "strip-reason" }, top ? [h("b", {}, `${top.count} ×`), " ", top.text] : ""));
 }
 
 function taskHead(task, entries) {
@@ -966,11 +1057,12 @@ function renderResults() {
   const host = clear($("results"));
   sentinelWatch?.disconnect();
   pending = [];
+  listCheck = { links: 0, problems: [] };
   const strips = state.show === "strips" || (state.show !== "pictures" && entries.length > STRIPS_ABOVE);
   $("result-count").textContent = summaryText();
   const tools = clear($("result-tools"));
   if (entries.length > 12) {
-    tools.append(h("button", { type: "button", class: "btn btn-small", onclick: () => navigate({ show: strips ? "pictures" : "strips" }, { replace: true }) },
+    tools.append(h("button", { type: "button", class: "btn btn-small", id: "view-toggle", onclick: () => { navigate({ show: strips ? "pictures" : "strips" }, { replace: true }); refocus("#view-toggle"); } },
       strips ? `Show all ${entries.length} as pictures` : "Show one line per model"));
   }
   if (!entries.length) { host.append(emptyState()); return; }
@@ -1016,7 +1108,7 @@ function renderResults() {
   }
 }
 
-const findCard = (slug) => document.querySelector(`.card[data-slug="${CSS.escape(slug)}"]`);
+const findCard = (slug) => document.querySelector(`#results [data-slug="${CSS.escape(slug)}"]`);  // a card, or a mark in a strip
 
 // Put rows in the page until a given trial's card is there (to focus it after its dialog closes).
 function renderUntil(slug) {
@@ -1031,7 +1123,7 @@ function emptyState() {
     box.append(h("p", {}, `${plural(excluded, "entry", "entries")} here ${excluded === 1 ? "isn't" : "aren't"} counted (for example runs that stopped on an infrastructure error). `,
       stateLink({ verdict: "not-counted", reason: "" }, {}, "Show the entries not counted"), "."));
   }
-  box.append(h("p", {}, h("button", { type: "button", class: "btn", onclick: () => navigate({ task: "all", verdict: "", model: "", reason: "" }) }, "Clear the filters")));
+  box.append(h("p", {}, h("button", { type: "button", class: "btn", onclick: () => { navigate({ task: "all", verdict: "", model: "", reason: "" }); refocus("#results-top"); } }, "Clear the filters")));
   return box;
 }
 
@@ -1195,10 +1287,12 @@ function verifyCounts() {
   for (const link of linkChecks.values()) {
     const list = selectEntries({ ...DEFAULTS, ...link.patch });
     links += 1;
+    if ("atLeast" in link) { same(`link “${link.label}” opens at least ${link.atLeast}`, list.length >= link.atLeast, true); continue; }
     same(`link “${link.label}” trials`, list.length, link.trials);
     if ("passes" in link) same(`link “${link.label}” passes`, list.filter((item) => item.verdict === "pass").length, link.passes);
   }
-  const result = { compared, links, problems, detail: detailCheck };
+  countProblems = problems;
+  const result = { compared, links, problems: [...problems, ...listCheck.problems], list: listCheck, detail: detailCheck };
   if (problems.length) console.error(`Counts check: ${problems.length} of ${compared} comparisons disagree`, problems);
   else console.info(`Counts check: ${compared} comparisons between the page's filtering and the data's aggregates, all equal (${links} scorecard links each open a list with the cell's own numbers).`);
   window.resultsSiteCheck = result;
@@ -1214,6 +1308,9 @@ function render() {
   renderReasons();
   $("dock-summary").textContent = $("result-count").textContent;
   syncDialog();
+  // the list's own links (each strip's name opens as many designs as it has marks), kept current with the list
+  if (listCheck.problems.length) console.error("List check: a strip's link doesn't open the designs it shows", listCheck.problems);
+  if (window.resultsSiteCheck) Object.assign(window.resultsSiteCheck, { list: listCheck, problems: [...countProblems, ...listCheck.problems] });
 }
 
 function fail(host, error) {
@@ -1255,6 +1352,9 @@ async function start() {
   render();
   setUpDock();
   addEventListener("popstate", () => { readUrl(); render(); });
+  addEventListener("hashchange", openTargetedFold);
+  phone.addEventListener("change", () => { if (!phone.matches) for (const fold of document.querySelectorAll(".phone-fold")) fold.open = true; });
+  openTargetedFold();
   if (!state.trial && ["cond", "task", "verdict", "model", "reason"].some((key) => params.has(key))) scrollToResults(false);
   performance.mark("trials-painted");
   verifyCounts();
