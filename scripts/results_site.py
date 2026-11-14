@@ -1392,6 +1392,11 @@ def scorecard_block(listed: list, entries: list[Entry]) -> dict:
             "change_points": round(100 * (row.tested_rate() - row.pass_rate())) if tested_trials else None})
     told = [t for row in tested for t in row.tested_trials()]
     first_n = sum(r.passes() for r in tested), sum(len(r.all_trials()) for r in tested)
+    # "After feedback" pools only the models whose first prints were sent back when they didn't pass. For the others
+    # the scorecard's column says "not run"; adding their first prints in would call a first-print result an
+    # after-feedback one. The same models' first-print rate goes with it, so before and after are like for like.
+    fed = [row for row in tested if row.replayed()]
+    fed_trials = sum(len(r.all_trials()) for r in fed)
     return {
         "note": "Computed by scripts/scorecard.py's functions from the saved runs: the same numbers as the README's "
                 "Results section.",
@@ -1406,7 +1411,10 @@ def scorecard_block(listed: list, entries: list[Entry]) -> dict:
         "not_tested_order": [row.model for row in sorted((r for r in listed if not r.tested_trials()), key=lambda r: -r.pass_rate())],
         "pooled": {"models": len(tested), "model_ids": [row.model for row in tested],
                    "first": rate(*first_n),
-                   "after_feedback": rate(sum(r.passes(True) for r in tested), first_n[1]),
+                   "after_feedback": rate(sum(r.passes(True) for r in fed), fed_trials) | {
+                       "models": len(fed), "model_ids": [row.model for row in fed],
+                       "first": rate(sum(r.passes() for r in fed), fed_trials),
+                       "not_sent_back": [short_name(row.model) for row in tested if not row.replayed()]},
                    "test_first": rate(sum(sum(t.passed() for t in r.tested_trials()) for r in tested),
                                       sum(len(r.tested_trials()) for r in tested)),
                    "first_rate": first_n[0] / first_n[1],
@@ -1513,10 +1521,13 @@ def share_text(pooled: dict) -> dict:
     """The title and description a shared link shows, with the headline rates from the saved results."""
     first, after = pooled["first"], pooled["after_feedback"]
     percent = lambda cell: f"{round(100 * cell['passes'] / cell['trials'])}%"  # noqa: E731
+    # the after-feedback rate is the models whose failed prints were sent back, beside those same models' first prints
+    feedback = (f" For the {after['models']} whose failed prints were sent back once, {percent(after['first'])} rises to "
+                f"{percent(after)}." if after["trials"] else "")
     return {"share_title": f"LLM-designed 3D prints pass {percent(first)} of the time on the first try",
             "share_description": f"{pooled['models']} language models were asked, in a person's own words, for parts to 3D print. "
-                                 f"{percent(first)} of their designs pass on the first print and {percent(after)} after one round of "
-                                 "feedback, graded by code against real test prints. Every trial is here, with what failed and why."}
+                                 f"{percent(first)} of their designs pass on the first print.{feedback} Graded by code against "
+                                 "real test prints; every trial is here, with what failed and why."}
 
 
 def with_share_text(page: str, pooled: dict) -> str:

@@ -94,12 +94,12 @@ def test_the_chart_s_bars_and_cost_per_passing_design_are_the_scorecards_own(ind
             assert cell["cost_per_pass"] == pytest.approx(row.cost(True) / row.passes(True))
         else:
             assert cell["cost_per_pass"] is None
-    # the chart's headline row adds up the headline's models: the README's 105 and 151 of 281 when this was written
-    pooled = index["scorecard"]["pooled"]
-    cells = [block[model] for model in pooled["model_ids"]]
-    assert sum(cell["passed_first"] for cell in cells) == pooled["first"]["passes"]
-    assert sum(cell["passes"] for cell in cells) == pooled["after_feedback"]["passes"]
-    assert sum(cell["trials"] for cell in cells) == pooled["after_feedback"]["trials"] == pooled["first"]["trials"]
+    # the chart's headline row adds up the headline's models whose failed first prints were sent back, and only those
+    after = index["scorecard"]["pooled"]["after_feedback"]
+    cells = [block[model] for model in after["model_ids"]]
+    assert sum(cell["passed_first"] for cell in cells) == after["first"]["passes"]
+    assert sum(cell["passes"] for cell in cells) == after["passes"]
+    assert sum(cell["trials"] for cell in cells) == after["trials"] == after["first"]["trials"]
 
 
 def test_the_chart_s_cost_is_the_saved_cost_of_the_prints_it_counts(index):
@@ -225,8 +225,10 @@ def test_excluded_and_cant_tell_follow_the_scorecard(index, listed):
     assert argon["count"] == 12 and argon["by_task"] == {"bearing-wheel": 2, "nut-knob/M3": 5, "nut-knob/M5": 5}
     pooled = index["scorecard"]["pooled"]
     tested_rows = [row for row in listed if row.tested_trials()]
-    assert pooled["after_feedback"]["passes"] == sum(row.passes(True) for row in tested_rows)
-    assert pooled["first"]["trials"] == pooled["after_feedback"]["trials"] == sum(len(row.all_trials()) for row in tested_rows)
+    sent_back = [row for row in tested_rows if row.replayed()]
+    assert pooled["first"]["trials"] == sum(len(row.all_trials()) for row in tested_rows)
+    assert pooled["after_feedback"]["passes"] == sum(row.passes(True) for row in sent_back)
+    assert pooled["after_feedback"]["trials"] == sum(len(row.all_trials()) for row in sent_back)
 
 
 def test_matched_trial_numbers_use_only_trials_both_conditions_have(index):
@@ -367,7 +369,31 @@ def test_a_shared_link_states_the_finding_from_the_scorecard(index):
     words = results_site.share_text(pooled)
     first = round(100 * pooled["first"]["passes"] / pooled["first"]["trials"])
     after = round(100 * pooled["after_feedback"]["passes"] / pooled["after_feedback"]["trials"])
+    before = round(100 * pooled["after_feedback"]["first"]["passes"] / pooled["after_feedback"]["first"]["trials"])
     assert f"{first}%" in words["share_title"]
-    assert f"{first}%" in words["share_description"] and f"{after}%" in words["share_description"]
+    assert f"{first}%" in words["share_description"]
+    assert f"{before}% rises to {after}%" in words["share_description"]  # like for like: the same models, before and after
     page = results_site.with_share_text((ROOT / "scripts/results_site/index.html").read_text(), pooled)
     assert "{{" not in page and words["share_title"] in page
+
+
+
+def test_after_feedback_counts_only_models_whose_failed_prints_were_sent_back(index, listed):
+    """The site once pooled every headline model into "after one round of feedback", so a model whose first prints
+    were never sent back (the README's table says "not run") was counted with its first-print result, and the
+    caption said each failure had been sent back. The rate is the replayed models', beside their own first prints."""
+    pooled = index["scorecard"]["pooled"]
+    after = pooled["after_feedback"]
+    replayed = {row.model: row for row in listed if row.replayed()}
+    assert after["model_ids"] and set(after["model_ids"]) <= set(replayed) and set(after["model_ids"]) <= set(pooled["model_ids"])
+    left_out = [model for model in pooled["model_ids"] if model not in after["model_ids"]]
+    assert all(model not in replayed for model in left_out)
+    assert len(after["not_sent_back"]) == len(left_out) and after["models"] == len(after["model_ids"])
+    assert after["first"]["trials"] == after["trials"] and after["first"]["passes"] <= after["passes"]
+    # the page offers the set as a filter, so the number opens exactly its designs, and says who is left out
+    app = (ROOT / "scripts/results_site/app.js").read_text()
+    assert 'const FED_SLUG = "sent-back";' in app and "after.not_sent_back" in app
+    # Codex on PR 34: the set is offered wherever it narrows the list, and always while chosen, not only where the
+    # larger pooled set also narrows it (under "test prints first" every listed model is a headline model)
+    assert "fedHere || state.model === FED" in app and "!fedModels().includes(model)" in app
+    assert "each one that didn't pass was sent back once\"" not in app  # the old caption, false for a model not replayed

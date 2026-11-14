@@ -12,7 +12,8 @@
 //   verdict pass | fail | not-graded | declined | no-design | error | not-counted
 //           didnt-pass (fail, declined or no design together) | second-pass (after-feedback only: passes on the
 //           second print): the scorecard chart's pieces link with these two
-//   model   the model id after its slash, e.g. gemini-4-argon; or run-all-three-ways (the models in the headline)
+//   model   the model id after its slash, e.g. gemini-4-argon; or run-all-three-ways (the models in the headline);
+//           or sent-back (those of them whose first prints were sent back when they didn't pass)
 //   reason  a reason group's key, e.g. holed-roof or a-tripod-head-recess-under-5-mm-deep
 //   show    pictures | strips     overrides the automatic choice between picture cards and one line per model
 //   trial   a trial's slug: opens that trial
@@ -28,6 +29,8 @@ const ROWS_PER_BATCH = 8;       // model rows put in the page at a time
 const STRIPS_ABOVE = 150;       // more trials than this and each model gets one line, not a row of pictures
 const POOLED = "pooled";        // the model filter's value for "the models run in all three ways"
 const POOLED_SLUG = "run-all-three-ways";
+const FED = "fed";              // the headline's models whose failed first prints were sent back: the after-feedback headline
+const FED_SLUG = "sent-back";
 const DEFAULTS = { cond: "first", task: "all", verdict: "", model: "", reason: "", show: "", trial: "" };
 const COND = {
   first: { short: "First print", noun: "first prints" },
@@ -133,8 +136,12 @@ const taskShort = (task) => meta().tasks[task]?.short || task;
 const modelShort = (model) => meta().models[model]?.short || model;
 const modelRank = (model) => { const at = lookup.modelOrder.indexOf(model); return at < 0 ? 999 : at; };
 const pooledModels = () => card.scorecard.pooled.model_ids;
+const fedModels = () => card.scorecard.pooled.after_feedback.model_ids;
+const modelSet = (model) => (model === POOLED ? pooledModels() : model === FED ? fedModels() : null);
+const modelSetLabel = (model) => (model === POOLED ? `the ${pooledModels().length} models run all three ways`
+  : `the ${fedModels().length} headline models whose failed first prints were sent back`);
 const taskMatches = (row, task) => task === "all" || (task === "scored" ? meta().tasks[row.task].scored : row.task === task);
-const modelMatches = (row, model) => !model || (model === POOLED ? pooledModels().includes(row.model) : row.model === model);
+const modelMatches = (row, model) => !model || (modelSet(model) ? modelSet(model).includes(row.model) : row.model === model);
 const condShort = (cond) => COND[cond]?.short || lookup.groups.get(cond)?.label || cond;
 
 // ---- URL state ----
@@ -162,6 +169,7 @@ function readUrl() {
   else if (verdict) unknown("verdict", verdict);
   const model = params.get("model");
   if (model === POOLED_SLUG) next.model = POOLED;
+  else if (model === FED_SLUG) next.model = FED;
   else if (lookup.modelBySlug.has(model)) next.model = lookup.modelBySlug.get(model);
   else if (model) unknown("model", model);
   const reason = params.get("reason");
@@ -181,7 +189,7 @@ export function hrefFor(patch = {}, base = state) {
   if (next.cond !== DEFAULTS.cond) params.set("cond", condSlug(next.cond));
   if (next.task !== DEFAULTS.task) params.set("task", taskSlug(next.task));
   if (next.verdict) params.set("verdict", next.verdict);
-  if (next.model) params.set("model", next.model === POOLED ? POOLED_SLUG : modelSlug(next.model));
+  if (next.model) params.set("model", next.model === POOLED ? POOLED_SLUG : next.model === FED ? FED_SLUG : modelSlug(next.model));
   if (next.reason) params.set("reason", next.reason);
   if (next.show) params.set("show", next.show);
   if (next.trial) params.set("trial", next.trial);
@@ -296,13 +304,23 @@ function reasonCounts(entries) {
 
 // ---- the finding ----
 
+// What the after-feedback number counts. It is not every headline model: a model whose first prints were never sent
+// back has no after-feedback result, so the rate is the others', beside those same models' first-print rate.
+function fedNote(pooled) {
+  const after = pooled.after_feedback;
+  const left = after.not_sent_back;
+  const which = left.length ? `${after.models} of the ${pooled.models} models` : "the same models";
+  const sentence = `${which}: each first print that didn't pass was sent back once. Their first prints alone: ${pct(after.first.rate)} (${after.first.passes} of ${after.first.trials}).`;
+  return left.length ? `${sentence} ${left.join(" and ")}'s first prints weren't sent back.` : sentence;
+}
+
 function renderFinding() {
   const score = card.scorecard;
   const pooled = score.pooled;
   const tell = score.cant_tell;
-  const tile = (key, cond, label, note) => {
+  const tile = (key, cond, label, note, model = POOLED) => {
     const cell = pooled[key];
-    return cellLink(`headline ${key}`, { cond, task: "scored", model: POOLED }, { trials: cell.trials, passes: cell.passes }, { class: "stat" }, [
+    return cellLink(`headline ${key}`, { cond, task: "scored", model }, { trials: cell.trials, passes: cell.passes }, { class: "stat" }, [
       h("span", { class: "stat-rate" }, pct(cell.rate)),
       h("span", { class: "stat-label" }, label),
       h("span", { class: "stat-frac" }, `${cell.passes} of ${cell.trials}`),
@@ -312,7 +330,7 @@ function renderFinding() {
   const heading = $("finding");
   add(clear(heading),
     tile("first", "first", "on the first print", null),
-    tile("after_feedback", "after_feedback", "after one round of feedback", "the same first prints; each one that didn't pass was sent back once"),
+    tile("after_feedback", "after_feedback", "after one round of feedback", fedNote(pooled), FED),
     tile("test_first", "test_first", "asking for test prints first", `fewer trials ran; in ${tell.told} of ${tell.trials} the person couldn't say how a test piece came out`));
   heading.removeAttribute("aria-busy");
   $("kicker").textContent = `${pooled.models} language models were asked, in a person's own words, for a part to 3D print. Of their designs, this many pass:`;
@@ -484,9 +502,9 @@ const FEW_PASSES = 5;          // a cost per passing design from fewer passes th
 const COST_LABEL = "API cost per passing design, first print plus feedback";
 const chartChecks = [];        // the numbers each chart row draws, checked against the trials once the index is in
 
-// The headline's models, added up from their own rows.
+// The headline's models whose failed first prints were sent back, added up from their own rows.
 function pooledChartCell(score) {
-  const rows = score.models.filter((entry) => score.pooled.model_ids.includes(entry.model)).map((entry) => entry.after_feedback);
+  const rows = score.models.filter((entry) => score.pooled.after_feedback.model_ids.includes(entry.model)).map((entry) => entry.after_feedback);
   const sum = (key) => rows.reduce((total, cell) => total + cell[key], 0);
   const cell = { trials: sum("trials"), passes: sum("passes"), passed_first: sum("passed_first"), passed_after_feedback: sum("passed_after_feedback"), not_graded: sum("not_graded"), cost_usd: sum("cost_usd") };
   return { ...cell, rate: cell.passes / cell.trials, cost_per_pass: cell.passes ? cell.cost_usd / cell.passes : null };
@@ -542,8 +560,8 @@ function renderScorecardChart() {
     replayed.map(row),
     firstOnly.length ? h("li", { class: "sc-divider" }, "First print only: no second prints were run") : null,
     firstOnly.map(row),
-    chartRow({ name: `Headline, ${score.pooled.models} models`, model: POOLED, cell: pooledChartCell(score), pooled: true,
-      note: `the ${score.pooled.models} models also run with test prints first${pooledFirstOnly ? `, ${pooledFirstOnly} of them first print only` : ""}` }),
+    chartRow({ name: `Headline, ${score.pooled.after_feedback.models} models`, model: FED, cell: pooledChartCell(score), pooled: true,
+      note: `the ${score.pooled.after_feedback.models} headline models whose failed first prints were sent back${pooledFirstOnly ? `; ${score.pooled.after_feedback.not_sent_back.join(" and ")}, first print only, is left out` : ""}` }),
   ];
   const key = (cls, label) => h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: cls })), label);
   return h("section", { class: "sc-chart", "aria-labelledby": "sc-chart-h" },
@@ -581,9 +599,9 @@ function verifyChart(same) {
     for (const piece of drawn.pieces) same(`chart ${drawn.name} link “${piece.what}” opens`, selectEntries({ ...DEFAULTS, ...piece.patch }).length, piece.n);
     same(`chart ${drawn.name} pieces add up`, drawn.pieces.reduce((total, piece) => total + piece.n, 0), drawn.trials);
   }
-  const headline = chartChecks.find((drawn) => drawn.model === POOLED);
+  const headline = chartChecks.find((drawn) => drawn.model === FED);
   const pooled = index.scorecard.pooled;
-  same("chart headline first-print passes", headline.first, pooled.first.passes);
+  same("chart headline first-print passes", headline.first, pooled.after_feedback.first.passes);
   same("chart headline passes after feedback", headline.first + headline.second, pooled.after_feedback.passes);
   same("chart headline designs", headline.trials, pooled.after_feedback.trials);
 }
@@ -715,9 +733,13 @@ function renderFilters() {
   // model and reason
   const models = lookup.modelOrder.filter((model) => groupEntries.some((entry) => entry.row.model === model && taskMatches(entry.row, state.task)));
   const pooledHere = pooledModels().some((model) => models.includes(model)) && models.some((model) => !pooledModels().includes(model));
+  // Each set of models is offered where it narrows this list, and always while it is the one chosen, so the menu
+  // never reads "All models" over a filtered list. The sent-back set narrows a list of only the headline models too.
+  const fedHere = fedModels().some((model) => models.includes(model)) && models.some((model) => !fedModels().includes(model));
   const modelSelect = h("select", { id: "f-model", "data-k": "model", class: state.model ? "is-set" : "" },
     h("option", { value: "" }, "All models"),
-    pooledHere ? h("option", { value: POOLED, selected: state.model === POOLED }, `The ${pooledModels().length} models run all three ways`) : null,
+    pooledHere || state.model === POOLED ? h("option", { value: POOLED, selected: state.model === POOLED }, `The ${pooledModels().length} models run all three ways`) : null,
+    fedHere || state.model === FED ? h("option", { value: FED, selected: state.model === FED }, `The ${fedModels().length} headline models whose failed prints were sent back`) : null,
     models.map((model) => h("option", { value: model, selected: model === state.model }, modelShort(model))));
   modelSelect.addEventListener("change", () => navigate({ model: modelSelect.value, reason: "" }));
 
@@ -769,7 +791,7 @@ function summaryText() {
   const narrowed = [];
   if (state.task === "scored") narrowed.push("the four scored parts");
   else if (state.task !== "all") narrowed.push(taskLabel(state.task));
-  if (state.model) narrowed.push(state.model === POOLED ? `the ${pooledModels().length} models run all three ways` : modelShort(state.model));
+  if (state.model) narrowed.push(modelSet(state.model) ? modelSetLabel(state.model) : modelShort(state.model));
   const picked = [];
   if (state.verdict) picked.push(state.verdict === "not-counted" ? "not counted" : (VERDICT_SETS[state.verdict] || VERDICT[verdictFromSlug(state.verdict)]).label.toLowerCase());
   if (state.reason) picked.push(`reason: ${index.reason_groups[state.reason]}`);
@@ -917,7 +939,7 @@ function taskHead(task, entries) {
   const line = state.verdict === "not-counted"
     ? `${entries.length} not counted, each with its reason`
     : state.model
-      ? `${state.model === POOLED ? "These models" : modelShort(state.model)}: ${verdictLine(countVerdicts(scopeEntries({ cond: state.cond, task, model: state.model }).filter((entry) => countable(entry))))}`
+      ? `${modelSet(state.model) ? "These models" : modelShort(state.model)}: ${verdictLine(countVerdicts(scopeEntries({ cond: state.cond, task, model: state.model }).filter((entry) => countable(entry))))}`
       : `${isHeadline() ? "Counted" : "All"}: ${verdictLine(provided)}`;
   return h("div", { class: "task-head" },
     h("h3", {}, info.label),
