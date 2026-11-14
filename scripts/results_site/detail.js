@@ -195,7 +195,9 @@ function mediaSection(row, detail) {
       if (mounted.canFocusProblem) controls.append(h("button", { type: "button", class: "btn", onclick: () => mounted.focusProblem() }, "Go to the red marks"));
       controls.append(h("button", { type: "button", class: "btn", onclick: () => mounted.reset() }, "Reset the view"));
       if (back) controls.append(back);
-      controls.append(h("p", { class: "stage-help" }, "Drag to turn it; click it first to zoom with the wheel; right-drag or two fingers to move. With the view focused: arrow keys turn, + and - zoom, Home resets. Z is up and the grid is the printer's bed, in 10 mm squares."));
+      controls.append(h("p", { class: "stage-help" }, matchMedia("(pointer: coarse)").matches
+        ? "Drag with one finger to turn it; pinch to zoom; drag with two fingers to move. Z is up and the grid is the printer's bed, in 10 mm squares."
+        : "Drag to turn it; click it first to zoom with the wheel; right-drag to move. With the view focused: arrow keys turn, + and - zoom, Home resets. Z is up and the grid is the printer's bed, in 10 mm squares."));
     } catch (error) {
       console.error("3D view failed", error);
       const text = /Failed to fetch|import|module/i.test(String(error.message)) ? "The 3D library couldn't be fetched. Check the connection and try again." : `The reason given: ${error.message || error}.`;
