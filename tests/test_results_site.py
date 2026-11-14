@@ -274,3 +274,46 @@ def test_view_audit_is_optional(monkeypatch, tmp_path):
         assert results_site.view_audit() == {}
     finally:
         results_site.view_audit.cache_clear()
+
+
+def test_reference_photos_belong_to_real_reasons_and_cite_a_record(index):
+    """Each recorded photo is keyed by a reason group the page shows, says what kind of print it is and names the
+    file its caption comes from."""
+    photos = results_site.references()
+    assert photos
+    for key, photo in photos.items():
+        assert key in index["reason_groups"], key
+        assert photo["kind"] in ("test print", "Dan's own build"), key
+        assert photo["url"].startswith("https://media.danoved.xyz/") and photo["thumb"].startswith("https://media.danoved.xyz/"), key
+        assert photo["caption"] and photo["source"] and photo["width"] and photo["height"], key
+        assert "coupon" not in photo["caption"].lower(), key
+
+
+def test_reason_pictures_are_a_recorded_photo_or_a_drawing_of_a_counted_design(index):
+    by_slug = {row["slug"]: row for row in index["trials"]}
+    pictures = index["reason_pictures"]
+    assert set(results_site.references()) <= set(pictures)
+    for key, picture in pictures.items():
+        assert key in index["reason_groups"], key
+        if picture["kind"] == "drawing":
+            row = by_slug[picture["trial"]]
+            assert row["counted"] and any(issue["reason_group"] == key for issue in row["issues"]), key
+            assert "wasn't printed" in picture["caption"], key
+        else:
+            assert picture["url"] == results_site.references()[key]["url"], key
+
+
+def test_a_check_gets_a_reference_photo_only_for_its_own_reason():
+    entries = results_site.collect()
+    photos = results_site.references()
+    seen = 0
+    for entry in entries[:400]:
+        groups = {(issue["check"], issue["part"] or "-"): issue["reason_group"] for issue in results_site.issue_rows(entry)}
+        for finding in results_site.counted_of(entry):
+            photo = results_site.reference_of(entry, finding)
+            if photo:
+                seen += 1
+                assert photos[groups[(finding.check, finding.part or "-")]] == photo
+            if finding.ok is True:
+                assert (finding.check, finding.part or "-") not in groups
+    assert seen

@@ -60,7 +60,7 @@ VIEWS = Path(__file__).with_name("results_site_views.json")
 VIEW_AUDIT = Path(__file__).with_name("results_site_view_audit.json")
 HOLED = ROOT / "results/holed_roofs.json"
 REPO = "https://github.com/oveddan/functional-print-eval/blob/"
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 FIRST_PRINT_RUNS = ("pilot-tripod", "pilot-wheel", "pilot-nut-knob", "pilot-nut-knob-2")  # can_ask on the four tasks
 ESTOA_RUN = "pilot-estoa"
@@ -699,6 +699,48 @@ def view_of(entry: Entry, finding: CheckResult, declined: str | None = None) -> 
     return {"view": None, "no_view_reason": NO_VIEW_SAVED}
 
 
+@cache
+def references() -> dict:
+    """A photo of one of Dan's recorded prints per reason group, where one is recorded (results_site_references.json)."""
+    path = Path(__file__).with_name("results_site_references.json")
+    return json.loads(path.read_text())["reasons"] if path.exists() else {}
+
+
+def same_check(issue: dict, finding: CheckResult) -> bool:
+    """An index issue and a grader's finding are the same check: an issue's missing part is the finding's "-"."""
+    return issue["check"] == finding.check and (issue["part"] or "-") == (finding.part or "-")
+
+
+def reference_of(entry: Entry, finding: CheckResult) -> dict | None:
+    """The recorded photo for the reason this check didn't pass, if its reason group has one."""
+    for issue in issue_rows(entry):
+        if same_check(issue, finding) and issue["reason_group"] in references():
+            return references()[issue["reason_group"]]
+    return None
+
+
+def reason_pictures(rows: list[dict], by_id: dict) -> dict:
+    """One picture per reason group for the page's lists of reasons: the recorded photo where there is one, else the
+    drawing of the first counted first-print trial that has one for that reason."""
+    pictures = {key: photo for key, photo in references().items() if key in REASON_GROUP_LABELS}
+    for row in rows:
+        if not row["counted"]:
+            continue
+        for issue in row["issues"]:
+            key = issue["reason_group"]
+            if key in pictures or not issue["check"]:
+                continue
+            entry = by_id[row["id"]]
+            for finding in counted_of(entry):
+                view = view_of(entry, finding).get("view") if same_check(issue, finding) else None
+                if view:
+                    pictures[key] = {"kind": "drawing", "url": view["url"], "thumb": view["url"], "width": view["width"], "height": view["height"],
+                                     "caption": f"The check's drawing of one design that didn't pass for this reason ({row['model_short']}, trial {row['trial']}). It wasn't printed.",
+                                     "trial": row["slug"]}
+                    break
+    return dict(sorted(pictures.items()))
+
+
 def view_counts(entry: Entry) -> dict:
     """How many counted failed checks have a drawn view, and how many don't."""
     failed = [finding for finding in counted_of(entry) if finding.ok is False]
@@ -716,7 +758,8 @@ def finding_rows(entry: Entry, findings: list[CheckResult], declined: str | None
                      "test_print": finding.test_print, "counted": counted, "state": check_state(finding),
                      "title": meanings.get(finding.check, {}).get("title", finding.check),
                      "meaning": meanings.get(finding.check, {}).get("text"),
-                     "diagnosis": diagnosed.get((finding.check, finding.part)) if counted and finding.ok is not True else None})
+                     "diagnosis": diagnosed.get((finding.check, finding.part)) if counted and finding.ok is not True else None,
+                     "reference": reference_of(entry, finding) if counted and finding.ok is not True else None})
     return rows
 
 
@@ -1459,6 +1502,7 @@ def index_of(entries: list[Entry], listed: list, sliced: dict) -> dict:
             "test_print": "A test print is a small piece the model asks for to settle a size before its final design.",
         },
         "condition_labels": CONDITION_LABELS, "reason_groups": dict(sorted(REASON_GROUP_LABELS.items())),
+        "reason_pictures": reason_pictures(rows, by_id),
         "verdicts": VERDICTS, "basis_labels": BASIS_LABELS, "not_graded_reasons": reasons, "groups": groups(entries), "tasks": task_info(entries),
         "models": models(entries, listed), "counts": counts(entries), "scorecard": scorecard_block(listed, entries), "definitions": DEFINITIONS,
         "trials": rows,
