@@ -7,6 +7,7 @@ import {
 } from "./util.js";
 
 let viewer = null;       // the open 3D view's controller, if any
+let prefer3d = false;    // the reader chose 3D: keep it across parts and trials until they go back to the picture
 let systemPrompts = null;
 
 export function teardown() {
@@ -137,7 +138,8 @@ function mediaSection(row, detail) {
   const views = media.parts.map((part) => ({ kind: "part", part, label: part.id, role: roleLabel(part) }));
   if (media.scene) views.push({ kind: "scene", label: "Assembled", role: "with the person's parts in place" });
   let current = 0;
-  let mode = "picture";
+  const modeFor = (view) => (view.kind === "scene" || (prefer3d && view.part.mesh) ? "3d" : "picture");
+  let mode = modeFor(views[0]);
   const stage = h("div", { class: "stage" });
   const caption = h("div", { class: "stage-caption" });
   const controls = h("div", { class: "stage-controls" });
@@ -151,7 +153,7 @@ function mediaSection(row, detail) {
     if (views.length > 1) {
       views.forEach((entry, at) => tabs.append(h("button", {
         type: "button", class: "part-tab", "aria-pressed": String(at === current),
-        onclick: () => { current = at; mode = entry.kind === "scene" ? "3d" : "picture"; show(); },
+        onclick: () => { current = at; mode = modeFor(entry); show(); },
       }, h("span", { class: "part-tab-id" }, entry.label), h("small", {}, entry.role))));
     }
     clear(stage); clear(caption); clear(controls);
@@ -167,14 +169,14 @@ function mediaSection(row, detail) {
     } else {
       stage.append(h("p", { class: "stage-msg" }, part.mesh ? "No picture of this part." : "This part came out as an empty shape."));
     }
-    if (part.mesh) controls.append(h("button", { type: "button", class: "btn btn-primary", onclick: () => { mode = "3d"; show(); } }, icon("cube"), "Turn it in 3D"));
+    if (part.mesh) controls.append(h("button", { type: "button", class: "btn btn-primary", onclick: () => { prefer3d = true; mode = "3d"; show(); } }, icon("cube"), "Turn it in 3D"));
   };
 
   const open3d = async (view) => {
     const spec = view.kind === "scene" ? sceneSpec(media) : { label: view.part.id, items: [{ url: view.part.mesh, layer: "part" }], highlight: view.part.highlight, layers: [] };
     const status = h("p", { class: "stage-msg", role: "status" }, "Loading the 3D view…");
     stage.append(status);
-    const back = view.kind === "part" ? h("button", { type: "button", class: "btn", onclick: () => { mode = "picture"; show(); } }, "Back to the picture") : null;
+    const back = view.kind === "part" ? h("button", { type: "button", class: "btn", onclick: () => { prefer3d = false; mode = "picture"; show(); } }, "Back to the picture") : null;
     try {
       const { mountViewer } = await import("./viewer.js");
       const mounted = await mountViewer(stage, spec);
@@ -212,7 +214,7 @@ function mediaSection(row, detail) {
     showPart(id) {
       const at = views.findIndex((view) => view.kind === "part" && view.part.id === id);
       if (at < 0) return;
-      current = at; mode = "picture"; show();
+      current = at; mode = modeFor(views[at]); show();
       box.scrollIntoView({ block: "nearest", behavior: calm() ? "auto" : "smooth" });
     },
   };
@@ -309,6 +311,19 @@ function viewFigure(finding) {
     doubt ? h("figcaption", { class: "view-flag", title: tip, tabindex: "0" }, icon("question"), h("span", {}, "This picture may not show the failure clearly"), h("span", { class: "sr-only" }, ` ${tip}`)) : null);
 }
 
+// Dan's photo of a real print that shows this kind of failure: the record the check stands on, never this design.
+function referenceFigure(reference) {
+  const own = reference.kind !== "test print";
+  const image = h("img", { src: reference.url, alt: reference.caption, loading: "lazy", decoding: "async", width: String(reference.width), height: String(reference.height) });
+  const link = h("a", { class: "ref-link", href: reference.url, target: "_blank", rel: "noopener", title: "Open the photo at full size" }, image);
+  image.addEventListener("error", () => link.closest("figure")?.remove(), { once: true });
+  return h("figure", { class: "ref", style: `--ref-ratio: ${reference.width} / ${reference.height}` },
+    link,
+    h("figcaption", {},
+      h("span", { class: "check-label" }, own ? "What this looks like on a real print, from Dan's own build: " : "What this looks like on a real print, one of Dan's test prints: "),
+      reference.caption, " ", h("span", { class: "caption-note" }, "This is not the model's design, which wasn't printed.")));
+}
+
 // Where a reader can see the failure: drawn here, marked in red on the render, both, or neither (and why not).
 function whereNote(finding, media) {
   if (finding.state !== "fail" && finding.state !== "not graded") return null;
@@ -334,6 +349,7 @@ function checkCard(finding, media) {
     diagnosis ? h("p", { class: "check-why" }, h("span", { class: "check-label" }, "Why: "), String(diagnosis.reason || diagnosis.text).replace(/\.$/, ""), ".",
       diagnosis.kind === "decided" ? " Dan ruled that this kind of case fails." : diagnosis.kind === "gap" ? " No recorded test print decides it." : diagnosis.kind === "open" ? " Still to be decided." : "") : null,
     diagnosis?.would_help ? h("p", { class: "check-why" }, h("span", { class: "check-label" }, "What would have helped: "), diagnosis.would_help) : null,
+    finding.reference ? referenceFigure(finding.reference) : null,
     whereNote(finding, media));
 }
 
