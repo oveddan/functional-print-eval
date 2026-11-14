@@ -518,34 +518,42 @@ function chartCost(cell) {
     h("small", {}, few ? `from ${plural(cell.passes, "pass", "passes")}, ${money2(cell.cost_usd)} in all` : `${money2(cell.cost_usd)} over ${cell.passes} passes`));
 }
 
-// One row: the model, its bar of counted designs, how many pass after feedback, and what a passing design cost.
+// One row: the model, a bar whose length is the share of its counted designs that pass (first print, then the second
+// print after feedback), that share as a number, and what a passing design cost. The designs that didn't pass or
+// weren't graded are not drawn as bar: they are counted in the line under it, each count opening its designs.
 function chartRow({ name, model, cell, note, pooled = false }) {
   const rest = cell.trials - cell.passes - cell.not_graded;
   const scope = { task: "scored", model };
+  const share = (n) => pct(n / cell.trials);
   const segments = [
-    { cls: "bar-pass", n: cell.passed_first, text: String(cell.passed_first), said: `${cell.passed_first} passed on the first print`,
-      line: `${cell.passed_first} on the first print`, patch: { cond: "first", verdict: "pass" }, passes: cell.passed_first },
-    { cls: "bar-pass2", n: cell.passed_after_feedback, text: `+${cell.passed_after_feedback}`, said: `${cell.passed_after_feedback} more passed on the second print, after feedback`,
-      line: `${cell.passed_after_feedback} more after feedback`, patch: { cond: "after_feedback", verdict: "second-pass" }, passes: cell.passed_after_feedback },
-    { cls: "bar-ng", n: cell.not_graded, text: String(cell.not_graded), said: `${cell.not_graded} not graded, never counted as a pass`,
+    { cls: "bar-pass", n: cell.passed_first, text: share(cell.passed_first), said: `${share(cell.passed_first)} passed on the first print (${cell.passed_first} of ${cell.trials})`,
+      line: `${cell.passed_first} on the first print`, patch: { cond: "first", verdict: "pass" }, passes: cell.passed_first, drawn: true },
+    { cls: "bar-pass2", n: cell.passed_after_feedback, text: `+${share(cell.passed_after_feedback)}`, said: `${share(cell.passed_after_feedback)} more passed on the second print, after feedback (${cell.passed_after_feedback} of ${cell.trials})`,
+      line: `${cell.passed_after_feedback} more after feedback`, patch: { cond: "after_feedback", verdict: "second-pass" }, passes: cell.passed_after_feedback, drawn: true },
+    { cls: "bar-ng", n: cell.not_graded, said: `${cell.not_graded} not graded, never counted as a pass`,
       line: `${cell.not_graded} not graded`, patch: { cond: "after_feedback", verdict: "not-graded" }, passes: 0 },
-    { cls: "bar-rest", n: rest, text: String(rest), said: `${rest} didn't pass: failed, declined or handed in no design`,
+    { cls: "bar-rest", n: rest, said: `${rest} didn't pass: failed, declined or handed in no design`,
       line: `${rest} didn't pass`, patch: { cond: "after_feedback", verdict: "didnt-pass" }, passes: 0 },
   ].filter((segment) => segment.n > 0);
   chartChecks.push({ name, model, trials: cell.trials, first: cell.passed_first, second: cell.passed_after_feedback, notGraded: cell.not_graded, rest, cost: cell.cost_usd, perPass: cell.cost_per_pass,
     pieces: segments.map((segment) => ({ what: segment.line, n: segment.n, patch: { ...scope, ...segment.patch } })) });
-  const bar = h("span", { class: "sc-bar" }, segments.map((segment) => {
-    const said = `${name}: ${segment.said}, of ${cell.trials} counted designs. Opens ${segment.n === 1 ? "it" : `those ${segment.n}`}.`;
+  const opens = (segment) => `Opens ${segment.n === 1 ? "it" : `those ${segment.n}`}.`;
+  const bar = h("span", { class: "sc-bar" }, segments.filter((segment) => segment.drawn).map((segment) => {
+    const said = `${name}: ${segment.said}. ${opens(segment)}`;
     return cellLink(`chart, ${name}, ${segment.cls}`, { ...scope, ...segment.patch }, { trials: segment.n, passes: segment.passes },
-      { class: `sc-seg ${segment.cls}`, style: `--n:${segment.n}`, "aria-label": said, title: said },
+      { class: `sc-seg ${segment.cls}`, style: `width:${(100 * segment.n / cell.trials).toFixed(3)}%`, "aria-label": said, title: said },
       segment.n / cell.trials >= SHOW_COUNT_FROM ? h("span", { class: "sc-n", "aria-hidden": "true" }, segment.text) : null);
   }));
   const total = cellLink(`chart, ${name}, after feedback`, { ...scope, cond: "after_feedback" }, { trials: cell.trials, passes: cell.passes },
     { class: "sc-total", "aria-label": `${name}, after one round of feedback: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} designs.` },
     [h("span", { class: "rate" }, pct(cell.rate)), h("span", { class: "frac" }, `${cell.passes} of ${cell.trials}`)]);
   const title = stateLink({ model }, { class: "sc-name", "aria-label": `${name}: open ${pooled ? "these models'" : "this model's"} trials` }, name, { fromDefaults: true, toResults: true });
-  const line = [segments.map((segment) => segment.line).join(", "), note].filter(Boolean).join("; ");
-  return h("li", { class: `sc-row${pooled ? " sc-row-pooled" : ""}` }, title, bar, total, h("span", { class: "sc-line" }, line), chartCost(cell));
+  // The counts behind the percentages; the two kinds that aren't bar are links to their designs.
+  const counts = segments.map((segment) => (segment.drawn ? segment.line
+    : cellLink(`chart, ${name}, ${segment.cls}`, { ...scope, ...segment.patch }, { trials: segment.n, passes: 0 },
+      { class: `sc-count ${segment.cls === "bar-ng" ? "sc-count-ng" : ""}`, "aria-label": `${name}: ${segment.said}, of ${cell.trials} counted designs. ${opens(segment)}` }, segment.line)));
+  const line = h("span", { class: "sc-line" }, counts.flatMap((item, at) => (at ? [", ", item] : [item])), note ? `; ${note}` : null);
+  return h("li", { class: `sc-row${pooled ? " sc-row-pooled" : ""}` }, title, bar, total, line, chartCost(cell));
 }
 
 function renderScorecardChart() {
@@ -567,11 +575,11 @@ function renderScorecardChart() {
   return h("section", { class: "sc-chart", "aria-labelledby": "sc-chart-h" },
     h("div", { class: "sc-head" },
       h("h3", { id: "sc-chart-h" }, "First print, then one round of feedback"),
-      h("p", {}, "Each bar is all of a model's counted designs for the four scored parts. A first print that didn't pass was sent back once, with the simulated person saying how it came out, and its second print counts instead. Each piece of a bar opens exactly the designs it counts."),
+      h("p", {}, "The length of each bar is the share of a model's counted designs, for the four scored parts, that pass. A first print that didn't pass was sent back once, with the simulated person saying how it came out, and its second print counts instead. Each piece of a bar, and each count under it, opens exactly the designs it counts."),
       h("p", { class: "sc-order" }, "Sorted by pass rate after feedback, highest first", firstOnly.length ? "; the models with no second prints follow, by first-print pass rate." : ".")),
     h("p", { class: "bar-legend sc-legend" },
       key("bar-pass", "pass on the first print"), key("bar-pass2", "pass on the second print, after feedback (+)"),
-      key("bar-ng", "not graded (never a pass)"), key("bar-rest", "didn't pass (fail, declined or no design)")),
+      h("span", { class: "key" }, "Not graded is never a pass, so it is no part of a bar; it is counted under each one, with the designs that didn't pass.")),
     h("div", { class: "sc-axis", "aria-hidden": "true" },
       h("span", {}, "Model"),
       h("span", { class: "sc-ticks" }, [0, 25, 50, 75, 100].map((tick) => h("span", { style: `left:${tick}%` }, `${tick}%`))),

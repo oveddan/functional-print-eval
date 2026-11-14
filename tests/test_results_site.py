@@ -411,3 +411,13 @@ def test_the_stl_download_is_offered_only_for_a_passing_designs_final_part():
     assert 'row.verdict !== "pass" || !part.mesh || part.role !== "final"' in detail
     assert "It hasn't been printed." in detail
     assert (ROOT / "scripts/results_site/stl.js").exists()
+
+
+def test_the_chart_draws_pass_rate_as_bar_length_not_counts():
+    """Dan, 2026-11-14: a bar that draws every design is the same length for every model and compares nothing. The
+    bar is the share that pass; the designs that didn't pass or weren't graded are counted under it, not drawn."""
+    page = (ROOT / "scripts/results_site/app.js").read_text()
+    row = page[page.index("function chartRow("):page.index("function renderScorecardChart(")]
+    assert "width:${(100 * segment.n / cell.trials)" in row
+    assert "segments.filter((segment) => segment.drawn)" in row
+    assert "--n:${segment.n}" not in row
