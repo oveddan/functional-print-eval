@@ -4,13 +4,17 @@
 
 The code as submitted to the hackathon is at the [`hackathon-submission` tag](https://github.com/oveddan/functional-print-eval/tree/hackathon-submission); this README describes the eval as it is now.
 
-3d printing is becoming far more accessible to the general public, as state of the art printers have become cheaper while increasing their capabilities, and LLMs can generate designs using open source tools, without a user needing to learn 3d modeling or purchase expensive software.  
+**[Browse every trial on the results site](https://oveddan.github.io/functional-print-eval/)**: each model's design, every check with its reason, the test prints it asked for, its code and its transcript.
 
-In the design process, these models often make mistakes, which are costly both in time and money, as prints can take hours to complete, and physical material is consumed. If there are errors, another print needs to be made, thus wasting the time and material spent.
+This is an open-source eval of how well LLMs design functional 3D prints: things that have to do a job once they're printed and put together. A functional print is rarely one shape. A robot arm, a light enclosure or a camera mount is several printed parts joined with screws, nuts, heat-set inserts or bearings, and it only works if every part prints, fits the hardware, and fits the other parts.
 
-How can we determine which models produce the best designs, with the least amount of tokens spent, material consumed, and time waited for printing?  How can we simulate the result of each print design, and know if it will be successful or not before printing it?  How can we build a feedback loop that allows a model to correct its mistakes, and measure if its fix got us closer to the final answer?
+Each task gives a model a request in a person's own words, with the measurements and hardware on hand. The model writes the CAD code for each part, picks the fasteners and writes the assembly steps. The eval then grades the design in code before anything is printed. Will each part print? Will the screws reach their inserts? Will the plug fit through its hole? The answers come from test prints I've actually made.
 
-This repository builds a framework for simulating and measuring the success when LLMs are designing [functional prints](https://www.reddit.com/r/functionalprint/) based on a prompt, measurements, available materials, and simulated results.
+Printing is slow, and a wrong design costs hours and material before you find out. So the questions are:
+
+- Which models get a multi-part design right on the first print, and at what cost in tokens, material and waiting?
+- Can we tell whether a print will work before printing it?
+- When a model is told what went wrong, the way a test print would tell you, does its fix get closer?
 
 ## How this started
 
