@@ -80,6 +80,40 @@ def test_the_scorecard_block_is_the_scorecards_own(index, listed):
             assert block[row.model]["test_first"]["passes"] == sum(t.passed() for t in row.tested_trials())
 
 
+def test_the_chart_s_bars_and_cost_per_passing_design_are_the_scorecards_own(index, listed):
+    """The scorecard chart draws each model's after-feedback block: its four pieces add up to the counted designs, and
+    the cost per passing design is the API cost of every print counted, over the passes. No pass, no value."""
+    block = {row["model"]: row["after_feedback"] for row in index["scorecard"]["models"]}
+    for row in listed:
+        cell = block[row.model]
+        rest = cell["trials"] - cell["passes"] - cell["not_graded"]
+        assert rest >= 0 and cell["passed_first"] + cell["passed_after_feedback"] + cell["not_graded"] + rest == len(row.all_trials())
+        assert cell["passed_first"] == row.passes() and cell["not_graded"] == row.not_graded(True)
+        assert cell["cost_usd"] == pytest.approx(row.cost(True))
+        if row.passes(True):
+            assert cell["cost_per_pass"] == pytest.approx(row.cost(True) / row.passes(True))
+        else:
+            assert cell["cost_per_pass"] is None
+    # the chart's headline row adds up the headline's models: the README's 105 and 151 of 281 when this was written
+    pooled = index["scorecard"]["pooled"]
+    cells = [block[model] for model in pooled["model_ids"]]
+    assert sum(cell["passed_first"] for cell in cells) == pooled["first"]["passes"]
+    assert sum(cell["passes"] for cell in cells) == pooled["after_feedback"]["passes"]
+    assert sum(cell["trials"] for cell in cells) == pooled["after_feedback"]["trials"] == pooled["first"]["trials"]
+
+
+def test_the_chart_s_cost_is_the_saved_cost_of_the_prints_it_counts(index):
+    """Added up from the trials the page lists: each counted first print, plus its second print when that one counts."""
+    by_slug = {row["slug"]: row for row in index["trials"]}
+    spend = defaultdict(float)
+    for row in index["trials"]:
+        cell = row.get("after_feedback")
+        if row["group"] == "first" and cell and cell["counted"] and row["task"] in scorecard.TASKS:
+            spend[row["model"]] += row["cost_usd"] + (by_slug[cell["second_slug"]]["cost_usd"] if cell["via"] == "second" else 0.0)
+    for row in index["scorecard"]["models"]:
+        assert spend[row["model"]] == pytest.approx(row["after_feedback"]["cost_usd"], abs=1e-4)
+
+
 def test_every_saved_trial_appears_exactly_once(index):
     ids = Counter(row["id"] for row in index["trials"])
     assert max(ids.values()) == 1
