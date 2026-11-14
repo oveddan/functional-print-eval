@@ -146,6 +146,25 @@ function mediaSection(row, detail) {
   const tabs = h("div", { class: "part-tabs", role: "group", "aria-label": "Parts of this design" });
   const titleOf = (check) => detail.findings.find((finding) => finding.check === check)?.title || check;
 
+  // A passing design's part can be taken away as an STL. Only passing ones: a file offered here reads as "print this".
+  const stlButton = (part) => {
+    if (row.verdict !== "pass" || !part.mesh || part.role !== "final") return null;
+    const button = h("button", { type: "button", class: "btn", title: "The part as an STL file, in millimetres, as the model drew it" }, icon("download"), "Download STL");
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        const { downloadStl, stlName } = await import("./stl.js");
+        await downloadStl(part.mesh, stlName(row, part));
+      } catch (error) {
+        console.error("STL download failed", error);
+        button.after(h("span", { class: "stage-msg", role: "alert" }, " The STL couldn't be made. Check the connection and try again."));
+      }
+      button.disabled = false;
+    });
+    return button;
+  };
+  const stlNote = (part) => (stlButton(part) ? h("p", { class: "stage-help" }, "This design passes every check against the recorded test prints. It hasn't been printed.") : null);
+
   const show = () => {
     teardown();
     const view = views[current];
@@ -170,6 +189,7 @@ function mediaSection(row, detail) {
       stage.append(h("p", { class: "stage-msg" }, part.mesh ? "No picture of this part." : "This part came out as an empty shape."));
     }
     if (part.mesh) controls.append(h("button", { type: "button", class: "btn btn-primary", onclick: () => { prefer3d = true; mode = "3d"; show(); } }, icon("cube"), "Turn it in 3D"));
+    add(controls, stlButton(part), stlNote(part));
   };
 
   const open3d = async (view) => {
@@ -195,6 +215,7 @@ function mediaSection(row, detail) {
       if (mounted.canFocusProblem) controls.append(h("button", { type: "button", class: "btn", onclick: () => mounted.focusProblem() }, "Go to the red marks"));
       controls.append(h("button", { type: "button", class: "btn", onclick: () => mounted.reset() }, "Reset the view"));
       if (back) controls.append(back);
+      if (view.kind === "part") add(controls, stlButton(view.part));
       controls.append(h("p", { class: "stage-help" }, matchMedia("(pointer: coarse)").matches
         ? "Drag with one finger to turn it; pinch to zoom; drag with two fingers to move. Z is up and the grid is the printer's bed, in 10 mm squares."
         : "Drag to turn it; click it first to zoom with the wheel; right-drag to move. With the view focused: arrow keys turn, + and - zoom, Home resets. Z is up and the grid is the printer's bed, in 10 mm squares."));

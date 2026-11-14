@@ -337,3 +337,10 @@ def test_a_shared_link_states_the_finding_from_the_scorecard(index):
     assert f"{first}%" in words["share_description"] and f"{after}%" in words["share_description"]
     page = results_site.with_share_text((ROOT / "scripts/results_site/index.html").read_text(), pooled)
     assert "{{" not in page and words["share_title"] in page
+
+
+def test_the_stl_download_is_offered_only_for_a_passing_designs_final_part():
+    detail = (ROOT / "scripts/results_site/detail.js").read_text()
+    assert 'row.verdict !== "pass" || !part.mesh || part.role !== "final"' in detail
+    assert "It hasn't been printed." in detail
+    assert (ROOT / "scripts/results_site/stl.js").exists()
