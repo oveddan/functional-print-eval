@@ -38,7 +38,7 @@ Everything behind the [README](../../README.md): the failure classes, how to run
 - `nut-knob` R5, the bolt passes through the nut and out the other side (at least ISO 273's fine clearance hole)
 - `bearing-wheel` R4, the M8 bolt goes through
 - `estoa-light` R2, the disk's screws hold, don't bottom out, and don't reach the electronics or the wall
-- `estoa-light` R4, every heat-set insert sits in a post like the ones that held
+- `estoa-light` R4, every heat-set insert sits in a hole sized for one (posts pass for now, Dan 2026-11-13)
 
 **From the builds** (Estoa light piece): Lid-screw posts about 8 mm across and 26 mm tall, freestanding, with 4.3 mm holes for 5 mm inserts; they softened, bent and flared, and inserts sat off-centre. Dan followed the instructed technique. Found by: assembly.
 
@@ -82,7 +82,7 @@ Everything behind the [README](../../README.md): the failure classes, how to run
 
 3 failures in the builds. Tested by:
 
-- `estoa-light` R6, the box hangs on the wall screws through keyholes whose slots run the same way
+- `estoa-light` R6, the box hangs on common nails or screws through keyholes whose slots run the same way
 
 **From the builds** (Estoa light piece): The lid's keyhole slots ran down from the entry hole, so the piece couldn't drop onto the wall screws. Found by: agent review before printing.
 
@@ -274,10 +274,10 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
-| `can_ask` | 525 | 176 | 293 | 38 | 10 | 8 | $47.07 |
+| `can_ask` | 525 | 180 | 287 | 40 | 10 | 8 | $47.07 |
 | `can_run_code` | 19 | 3 | 11 | 0 | 5 | 0 | $2.55 |
-| `can_test` | 296 | 124 | 109 | 16 | 3 | 44 | $33.48 |
-| **all** | **850** | 304 | 420 | 55 | 19 | 52 | $84.22 |
+| `can_test` | 296 | 128 | 105 | 16 | 3 | 44 | $33.48 |
+| **all** | **850** | 312 | 410 | 57 | 19 | 52 | $84.22 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
@@ -307,18 +307,18 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
 | `can_ask` | anthropic/claude-haiku-5.5 | 5 | 0 | 4 | 1 | 0 | 0 | $0.16 |
-| `can_ask` | anthropic/claude-opus-5.5 | 5 | 1 | 3 | 1 | 0 | 0 | $2.54 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $2.26 |
+| `can_ask` | anthropic/claude-opus-5.5 | 5 | 3 | 2 | 0 | 0 | 0 | $2.54 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 1 | 1 | 3 | 0 | 0 | $2.26 |
 | `can_ask` | deepseek/deepseek-v4-pro-0813 | 5 | 0 | 4 | 1 | 0 | 0 | $0.58 |
 | `can_ask` | google/gemini-4-argon | 5 | 0 | 5 | 0 | 0 | 0 | $4.33 |
 | `can_ask` | google/gemini-4-carbon | 1 | 0 | 0 | 0 | 0 | 1 | $1.50 |
-| `can_ask` | openai/gpt-6.1-sol | 5 | 0 | 4 | 0 | 0 | 1 | $0.87 |
-| `can_test` | anthropic/claude-opus-5.5 | 3 | 0 | 3 | 0 | 0 | 0 | $1.67 |
-| `can_test` | anthropic/claude-sonnet-5.5 | 3 | 0 | 2 | 1 | 0 | 0 | $1.90 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 3 | 0 | 3 | 0 | 0 | 0 | $0.16 |
+| `can_ask` | openai/gpt-6.1-sol | 5 | 1 | 3 | 0 | 0 | 1 | $0.87 |
+| `can_test` | anthropic/claude-opus-5.5 | 3 | 0 | 2 | 1 | 0 | 0 | $1.67 |
+| `can_test` | anthropic/claude-sonnet-5.5 | 3 | 1 | 2 | 0 | 0 | 0 | $1.90 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 3 | 1 | 2 | 0 | 0 | 0 | $0.16 |
 | `can_test` | google/gemini-3.8-flash | 3 | 0 | 1 | 1 | 0 | 1 | $0.42 |
 | `can_test` | google/gemini-4-argon | 3 | 0 | 2 | 0 | 0 | 1 | $4.85 |
-| `can_test` | openai/gpt-6.1-sol | 3 | 0 | 2 | 1 | 0 | 0 | $0.51 |
+| `can_test` | openai/gpt-6.1-sol | 3 | 2 | 0 | 1 | 0 | 0 | $0.51 |
 
 Each check across the 17 graded designs (one verdict per design), on the records alone and then with the assumptions below (`python -m pbe.assumptions`). A check the records decide never changes.
 
@@ -327,13 +327,13 @@ Each check across the 17 graded designs (one verdict per design), on the records
 | builds | 17 | 0 | 0 | 17 | 0 | 0 |
 | connected_bodies | 16 | 1 | 0 | 16 | 1 | 0 |
 | bed_fit | 17 | 0 | 0 | 17 | 0 | 0 |
-| bridges | 6 | 11 | 0 | 6 | 11 | 0 |
+| bridges | 8 | 9 | 0 | 8 | 9 | 0 |
 | R1 | 9 | 1 | 7 | 14 | 1 | 2 |
-| R2 | 8 | 1 | 8 | 10 | 3 | 4 |
-| R3 | 11 | 3 | 3 | 11 | 3 | 3 |
-| R4 | 8 | 0 | 9 | 8 | 0 | 9 |
-| R5 | 10 | 3 | 4 | 10 | 3 | 4 |
-| R6 | 6 | 7 | 4 | 6 | 7 | 4 |
+| R2 | 10 | 3 | 4 | 10 | 3 | 4 |
+| R3 | 12 | 2 | 3 | 12 | 2 | 3 |
+| R4 | 17 | 0 | 0 | 17 | 0 | 0 |
+| R5 | 11 | 2 | 4 | 11 | 2 | 4 |
+| R6 | 14 | 0 | 3 | 14 | 0 | 3 |
 | R7 | 16 | 1 | 0 | 16 | 1 | 0 |
 
 Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not graded.
@@ -462,7 +462,7 @@ Counts are trials, from the saved runs; a trial can fail more than one way. The 
 
 | What went wrong | Trials |
 |---|---|
-| A roof with the bolt's hole cut through it (`bridges`) | 81 |
+| A roof with the bolt's hole cut through it (`bridges`) | 80 |
 | Straight sides, nothing for the clamp's lips to grip | 28 |
 | Dovetail upside down: the bolt head's recess is on the camera's side | 27 |
 | No usable bolt hole | 24 |
@@ -544,8 +544,8 @@ A check is not graded when no recorded print decides it. A trial can have more t
 | A tripod head recess under 5 mm deep | <img src="media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 3"><br><sub>Haiku 5.5, tripod plate, trial 3</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
 | A nut pocket with ribs, clips or a lip unlike any printed | <img src="media/not-graded/a-nut-pocket-with-ribs-clips-or-a-lip-unlike-any-printed.png" width="160" alt="A nut pocket with ribs, clips or a lip unlike any printed: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 29 | That rib shape and bite. Round 3 printed 3 and 6 round ribs, 6 flat ribs and two lips; each model's ribs differ, so one print settles only designs like it |
 | A nut pocket no recorded print settles | <img src="media/not-graded/a-nut-pocket-no-recorded-print-settles.png" width="160" alt="A nut pocket no recorded print settles: DeepSeek V4.1 Flash, knob M5, trial 6"><br><sub>DeepSeek V4.1 Flash, knob M5, trial 6</sub> | 12 | A print of that pocket |
-| A roof ledge 1.5 to 2 mm wide | <img src="media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 11 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
 | A plate width outside 37 to 39 mm | <img src="media/not-graded/a-plate-width-outside-37-to-39-mm.png" width="160" alt="A plate width outside 37 to 39 mm: DeepSeek V4.1 Flash, tripod plate, trial 2"><br><sub>DeepSeek V4.1 Flash, tripod plate, trial 2</sub> | 11 | Dovetail plates from 34 to 45 mm tried in the clamp |
+| A roof ledge 1.5 to 2 mm wide | <img src="media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 10 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
 | A pocket shape the checker can't read | <img src="media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 2 | None: the checker needs fixing |
 | A test print whose pockets are ribbed or unsettled | <img src="media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Sonnet 5.5, knob M3, trial 5"><br><sub>Sonnet 5.5, knob M3, trial 5</sub> | 2 | The ribbed pockets above, and coupon B2's finer steps |
 | A bearing seat between printed sizes, or ribbed | <img src="media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: GLM 5.3 Flash, bearing wheel, trial 2"><br><sub>GLM 5.3 Flash, bearing wheel, trial 2</sub> | 1 | Seats at 22.1 and 22.3 mm, and lobed seats: 22.05 wouldn't take a 608, 22.2 held, 22.4 fell out |
@@ -592,9 +592,9 @@ These are treated as true without a print that shows them for that exact case. T
 |---|---|---|
 | The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (144 pass, 9 fail), so all 32 tripod passes |
 | One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (131 pass, 28 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 107 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
+| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 110 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
 | Each hole's centre is at the middle of where Dan's readings put it, 16.85 mm out. Source: the middle of 16.60 to 17.11, from Dan's calipers; no reading pins it closer. | estoa-light R1 | Graded apart: 5 pass, 0 fail of the estoa-light designs it decides |
-| The disk's board is 1.6 mm thick, and each hole's centre is 16.85 mm out. Source: 1.6 mm is the standard circuit board thickness and what the Estoa model used; the holes as in R1's assumption. | estoa-light R2 | Graded apart: 2 pass, 2 fail of the estoa-light designs it decides |
+| Each hole's centre is 16.85 mm out, as in R1's assumption. Source: the middle of 16.60 to 17.11, from Dan's calipers; the board's 1.6 mm is in the args since 2026-11-13. | estoa-light R2 | Graded apart: 2 pass, 2 fail of the estoa-light designs it decides |
 <!-- assumptions:end -->
 
 ### Whose calls these are

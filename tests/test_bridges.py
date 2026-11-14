@@ -71,7 +71,8 @@ def plate_stepping_out():
 
 @pytest.mark.parametrize("shape, holed", [
     (lambda: block_with_pocket(10, 20, 5), True),   # the Arca plate's shape: strands end at the hole
-    (roof_cut_by_slot, True),                       # the slot is a hole in the roof's layer
+    (roof_cut_by_slot, False),                      # since 2026-11-13 it passes: strands run wall to wall beside the slot, and
+                                                    # the 1 mm stubs past its ends lie within small_overhang_mm of the wall
     (lambda: block_with_pocket(10, 20), False),     # the same roof closed: it passes
     (lambda: block_with_pocket(60, 70), False),     # fails on span, with nothing cut through it
     (plate_stepping_out, False),                    # fails, but its free edge is the outside
