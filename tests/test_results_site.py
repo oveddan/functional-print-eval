@@ -465,3 +465,16 @@ def test_only_the_deploy_job_can_publish():
 def test_an_unrecognised_url_value_is_repeated_only_in_part():
     app = (ROOT / "scripts/results_site/app.js").read_text()
     assert "const ECHO_MAX = 40;" in app and "value.slice(0, ECHO_MAX)" in app
+
+
+def test_the_home_page_keeps_its_review_fixes():
+    """Two design reviews, 2026-11-13: each mark in the one-line view is one trial, a reason link shows what the
+    failure looks like, the long tables fold on a phone, and a touch screen gets 44 px targets in the chart."""
+    app = (ROOT / "scripts/results_site/app.js").read_text()
+    css = (ROOT / "scripts/results_site/style.css").read_text()
+    assert 'class: "marks"' in app and "one mark each" in app            # a list of marks, not one link per line
+    assert "function reasonHeader()" in app and "function phoneFold(" in app
+    assert 'class: "row-reason", "aria-pressed"' in app                   # a reason under a model's name is a button
+    coarse = css[css.index("On a touch screen every control in the chart"):]
+    assert "--sc-bar-h: 44px" in coarse and "min-height: 44px" in coarse
+    assert "Show the table" not in app                                     # a label that is wrong once it is open
