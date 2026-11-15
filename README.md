@@ -70,6 +70,12 @@ Some of my test prints:
 
 ## How a trial runs
 
+Trials ran in three conditions. These names are used everywhere in the results:
+
+* **First print**: the model can ask for measurements and hands in one design, with no feedback.
+* **Reprint after feedback**: the same first prints. Each one that didn't pass was sent back once, the simulated person said how it came out, and the model handed in one more design.
+* **Test prints first**: the model can ask for small test prints before its final design.
+
 ```mermaid
 flowchart TD
   A[Person asks for a part] --> B[Model designs it<br/>and can ask for measurements]
@@ -87,7 +93,7 @@ A trial where the model asked for a test print before its final design (Sonnet 5
 
 ![One trial in four panels: the request, the test print of four nut pockets the model asked for, the person's report on each pocket, and the final knob with its pocket at 5.70 mm](docs/media/walkthrough/test-print-storyboard.png)
 
-In each trial, nothing actually gets printed. We have checks, run by code, that simulate the model's parts and compare them with the results of my test prints to see if they would print successfully. Here's an example of a trial that failed and then succeeded after we gave the model feedback about what failed (Gemini 4 Argon on the Estoa light, from the earlier loop, where the feedback came after its first print):
+In each trial, nothing actually gets printed. We have checks, run by code, that simulate the model's parts and compare them with the results of my test prints to see if they would print successfully. Here's an example of a trial in the Reprint after feedback condition: it failed, then succeeded after we gave the model feedback about what failed (Gemini 4 Argon on the Estoa light, from the earlier loop, where the feedback came after its first print):
 
 ![One trial in four panels: the request, the first simulated print failing on the roof over the USB window, the person's one-line report, and the second print passing with an open channel](docs/media/walkthrough/storyboard.png)
 
@@ -219,7 +225,7 @@ We ran out of time to make the test-print loop work on this task. Some example f
 | DeepSeek V4.1 Flash | 33% (3/9) | 40% (2/5) | 20% (1/5) | 57% (4/7) | 38% (10/26) | 33% (1/3) | 1.0 h | 35 g | $0.16 |
 | Haiku 5.5 | 0% (0/5) | 0% (0/5) | 40% (2/5) | 20% (1/5) | 15% (3/20) | not run | 2.0 h | 74 g | **$0.04** |
 
-In these results the model can ask for test prints before its final design, as in [How a trial runs](#how-a-trial-runs). Each row is a model, best first; the best in each column is bold. A pass means every check passes against my recorded test prints, under the assumptions listed in [the reference](docs/reference.md#assumptions-the-verdicts-rest-on). Print hours and filament are slicer estimates and cost is what the API charged; each counts everything the model asked to print, test prints included, divided by the designs that pass. Nothing a model designed was printed.
+The rows are the Test prints first condition: the model can ask for test prints before its final design (all three conditions are defined in [How a trial runs](#how-a-trial-runs)). Each row is a model, best first; the best in each column is bold. A pass means every check passes against my recorded test prints, under the assumptions listed in [the reference](docs/reference.md#assumptions-the-verdicts-rest-on). Print hours and filament are slicer estimates and cost is what the API charged; each counts everything the model asked to print, test prints included, divided by the designs that pass. Nothing a model designed was printed.
 
 **Best to worst, when the model can ask for test prints** (7 models, 5 or more trials on each of the four tasks):
 
@@ -235,7 +241,7 @@ Not run with test prints, ranked by their first print without them: GLM 5.3 Flas
 
 **What asking for test prints changed.** Across these 7 models, 37% of first prints pass without test prints, and 53% pass when the model can ask for test prints before its final design.
 
-| Model | First print, no test prints | Second print, after hearing how the first came out | Asking for test prints first | Change from the first print |
+| Model | First print | Reprint after feedback | Test prints first | Change from the first print |
 |---|---|---|---|---|
 | Gemini 4 Argon | 50% (20/40) | 80% | 82% (23/28) | +32 points |
 | GPT-6.1 Sol | 50% (20/40) | 53% | 63% (25/40) | +13 points |
@@ -249,9 +255,9 @@ In 155 of these 219 trials the person answered at least one test piece with "I c
 <!-- scorecard:end --> 
 
 <!-- scorecard-note:start (written by scripts/scorecard.py; don't edit by hand) -->
-Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Sonnet 5.5 1 of its 6. Gemini 4 Argon, Opus 5.5, Gemini 3.8 Flash, DeepSeek V4.1 Flash and GPT-6.1 Sol had none.
+Some of the gain in the reprint after feedback comes from a gap in the simulation, not from what a builder would say. When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer "I can't tell you how that one came out", and a model can then switch to a shape the test prints cover, which passes. The final design is verified, but a real builder would have said whether the part worked. New passes that came this way: Sonnet 5.5 1 of its 6. Gemini 4 Argon, Opus 5.5, Gemini 3.8 Flash, DeepSeek V4.1 Flash and GPT-6.1 Sol had none.
 
-**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 5 of 30 designs pass on the first print. After the person says how the box came out, 12 of the 26 designs replayed (every one that had failed when the replays ran) pass. Asking for test prints first, 4 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
+**The Estoa light box**, the harder task, isn't in the four-task total: 6 models, 30 trials. 5 of 30 designs pass on the first print. In the Reprint after feedback condition, after the person says how the box came out, 12 of the 26 designs replayed (every one that had failed when the replays ran) pass. With test prints first, 4 of 18 pass (its row in the table). We ran out of time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).
 <!-- scorecard-note:end -->
 
 ### Where models fail

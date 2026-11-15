@@ -450,7 +450,7 @@ def test_a_step_from_the_other_trial_says_whose_title_and_verdict_are_shown():
 def test_the_chart_says_what_a_first_print_only_row_measures():
     page = (ROOT / "scripts/results_site/app.js").read_text()
     assert "firstOnly: !entry.replayed" in page
-    assert '"first print, no second prints were run" : "after one round of feedback"' in page
+    assert '"first print, no second prints were run" : "reprint after feedback"' in page
     assert "FIRST_ONLY_COST_LABEL : COST_LABEL" in page
 
 

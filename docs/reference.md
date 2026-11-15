@@ -251,7 +251,7 @@ Every condition also has `report_limitation`, which changes nothing and records 
 The scorecard: every listed model's first print, its print after feedback, and the full set of measures (scripts/scorecard.py).
 
 <!-- scorecard:start (written by scripts/scorecard.py; don't edit by hand) -->
-| Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | First print | After feedback | Not graded | pass^10 | Tokens per trial | Cost per pass | Print hours per pass | Filament per pass |
+| Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | First print | Reprint after feedback | Not graded | pass^10 | Tokens per trial | Cost per pass | Print hours per pass | Filament per pass |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Gemini 4 Argon | 3/10 → 10/10 | 7/10 → 7/10 | 1/10 → 5/10 | 9/10 → 10/10 | 50% (20/40) | **80%** (32/40) | 0 | 50% | 21k | $0.19 | 0.4 h | 14 g |
 | Opus 5.5 | 1/10 → 7/10 | 1/10 → 6/10 | 4/10 → 4/10 | 10/10 → 10/10 | 40% (16/40) | **68%** (27/40) | 5 | 25% | 22k | $0.36 | 0.6 h | 22 g |

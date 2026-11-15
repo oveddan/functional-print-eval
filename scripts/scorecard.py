@@ -222,7 +222,7 @@ def per_pass_cell(row: Row, attribute: str, scale: float, unit: str) -> str:
 def markdown(listed: list[Row]) -> str:
     # the trial count most cells have (10); a cell with fewer (Qwen's M5, 5) counts only if all of its trials pass
     k = Counter(len(trials) for row in listed for trials in row.by_task.values()).most_common(1)[0][0]
-    head = ["Model", *TASKS.values(), "First print", "After feedback", "Not graded", f"pass^{k}", "Tokens per trial",
+    head = ["Model", *TASKS.values(), "First print", "Reprint after feedback", "Not graded", f"pass^{k}", "Tokens per trial",
             "Cost per pass", "Print hours per pass", "Filament per pass"]
     lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     for row in listed:
@@ -251,9 +251,9 @@ def note(listed: list[Row]) -> str:
     hinted = {row.model: undecided_then_passed(row) for row in replayed}
     parts = [f"{SHORT.get(m, m)} {hinted[m]} of its {gained[m]}" for m in sorted(hinted, key=lambda m: -hinted[m]) if hinted[m]]
     if not parts:
-        return "No new pass after feedback came from a design that wasn't graded on the first print."
+        return "No new pass in the reprint after feedback came from a design that wasn't graded on the first print."
     others = [SHORT.get(m, m) for m in hinted if not hinted[m] and gained[m]]
-    sentence = ("Some of the gain after feedback comes from a gap in the simulation, not from what a builder would say. "
+    sentence = ("Some of the gain in the reprint after feedback comes from a gap in the simulation, not from what a builder would say. "
                 "When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer \"I can't "
                 "tell you how that one came out\", and a model can then switch to a shape the test prints cover, which "
                 "passes. The final design is verified, but a real builder would have said whether the part worked. "
@@ -279,9 +279,9 @@ def estoa_line() -> str:
               if record.task == HARDER[0] and record.outcome != "error"]
     tested_passes = sum(record.verdict == "pass" for record in tested)
     return (f"**The Estoa light box**, the harder task, isn't in the four-task total: {len(models)} models, "
-            f"{len(records)} trials. {first} of {len(records)} designs pass on the first print. After the person says "
+            f"{len(records)} trials. {first} of {len(records)} designs pass on the first print. In the Reprint after feedback condition, after the person says "
             f"how the box came out, {after} of the {len(arms)} designs replayed (every one that had failed when the replays ran) {'passes' if after == 1 else 'pass'}. "
-            f"Asking for test prints first, {tested_passes} of {len(tested)} pass (its row in the table). We ran out of "
+            f"With test prints first, {tested_passes} of {len(tested)} pass (its row in the table). We ran out of "
             f"time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).")
 
 
@@ -371,8 +371,8 @@ def improvement(listed: list[Row]) -> str:
     lines = [f"**What asking for test prints changed.** Across these {len(tested)} models, {percent(first)} of first "
              f"prints pass without test prints, and {percent(with_tests)} pass when the model can ask for test prints "
              f"before its final design.", "",
-             "| Model | First print, no test prints | Second print, after hearing how the first came out | "
-             "Asking for test prints first | Change from the first print |", "|---|---|---|---|---|"]
+             "| Model | First print | Reprint after feedback | "
+             "Test prints first | Change from the first print |", "|---|---|---|---|---|"]
     for row in tested:
         after = percent(row.pass_rate(after=True)) if row.replayed() else "not replayed"
         change = whole(100 * (row.tested_rate() - row.pass_rate()))
@@ -430,8 +430,8 @@ def headline(listed: list[Row]) -> str:
     if not any(row.tested_trials() for row in listed):
         return markdown(listed)
     return (results_table(listed) + "\n\n"
-            "In these results the model can ask for test prints before its final design, as in [How a trial runs]"
-            "(#how-a-trial-runs). Each row is a model, best first; the best in each column is bold. A pass means "
+            "The rows are the Test prints first condition: the model can ask for test prints before its final design (all three conditions are defined in [How a trial runs]"
+            "(#how-a-trial-runs)). Each row is a model, best first; the best in each column is bold. A pass means "
             "every check passes against my recorded test prints, under the assumptions listed in "
             "[the reference](docs/reference.md#assumptions-the-verdicts-rest-on). Print hours and filament are "
             "slicer estimates and cost is what the API charged; each counts everything the model asked to print, test "
