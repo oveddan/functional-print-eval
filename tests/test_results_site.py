@@ -14,6 +14,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import results_site  # noqa: E402
+import results_site_timeline  # noqa: E402
 import scorecard  # noqa: E402
 
 RUNS = ROOT / "results/runs"
@@ -730,3 +731,88 @@ def test_a_scene_says_marked_in_red_only_when_it_has_a_red_layer():
     detail = (ROOT / "scripts/results_site/detail.js").read_text()
     assert 'layer.key === "problem" && layer.parts.some((part) => part.mesh)' in detail
     assert "not marked in this view" in detail
+
+
+# ---- the timeline on a trial's page ----
+
+@pytest.fixture(scope="module")
+def timelines():
+    entries = {entry.id: entry for entry in results_site.collect()}
+    reasons = lambda entry: [row["reason"] for row in results_site.issue_rows(entry)]  # noqa: E731
+    return entries, {key: results_site_timeline.timeline(entry, entries, reasons) for key, entry in entries.items()}
+
+
+def test_a_timeline_accounts_for_what_the_trial_asked_and_states_each_saved_verdict(timelines):
+    entries, found = timelines
+    by_slug = {entry.slug: entry for entry in entries.values()}
+    for key, phases in found.items():
+        entry = entries[key]
+        assert len({phase["key"] for phase in phases}) == len(phases), key
+        own = [phase for phase in phases if phase["slug"] == entry.slug]
+        assert sum(phase["count"] for phase in own if phase["kind"] == "asked") == len(getattr(entry.record, "measures", None) or []), key
+        rounds = [phase for phase in own if phase["kind"] == "round"]
+        assert [phase["round"] for phase in rounds] == list(range(1, len(getattr(entry.record, "test_prints", None) or []) + 1)), key
+        for phase in rounds:
+            assert phase["pieces"] == len(entry.record.test_prints[phase["round"] - 1]["parts"]), key
+        assert [phase["verdict"] for phase in own if phase["kind"] == "design"] == [entry.verdict], key
+        for phase in phases:
+            # the page's own words say "test print"; a model's question, quoted as it asked it, keeps its words
+            assert "coupon" not in (phase["label"] + re.sub(r"“[^”]*”", "", phase["line"])).lower(), (key, phase)
+            if phase["kind"] == "design":
+                # the label says the saved verdict of the trial it points at, so "not graded" never reads as a pass
+                assert phase["label"].endswith(f": {by_slug[phase['slug']].verdict}"), (key, phase)
+                assert ("passes" in phase["line"]) == (phase["verdict"] == "pass"), (key, phase)
+
+
+def test_a_first_print_and_its_second_print_share_one_timeline(timelines):
+    entries, found = timelines
+    paired = [entry for entry in entries.values() if entry.kind == "trial" and entry.second_print]
+    assert paired
+    for first in paired:
+        phases = found[first.id]
+        assert phases == found[first.second_print], first.id
+        assert [phase["key"] for phase in phases if phase["kind"] != "asked"] == ["design", "told", "second"], first.id
+        assert phases[-1]["slug"] == results_site.slug_of(first.second_print) and phases[-1]["label"].startswith("Second print: ")
+        assert next(phase for phase in phases if phase["key"] == "design")["label"].startswith("First print: ")
+
+
+def test_a_trial_that_only_handed_in_a_design_has_one_phase(timelines):
+    entries, found = timelines
+    for key, phases in found.items():
+        entry = entries[key]
+        alone = entry.kind == "trial" and not entry.second_print and not entry.record.measures and not entry.record.test_prints
+        assert (len(phases) == 1) == alone, key
+
+
+def test_a_timeline_follows_the_transcript_s_order():
+    entries = {entry.id: entry for entry in results_site.collect()}
+    # this trial asked for test prints first and a measurement after them
+    entry = entries["test-first/nut-knob/M5/can_test/openai__gpt-6.1-sol/t10"]
+    phases = results_site_timeline.timeline(entry, entries, lambda e: [])
+    assert [phase["kind"] for phase in phases] == ["round", "asked", "design"]
+    assert phases[-1]["label"] == f"Final design: {entry.verdict}"
+
+
+def test_a_test_print_round_s_renders_are_of_the_pieces_that_round_asked_for():
+    drawn = results_site_timeline.round_media()
+    if not drawn:
+        pytest.skip("the renders of the asked-for test prints aren't here")
+    entries = {entry.id: entry for entry in results_site.collect()}
+    assert set(drawn) <= set(entries)
+    for key in drawn:
+        for round_ in results_site.test_prints_of(entries[key]):
+            asked = {part["id"] for part in round_["parts"]}
+            if round_["media"]:
+                assert {part["id"] for part in round_["media"]["parts"]} | set(round_["not_built"]) == asked, key
+                assert all(part["role"] == "coupon" and part["role_label"] == "test print" for part in round_["media"]["parts"])
+            else:
+                assert round_["media_none"], key
+    assert "/Users/" not in results_site_timeline.ROUNDS_MEDIA.read_text()
+
+
+def test_the_page_draws_no_timeline_for_a_single_phase_and_checks_its_numbers():
+    detail = (ROOT / "scripts/results_site/detail.js").read_text()
+    assert "if (phases.length > 1) return renderWithTimeline(" in detail
+    assert "timelineProblems(detail)" in (ROOT / "scripts/results_site/app.js").read_text()
+    # Codex on PR 30: a phase that loads after its trial was closed or replaced mustn't draw or tear down the next view
+    assert "() => turn === shown && control.panel.isConnected" in detail

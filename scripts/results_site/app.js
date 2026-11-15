@@ -23,6 +23,7 @@ import {
   taskSlug, taskFromSlug, condSlug, condFromSlug, modelSlug, slugify, pct, money2, hours1, grams, tokens, plural,
 } from "./util.js";
 import { renderDetail, renderDetailShell, updateShell, teardown } from "./detail.js";
+import { timelineProblems } from "./timeline.js";
 
 const $ = (id) => document.getElementById(id);
 const ROWS_PER_BATCH = 8;       // model rows put in the page at a time
@@ -120,6 +121,7 @@ function verifyDetail(detail) {
     const drawn = finding.view && typeof finding.view.url === "string" && finding.view.caption;
     if (!drawn && !finding.no_view_reason) detailCheck.problems.push(`${detail.id} ${finding.check} on ${finding.part}: neither a drawing nor a reason for none`);
   }
+  detailCheck.problems.push(...timelineProblems(detail));  // a timeline label's number against the trial's own lists
   if (detailCheck.problems.length) console.error("Detail check: a failing check has neither a drawing nor a reason", detailCheck.problems.slice(-1)[0]);
   if (window.resultsSiteCheck) window.resultsSiteCheck.detail = detailCheck;
   return detail;
