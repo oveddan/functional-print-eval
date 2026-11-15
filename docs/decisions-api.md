@@ -1,6 +1,6 @@
 # Decisions models as judges
 
-OpenRouter's Decisions API answers typed questions (yes/no, pick one, a scale, where in a photo) with probabilities instead of text. This page covers how it works, when this eval should use one, how two of them did on five questions whose answers we already know, and where they'd fit. Everything here comes from one run on 2026-11-12, saved under `results/judges/2026-11-12/`, which cost $0.064 in all.
+OpenRouter's Decisions API answers typed questions (yes/no, pick one, a scale, where in a photo) with probabilities instead of text. This page covers how it works, when this eval should use one, how two of them did on five questions whose answers we already know, and where they'd fit. Everything here comes from runs on 2026-11-12, saved under `results/judges/2026-11-12/`: $0.064 for the first five tests, $0.88 for test 7, $0.24 for 7b, $0.14 for 7c and $0.014 for 7d.
 
 **Rule unchanged:** graders are code wherever a program can decide. A decisions model is a judge for calls no program can make, never a contestant, and the report says where one was used. On this run no judge result was used to grade a trial.
 
@@ -158,6 +158,155 @@ One question per known Estoa failure that the estoa-light task can show (`pbe/ju
 - Neither flagged C5 when C5 was held out (Jev 0 of 6, Luna 1 of 6). Its records went to C1, C3 or C7, the same overlap again.
 - 57 records, and only 3 to 13 per class, is small. The flag rates are a first read, not a calibration.
 
+### 7. Matching measure requests to the person's recorded facts (2,688 requests)
+
+Added after the five tests above, same day, on Dan's idea: could a decisions model stand in for the alias lookup in `pbe/runner/measure.py`, which answers a designer's `measure(item, what)` from the task's `hidden_facts.yaml` and says "I can't measure that" when no alias matches? The known miss was Sonnet's "screws you will hang it on" on pilot-estoa, fixed by adding "hang" to the aliases. Raw answers: `results/judges/2026-11-12/7-measure.jsonl`; report: `7-measure.md` beside it (`scripts/measure_judge_report.py`). Dan asked for Gemini Decision 1 (`google/gemini-decision-1`) to be compared too, so all three models ran. Cost $0.88 (Luna $0.47, Gemini $0.29, Jev $0.11), no failed calls, median 0.25 s (Jev) to 0.35 s per call.
+
+- **The set.** Every `measure` call in every saved transcript under `results/runs/` (`pbe/judges/measure_calls.py`): 3,066 calls, 3,000 distinct (task, item, what). The nut-knob and m5-spacer tasks record no facts, so there is nothing to pick there; that leaves 2,688 distinct requests on bearing-wheel, estoa-light and tripod-plate. The key is what today's lookup reveals for each request, rerun on today's `hidden_facts.yaml`. It differs from the saved reply in two requests: the "hang" fix, and an empty call whose arguments didn't parse. The set is the saved trials on 2026-11-12, before round 3's trials reached main; those add 37 requests that weren't judged.
+- **One yes/no per fact, not one choice.** Of the 2,330 requests the lookup answers, 1,194 reveal more than one fact ("outer diameter and width"), and a single `choice` can name only one. So each call asks one `noul` per recorded fact: "Does the designer's request ask for the bearing's od?", with the fact's note as guidance. The judge sees the person's things and the request, never a value. A fact at p ≥ 0.5 is a pick, and a pick maps to the value as recorded, word for word.
+
+**Where the lookup answers, agreement is low, and mostly because the lookup gives more than was asked.**
+
+| Model | Same set of facts as the lookup | Facts on the same side | Picked a fact the lookup didn't | Left out a fact the lookup gave |
+|---|---|---|---|---|
+| Jev 1.14 | 505/2330 (22%) | 16805/19940 (84%) | 275 (12%) | 1755 (75%) |
+| GPT-6 Luna | 564/2330 (24%) | 16909/19940 (85%) | 347 (15%) | 1672 (72%) |
+| Gemini Decision 1 | 664/2330 (28%) | 16984/19940 (85%) | 691 (30%) | 1329 (57%) |
+
+- The lookup gives every fact about a thing when the request names the thing but none of its listed measurements, and its short aliases match loosely: "M8 bolt, threaded length" gets the bolt's diameter; "the bracket's axle hole" gets the bolt's diameter through the alias "axle"; "camera socket depth" gets the thread and the clamp's facts; "wires, length and thickness" gets the LED disk's and the perfboard's thickness.
+- **Hand sample** (`hand-labels.yaml`, `measure_disagreement_sample`, 25 of Jev's 1,825 disagreements drawn at random): Jev was nearer to what was asked in 17, the lookup in 6, neither in 2. Jev's real misses there were plate-width questions in other words ("the slot's width across the plate", "the width between the jaws"), where the note "the width of plate it takes" didn't get through.
+- **So this key isn't ground truth**, and the agreement column doesn't rank the judges. It does show a lookup problem: the person volunteers facts nobody asked for, which `measure.py`'s own docstring says it can't do. A model that asks vaguely gets the whole record. That's a follow-up for the lookup, not a judge result.
+
+**Where the lookup says "I can't measure that" (358 requests).** Every request any model picked a fact for was read by hand against `hidden_facts.yaml` and, where the words were unclear, the transcript (`measure_no_answer`). Claude also read every turned-away Estoa and tripod request, and every bearing-wheel one that names the bearing or the bolt.
+
+| Model | Picked a fact | Same facts as Claude's hand check | Found a recorded fact that was asked for | Picked a fact not asked for | Real misses caught |
+|---|---|---|---|---|---|
+| Jev 1.14 | 7 | 3 | 3 | 4 | 3 of 4 |
+| GPT-6 Luna | 6 | 3 | 3 | 3 | 3 of 4 |
+| Gemini Decision 1 | 54 | 3 | 4 | 51 | 4 of 4 |
+
+- **Four real misses**, where a recorded fact was plainly asked for and the lookup turned it away:
+  - "one of the 608ZZ bearings": outer diameter, and width (two requests, DeepSeek V4.1 Flash, test-first t2). "bearings" and "608ZZ" aren't whole-word aliases. All three judges caught both.
+  - "wall mounting screws": head diameter, shaft diameter and spacing (Gemini 4 Argon, test-first t1). The alias is "wall screw". Jev and Luna picked exactly size and spacing; Gemini added the standoff.
+  - "plate": size (Gemini 4 Argon, pilot-code tripod t2). The size of the missing plate is the width of plate the clamp takes, 38 mm, but "plate" is an alias of the measurement, not of a thing. Only Gemini caught it.
+- **Per task:** 2 of 797 bearing-wheel calls, 1 of 612 Estoa calls, 1 of 1,329 tripod calls (calls to the judged requests across the trials on main). **Per contestant:** DeepSeek V4.1 Flash 2, Gemini 4 Argon 2, every other model none. Each was asked once.
+- **The judges' wrong picks:** most of Gemini's 51 read the broken old wheel ("the old roller wheel's width") as the 608 bearing; the old wheel isn't recorded. Jev and Luna each took the designer's own M2 screws for the wall screws, and the bracket's inside gap for the bearing's width; Jev took the old wheel's bushing for the bearing's bore.
+
+**Examples, from the saved run.** One row per request. The three model columns are the three judges, each asked the same yes/no per recorded fact; a cell lists the facts that judge said yes to (p(yes) ≥ 0.5), with p shown, and "–" means it said no to every fact. "Claude's hand check" is Claude reading the request against the task's `hidden_facts.yaml`: which recorded fact, if any, was plainly asked for, and what the person would have answered. It is not Dan's reading. All rows are from `7-measure.jsonl`; the hand readings are in `hand-labels.yaml`.
+
+*Turned away by the lookup: every request Jev picked a fact for, plus the one only Gemini caught.*
+
+| Request (item / what) | Jev 1.14 | GPT-6 Luna | Gemini Decision 1 | Claude's hand check |
+|---|---|---|---|---|
+| one of the 608ZZ bearings / outer diameter across the outer ring only | bearing.od 0.98 | bearing.od 1.00 | bearing.od 0.96 | **real miss**: the person would have said "about 22 mm (outside)" |
+| one of the 608ZZ bearings / width, the thickness across its two flat faces | bearing.width 0.98 | bearing.width 1.00 | bearing.width 0.96 | **real miss**: "about 7 mm" |
+| wall mounting screws / head diameter, shaft diameter, and spacing between the two screws | size 0.98, spacing 0.98 | size 1.00, spacing 1.00 | size 0.97, spacing 0.97, standoff 0.61 | **real miss**: "#8 round-head screws in 1/4 inch anchors; I bought ones with heads 9 mm across at most" and "I can put them wherever you say"; Gemini's standoff wasn't asked |
+| plate / size (tripod) | – (0.47 at most from Luna) | – | plate_width 0.71 | **real miss**: the clamp takes a 38 mm plate |
+| own:m2x6-self-tapping / head diameter and head height | wall_screws.size 0.78 | wall_screws.size 0.99 | – | wrong: the designer's own M2 screws, not the wall screws |
+| the two metal plates on the door that the wheel sits between / distance between their inner faces | bearing.width 0.58 | bearing.width 0.84 | – | wrong: the bracket's gap, which isn't recorded |
+| old roller wheel / diameter of the hole through the centre (or the metal bushing's bore) | bearing.bore 0.64 | – | bearing.bore 0.76 | wrong: the old wheel's hole, not the new bearing's |
+| old wheel and closet track / does it carry the door's weight; is the edge flat, rounded or grooved | bearing.od 0.55 | – | – | wrong: nothing about the bearing was asked |
+| old roller wheel / exact width (thickness across the wheel), and 48 more like it | – | – | bearing.width (typical) | wrong: Gemini reads the broken old wheel as the 608 bearing |
+| diffuser / dimensions, or how the front and sides attach | – | led_disk.diameter 0.77 | – | wrong: the diffuser is part of the design |
+
+*Where the lookup answered and the judges said less: from the hand sample.*
+
+| Request (item / what) | Lookup gave | Jev 1.14 | GPT-6 Luna | Gemini Decision 1 | Nearer to what was asked |
+|---|---|---|---|---|---|
+| M8 bolt / threaded length, from the tip to where the threads stop | bolt.across (every bolt fact: none was named) | – | – | – | judges: threaded length isn't recorded |
+| door bracket / diameter of the hole where the axle passes through | bolt.across (alias "axle") | – | – | – | judges: the bracket's hole, not the bolt |
+| wires / length and thickness of the four wires from the perfboard to the LED disk | led_disk.thickness, perfboard.size, perfboard.thickness | – | – | – | judges: wires aren't recorded |
+| LED disk / thickness of the board at its edge | led_disk.thickness, led_disk.hole_to_edge (alias "edge") | thickness 0.94 | thickness 1.00 | thickness 0.90, wall_screws.size 0.50 | Jev and Luna |
+| camera tripod socket / depth of the 1/4-20 socket | socket_thread, plus the clamp's style and plate width | socket_thread 0.79 | socket_thread 0.90 | socket_thread 0.84 | judges: depth isn't recorded; the thread is the nearest fact |
+| salvaged webcam mount bolt / total length, and whether the head is hex or round | all three bolt facts | length 0.99 | length 1.00 | length 0.97 | judges |
+| tripod head quick-release slot / width of the slot across the plate | plate_width | – | plate_width 0.97 | plate_width 0.75, style 0.69 | lookup: Jev missed a plain plate-width question |
+| tripod head clamp / width between the angled jaws when tightened and when open | plate_width | – | – | – | lookup: the gap between the jaws is the plate width |
+| salvaged webcam-mount bolt / the shape of the head, and whether its underside is flat | head_across, head_height | head_across 0.54 | head_across 1.00 | head_across 0.67 | neither: shape isn't recorded |
+
+*Where everyone agrees (most single-thing requests):* "608 bearing / outer diameter and width": lookup, Jev (0.98, 0.99), Luna (1.00, 1.00) and Gemini (0.98, 0.97) all give bearing.od and bearing.width.
+
+**7b. Asked as a count, then a list (Dan's suggestion).** Instead of one yes/no per fact, one call asked: how many separate things does the request ask for (none to five or more), then "what is the 1st thing it asks for?" up to the 5th, each a pick-one over every recorded fact plus "not recorded" and "nothing more". The answer is the facts in the slots up to the count. The idea was that the facts would compete with each other and with "not recorded", where the yes/no version judges each fact alone. Jev only, all 2,688 requests, $0.24, no failed calls (`7b-measure-listed.jsonl`).
+
+Both versions were scored against Claude's hand key: the 82 turned-away requests any judge picked a fact for (test 7b added 24, all the old wheel, the bracket or the track), plus the 25-request sample, each keyed with the facts plainly asked for. The key leans towards hard cases, so it compares versions; it isn't a rate for all requests.
+
+| Version | Exactly the facts asked for | Picked a fact not asked for | Left out a fact asked for |
+|---|---|---|---|
+| Today's lookup | 83/107 (78%) | 20 | 4 |
+| Jev 1.14, yes/no per fact | 93/107 (87%) | 8 | 7 |
+| GPT-6 Luna, yes/no per fact | 95/107 (89%) | 8 | 5 |
+| Gemini Decision 1, yes/no per fact | 42/107 (39%) | 64 | 1 |
+| Jev 1.14, count + list | 49/107 (46%) | 52 | 7 |
+| *With a bar, tuned on this key:* Jev, yes/no, p ≥ 0.8 | 100/107 (93%) | 1 | 7 |
+| *With a bar, tuned on this key:* Jev, count + list, slot pick ≥ 0.9 | 97/107 (91%) | 0 | 10 |
+
+- **Count + list was worse.** Once Jev counted three things in "the old roller wheel's outer diameter, width and rim profile", it filled the slots with the nearest recorded facts, the bearing's od and width, usually at p 0.4 to 0.7. The slot form pushes it to find something for each thing counted. It picked a fact for 52 of the 358 turned-away requests, against 7 for the yes/no form.
+- **What it did better:** it caught "plate / size" (plate_width, 0.71), which yes/no Jev missed. It still lost the wall screws' size, putting "head diameter" in "not recorded".
+- **A confidence bar helps the yes/no form most.** At p ≥ 0.8, Jev's yes/no answers match the hand key in 100 of 107. The bar drops all four wrong picks on turned-away requests (0.55 to 0.78) and keeps its three real catches (0.98). The one wrong pick left is the camera thread (0.90) for "safe usable camera-thread depth", where depth isn't recorded. All 7 misses are the clamp's plate width asked in other words. The bar was chosen after seeing these answers, so it needs a fresh set of misses to confirm.
+- **What both forms still miss:** the plate-width questions in other words, including "plate / size" for yes/no Jev ("the width between the jaws", "the slot's width across the plate").
+
+**7c. Facts shown the way the person would say them.** Test 7's yes/no per fact, with each fact shown as the person's reply ("tripod clamp plate width: 38 mm (the width of plate it takes)") instead of its name, and the state saying the person has measured only these things and nothing else (other parts, an old broken part, the space it goes in) is recorded. Jev only, $0.14, no failed calls (`7c-measure-said.jsonl`). The judge still only picks; the reply is the recorded line.
+
+**The deciding test: a random 200, keyed by hand.** The hard key above is mostly cases where something went wrong, and where the lookup answers its own reply is the only other key. So Claude keyed a random 200 of the 2,688 requests (`hand-labels.yaml`, `measure_random_sample`, random.seed(7)): the recorded facts each plainly asks for, or none. 89 of the 200 ask for at least one recorded fact. Every version, on both keys (`7-measure.md`):
+
+| Version | Random 200: exactly the facts asked for | Picked a fact not asked for | Left out a fact asked for | Hard 107: exactly right |
+|---|---|---|---|---|
+| Today's lookup | 87/200 (44%) | 107 | 24 | 83 (78%) |
+| **Jev 1.14, yes/no per fact** | **153/200 (76%)** | 22 | 28 | 93 (87%) |
+| GPT-6 Luna, yes/no per fact | 152/200 (76%) | 30 | 20 | 95 (89%) |
+| Gemini Decision 1, yes/no per fact | 127/200 (64%) | 69 | 8 | 42 (39%) |
+| Jev, yes/no, p ≥ 0.8 (bar tuned on the hard key) | 143/200 (72%) | 10 | 50 | 100 (93%) |
+| Jev, count + list (7b) | 137/200 (68%) | 18 | 46 | 49 (46%) |
+| Jev, count + list, slot ≥ 0.9 (tuned on the hard key) | 130/200 (65%) | 0 | 70 | 97 (91%) |
+| Jev, facts as said (7c) | 146/200 (73%) | 14 | 42 | 99 (93%) |
+
+- **On ordinary requests the lookup is exactly right less than half the time**, almost all from over-answering: 107 of the 200 got a fact nobody asked for (the bolt's diameter for its length, the camera thread for the socket's depth, the clamp's style for its jaw height).
+- **Jev's plain yes/no is the best version, at 76%**, level with Luna, which can't be used (its family competes). Every other change did worse on the random key:
+  - the bars tuned on the hard key drop right picks along with wrong ones, so they don't carry over;
+  - count + list and facts-as-said both leave out more facts than they save in wrong picks.
+- **Most of Jev's remaining errors are two clamp facts.** On the random key, 22 of the 47 requests Jev got wrong left out the clamp's plate width or style asked in other words ("the gap between the jaws with the knob loosened", "how the plate is held"); those two are 26 of the 32 facts it left out. Showing the value made this worse (31 requests, 37 facts): Jev read "38 mm, the width of plate it takes" as the plate's size, not the clamp's opening. Its wrong picks are mostly the camera thread for "how deep is the socket" (7) and the ESP32's position beside its USB port (8).
+- **The key is Claude's reading.** Those clamp facts are where it's most a judgement call: Claude counted the clamp's opening as the plate width it takes, and how it tightens as its style. A stricter reading would raise Jev's score and lower the lookup's, since the lookup gives plate_width to every clamp question.
+
+**7d. One thing per ask (Dan's suggestion), with a key nobody anchored.** Half the trouble was requests asking for several things at once. So the random 200 were split into single asks, and keyed again by readers who saw neither the systems' answers nor Claude's key (`7d-asks.json`):
+1. **Detect:** Jev's count from test 7b. 77 requests asked for one thing or none and stayed whole; 123 asked for two or more.
+2. **Split:** a fresh subagent rewrote those 123 into 402 single asks ("608 bearing / outer diameter", "608 bearing / width"), seeing only the request and Jev's count; never the facts, the lookup or a judge. It disagreed with Jev's count on 22. That gives 479 single asks in all.
+3. **Key:** a second fresh subagent mapped each single ask to one recorded fact, or "not recorded", from the fact list alone, and marked its close calls (84). 159 asks are keyed to a fact, 320 to "not recorded".
+4. **Judge:** Jev answered each single ask with one pick-one: every fact (shown as the person says it) plus "not recorded". $0.014.
+
+| Per single ask (479) | Right | Picked a fact not asked for | Left out the fact asked for | Same reply to the designer |
+|---|---|---|---|---|
+| Today's lookup, on the single ask | 192 (40%) | 287 | 20 | 196 (41%) |
+| **Jev 1.14, one pick** | **413 (86%)** | 14 | 57 | **419 (87%)** |
+
+"Same reply" counts a fact recorded as "I can't measure that" as no fact, since the designer hears the same words. Always answering "not recorded" would be right on 320 of the 479 (67%), so the lookup is below that baseline and Jev well above it.
+
+**The independent key confirms Claude's.** Per whole request (each request keyed with all its asks' facts), the subagents' key agrees with Claude's random-200 key on 184 of 200. Against it, every version keeps its place: the lookup 42%, Jev yes/no per fact 80%, Luna 79%, Gemini 65%, Jev single asks put back together 76%, 7c 74%, 7b 72%.
+
+- **Splitting makes each question easy, and Jev gets 86% of single asks right**, against 40% for the lookup on the same asks. The lookup gives every fact about a thing whenever the ask names none of its words, and single asks rarely do.
+- **Put back together, single asks score a little below yes/no per fact (76% against 80%).** They inherit 7c's wording, which shows each fact's value. Of Jev's 60 single asks with a different reply, 29 are the clamp's plate width asked in other words, and the keyer marked 52 of the 60 as close calls.
+- **The split itself is a step that can go wrong.** Here a subagent did it. In live use the designer would, if the measure tool took one thing per call.
+
+**What it means.**
+- **A decisions model can replace the lookup outright, and does much better than it.** Jev's yes/no per fact gives exactly the facts asked for in 76% to 80% of ordinary requests (Claude's key, the subagents' key), against 42% to 44% for the lookup, without ever writing a value. Asked one thing at a time it gets 86% of single asks right, against 40%. It also catches the real misses (3 of the 4).
+- **One thing per ask is the cleaner interface for later.** If the measure tool took one thing per call (or a list of single asks), each call is a single pick-one, the question this API is built for. That's a change to the contestant's tool, so it waits for the same wiring change.
+- **The cheapest way to raise it further is in the task file, not the judge:** describe the clamp's two facts the way designers ask about them (its opening, how it holds the plate). That changes the task's facts, so it belongs with the wiring change, not here.
+- **Not done in this PR:** `measure.py` is unchanged and no trial was regraded.
+
+**The design this points to (Dan's, 2026-11-13).** Jev decides which requests to split, an LLM does the splitting, and Jev picks per single ask:
+1. **Count:** Jev answers "how many things does this request ask for?". One thing goes straight to step 3.
+2. **Split:** for two or more, an LLM rewrites the request as single asks in the designer's own words. It never sees the facts and answers nothing, so it can't invent a value; its failure mode is a dropped ask, which leaves the designer without an answer, never with a false one. On this data Jev's count never sent a single-thing request to be split; the splitter changed how many asks 22 of the 123 became.
+3. **Pick:** Jev picks one recorded fact or "not recorded" for each single ask (86% right here, against 40% for the lookup).
+4. **Reply:** the picked facts' recorded lines, word for word, as today.
+
+The splitter should come from a family that isn't in the lineup, since it rewrites a contestant's questions. The yes/no-per-fact design (no split) scored a little higher on whole requests here (80% against 76%), mostly from the clamp's wording, so both stay candidates until the clamp facts are reworded and the random key is rerun.
+
+**Wiring Jev in as the person, when it's done:**
+- Jev only, yes/no per fact at p ≥ 0.5. Luna and Gemini Decision 1 come from families that compete in the eval (GPT-6 Luna, Gemini 4 Argon).
+- The judge picks; it never writes. A pick maps to the recorded value word for word, as a lookup hit does today, and no pick means "I can't measure that".
+- Each pick, and each split, is saved in the trial record (request, model, each fact's p(yes)), and a replay reads them instead of calling again, so reruns give the same answer.
+- Replies change for most trials that measured, so old trials are regraded under the new person or kept apart, never mixed in one table.
+- A call takes about a quarter second and costs about $0.00004, so a trial's few measure calls add nothing worth counting.
+- Rerun the random key whenever a task's facts or the question's wording change; it's the gate.
+
 ## When to use which
 
 | | Code | Decisions model | Chat model (Opus) |
@@ -195,6 +344,7 @@ One question per known Estoa failure that the estoa-light task can show (`pbe/ju
 
 - **Jev 1.14 as the default judge.** It was as accurate as Luna after the hand check (and it's the far more used of the two on OpenRouter's rankings, which is context, not evidence), a little faster, billed at $0.042 per million tokens against $0.10, has Box, and isn't in the lineup. Luna refused a question twice; Jev refused none (its two failures were our oversized crops).
 - **Use Luna as a second opinion, and as the flagger for failures that fit no class** (test 5b: 70% of held-out classes caught, 11% false flags). Never use it alone on runs where GPT-6 Luna competes.
+- **Jev as the person who answers measure requests** (test 7), replacing the alias lookup when the person is next changed: on a random 200 requests it gave exactly the facts asked for in 76%, against 44% for the lookup, and it only ever picks recorded facts.
 - **Keep both away from roof photos** (with or without example photos, test 3c), keep code as the grader, and keep this run's known-answer tests as the gate any new judge question has to pass first.
 
 ## Fixes after review (2026-11-12)
@@ -215,6 +365,8 @@ A code review of this PR found nine things. All are fixed. None changed a number
 ```bash
 uv run python scripts/judge_known_answers.py --budget 3 --data-root <a checkout with round 3's records>
 uv run python scripts/judge_summary.py results/judges/<date>
+uv run python scripts/judge_known_answers.py --tests 7 --budget 1 --workers 12   # test 7: Jev, Luna and Gemini
+uv run python scripts/measure_judge_report.py results/judges/<date>
 ```
 
 `--data-root` exists because round 3's records and `supports.py` were on the unmerged round 3 branch when this ran. Photos are read from Dan's Dropbox (`06 Photos`) and converted in a temp folder; they never enter the repo. Test 4 was rerun once, with whole `print_test` calls, after the first run hid them. Test 3 was rerun once after the crop fix. The saved files are the final runs.
