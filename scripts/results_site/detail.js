@@ -100,12 +100,29 @@ function renderWithTimeline(content, row, detail, context, phases) {
   const control = timelineControl(phases, detail.slug, (phase, now) => {
     const turn = ++shown;
     teardown();
+    otherStepNote(content.parentElement, phase, detail, context);
     // Only the latest choice draws, and only while its panel is on the page: a late load for a trial that was closed or
     // replaced would otherwise call teardown() and dispose the next trial's 3D view (Codex on PR 30)
     drawPhase(control.panel, now, phase, row, detail, context, () => turn === shown && control.panel.isConnected);
   });
   add(content, requestBlock(detail), control.el, control.panel, tocOf(sections), sections.map(([, el]) => el));
   control.start(phaseInUrl(detail.slug));
+}
+
+// The title and verdict at the top are this trial's. When the step shown is saved as the other trial of the pair (a
+// first print's page showing the second print), say whose they are, so a passing design never sits under a bare "Fail".
+function otherStepNote(body, phase, detail, context) {
+  const head = body?.querySelector(".td-head");
+  if (!head) return;
+  head.querySelector(".td-other")?.remove();
+  const other = phase.slug !== detail.slug;
+  head.classList.toggle("td-head-other", other);
+  if (!other) return;
+  const theirs = context.rowOf(phase.slug)?.title || (phase.kind === "design" ? phase.label.split(": ")[0] : "the other trial of this pair");
+  head.querySelector(".td-verdict").after(h("p", { class: "td-other", role: "status" },
+    h("strong", {}, `The step shown below is saved as another trial, “${theirs}”`),
+    phase.kind === "design" ? [", graded ", badge(phase.verdict, { small: true })] : null,
+    ". The title and verdict above are this trial's."));
 }
 
 function lowerSections(row, detail, context) {

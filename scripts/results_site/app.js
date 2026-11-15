@@ -442,15 +442,14 @@ function renderWhy() {
 
 // ---- scorecard ----
 
-// One bar, the same size everywhere: passes, then not graded (hatched), then everything else.
+// One small bar, the same track everywhere: its filled length is the share of the cell's designs that pass, like the
+// chart's bars. Not graded and didn't pass are no part of it; the cell says them in words.
 function bar(cell, { split = false } = {}) {
   if (!cell || !cell.trials) return null;
   const el = h("span", { class: "bar", "aria-hidden": "true" });
-  const seg = (cls, n) => { if (n > 0) el.append(h("span", { class: cls, style: `flex-grow:${n}` })); };
+  const seg = (cls, n) => { if (n > 0) el.append(h("span", { class: cls, style: `width:${(100 * n / cell.trials).toFixed(3)}%` })); };
   if (split) { seg("bar-pass", cell.passed_first); seg("bar-pass2", cell.passed_after_feedback); }
   else seg("bar-pass", cell.passes);
-  seg("bar-ng", cell.not_graded || 0);
-  seg("bar-rest", cell.trials - cell.passes - (cell.not_graded || 0));
   return el;
 }
 
@@ -497,7 +496,8 @@ function renderScorecard() {
   const body = h("tbody", {});
   const rate = (label, cell, patch, extra) => cellLink(label, patch, { trials: cell.trials, passes: cell.passes },
     { class: "cell", "aria-label": `${label}: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} trials.` },
-    [h("span", { class: "rate" }, pct(cell.rate)), h("span", { class: "frac" }, `${cell.passes} of ${cell.trials}`), bar(cell, extra)]);
+    [h("span", { class: "rate" }, pct(cell.rate)), h("span", { class: "frac" }, `${cell.passes} of ${cell.trials}`), bar(cell, extra),
+      cell.not_graded ? h("span", { class: "cell-ng" }, `${cell.not_graded} not graded`) : null]);
 
   for (const model of lookup.modelOrder.filter((id) => byModel.has(id))) {
     const entry = byModel.get(model);
@@ -532,8 +532,7 @@ function renderScorecard() {
     h("p", { class: "bar-legend" },
       h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: "bar-pass" })), "pass"),
       h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: "bar-pass2" })), "pass on the second print"),
-      h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: "bar-ng" })), "not graded (never a pass)"),
-      h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: "bar-rest" })), "didn't pass (fail, declined or no design)")),
+      h("span", { class: "key" }, "A bar's filled length is the pass rate. Not graded is never a pass, so it is no part of a bar.")),
     h("p", {}, "Sorted by pass rate with test prints first, then lower cost per passing design; the models not run that way follow, by first-print pass rate. ",
       `Models need ${score.min_trials} or more trials on each part to be listed with test prints. A cell's total is the number of trials saved for that model, which isn't always 40. ${score.skipped}`),
     h("p", {}, "The three columns aren't a ranking of methods: the test-prints-first column has fewer trials, and a pass after “I can't tell you how that one came out” may owe something to the model moving to a size the records cover."),
@@ -553,6 +552,7 @@ function renderScorecard() {
 const SHOW_COUNT_FROM = 0.06;  // a segment narrower than this share of its bar has no number on it (the line under it does)
 const FEW_PASSES = 5;          // a cost per passing design from fewer passes than this is shown muted, with the count
 const COST_LABEL = "API cost per passing design, first print plus feedback";
+const FIRST_ONLY_COST_LABEL = "API cost per passing design, first print only";
 const chartChecks = [];        // the numbers each chart row draws, checked against the trials once the index is in
 
 // The headline's models whose failed first prints were sent back, added up from their own rows.
@@ -563,8 +563,8 @@ function pooledChartCell(score) {
   return { ...cell, rate: cell.passes / cell.trials, cost_per_pass: cell.passes ? cell.cost_usd / cell.passes : null };
 }
 
-function chartCost(cell) {
-  const label = h("span", { class: "sc-cost-label" }, COST_LABEL, ": ");
+function chartCost(cell, costLabel = COST_LABEL) {
+  const label = h("span", { class: "sc-cost-label" }, costLabel, ": ");
   if (cell.cost_per_pass === null || cell.cost_per_pass === undefined) return h("span", { class: "sc-cost" }, label, h("span", { class: "sc-cost-none" }, "no passing design, so no value"));
   const few = cell.passes < FEW_PASSES;
   return h("span", { class: `sc-cost${few ? " sc-cost-few" : ""}` }, label, h("b", {}, money2(cell.cost_per_pass)),
@@ -574,7 +574,7 @@ function chartCost(cell) {
 // One row: the model, a bar whose length is the share of its counted designs that pass (first print, then the second
 // print after feedback), that share as a number, and what a passing design cost. The designs that didn't pass or
 // weren't graded are not drawn as bar: they are counted in the line under it, each count opening its designs.
-function chartRow({ name, model, cell, note, pooled = false }) {
+function chartRow({ name, model, cell, note, pooled = false, firstOnly = false }) {
   const rest = cell.trials - cell.passes - cell.not_graded;
   const scope = { task: "scored", model };
   const share = (n) => pct(n / cell.trials);
@@ -598,7 +598,7 @@ function chartRow({ name, model, cell, note, pooled = false }) {
       segment.n / cell.trials >= SHOW_COUNT_FROM ? h("span", { class: "sc-n", "aria-hidden": "true" }, segment.text) : null);
   }));
   const total = cellLink(`chart, ${name}, after feedback`, { ...scope, cond: "after_feedback" }, { trials: cell.trials, passes: cell.passes },
-    { class: "sc-total", "aria-label": `${name}, after one round of feedback: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} designs.` },
+    { class: "sc-total", "aria-label": `${name}, ${firstOnly ? "first print, no second prints were run" : "after one round of feedback"}: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} designs.` },
     [h("span", { class: "rate" }, pct(cell.rate)), h("span", { class: "frac" }, `${cell.passes} of ${cell.trials}`)]);
   const title = stateLink({ model }, { class: "sc-name", "aria-label": `${name}: open ${pooled ? "these models'" : "this model's"} trials` }, name, { fromDefaults: true, toResults: true });
   // The counts behind the percentages. Each opens its designs: the two that aren't bar have no other way in, and a
@@ -607,20 +607,20 @@ function chartRow({ name, model, cell, note, pooled = false }) {
     { class: `sc-count${segment.cls === "bar-ng" ? " sc-count-ng" : ""}`, "aria-label": `${name}: ${segment.said}${segment.drawn ? "" : `, of ${cell.trials} counted designs`}. ${opens(segment)}` }, segment.line));
   const line = h("span", { class: "sc-line" }, counts.flatMap((item, at) => (at ? [h("span", { class: "sc-sep", "aria-hidden": "true" }, ", "), item] : [item])),
     note ? h("span", { class: "sc-note" }, `; ${note}`) : null);
-  return h("li", { class: `sc-row${pooled ? " sc-row-pooled" : ""}` }, title, bar, total, line, chartCost(cell));
+  return h("li", { class: `sc-row${pooled ? " sc-row-pooled" : ""}` }, title, bar, total, line, chartCost(cell, firstOnly ? FIRST_ONLY_COST_LABEL : COST_LABEL));
 }
 
 function renderScorecardChart() {
   const score = card.scorecard;
   chartChecks.length = 0;
-  const row = (entry) => chartRow({ name: entry.short, model: entry.model, cell: entry.after_feedback });
+  const row = (entry) => chartRow({ name: entry.short, model: entry.model, cell: entry.after_feedback, firstOnly: !entry.replayed });
   // score.models comes sorted by pass rate after feedback, then lower cost; without second prints that is the first print's
   const replayed = score.models.filter((entry) => entry.replayed).sort((a, b) => b.after_feedback.rate - a.after_feedback.rate);
   const firstOnly = score.models.filter((entry) => !entry.replayed).sort((a, b) => b.first.rate - a.first.rate);
   const pooledFirstOnly = firstOnly.filter((entry) => score.pooled.model_ids.includes(entry.model)).length;
   const rows = [
     replayed.map(row),
-    firstOnly.length ? h("li", { class: "sc-divider" }, "First print only: no second prints were run") : null,
+    firstOnly.length ? h("li", { class: "sc-divider" }, "First print only: no second prints were run. For these models the percentage is the first-print pass rate and the cost is for first prints alone.") : null,
     firstOnly.map(row),
     chartRow({ name: `Headline, ${score.pooled.after_feedback.models} models`, model: FED, cell: pooledChartCell(score), pooled: true,
       note: `the ${score.pooled.after_feedback.models} headline models whose failed first prints were sent back${pooledFirstOnly ? `; ${score.pooled.after_feedback.not_sent_back.join(" and ")}, first print only, is left out` : ""}` }),
@@ -637,7 +637,7 @@ function renderScorecardChart() {
     h("div", { class: "sc-axis", "aria-hidden": "true" },
       h("span", {}, "Model"),
       h("span", { class: "sc-ticks" }, [0, 25, 50, 75, 100].map((tick) => h("span", { style: `left:${tick}%` }, `${tick}%`))),
-      h("span", {}, "Pass after feedback"),
+      h("span", {}, firstOnly.length ? "Pass rate" : "Pass after feedback"),
       h("span", { class: "sc-axis-cost" }, COST_LABEL)),
     h("p", { class: "sc-cost-note" }, `The dollar figure in each row is the ${COST_LABEL}.`),
     h("ul", { class: "sc-rows" }, rows),
@@ -700,7 +700,7 @@ function renderMultiples() {
         const said = `${entry.short}, ${taskLabel(task)}, ${label.toLowerCase()}: ${cell.passes} of ${cell.trials} pass` +
           (cond === "after_feedback" ? ` (${cell.passed_first} first time, ${cell.passed_after_feedback} after feedback)` : "") +
           (cell.not_graded ? `, ${cell.not_graded} not graded` : "");
-        return h("td", {}, cellLink(said, { cond, task, model: entry.model }, { trials: cell.trials, passes: cell.passes }, { class: "mcell", "aria-label": `${said}. Open these ${cell.trials} trials.` }, [
+        return h("td", {}, cellLink(said, { cond, task, model: entry.model }, { trials: cell.trials, passes: cell.passes }, { class: "mcell", title: said, "aria-label": `${said}. Open these ${cell.trials} trials.` }, [
           bar(cell, { split: cond === "after_feedback" }), h("span", { class: "frac" }, h("b", {}, String(cell.passes)), `/${cell.trials}`),
         ]));
       });
