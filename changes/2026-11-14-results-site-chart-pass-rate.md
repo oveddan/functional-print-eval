@@ -1,0 +1,7 @@
+## 2026-11-14: Results site: the scorecard chart's bars are the pass rate, not every design (no result changed)
+
+Each bar in the scorecard chart drew all of a model's counted designs, so every bar ran the full width, and the pieces were labelled with counts ("20", "+12", "8"). Dan's reaction on seeing it: the bars should be the percentage that succeeded, because that is what is being compared, not the number of successes. He was right: bars of equal length compare nothing, and a reader had to find where the green stopped.
+
+Now a bar's length is the share of the model's counted designs that pass, on a track that runs 0 to 100% with a faint rule every 25%: the first-print passes, then the passes on the second print after feedback. The pieces are labelled in per cent ("50%", "+30%"). The designs that weren't graded or didn't pass are no longer bar; they are counted in the line under each bar, and each of those two counts is still a link to exactly its designs. Not graded stays never a pass, and the legend says why it isn't drawn.
+
+Evidence: measured in the browser, each bar's filled length over its track equals the row's stated rate (Gemini 4 Argon 80.0% against 80%, Opus 5.5 67.5% against 68%, Haiku 5.5 2.5% against 3%, the headline row 53.7% against 54%). The page's own check still reports 0 problems of 1,913 comparisons, including that every piece and count opens as many designs as it states. `tests/test_results_site.py` has a test that the bar's width is the share and that only the passes are drawn.
