@@ -138,7 +138,14 @@ export async function mountViewer(stage, spec) {
   world.updateMatrixWorld(true);
   const boxOf = (objects) => { const box = new THREE.Box3(); for (const object of objects) box.expandByObject(object); return box; };
   const whole = new THREE.Box3().setFromObject(world);
-  if (whole.isEmpty()) throw new Error("the mesh is empty");
+  if (whole.isEmpty()) {
+    // nothing will hand back a dispose() for this one, so let go of the WebGL context here
+    for (const thing of disposables) thing.dispose();
+    renderer.dispose();
+    renderer.forceContextLoss?.();
+    canvas.remove();
+    throw new Error("the mesh is empty");
+  }
   const framed = spec.frame && layerGroups.has(spec.frame) ? boxOf([layerGroups.get(spec.frame)]) : whole;
   const center = framed.getCenter(new THREE.Vector3());
   const radius = Math.max(framed.getSize(new THREE.Vector3()).length() / 2, 1);

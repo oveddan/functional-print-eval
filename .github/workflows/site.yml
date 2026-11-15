@@ -9,14 +9,15 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# The build job runs the repo's own code, so it gets read access only; publishing rights are on the deploy job.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# A newer push to a pull request replaces its build. On main a deploy is left to finish, so a publish is never cut
+# off partway.
 concurrency:
   group: pages-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   # on a pull request this only proves the site still builds from a clean clone
@@ -51,6 +52,9 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
