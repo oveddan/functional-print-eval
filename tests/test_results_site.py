@@ -573,6 +573,70 @@ def test_every_explained_check_is_a_real_check_and_names_real_functions(explaine
             assert entry["photo"] in results_site.references(), entry["photo"]
 
 
+def _walk(value, path):
+    for key in path:
+        if isinstance(value, (list, tuple)):
+            value = value[int(key)]
+        elif isinstance(value, dict):
+            value = value[key]
+        else:
+            value = getattr(value, key)
+    return value
+
+
+def _where_the_code_keeps_it(constant):
+    """The value a `constants` entry of scripts/results_site_checks.yaml points at, read from the code, the catalog,
+    the task's requirements or the recorded prints."""
+    import importlib
+    import inspect
+
+    if "code" in constant:
+        parts = constant["code"].split(".")
+        for cut in range(len(parts) - 1, 0, -1):
+            try:
+                return _walk(importlib.import_module(".".join(parts[:cut])), parts[cut:])
+            except ModuleNotFoundError:
+                continue
+        raise AssertionError(constant)
+    if "printer" in constant:
+        return _walk(yaml.safe_load((ROOT / "catalog/printer.yaml").read_text()), constant["printer"].split("."))
+    if "default" in constant:
+        name, argument = constant["default"].split()
+        module, function = name.rsplit(".", 1)
+        return inspect.signature(getattr(importlib.import_module(module), function)).parameters[argument].default
+    if "requirement" in constant:
+        family, check, path = constant["requirement"].split()
+        task = next(task for task in results_site.TASK_NAMES if task.split("/")[0] == family)
+        requirement = next(found for found in results_site.task_files.load(task).requirements if found.id == check)
+        return _walk(requirement.args, path.split("."))
+    if "nut_records" in constant:
+        from pbe.graders import nuts
+
+        nut, shape = constant["nut_records"].split()
+        return [list(row) for row in nuts._measured()[(nut, shape)]]
+    if "bolt_holes" in constant:
+        from pbe.graders import bolt_fits
+
+        return [list(row) for row in bolt_fits.printed_holes(constant["bolt_holes"])]
+    raise AssertionError(f"a constant with no known source: {constant}")
+
+
+def test_every_threshold_the_checks_page_states_is_the_code_s(explained_checks):
+    """The page's prose is hand-written. Each threshold it states is listed under `constants` with where the code
+    keeps it; a grader, catalog or requirements change that moves one fails here until the prose is re-read."""
+    compared = 0
+    for entry in explained_checks:
+        prose = " ".join(str(entry.get(field, "")) for field in ("tests", "how", "record", "not_graded", "weak", "inference"))
+        for constant in entry.get("constants", []):
+            assert _where_the_code_keeps_it(constant) == pytest.approx(constant["value"]) if not isinstance(constant["value"], list) \
+                else _where_the_code_keeps_it(constant) == constant["value"], (entry["check"], constant)
+            if not isinstance(constant["value"], list):
+                shown = constant.get("shown", f"{constant['value']:g}")
+                assert shown in prose, f"{entry['task']} {entry['check']}: the prose doesn't state {shown} ({constant})"
+            compared += 1
+    assert compared >= 50
+
+
 def test_explained_prose_says_test_print_not_coupon(explained_checks):
     source = results_site.explained()
     texts = [*source["intro"], *source["states"].values(), source["nearest_print"]]
