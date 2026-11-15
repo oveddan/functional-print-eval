@@ -1,0 +1,336 @@
+# The explanations on the results site's "How the checks work" page (checks.html), one entry per check explained.
+# Hand-written and reviewed: every statement about how a check decides is meant to match the grader's code named in
+# `code` as it is today. tests/test_results_site.py checks that each named function exists, that each example trial
+# exists with the stated outcome and has its drawing. `constants` records where each threshold the prose states lives
+# in the code, the catalog or the task's requirements, for a test that compares them (not written yet). Until then,
+# and for the rest of the prose, whoever changes a grader re-reads its entry here. Counts, model names, drawings and links are filled
+# in by scripts/results_site.py from the saved results, never written here. Reader text says "test print", never
+# "coupon" (file names keep the old word).
+#
+# Fields: check and task (the check id as findings name it, and the task family, or "*" for a check every part gets);
+# tests (what it tests, in a hobbyist's words); how (the steps the code takes, with its real thresholds); code (file
+# and function); record (which recorded prints decide it); not_graded (what "not graded" means for it); weak (a known
+# weakness, assumption or case it can't read); inference (statements on the page that are an inference or a scoring
+# call, not a print); overlap (another check whose failures this one is counted alongside); photo (a reason group in
+# scripts/results_site_references.json whose photo of a real print shows the failure); constants (thresholds the prose
+# states, each tied to where the code keeps it: code (module.NAME), printer (a key in catalog/printer.yaml), requirement
+# ("task check arg.path" in tasks/<task>/requirements.yaml), default ("module.function arg"), nut_records ("nut shape",
+# nuts._measured()), bolt_holes (bolt_fits.printed_holes(bolt)); shown is how the prose writes it when that isn't the
+# number itself); examples (saved designs: outcome pass, fail or not graded, the trial's folder under results/runs, the
+# part for a per-part check, an optional label for the badge and a note).
+
+intro:
+  - Nothing a model designed was printed. Each design is a CadQuery program; the eval runs it, gets the 3D shape, and code measures that shape.
+  - The measurements are compared with records of test prints that Dan, the eval's author, printed on his own printer (a Bambu Lab X1C, 0.4 mm nozzle, black high-speed PLA, 0.2 mm layers) and wrote down. A nut pocket is judged by what nuts did in the pockets Dan printed, a roof by which of his printed roofs came out clean, and so on.
+  - Each task has a list of checks. A few run on every printed part (does the code run, is the part one piece, will its overhangs print); the rest are the task's own (does the bearing fit, does the bolt reach the camera).
+  - A design passes only if every counted check passes; one failure fails it. Test prints the model adds get the every-part checks too (code runs, one piece, overhangs), but those results don't count. A test print can still count the other way, into a pass. Three checks below (the knob's nut fit, the wheel's bearing fit and the Estoa box's disk holes) pass a size the records reject or can't decide, when the design's own test print or template would have found the right size and a parameter applies it.
+
+claude: Claude, the AI model that wrote much of this eval's code with Dan, made some of the scoring calls below where no print decided a case. By Dan's rule each one is labelled "Claude's scoring call" wherever it appears, so it's never mistaken for Dan's decision or for a recorded print.
+
+states:
+  pass: The shape is inside what a recorded print showed working, or close enough to one to take its result (the nearest-print rule below), and the result says when it assumed.
+  fail: The shape is where a recorded print failed, or plainly can't work (no hole for the bolt, a pocket the nut can't get into). A check whose own code crashed on the shape is also recorded as a fail, with the error as its finding.
+  not graded: No recorded print decides this size or shape, so the code won't guess. Never counted as a pass; a design with a not-graded check and no failure is reported as not graded.
+  not reached: The check had nothing to read because an earlier failure took away what it needs, usually code that didn't run. It isn't counted again. Not every pair of checks works this way; where one check still grades what another has failed, the section says so.
+  declined: The model handed in no final part on purpose (for example only a test print). No check is counted.
+  no design: The model never handed in a design (it ran out of turns or every reply stopped at the token limit).
+
+denominators: The counts in each section are of the counted first prints of the tasks the check applies to. That includes designs whose checks never ran, because the model declined or handed in no design; each section says how many there are. So a check's failures, passes and not-graded designs don't add up to the total.
+
+nearest_print: Where a size falls between two recorded prints, or just past the last one, the nearest recorded print within 0.2 mm decides (a tie goes to the tighter print), and the check says it assumed from that print (pbe/graders/assumed.py, nearest). Further than 0.2 mm from every print stays not graded.
+
+checks:
+  - check: builds
+    task: "*"
+    tests: Does the model's code actually produce a part?
+    how:
+      - The eval runs each part's build(p) function in a separate, sandboxed Python process with a 120-second limit, with the design's own parameter values.
+      - It exports whatever comes back as a mesh. If the code raises an error, times out, or exports something that can't be read, the part fails, and the error text is kept.
+      - The task's checks that need that part are then not reached.
+    code:
+      - {file: pbe/graders/checks.py, function: builds}
+      - {file: pbe/parts/build.py, function: build_parts}
+    constants:
+      - {default: pbe.parts.build.build_parts timeout, value: 120, shown: 120-second}
+    record: None needed. This is the one check that rests on no print.
+    not_graded: Never; the code either produced a part or it didn't.
+    weak: A design whose code didn't run says nothing about whether the model's idea would have worked. The crash replays on the site send each crashed design back once with its error.
+    examples:
+      - {outcome: fail, trial: pilot-nut-knob/nut-knob/M5/can_ask/qwen__qwen3.8-flash/t1, part: knob}
+
+  - check: bridges
+    task: "*"
+    tests: Will every overhang print, or will part of the roof come out as loose strands in mid-air?
+    how:
+      - Stands the part the way its code builds it (the design's z axis is up, as it will print, with its lowest point on the bed) and cuts it into 0.2 mm layers from the bed up, the way the printer will lay it down.
+      - In each layer, finds the area with nothing under it in the layer below. A region lying entirely within 1.5 mm of the layer below is an ordinary small overhang and is skipped.
+      - Across every other region it lays parallel strands 0.4 mm apart (one nozzle width), trying a direction every 5 degrees. A strand counts as landing if both its ends are within 0.3 mm of the layer below, or if the whole strand lies within 1.5 mm of it (a stub at a corner that needs no bridge).
+      - The region prints if, in some direction, at least 95% of strands land and none is longer than 50 mm; or if every strand is 6.8 mm or shorter and at least 24% land.
+      - A hole cut through a wide roof fails, because strands end at the hole whichever way they run. That is the commonest failure in the eval. A small holed roof whose strands are all 6.8 mm or shorter can still pass by the short-strand rule.
+      - A part the design's own instructions say to print with supports passes whatever its overhangs.
+    code:
+      - {file: pbe/graders/bridges.py, function: overhangs}
+      - {file: pbe/graders/bridges.py, function: assess}
+      - {file: pbe/graders/checks.py, function: bridges}
+    constants:
+      - {printer: layer_mm, value: 0.2}
+      - {printer: bridging.small_overhang_mm, value: 1.5}
+      - {code: pbe.graders.bridges.STRAND_SPACING, value: 0.4}
+      - {printer: bridging.anchor_tol_mm, value: 0.3}
+      - {printer: bridging.min_anchored, value: 0.95, shown: 95%}
+      - {printer: bridging.max_span_mm, value: 50}
+      - {printer: bridging.short_strand_mm, value: 6.8}
+      - {printer: bridging.short_strand_min_anchored, value: 0.24, shown: 24%}
+      - {printer: bridging.narrowest_tangled_mm, value: 2.0, shown: "2.0 mm"}
+    record: Dan's roof and bridge test prints (rounds 1 to 3, results/predictions/round1-coupons.yaml to round3b-roofs.yaml) and the first tripod plate he printed, whose roof over the bolt's hole tangled. Roofs up to 50 mm printed clean; plain bridges of 60, 80 and 100 mm all strung. The short-strand rule comes from two prints, a roof crop recorded as clean (44% landing, longest 6.8 mm) and ring roof 5, recorded as "mostly ok; a few strands" (24%, 6.0 mm). The limits are in catalog/printer.yaml.
+    not_graded: A ledge wider than 1.5 mm but no wider than 2 mm that fails the strand test. The narrowest roof seen to tangle was a 2.0 mm ledge round a hole, and a 1.5 mm one printed, so anything in between isn't decided.
+    weak: It models no cooling, speed or sag, only where strands can land. The short-strand rule rests on one print recorded as clean and one recorded as mostly ok, so it may pass a roof that prints with a few loose strands.
+    inference: The short-strand rule, its 24% floor and counting a stub within 1.5 mm as landing are scoring calls (the first two Claude's, the last Dan's, 2026-11-13), not prints.
+    photo: holed-roof
+    examples:
+      - {outcome: fail, trial: pilot-tripod/tripod-plate/can_ask/anthropic__claude-haiku-5.5/t10, part: plate}
+      - {outcome: pass, trial: pilot-tripod/tripod-plate/can_ask/google__gemini-4-argon/t3, part: qr_plate}
+
+  - check: connected_bodies
+    task: "*"
+    tests: Is each printed part one solid piece, not several that would fall apart or float in the air?
+    how:
+      - Splits the part's mesh into its separate shells and counts those with positive volume. A sealed hollow inside a part shows up as an inside-out shell with negative volume, so it isn't counted.
+      - A final part must be exactly one body.
+      - A test print may be several pieces, such as three separate pockets, as long as every piece starts on the bed (its lowest point within 0.01 mm of the bed).
+    code:
+      - {file: pbe/graders/checks.py, function: connected_bodies}
+    record: None needed; this is geometry. It comes from the tripod build, where a hex peg floated free of the part it was meant to join.
+    not_graded: Never.
+    weak: It says nothing about strength. Two blocks joined by a hair-thin web are one body and pass.
+    examples:
+      - {outcome: fail, trial: pilot-nut-knob/nut-knob/M5/can_ask/google__gemini-3.8-flash/t4, part: hand_knob}
+      - {outcome: pass, trial: pilot-nut-knob/nut-knob/M5/can_ask/anthropic__claude-opus-5.5/t1, part: knob}
+
+  - check: R3
+    task: nut-knob
+    tests: Is there a hex-shaped pocket the nut can be pushed into from one side, that stops it turning and stops it falling out the other side?
+    how:
+      - Cuts the knob into 0.2 mm layers along its print axis and looks in each layer for holes between 0.8 and 1.5 times the nut's width across flats (8.0 mm for M5, 5.5 mm for M3).
+      - A hole is hex-shaped if a real nut that wide (corners trimmed to 95% of a sharp hexagon, as ISO 4032 nuts are) fits inside it at some angle, tried every 5 degrees. A round hole that wide can't hold the nut's corners, so the nut could spin.
+      - Holes stacked one on another make a pocket; the one nearest the knob's middle is the nut's. It must be at least 1 mm deep.
+      - A nut at the pocket's tightest size is tried through every layer above and below it. If it can get out of the bed side or the top side, the pocket opens that way.
+      - Fails if there's no pocket, if it opens on neither side (closed in), if it opens on both (the nut can fall through), or if it's shallower than the nut's height less one layer.
+    code:
+      - {file: pbe/graders/nuts.py, function: pocket}
+      - {file: pbe/graders/nuts.py, function: find_pockets}
+    constants:
+      - {code: pbe.graders.nuts.NUT_CORNERS, value: 0.95, shown: 95%}
+      - {code: pbe.graders.nuts.MIN_DEPTH, value: 1.0, shown: 1 mm}
+      - {code: pbe.graders.nuts.LAYER, value: 0.2}
+    record: None needed for the shape; this is geometry. Whether the nut fits snugly is the next check, R4.
+    not_graded: When the check can't read the shape, a nut-sized hole running sideways (a knob printed on its side) or slits that split the walls into fingers.
+    weak: It treats plastic as rigid. A pocket whose way in is narrower than the nut, meant to flex as the nut is pushed past (a snap lip, a springy mouth, slotted fingers), reads as closed when the nut, at the pocket's own size, can't pass the mouth. 12 of the 18 first prints that fail this check describe a nut snapping in like that, by their own notes. Round 3 printed two lip pockets a nut was pushed past (one went in snug, one wouldn't take the nut), but nothing like these mouths, so no record says whether they would work. One of the 18 is a crash of the check's own code on the shape, recorded as a fail. It also reads pockets only along the print axis.
+    examples:
+      - outcome: fail
+        trial: pilot-nut-knob/nut-knob/M5/can_ask/z-ai__glm-5.3-flash/t6
+        note: The model meant the nut to be pushed past a springy mouth narrower than its corners (its note calls it a spring cone). The check can't flex plastic, so it reads the pocket as closed.
+      - {outcome: pass, trial: pilot-nut-knob/nut-knob/M5/can_ask/anthropic__claude-opus-5.5/t1}
+
+  - check: R4
+    task: nut-knob
+    tests: Will the nut press in by hand and stay in when the knob is turned upside down?
+    how:
+      - Finds the nut's pocket the same way the pocket check (R3) does, and reads its width across flats at its tightest layer. The clearance is that width less the nut's (8.0 mm for M5). A pocket R3 found closed is still graded here, so a design can fail both.
+      - Looks the clearance up in Dan's recorded pocket prints for that nut and that pocket shape (plain hex, or with ribs or a lip). For M5 plain pockets, -0.15 and -0.10 mm wouldn't go in; -0.05, 0 and +0.10 held; +0.20 was loose. For M3, 0 wouldn't go in and +0.10 to +0.30 held.
+      - At +0.30 the M5 record also says loose, but the check reads loose at +0.30 or more as fell out, because M5 and M8 nuts fell out of +0.30 pockets on Dan's earlier tripod build, printed in PETG.
+      - An exact match takes that print's result. Between two prints that agree, it takes theirs. Tighter than the tightest print, when that one wouldn't go in, it won't go in either; looser than the loosest, when that one was loose or fell out, the same. Otherwise the nearest print within 0.2 mm decides.
+      - A result of held passes; wouldn't go in and fell out fail. Loose doesn't settle it, because nobody turned that pocket upside down.
+      - A second way to pass, for plain hex pockets only. The design's manual has the person print a test piece with at least one pocket (even a single one) of a size the records say holds, and changing one of the design's parameters by 0.2 mm moves the final pocket by at least 0.1 mm, so the person can apply what the test piece shows.
+    code:
+      - {file: pbe/graders/nuts.py, function: fit}
+      - {file: pbe/graders/nuts.py, function: reading}
+    constants:
+      - {nut_records: M5 plain, value: [[-0.15, "won't go in"], [-0.1, "won't go in"], [-0.05, holds], [0.0, holds], [0.1, holds], [0.2, loose], [0.3, falls out]]}
+      - {nut_records: M3 plain, value: [[0.0, "won't go in"], [0.1, holds], [0.2, holds], [0.3, holds]]}
+      - {code: pbe.graders.nuts.FELL_OUT.M5, value: 0.3, shown: "+0.30"}
+      - {code: pbe.graders.assumed.ASSUMED_WITHIN, value: 0.2, shown: "0.2 mm"}
+    record: "Two test prints. Round 1's B (results/predictions/round1-coupons.yaml, B_nuts): plain hex pockets from 0 to +0.30 mm in 0.1 mm steps, meant to be tested by pressing the nut in by hand, turning the piece over and shaking. Dan's notes say how each nut went in; the M5 pockets at +0.20 and +0.30 are recorded as loose, \"not yet checked upside down\". Round 3's I (round3-coupons.yaml, I_nuts): plain M5 pockets at -0.15, -0.10 and -0.05 mm (cells U1 to U3), and pockets with crush ribs or a lip. By thumb most of these didn't go in; pressed on with a bolt, U3 went in when pushed hard and stayed in upside down. Claude's scoring call counts that as held: going in by thumb alone isn't required."
+    not_graded: A pocket size or shape no recorded print settles, for example ribs at a size round 3 didn't print, or an M5 plain pocket at +0.20 (loose, but never turned over).
+    weak: One printer, one filament, one person's thumb. A few readings rest on Dan's notes rather than the recorded word (M3 at +0.10 is coded "won't go in", but he said it goes in with force), and those are listed in the code. Reading +0.30 as fell out borrows a result from a different filament.
+    inference: Reading M5 loose at +0.30 as fell out comes from the PETG tripod build, not this print. Counting a nut pressed on with a bolt as going in is Claude's scoring call.
+    overlap: R3
+    photo: nut-pocket-a-size-the-prints-don-t-take
+    examples:
+      - {outcome: fail, trial: pilot-nut-knob/nut-knob/M5/can_ask/anthropic__claude-haiku-5.5/t2}
+      - {outcome: not graded, trial: pilot-nut-knob/nut-knob/M5/can_ask/qwen__qwen3.8-flash/t5}
+      - {outcome: pass, trial: pilot-nut-knob/nut-knob/M5/can_ask/anthropic__claude-opus-5.5/t1}
+
+  - check: R3
+    task: bearing-wheel
+    tests: Will the two 608 skateboard bearings press into the wheel and stay in?
+    how:
+      - Takes each final part's thinnest direction as its axle, cuts it into 0.2 mm layers along that axle, and follows the holes that run all the way through.
+      - The bore is the one with the most layers between 20 and 26 mm wide. A run of such layers is a seat, and its width is the clear width (the largest circle that fits) held over the depth the bearings take up.
+      - "The width is compared with Dan's printed seats: 22.05 mm or less wouldn't take a bearing (fail); 22.1, 22.2 and 22.3 took it and held it upside down (pass); 22.4 and over were too loose (fail). Readings within 0.02 mm of those count as them. In the two gaps between them the nearest print decides, and both gaps are narrower than 0.2 mm, so every plain round seat gets a pass or a fail."
+      - Every seat with a bearing is read, and the worst one decides.
+      - As with the knob, a test print in the manual with a seat that holds, plus a parameter that moves the final seat, also passes.
+    code:
+      - {file: pbe/graders/wheel.py, function: fit}
+      - {file: pbe/graders/wheel.py, function: _holds}
+    constants:
+      - {requirement: bearing-wheel R3 too_tight, value: 22.05}
+      - {requirement: bearing-wheel R3 holds.0, value: 22.1}
+      - {requirement: bearing-wheel R3 holds.1, value: 22.3}
+      - {requirement: bearing-wheel R3 too_loose, value: 22.4}
+      - {requirement: bearing-wheel R3 seat_range.0, value: 20}
+      - {requirement: bearing-wheel R3 seat_range.1, value: 26}
+      - {code: pbe.graders.wheel.TOL, value: 0.02}
+    record: Round 2's bearing seats (results/predictions/round2-coupons.yaml) and round 3's H (round3-coupons.yaml), black PLA on Dan's printer, a 608 pressed in, the block turned over and shaken. Round 3 records 22.4, 22.5 and 22.7 as "too loose"; it doesn't say the bearing fell out.
+    not_graded: A seat with ribs, lobes or a slot (only plain round seats were printed), or no seat the check can read.
+    weak: The bearing's real outside is 22 mm, and the whole pass band is 0.2 mm wide, finer than the drawing can show; the number line under the drawing carries it. The check's own words for 22.4 and over say the bearing "fell out"; the record says too loose. Whether the hub presses on the bearing's inner ring isn't checked.
+    examples:
+      - {outcome: fail, trial: pilot-wheel/bearing-wheel/can_ask/anthropic__claude-haiku-5.5/t1}
+      - {outcome: pass, trial: pilot-wheel/bearing-wheel/can_ask/anthropic__claude-opus-5.5/t1}
+
+  - check: R2
+    task: tripod-plate
+    tests: Will the plate slide into the tripod's clamp and be held by its angled lips?
+    how:
+      - The plate is the final part with the largest footprint; its thinnest direction is its thickness.
+      - Cuts it into 0.2 mm layers through that thickness (leaving out pads or marks standing on a face) and reads each layer's outline from edge to edge, on both sides of the plate.
+      - The narrowing is how far both edges move in from the widest layer to the narrowest. One edge alone gives the lips nothing to pinch on the other side, so the smaller of the two counts.
+      - Fails with straight sides, narrowing less than 0.9 mm (1 mm wanted, less half a layer for reading at layer middles). Then the widest layer must be 37 to 39 mm; any other width is not graded.
+    code:
+      - {file: pbe/graders/bolted.py, function: fits_clamp}
+      - {file: pbe/graders/bolted.py, function: _clamped_widths}
+    constants:
+      - {requirement: tripod-plate R2 narrows_by, value: 1.0, shown: 1 mm}
+      - {requirement: tripod-plate R2 width.0, value: 37}
+      - {requirement: tripod-plate R2 width.1, value: 39}
+      - {code: pbe.graders.bolted.STEP, value: 0.2}
+    record: The one plate Dan printed, 38 mm wide with 45-degree edges, which fit his clamp.
+    not_graded: A plate width outside 37 to 39 mm. How far the clamp's jaws travel isn't recorded, so a plate further off isn't failed.
+    weak: It checks that both edges narrow, not the angle or which face is wide, so any taper of 1 mm passes. Which face goes into the clamp is checked under R3.
+    inference: The 1 mm either side of 38 mm is an estimate (the clamp's jaws have travel), not a print.
+    examples:
+      - {outcome: fail, trial: pilot-tripod/tripod-plate/can_ask/anthropic__claude-haiku-5.5/t2}
+      - {outcome: pass, trial: pilot-tripod/tripod-plate/can_ask/anthropic__claude-opus-5.5/t5}
+
+  - check: R3
+    task: tripod-plate
+    tests: Does the camera's 1/4-20 bolt go through the plate by hand, with its head under the plate on the clamp side?
+    how:
+      - If the design's hardware leaves out the salvaged webcam bolt and lists a socket-head (ISO 4762) bolt instead, it fails; leaving it out otherwise is read as printing its own screw, which is not graded (no printed thread was ever tested).
+      - Follows every hole through all of the plate's layers, keeps the one the bolt fits through, and reads its tightest clear width.
+      - Under 6.35 mm the bolt won't pass, and 15 mm or more is taken to let the head pull through; both fail.
+      - The head's recess (a wider part at one end of the hole, at least 1 mm deep) must open on the plate's wide face, which goes into the clamp. On the narrow, camera-side face it fails.
+      - "Then the width is looked up in round 3's bolt-hole test print: at 6.35 mm the bolt only screwed through (fails, because the plate's own thread would stop the head pulling the camera down); at 6.5 and 6.6 mm it went through by hand (passes). Looser than 6.6 also passes, up to 13 mm, the widest hole known to stop the head; between 13 and 15 is not graded."
+    code:
+      - {file: pbe/graders/bolted.py, function: bolt_hole}
+      - {file: pbe/graders/bolt_fits.py, function: reading}
+    constants:
+      - {requirement: tripod-plate R3 too_tight, value: 6.35}
+      - {requirement: tripod-plate R3 head_stopped, value: 13}
+      - {requirement: tripod-plate R3 head_passes, value: 15}
+      - {code: pbe.graders.bolted.MIN_RECESS, value: 1.0, shown: 1 mm}
+      - {bolt_holes: 1/4-20, value: [[6.35, screws in], [6.5, by hand], [6.6, by hand]]}
+    record: Round 3's test print F (results/predictions/round3-coupons.yaml, F_bolt_holes) for the hole, and Dan's printed plate, whose 13 mm recess stopped the head.
+    not_graded: A hole between 13 and 15 mm, or a printed screw. Between 6.35 and 6.5 mm the nearest recorded hole is always within 0.2 mm, so that gap is decided by the nearest-print rule, and the check says so.
+    weak: A plate with a groove in its side doesn't say which face is wide, so the face test is skipped for it.
+    inference: That a 15 mm hole would let the head through is the task brief's inference from a head that fit a 15 mm recess, not a print. That a hole the bolt only screws through fails is Claude's scoring call.
+    examples:
+      - {outcome: fail, trial: pilot-tripod/tripod-plate/can_ask/anthropic__claude-opus-5.5/t1}
+      - {outcome: pass, trial: pilot-tripod/tripod-plate/can_ask/anthropic__claude-opus-5.5/t5}
+
+  - check: R4
+    task: tripod-plate
+    tests: Does the bolt's head fit in its recess, deep enough to sit flush?
+    how:
+      - Finds the bolt's hole the same way R3 does and reads the recess at the end of it, how wide and how deep.
+      - Less than 1 mm deep counts as no recess (a chamfer), and is not graded, because nobody printed a plate with the head standing proud.
+      - 13 mm across or less fails, too tight for this head. 15 mm or more is wide enough. In between, the nearest of the two within 0.2 mm decides, otherwise not graded.
+      - It must also be at least about 5 mm deep (4.69 mm, allowing for layers and the 0.2 mm tolerance); shallower is not graded.
+    code:
+      - {file: pbe/graders/bolted.py, function: head_recess}
+      - {file: pbe/graders/bolted.py, function: Bore.recess}
+    constants:
+      - {requirement: tripod-plate R4 too_tight, value: 13}
+      - {requirement: tripod-plate R4 fits, value: 15}
+      - {requirement: tripod-plate R4 head_height, value: 5}
+      - {code: pbe.graders.bolted.MIN_RECESS, value: 1.0, shown: 1 mm}
+    record: Dan's printed plate and the session record behind it, where a 13 mm recess was too tight for the salvaged webcam bolt's head and a 15 mm by 5 mm one fit.
+    not_graded: A recess under 5 mm deep, no recess at all, or a width between 13.2 and 14.8 mm. Only one depth was ever printed, so this is the tripod's commonest not-graded check.
+    weak: The head's true size was never measured; the person in the trials says "about 15 mm across, about 5 mm tall". There's no upper limit on the recess's width.
+    examples:
+      - {outcome: not graded, trial: pilot-tripod/tripod-plate/can_ask/anthropic__claude-haiku-5.5/t1}
+      - {outcome: fail, trial: pilot-tripod/tripod-plate/can_ask/openai__gpt-6-luna/t5}
+      - {outcome: pass, trial: pilot-tripod/tripod-plate/can_ask/anthropic__claude-opus-5.5/t5}
+
+  - check: R1
+    task: estoa-light
+    tests: Will the two screws through the LED disk's holes find somewhere to go into the box?
+    how:
+      - Puts the box together the way the design's assembly says, with the disk where the design places it. A disk facing the wall fails.
+      - Dan measured the disk's two holes, but his readings leave each hole's centre anywhere from 16.60 to 17.11 mm from the disk's centre. The check treats that whole range as possible.
+      - The disk's board is taken as 1.6 mm thick, the standard circuit board (never measured). Plastic where the board itself is fails; printed pins through its holes are not graded.
+      - Behind each hole, it reads the plastic layer by layer. The first plastic must be within 0.6 mm (the disk rests on the box); none at all fails.
+      - A screw can move inside a clearance hole, but a pilot hole it cuts its thread in, or a hole sized for a heat-set insert (3.9 to 4.9 mm, in a design that lists inserts), holds it at the hole's centre. The disk's 3.3 mm holes give an M3 screw 0.15 mm of play.
+      - At 11 points across the range, it asks whether a screw through the disk's hole there can go into the box. All 11, pass; none, fail; only some, not graded.
+      - "A second way to pass, when the holes are the only problem. Any acceptance criterion of the design's whose check method is a template or test print, and any parameter that criterion names: the check changes each such parameter by 1 mm (up to 8 of them), rebuilds the box, and if the plastic 0.3 mm behind the holes changes by more than 0.5 mm², it passes. It doesn't check that the criterion is about where the holes are."
+    code:
+      - {file: pbe/graders/enclosure.py, function: board_holes}
+      - {file: pbe/graders/enclosure.py, function: _hole_verdict}
+      - {file: pbe/graders/enclosure.py, function: _template_rescue}
+    constants:
+      - {requirement: estoa-light R1 holes_r.0, value: 16.60, shown: "16.60"}
+      - {requirement: estoa-light R1 holes_r.1, value: 17.11}
+      - {requirement: estoa-light R1 hole, value: 3.3}
+      - {requirement: estoa-light R1 screw, value: 3.0, shown: M3}
+      - {requirement: estoa-light R1 rests_within, value: 0.6}
+      - {requirement: estoa-light R1 board_thickness.0, value: 1.6}
+      - {requirement: estoa-light R1 insert_hole.0, value: 3.9}
+      - {requirement: estoa-light R1 insert_hole.1, value: 4.9}
+      - {code: pbe.graders.enclosure.MAX_PARAMS_TRIED, value: 8}
+    record: Dan's caliper readings of the disk (2026-09-28) and his Estoa build, which placed the holes from a printout and fit.
+    not_graded: A screw that goes in only if the hole is at one end of where Dan's readings put it (for example into a heat-set insert at a fixed spot) with no template rescue, printed pins through the disk's holes, a disk the design doesn't place exactly once, no assembly saying where the parts go, or a mesh the check can't read.
+    weak: It trusts the design's own assembly placements. The template rescue is loose. Any test-print or template criterion counts, and any parameter it names that moves the plastic behind the holes, so a design can pass on a test of something else. Claude Opus 5.5's trial 2 below passed on an insert test (whether an insert melts in straight and holds an M3) and the insert hole's diameter, not on where the holes are. This was reported to the session that owns grading; the grader is unchanged here.
+    examples_note: Most first prints that pass this check pass by the template rule, not on their holes as drawn; the count is below.
+    examples:
+      - {outcome: not graded, trial: pilot-estoa/estoa-light/can_ask/anthropic__claude-haiku-5.5/t1}
+      - {outcome: fail, trial: pilot-estoa/estoa-light/can_ask/deepseek__deepseek-v4-pro-0813/t3}
+      - {outcome: pass, trial: pilot-estoa/estoa-light/can_ask/openai__gpt-6.1-sol/t3}
+      - outcome: pass
+        label: Passes, by the template rule
+        trial: pilot-estoa/estoa-light/can_ask/anthropic__claude-opus-5.5/t2
+        note: Not an honest pass. A screw goes in only at one end of the range, and the template rule passed it on a criterion that tests whether a heat-set insert melts in straight and holds an M3, using the insert hole's diameter (insert_hole_d) as the parameter that moves the holes.
+
+  - check: R6
+    task: estoa-light
+    tests: Can the box be hung on the wall through keyholes in its back, on some ordinary nail or screw?
+    how:
+      - Puts the box together from the design's assembly, takes the lowest point of any printed part as the wall, and cuts the back 0.3 mm from it.
+      - Every hole in that cut is tested as a keyhole, a round entry (the largest circle that fits) with a slot running off it at least 1 mm narrower.
+      - "Which way is up comes from the slots themselves: the average direction they run. The person can hang the box any way round."
+      - "A keyhole hangs on a fastener if the fastener's head passes the entry with 0.4 mm to spare, its shank fits the slot, and the slot is narrower than its head. It tries five common ones: a wire nail (head 4.5 mm, shank 2.0), a common nail (6.7, 2.9), and #6, #8 and #10 pan-head screws (6.5 and 3.5, 7.9 and 4.17, 9.47 and 4.83). The person picks the fastener to suit the keyhole, so one is enough."
+      - A keyhole fails if no fastener hangs it, if its slot runs more than 60 degrees from up, or if the fastener would rest inside the entry. A back with no hole at all fails.
+      - Not graded if a slot leans more than 30 degrees, or if fewer than two keyholes are found.
+    code:
+      - {file: pbe/graders/enclosure.py, function: keyholes}
+      - {file: pbe/graders/enclosure.py, function: _keyhole_verdict}
+      - {file: pbe/graders/enclosure.py, function: _hangs_on}
+    constants:
+      - {requirement: estoa-light R6 at_depth, value: 0.3}
+      - {requirement: estoa-light R6 entry_margin, value: 0.4}
+      - {requirement: estoa-light R6 angle.passes_within, value: 30}
+      - {requirement: estoa-light R6 angle.fails_beyond, value: 60}
+      - {requirement: estoa-light R6 count, value: 2, shown: two}
+      - {requirement: estoa-light R6 fasteners.0.head, value: 4.5}
+      - {requirement: estoa-light R6 fasteners.1.head, value: 6.7}
+      - {requirement: estoa-light R6 fasteners.4.head, value: 9.47}
+      - {requirement: estoa-light R6 fasteners.4.shank, value: 4.83}
+    record: Fastener sizes from published nail and screw sizes, not a print, by Claude's scoring call, after Dan said on 2026-11-13 that hanging on a common nail is fine and the screws can stand further out. Estoa's own keyholes (10.5 mm entry, 4.8 mm slot) hung it.
+    not_graded: A slot that leans more than 30 degrees from the others, or a box hung some other way (open slots, a cleat). It reads only keyholes.
+    weak: No weight, no wall, no pull-out strength, and no check of how thick the plastic is at the slot, since the person sets how far the nail stands out. Since this rule came in (2026-11-13) no counted first print fails R6.
+    inference: The fastener list and the 0.4 mm margin are Claude's scoring call from published sizes.
+    examples_note: No counted first print fails R6 today. Claude Haiku 5.5's trial 2 failed it until 2026-11-13 (its 9.5 mm entry was too small for a #10 screw's head); under today's rule a common nail hangs it.
+    examples:
+      - outcome: not graded
+        trial: pilot-estoa/estoa-light/can_ask/deepseek__deepseek-v4-pro-0813/t1
+        note: The check's cut 0.3 mm from the wall finds only the rim of this box, one big opening and no keyhole, so it can't say how the box would hang.
+      - {outcome: pass, trial: pilot-estoa/estoa-light/can_ask/anthropic__claude-haiku-5.5/t2}

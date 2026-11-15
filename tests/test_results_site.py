@@ -1,6 +1,7 @@
 """The results site's data says what the scorecard says: the same passes and trials per model and task, for the first
 print, the second print after feedback and test-first; every saved trial appears exactly once; and a trial that's not
 graded is never counted as a pass. No builds and no transcripts read, so it's fast."""
+import json
 import re
 import sys
 from collections import Counter, defaultdict
@@ -502,3 +503,121 @@ def test_reader_words_changes_the_word_and_leaves_a_models_part_ids_alone(index)
         assert not garbled.search(row["summary"] or ""), (row["id"], row["summary"])
     util = (ROOT / "scripts/results_site/util.js").read_text()
     assert "est coupon (\\S+) (would|has)" in util and "[^\\w-]" in util  # the page's reader() follows the same two rules
+
+
+# ---- "How the checks work" (checks.html): the hand-written explanations must still describe real code and designs ----
+
+@pytest.fixture(scope="module")
+def explained_checks():
+    return results_site.explained()["checks"]
+
+
+@pytest.fixture(scope="module")
+def entries_by_id():
+    return {entry.id: entry for entry in results_site.collect()}
+
+
+def test_every_explained_check_is_a_real_check_and_names_real_functions(explained_checks):
+    """Each entry names a check the task really has, and each grader function it points at still exists, so a renamed
+    or deleted grader breaks this page loudly instead of leaving it describing code that's gone."""
+    assert 8 <= len(explained_checks) <= 14
+    for entry in explained_checks:
+        family = entry["task"]
+        if family == results_site.EVERY_PART:
+            known = set(results_site.GENERIC_CHECKS)
+        else:
+            task = next(task for task in results_site.TASK_NAMES if task.split("/")[0] == family)
+            known = {requirement.id for requirement in results_site.task_files.load(task).requirements}
+        assert entry["check"] in known, entry
+        assert entry["code"], entry["check"]
+        for code in entry["code"]:
+            assert results_site.code_line(code["file"], code["function"]), f"{code['file']} has no {code['function']}"
+        for field in ("tests", "record", "not_graded"):
+            assert entry[field].strip(), (entry["check"], field)
+        assert entry["how"], entry["check"]
+        if entry.get("photo"):
+            assert entry["photo"] in results_site.references(), entry["photo"]
+
+
+def test_explained_prose_says_test_print_not_coupon(explained_checks):
+    source = results_site.explained()
+    texts = [*source["intro"], *source["states"].values(), source["nearest_print"]]
+    for entry in explained_checks:
+        texts += [entry["tests"], entry["record"], entry["not_graded"], entry.get("weak") or "", *entry["how"]]
+        texts += [example.get("note") or "" for example in entry.get("examples") or []]
+    for text in texts:
+        assert "coupon" not in text.replace("-coupons.yaml", ""), text
+
+
+def test_every_example_exists_with_the_outcome_it_is_shown_for(explained_checks, entries_by_id):
+    """A regrade or a grader change that moves an example's result fails here, not silently on the page."""
+    for entry in explained_checks:
+        outcomes = [example["outcome"] for example in entry["examples"]]
+        assert "fail" in outcomes or "not graded" in outcomes, entry["check"]
+        for example in entry["examples"]:
+            assert example["trial"] in entries_by_id, example["trial"]
+            design = entries_by_id[example["trial"]]
+            assert design.group == "first" and design.counted, example["trial"]
+            assert results_site.check_applies(entry["task"], design.task), example["trial"]
+            part = example.get("part", "-")
+            found = [f for f in results_site.counted_of(design) if f.check == entry["check"] and (f.part or "-") == part]
+            assert len(found) == 1, (example["trial"], entry["check"], part)
+            assert results_site.check_state(found[0]) == example["outcome"], (example["trial"], entry["check"], found[0].detail)
+
+
+def test_every_example_has_its_drawing(explained_checks, entries_by_id):
+    """Every example shows the drawing scripts/results_site_check_views.py made of it from today's code, in the state
+    the example is shown for (a grader change means a redraw). Code that didn't run has no shape to draw."""
+    if not results_site.CHECK_VIEWS.exists():
+        pytest.skip("the check views manifest isn't here")
+    for entry in explained_checks:
+        for example in entry["examples"]:
+            shown = results_site.example_of(example, entry["task"], entry["check"], entries_by_id)
+            if entry["check"] == "builds":
+                assert shown["view"] is None and shown["no_view_reason"]
+                continue
+            assert shown["view"] and shown["view"]["url"].startswith("https://"), (example["trial"], entry["check"], shown["no_view_reason"])
+            # a pass that rests on a test print or template rescue is never shown as a plain pass
+            assert not shown["via_test_print"] or (example.get("label") and example.get("note")), example["trial"]
+            word = {"pass": ": passes.", "fail": ": fails.", "not graded": ": not graded."}[example["outcome"]]
+            assert word in shown["view"]["caption"], (example["trial"], entry["check"])
+
+
+def test_the_checks_page_data_and_its_links(index, entries_by_id):
+    page = results_site.checks_page(list(entries_by_id.values()), index["trials"])
+    anchors = {section["anchor"] for section in page["checks"]}
+    assert len(anchors) == len(page["checks"])
+    for section in page["checks"]:
+        counts = section["counts"]
+        assert counts["first_prints"] > 0
+        # every design in the denominator is accounted for once, declined and no design included
+        parts = ("failed", "not_graded", "passed", "not_reached", "no_part_built", "declined", "no_design")
+        assert sum(counts[key] for key in parts) == counts["first_prints"], section["anchor"]
+        assert section["counts"]["failed"] + section["counts"]["not_graded"] > 0, section["anchor"]
+        assert all(reason["key"] in index["reason_groups"] for reason in section["counts"]["reasons"])
+        assert all(code["url"].startswith(results_site.REPO) and "#L" in code["url"] for code in section["code"])
+    # a check in a trial's detail links to its own section, and only an explained check links at all
+    entry = entries_by_id["pilot-tripod/tripod-plate/can_ask/anthropic__claude-haiku-5.5/t10"]
+    links = {row["check"]: row["explained"] for row in results_site.finding_rows(entry, entry.record.findings, None)}
+    assert links["bridges"] == "checks.html#bridges" and links["R3"] == "checks.html#tripod-plate-R3"
+    assert links["R5"] is None and links["bed_fit"] is None
+    assert {link.split("#")[1] for link in links.values() if link} <= anchors
+    text = json.dumps(page)
+    assert "/Users/" not in text and "/home/" not in text
+
+
+def test_the_check_views_manifest_has_no_local_paths():
+    if not results_site.CHECK_VIEWS.exists():
+        pytest.skip("no check views manifest")
+    text = results_site.CHECK_VIEWS.read_text()
+    assert "/Users/" not in text and "results/local" not in text
+    for view in json.loads(text)["views"]:
+        assert view["state"] in ("pass", "fail", "not graded") and view["view"].startswith("https://media.danoved.xyz/print-build-eval/site/")
+
+
+def test_the_checks_page_is_linked_from_the_home_page_and_shares_its_styles():
+    home = (ROOT / "scripts/results_site/index.html").read_text()
+    assert home.count('href="checks.html"') == 2  # the header and "How to read a result"
+    page = (ROOT / "scripts/results_site/checks.html").read_text()
+    assert 'href="style.css"' in page and 'src="checks.js"' in page
+    assert 'from "./util.js"' in (ROOT / "scripts/results_site/checks.js").read_text()
