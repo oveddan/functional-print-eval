@@ -706,6 +706,12 @@ def references() -> dict:
     return json.loads(path.read_text())["reasons"] if path.exists() else {}
 
 
+def active_references() -> dict:
+    """The recorded photos whose reason group some saved design has now. A photo for a reason no grade gives any more
+    (a check relaxed in a regrade) stays in results_site_references.json, unshown, until the reason comes back."""
+    return {key: photo for key, photo in references().items() if key in REASON_GROUP_LABELS}
+
+
 def same_check(issue: dict, finding: CheckResult) -> bool:
     """An index issue and a grader's finding are the same check: an issue's missing part is the finding's "-"."""
     return issue["check"] == finding.check and (issue["part"] or "-") == (finding.part or "-")
@@ -722,7 +728,7 @@ def reference_of(entry: Entry, finding: CheckResult) -> dict | None:
 def reason_pictures(rows: list[dict], by_id: dict) -> dict:
     """One picture per reason group for the page's lists of reasons: the recorded photo where there is one, else the
     drawing of the first counted first-print trial that has one for that reason."""
-    pictures = {key: photo for key, photo in references().items() if key in REASON_GROUP_LABELS}
+    pictures = dict(active_references())
     for row in rows:
         if not row["counted"]:
             continue
