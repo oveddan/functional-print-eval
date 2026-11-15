@@ -1182,6 +1182,19 @@ def after_feedback_row(entry: Entry) -> dict:
             **({"note": SUPERSEDED} if entry.second_print and entry.verdict == "pass" else {})}
 
 
+def rests_on_test_print(findings: list[CheckResult]) -> list[dict]:
+    """Passing fit checks that pass only because the design's test print would find a size that holds, while the size
+    as drawn doesn't (wheel.fit's and nuts.fit's rescue), in the finding's own words: {check, as_drawn, rescue}. A part
+    of such a design shouldn't be printed until its size is set from that test print."""
+    found = []
+    for finding in findings:
+        rescue = RESCUED.search(finding.detail or "") if finding.ok is True else None
+        if rescue:
+            found.append({"check": finding.check, "as_drawn": reader_words(finding.detail[:rescue.start()]),
+                          "rescue": reader_words(rescue.group(1))})
+    return found
+
+
 def counted_of(entry: Entry) -> list[CheckResult]:
     if entry.kind == "trial":
         return entry.record.counted_findings
@@ -1197,7 +1210,8 @@ def detail(entry: Entry, sliced: dict, by_id: dict[str, Entry], prompts: dict[st
             "findings": finding_rows(entry, record.findings, getattr(record, "declined", None)),
             "measures": measures_of(entry), "submission": submission_of(entry.folder),
             "transcript": transcript_of(entry.folder, prompts), "media": media_detail(entry),
-            "timeline": results_site_timeline.timeline(entry, by_id, lambda e: [row["reason"] for row in issue_rows(e)])}
+            "timeline": results_site_timeline.timeline(entry, by_id, lambda e: [row["reason"] for row in issue_rows(e)]),
+            "rests_on_test_print": rests_on_test_print(counted_of(entry))}
     out |= dates_of(entry) | parts_built(entry, record) | handed_in(out["submission"])
     if entry.kind == "trial":
         out |= trial_detail(entry, record)

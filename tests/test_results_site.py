@@ -696,14 +696,83 @@ def test_assembled_scenes_draw_the_hardware_where_the_saved_findings_say():
         else:
             r4 = SimpleNamespace(**saved["R4"]) if "R4" in saved else None
             assert hardware_scene.tripod_outcome(SimpleNamespace(**saved["R3"]), r4)[0] == scene["fit"]["outcome"]
+        assert named["ok"] is not None, f"{design_id}: a fit plays on a check that isn't graded"
+        assert scene["fit"]["assumed"] == ("assumed from the" in named["detail"].split(";")[0])
         for fit in fits:
             assert fit["outcome"] == scene["fit"]["outcome"]
-            assert abs(sum(v * v for v in fit["axis"]) - 1) < 1e-4 and fit["travel"] > 0
-            assert (fit["stop"] is not None) == (fit["outcome"] == "stops")
-            if fit["stop"] is not None:
-                assert 0 < fit["stop"] < fit["travel"]
+            assert abs(sum(v * v for v in fit["axis"]) - 1) < 1e-4 and fit["start"] > 0
+            assert fit["rest"] == ("stopped" if fit["outcome"] == "stops" else "seated"), design_id
     if scenes == 0:
         pytest.skip("the media manifest here has no wheel, plate or knob scenes")
+
+
+def test_a_not_graded_check_never_plays_and_a_rescued_pass_says_so():
+    import hardware_scene
+    said = lambda check, ok, detail: SimpleNamespace(check=check, ok=ok, detail=detail)  # noqa: E731
+    unsettled = said("R4", None, "pocket 5.25 across flats, -0.25 over the 5.5 nut: prints say won't go in; test coupon "
+                                 "fit-coupon has 3 pocket(s), and no print has settled whether any of them holds")
+    assert hardware_scene.nut_outcome(unsettled) is None
+    rescued = said("R4", True, "pocket 7.85 across flats, -0.15 over the 8.0 nut: prints say won't go in; test coupon "
+                               "press_coupon has 4 pocket(s), with 7.95 holding, and the pocket follows param pocket_af")
+    assert hardware_scene.nut_outcome(rescued) == "stops" and "set from that test print" in hardware_scene.rescued(rescued)
+    assert hardware_scene.rescued(said("R3", True, "21.98 mm: a 22.05 mm seat wouldn't take the bearing; test coupon c "
+                                                   "would find a size that holds, and d moves the seat"))
+    assert hardware_scene.rescued(said("R4", True, "pocket 8.00 across flats, +0.00 over the 8.0 nut: prints say holds")) is None
+    through = said("R3", True, "6.60 mm clear at its tightest: the bolt goes through by hand (round 3)")
+    head_unknown = said("R4", None, "recess 14.68 mm across: between 13, too tight, and 15, which fit")
+    assert hardware_scene.tripod_outcome(through, head_unknown)[0] is None  # the head's motion follows R4
+    assumed = said("R4", True, "pocket 5.30 across flats, -0.20 over the 5.5 nut: prints say holds (assumed from the -0.2 mm "
+                               "clearance print, within the 0.2 mm assumption tolerance)")
+    assert hardware_scene.saying(assumed, "seats")["assumed"] is True
+
+
+@pytest.mark.parametrize("size", ["M3", "M5", "M8"])
+def test_the_nut_is_drawn_at_the_catalog_size(size):
+    """Across its flats the drawn nut is the catalog's af, whichever way it's turned; only its corners are chamfered."""
+    import math
+
+    import hardware_scene
+    from shapely.affinity import rotate
+    from shapely.geometry import Point
+
+    from pbe.parts import catalog
+    af = catalog.resolve(f"ISO 4032 {size}")["af"]
+    for degrees in (0, 17, 45):
+        outline = hardware_scene.nut_outline(Point(0, 0), af, degrees)
+        widths = []
+        for turn in range(0, 180, 1):
+            minx, _, maxx, _ = rotate(outline, turn, origin=(0, 0)).bounds
+            widths.append(maxx - minx)
+        assert min(widths) == pytest.approx(af, abs=0.01)
+        assert max(widths) < af / math.cos(math.radians(30))  # corners chamfered, not sharp
+
+
+def test_a_piece_that_stops_rests_where_it_stops():
+    """The still view never shows a fit the record says can't happen: a "stops" piece is stored at the opening."""
+    import hardware_scene
+    import numpy as np
+    import trimesh
+    scene = hardware_scene.Scene(np.eye(4), "knob")
+    scene.add("nut", trimesh.creation.box(extents=(1, 1, 1)), (np.array([0.0, 0.0, -1.0]), 10.0, "stops", 3.0))
+    scene.add("bolt", trimesh.creation.box(extents=(1, 1, 1)), (np.array([0.0, 0.0, -1.0]), 10.0, "seats", None))
+    stopped, seated = scene.layers["nut"][0], scene.layers["bolt"][0]
+    assert stopped["mesh_obj"].bounds[0][2] == pytest.approx(-0.5 + 7.0)  # moved back out along the way in
+    assert stopped["fit"] == {"axis": [0.0, 0.0, -1.0], "start": 3.0, "outcome": "stops", "rest": "stopped"}
+    assert seated["mesh_obj"].bounds[0][2] == pytest.approx(-0.5) and seated["fit"]["start"] == 10.0
+
+
+def test_a_pass_that_rests_on_its_test_print_is_flagged_for_the_stl():
+    entries = {entry.id: entry for entry in results_site.collect()}
+    for design_id in ("pilot-nut-knob/nut-knob/M5/can_ask/deepseek__deepseek-v4.1-flash/t2",
+                      "pilot-wheel/bearing-wheel/can_ask/openai__gpt-6.1-sol/t8"):
+        entry = entries[design_id]
+        flagged = results_site.rests_on_test_print(results_site.counted_of(entry))
+        assert entry.verdict == "pass" and flagged, design_id
+        for found in flagged:  # a model's own part id ("fit_coupon") is left as it is, in quotes
+            words = re.sub(r"“[^”]*”", "", found["as_drawn"] + " " + found["rescue"])
+            assert not re.search(r"(?<![\w-])coupons?(?![\w-])", words)
+    plain = entries["pilot-nut-knob/nut-knob/M5/can_ask/anthropic__claude-opus-5.5/t1"]
+    assert results_site.rests_on_test_print(results_site.counted_of(plain)) == []
 
 
 def test_estoa_scenes_show_the_led_disk_and_the_plug_only_where_r3_passed():
@@ -816,3 +885,16 @@ def test_the_page_draws_no_timeline_for_a_single_phase_and_checks_its_numbers():
     assert "timelineProblems(detail)" in (ROOT / "scripts/results_site/app.js").read_text()
     # Codex on PR 30: a phase that loads after its trial was closed or replaced mustn't draw or tear down the next view
     assert "() => turn === shown && control.panel.isConnected" in detail
+
+
+def test_a_view_is_never_redrawn_from_missing_part_files_and_saved_as_current():
+    """Codex on PR 26: the scene-only redraw read each part's mesh from folder/parts, which isn't committed, without
+    building it again if it had gone, then saved the design under a current key with no view, so no later run retried.
+    It builds the parts first, and a redraw that fails redoes the design in full instead of saving."""
+    import inspect
+
+    import results_site_media as media
+    redraw = inspect.getsource(media.redraw_scene)
+    assert "ensure_built(folder, sub)" in redraw and "except" not in redraw
+    work = inspect.getsource(media.work)
+    assert "record = None" in work and "if record is not None:" in work

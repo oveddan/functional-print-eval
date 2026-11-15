@@ -76,7 +76,7 @@ CACHE_CONTROL = "public, max-age=31536000, immutable"
 CONTENT_TYPES = {".webp": "image/webp", ".glb": "model/gltf-binary"}
 
 VERSION = 1  # bump to re-render every design
-SCENE_VERSION = 4  # bump to redraw only the assembled views (a design whose record is otherwise current keeps its renders)
+SCENE_VERSION = 5  # bump to redraw only the assembled views (a design whose record is otherwise current keeps its renders)
 SCENE_TASKS = ("estoa-light", "bearing-wheel", "tripod-plate", "nut-knob")
 THUMB = (640, 512)
 SUPERSAMPLE = 2
@@ -555,7 +555,7 @@ def scenes(folder, sub, findings, declined, task):
     except Exception as e:  # the view helps read a design; one that can't be drawn mustn't lose the parts
         print(f"no scene for {rel(folder)}: {type(e).__name__}: {e}", file=sys.stderr)
         drawn_here = task.split("/")[0] in hardware_scene_tasks()
-        scene, why = None, (f"the grader's geometry couldn't be read on this design ({type(e).__name__})" if drawn_here else None)
+        scene, why = None, ("the checks couldn't read this design's shape, so there's nowhere to put the hardware" if drawn_here else None)
     return {"scene": scene, "scene_none": why, "scene_version": SCENE_VERSION}
 
 
@@ -566,14 +566,14 @@ def hardware_scene_tasks():
 
 
 def redraw_scene(folder, record):
-    """A record whose renders are current, with its assembled view drawn again."""
-    try:
-        sub = submission_to_build(folder)
-        findings, declined = saved_findings(folder)
-        return record | scenes(folder, sub, findings, declined, task_of(folder))
-    except Exception as e:
-        print(f"no scene for {rel(folder)}: {type(e).__name__}: {e}", file=sys.stderr)
-        return record | {"scene": None, "scene_none": None, "scene_version": SCENE_VERSION}
+    """A record whose renders are current, with its assembled view drawn again. The view is drawn from the parts'
+    meshes in folder/parts, which aren't committed, so they are built again first if they have gone. Raises if the
+    view can't be drawn: the caller then redoes the design in full, and never saves a record that has lost its view
+    under a current key, which would stop every later run from trying again."""
+    sub = submission_to_build(folder)
+    ensure_built(folder, sub)
+    findings, declined = saved_findings(folder)
+    return record | scenes(folder, sub, findings, declined, task_of(folder))
 
 
 def work(folder, force=False):
@@ -588,10 +588,15 @@ def work(folder, force=False):
             return saved
         if not force and saved.get("version") == VERSION and saved.get("part_key") == part_key:
             # only the assembled view's inputs moved (SCENE_VERSION): keep the renders, draw the view again
-            record = redraw_scene(folder, saved) if saved["built"] and task_of(folder).split("/")[0] in SCENE_TASKS else saved
-            record |= {"key": key, "part_key": part_key}
-            path.write_text(json.dumps(record, indent=1, sort_keys=True))
-            return record
+            try:
+                record = redraw_scene(folder, saved) if saved["built"] and task_of(folder).split("/")[0] in SCENE_TASKS else saved
+            except Exception as e:  # the view couldn't be drawn from what is here: fall through and redo the design
+                print(f"couldn't redraw the view for {rel(folder)} ({type(e).__name__}: {e}); redoing the design", file=sys.stderr)
+                record = None
+            if record is not None:
+                record |= {"key": key, "part_key": part_key}
+                path.write_text(json.dumps(record, indent=1, sort_keys=True))
+                return record
     record = process(folder)
     record |= {"key": key, "part_key": part_key}
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -668,7 +673,7 @@ def manifest_scene(scene, parts):
                   **({"part": part["part"]} if "part" in part else {}), **({"fit": part["fit"]} if part.get("fit") else {})}
                  for part in layer["parts"]]
         layers.append({"key": layer["key"], "label": layer["label"], "color": layer["color"], "parts": drawn})
-    extra = {key: scene[key] for key in ("fit", "fit_note", "notes") if key in scene}
+    extra = {key: scene[key] for key in ("kind", "fit", "fit_note", "notes") if key in scene}
     return {"layers": layers, "fails": scene["fails"], "assumed_fails": scene["assumed_fails"], **extra}
 
 
