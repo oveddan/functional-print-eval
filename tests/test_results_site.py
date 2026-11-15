@@ -428,6 +428,37 @@ def test_the_chart_draws_pass_rate_as_bar_length_not_counts():
     assert "--n:${segment.n}" not in row
 
 
+def test_the_small_bars_draw_pass_rate_too():
+    """The second design review: the table's and the by-part panels' small bars still drew every design at full width.
+    They are the chart's rule at a smaller size: filled length is the share that pass, nothing else is drawn."""
+    page = (ROOT / "scripts/results_site/app.js").read_text()
+    small = page[page.index("function bar(cell"):page.index("function stoppedNote(")]
+    assert "width:${(100 * n / cell.trials)" in small
+    assert "flex-grow" not in small and "bar-ng" not in small and "bar-rest" not in small
+    assert 'h("span", { class: "cell-ng" }, `${cell.not_graded} not graded`)' in page  # said in words instead
+
+
+def test_a_step_from_the_other_trial_says_whose_title_and_verdict_are_shown():
+    """A link with phase=second on a failed first print showed the passing second print under a bare "Fail". The
+    header now says the step is saved as another trial, with that trial's verdict, whenever such a step is shown."""
+    detail = (ROOT / "scripts/results_site/detail.js").read_text()
+    note = detail[detail.index("function otherStepNote("):detail.index("function lowerSections(")]
+    assert "phase.slug !== detail.slug" in note and "badge(phase.verdict" in note
+    assert "otherStepNote(content.parentElement, phase, detail, context)" in detail
+
+
+def test_the_chart_says_what_a_first_print_only_row_measures():
+    page = (ROOT / "scripts/results_site/app.js").read_text()
+    assert "firstOnly: !entry.replayed" in page
+    assert '"first print, no second prints were run" : "after one round of feedback"' in page
+    assert "FIRST_ONLY_COST_LABEL : COST_LABEL" in page
+
+
+def test_the_trial_dialog_arrives_solid():
+    style = (ROOT / "scripts/results_site/style.css").read_text()
+    assert "@keyframes rise { from { transform: translateY(6px); } }" in style
+
+
 def test_every_three_js_file_the_site_loads_is_pinned_by_hash():
     """The 3D library comes from a CDN. Each file the page's scripts import, and the one file GLTFLoader imports in
     turn, has an integrity hash in the import map, so a changed file is refused instead of run."""
