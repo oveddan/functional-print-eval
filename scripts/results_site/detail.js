@@ -5,6 +5,7 @@
 import {
   h, add, clear, icon, badge, VERDICT, ISSUE_VERDICT, money, int, tokens, duration, grams, dateOnly, copyButton, plural,
 } from "./util.js";
+import { sceneIntro, fitCaption, fitControls, noSceneNote } from "./fit.js";
 
 let viewer = null;       // the open 3D view's controller, if any
 let mountSeq = 0;        // goes up at every teardown and every 3D mount: a mount that finishes after the view moved on is stale
@@ -218,6 +219,7 @@ function mediaSection(row, detail) {
       for (const layer of mounted.layers) {
         controls.append(toggle(layer.label, h("span", { class: "swatch", style: `background:${layer.color}`, "aria-hidden": "true" }), true, (on) => mounted.setLayer(layer.key, on)));
       }
+      controls.append(...fitControls(mounted));
       if (mounted.canFocusProblem) controls.append(h("button", { type: "button", class: "btn", onclick: () => mounted.focusProblem() }, "Go to the red marks"));
       controls.append(h("button", { type: "button", class: "btn", onclick: () => mounted.reset() }, "Reset the view"));
       if (back) controls.append(back);
@@ -237,7 +239,7 @@ function mediaSection(row, detail) {
     }
   };
 
-  add(box, tabs, stage, caption, controls, notBuiltNote);
+  add(box, tabs, stage, caption, controls, notBuiltNote, noSceneNote(media));
   show();
   return {
     el: box, marked,
@@ -268,8 +270,13 @@ function partCaption(caption, part, titleOf) {
 function sceneCaption(caption, scene) {
   // "R6: keyhole at (-50, 75): its slot runs…" reads better without the id; the checks beside the picture carry it.
   const plain = (line) => line.replace(/^[A-Za-z_]+\d*:\s*/, "");
-  add(caption, h("p", {}, "The printed parts with the LED disk (see-through), the perfboard and the screws where the design puts them. Nothing here was printed or assembled."),
-    scene.fails.length ? [h("p", { class: "caption-red" }, h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "Marked in red:"), h("ul", { class: "scene-fails" }, scene.fails.map((line) => h("li", {}, lowerFirst(plain(line)))))] : null,
+  const marked = scene.layers.some((layer) => layer.key === "problem" && layer.parts.some((part) => part.mesh));
+  add(caption, h("p", {}, sceneIntro(scene)), fitCaption(scene),
+    scene.fails.length ? [
+      // Only a view with a red layer can say "marked in red": the hardware views draw the person's parts and no red.
+      marked ? h("p", { class: "caption-red" }, h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "Marked in red:")
+        : h("p", {}, "Checks this design doesn't pass (not marked in this view; each is drawn with its check):"),
+      h("ul", { class: "scene-fails" }, scene.fails.map((line) => h("li", {}, lowerFirst(plain(line)))))] : null,
     scene.assumed_fails?.length ? [h("p", {}, "Fails only under the task's stated assumptions (not counted):"), h("ul", { class: "scene-fails" }, scene.assumed_fails.map((line) => h("li", {}, lowerFirst(plain(line)))))] : null);
 }
 
@@ -281,7 +288,7 @@ function sceneSpec(media) {
     if (!drawn.length) continue;
     layers.push({ key: layer.key, label: layer.label, color: layer.key === "problem" ? null : layer.color });
     for (const part of drawn) {
-      items.push({ url: part.mesh, matrix: part.matrix, layer: layer.key, color: layer.color, problem: layer.key === "problem" || layer.key === "assumed", opacity: layer.key === "disk" ? 0.3 : 1 });
+      items.push({ url: part.mesh, matrix: part.matrix, layer: layer.key, color: layer.color, problem: layer.key === "problem" || layer.key === "assumed", opacity: layer.key === "disk" ? 0.3 : 1, fit: part.fit });
     }
   }
   return { label: "the assembled design", items, layers, highlight: null, frame: "printed" };
