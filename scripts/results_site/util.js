@@ -125,8 +125,16 @@ export function rich(text) {
 
 export const plainText = (text) => String(text ?? "").replace(/`/g, "");
 
-// Prose from the data that still says "coupon" for a test print (ids and saved model text are left alone).
-export const reader = (text) => String(text ?? "").replace(/\bcoupons\b/g, "test prints").replace(/\bcoupon\b/g, "test print");
+// Prose from the data that still says "coupon" for a test print. Only the word standing alone changes: a model's own
+// part id is left as written, whether it holds the word (nut_fit_coupon) or is the word ("test coupon coupon would
+// find a size": the second one is the part, and is kept in quotes). The generator's reader_words() does the same.
+export const reader = (text) => {
+  const held = [];
+  return String(text ?? "")
+    .replace(/\b([Tt])est coupon (\S+) (would|has)\b/g, (_, t, id, verb) => `${t}est coupon \u0000${held.push(id) - 1}\u0000 ${verb}`)
+    .replace(/(^|[^\w-])(?:([Tt])est )?([Cc])oupon(s|'s)?(?![\w-])/g, (_, before, t, c, tail = "") => `${before}${/[A-Z]/.test(t || c) ? "Test print" : "test print"}${tail}`)
+    .replace(/\u0000(\d+)\u0000/g, (_, at) => `“${held[Number(at)]}”`);
+};
 
 // ---- numbers: formatting only, never arithmetic that could disagree with the data ----
 

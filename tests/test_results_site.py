@@ -1,6 +1,7 @@
 """The results site's data says what the scorecard says: the same passes and trials per model and task, for the first
 print, the second print after feedback and test-first; every saved trial appears exactly once; and a trial that's not
 graded is never counted as a pass. No builds and no transcripts read, so it's fast."""
+import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -478,3 +479,26 @@ def test_the_home_page_keeps_its_review_fixes():
     coarse = css[css.index("On a touch screen every control in the chart"):]
     assert "--sc-bar-h: 44px" in coarse and "min-height: 44px" in coarse
     assert "Show the table" not in app                                     # a label that is wrong once it is open
+
+
+def test_reader_words_changes_the_word_and_leaves_a_models_part_ids_alone(index):
+    """The site says "test print" where saved text says "coupon", but a model's own part id is its own: the old
+    helper turned nut_fit_coupon into "nut_fit_test print" (131 strings on the built site) and the grader's
+    "test coupon coupon would find a size", about a part a model named coupon, into "test print test print"."""
+    said = results_site.reader_words
+    assert said("test coupon coupon would find a size that holds") == "test print “coupon” would find a size that holds"
+    assert said("test coupon fit_coupon would find a size") == "test print “fit_coupon” would find a size"
+    assert said("test coupon coupon has 5 pocket(s), with 5.58 holding") == "test print “coupon” has 5 pocket(s), with 5.58 holding"
+    assert said("declined: no final part: only coupons (unloaded_plate_coupon)") == "declined: no final part: only test prints (unloaded_plate_coupon)"
+    assert said("only coupons (coupon)") == "only test prints (coupon)"
+    assert said("Its test coupon's pockets are ribbed") == "Its test print's pockets are ribbed"
+    assert said("Coupon loop: the coupons came back") == "Test-print loop: the test prints came back"
+    assert said("nut_fit_coupon and dovetail-coupon stay") == "nut_fit_coupon and dovetail-coupon stay"
+    # Codex on PR 35: the drawing script protects part ids with its own \x00N\x00 tokens before calling this helper;
+    # they are not this helper's to restore, and used to raise IndexError
+    assert said("test print \x000\x00 has 4 pocket(s)") == "test print \x000\x00 has 4 pocket(s)"
+    garbled = re.compile(r"_test print|test print test print|test test print")
+    for row in index["trials"]:
+        assert not garbled.search(row["summary"] or ""), (row["id"], row["summary"])
+    util = (ROOT / "scripts/results_site/util.js").read_text()
+    assert "est coupon (\\S+) (would|has)" in util and "[^\\w-]" in util  # the page's reader() follows the same two rules
