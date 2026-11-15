@@ -1471,7 +1471,8 @@ DEFINITIONS = {
                                "parts and test prints, as if each were printed once. Nothing was actually printed.",
     "Dan": "The eval's author. He printed the test pieces whose recorded results the graders and the simulated person use.",
     "simulated person": "The person the model talks to is a program, not a human: it answers measurements from a fixed "
-                        "list and says how a print came out only from Dan's recorded test prints.",
+                        "list and says how a print came out only from Dan's recorded test prints, or the bridge check's "
+                        "prediction where none was printed.",
     "test print": "A small piece the model asks for to settle a size before its final design.",
 }
 
@@ -1705,8 +1706,9 @@ def index_of(entries: list[Entry], listed: list, sliced: dict) -> dict:
     return {
         "schema_version": SCHEMA_VERSION, "commit": commit(), "transcript_base": transcript_base(), "links_pinned_to": pinned_ref(),
         "notes": {
-            "printing": "Nothing a model designed was printed. Each design is graded by code against Dan's recorded "
-                        "test prints; the simulated person's answers come from those records only.",
+            "printing": "No complete model design was printed (round 3 printed six roof sections cut from models' "
+                        "Estoa designs). Each design is graded by code against Dan's recorded test prints; the simulated "
+                        "person's answers come from those records, or the bridge check's prediction where none was printed.",
             "not_graded": "Not graded means no recorded print decides a check. It is never a pass.",
             "test_print": "A test print is a small piece the model asks for to settle a size before its final design.",
         },

@@ -490,7 +490,7 @@ function askedSection(detail) {
       : "It asked for no measurements before handing in its design."));
     return section("What it asked and tried", kids);
   }
-  kids.push(h("p", { class: "section-note" }, "The person is a program. It answers measurements from a fixed list and says how a print came out only from Dan's recorded test prints. Nothing was printed for this trial."));
+  kids.push(h("p", { class: "section-note" }, "The person is a program. It answers measurements from a fixed list and says how a print came out only from Dan's recorded test prints, or the bridge check's prediction where none was printed. Nothing was printed for this trial."));
   if (detail.condition_key === "can_test" && detail.kind === "trial" && !rounds.length) {
     kids.push(h("p", { class: "callout" }, h("strong", {}, "It asked for no test prints, "), "though it could have before its final design."));
   }
@@ -621,7 +621,7 @@ function pairSection(row, detail, context) {
       h("div", { class: "pair" }, printColumn("First print", first, context, !isSecond), printColumn("Second print", second, context, isSecond)),
       h("h4", {}, "What changed"), changes(first, second),
       h("h4", {}, "What the person said after the first print", cant ? [" ", h("span", { class: "tag tag-ng" }, "Includes “I can't tell you how that one came out”")] : null),
-      h("p", { class: "section-note" }, "The person is a program and answers only from Dan's recorded prints. The message says “I printed what you sent” because that is what the model was told; nothing was printed."),
+      h("p", { class: "section-note" }, "The person is a program and answers from Dan's recorded prints, or the bridge check's prediction where none was printed. The message says “I printed what you sent” because that is what the model was told; nothing was printed."),
       answersBlock(second.report),
       second.reply ? fold("The whole message, as the model received it", h("pre", { class: "said simulated" }, second.reply)) : null,
       second.baseline ? h("p", { class: "fine" }, "The second print is graded with its test prints left out. Graded the same way, the first design is: ", badge(second.baseline.verdict, { small: true }), ".") : null);
@@ -755,7 +755,7 @@ function transcriptSection(row, detail) {
   });
   return h("details", { class: "td-section td-fold-section" },
     h("summary", {}, h("h3", { tabindex: "-1" }, "Transcript"), h("span", { class: "fold-count" }, `${plural(transcript.messages, "message")}, excerpted`)),
-    h("p", { class: "section-note" }, "Long texts are cut. Replies marked simulated come from a program that answers only from Dan's recorded measurements and test prints. ",
+    h("p", { class: "section-note" }, "Long texts are cut. Replies marked simulated come from a program that answers from Dan's recorded measurements and test prints, or the bridge check's prediction where no print was recorded. ",
       h("a", { href: transcript.url, rel: "noopener" }, "The full transcript on GitHub", icon("out"))),
     h("ol", { class: "transcript" }, items));
 }

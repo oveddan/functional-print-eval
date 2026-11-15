@@ -723,7 +723,9 @@ function renderFoot() {
     h("p", {}, `${index.trials.length.toLocaleString("en-US")} saved entries`,
       index.commit ? [" from commit ", h("a", { href: `${repo}/commit/${index.commit}` }, h("code", {}, index.commit.slice(0, 7)))] : null,
       ". The scorecard's numbers are computed by the repository's own scorecard script from the saved runs, the same numbers as its README."),
-    h("p", {}, h("a", { href: repo + "#readme" }, "The README"), " explains the parts, the test prints behind the checks and what couldn't be graded."));
+    h("p", {}, h("a", { href: repo + "#readme" }, "The README"), " explains the parts, the test prints behind the checks and what couldn't be graded; ",
+      h("a", { href: repo + "/blob/main/docs/reference.md" }, "the reference"), " has the detail, including the assumptions the verdicts rest on. To run the eval yourself, see ",
+      h("a", { href: repo + "#run-it" }, "Run it"), " in the README."));
 }
 
 // ---- filters ----
