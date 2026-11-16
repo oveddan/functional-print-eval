@@ -146,11 +146,11 @@ HEADLINE_GROUPS = {
     "first": Group("First print", "The model can ask the person for measurements, then hands in one design. It can't "
                    "ask for test prints.", HEADLINE, ("pilot-tripod", "pilot-wheel", "pilot-nut-knob", "pilot-nut-knob-2",
                                                        "pilot-estoa"), "can_ask"),
-    "second": Group("Second print, after hearing how the first came out", "The same conversation, continued with one "
+    "second": Group("Second prints", "Only the first prints that didn't pass, each sent back once: the same conversation, continued with one "
                     "more message in which the simulated person says how everything in the first design came out, "
                     "using only Dan's recorded prints. The model then hands in a revised design, graded with its test "
                     "prints left out.", HEADLINE, ("loop-all", "loop-estoa"), None),
-    "test_first": Group("Can ask for test prints first", "The model can ask the person to print small test pieces "
+    "test_first": Group("Test prints first", "The model can ask the person to print small test pieces "
                         "before its final design, and hears how each came out, using only Dan's recorded prints.",
                         HEADLINE, ("test-first",), "can_test"),
 }
@@ -196,7 +196,7 @@ OTHER_GROUPS = {
                                 "prints: the model is only asked to take another look, not told how the box came out.",
                                 REPLAY, ("loop-estoa",), None),
 }
-CONDITION_LABELS = {"can_ask": "can ask for measurements", "can_test": "can ask for test prints first",
+CONDITION_LABELS = {"can_ask": "first print (can ask for measurements)", "can_test": "test prints first",
                     "all_given": "every measurement given", "can_run_code": "can run code"}
 
 INDEX_CAP_SUMMARY = 240  # characters of the one-line summary in index.json

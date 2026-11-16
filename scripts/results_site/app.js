@@ -35,13 +35,13 @@ const FED_SLUG = "sent-back";
 const DEFAULTS = { cond: "first", task: "all", verdict: "", model: "", reason: "", show: "", trial: "" };
 const COND = {
   first: { short: "First print", noun: "first prints" },
-  after_feedback: { short: "After feedback", noun: "first prints, counted after one round of feedback" },
-  test_first: { short: "Test prints first", noun: "trials that could ask for test prints first" },
-  second: { short: "Second prints", noun: "second prints" },
+  after_feedback: { short: "Reprint after feedback", noun: "first prints, counted with their reprints after feedback" },
+  test_first: { short: "Test prints first", noun: "trials in the Test prints first condition" },
+  second: { short: "Second prints", noun: "second prints (the reprints after feedback)" },
 };
 const AFTER_GROUP = {
-  key: "after_feedback", label: "After one round of feedback", kind: "headline", category: "headline",
-  description: "Every first print, counted the way the scorecard's after-feedback column counts it: a first print that passed counts as it is; one that didn't was sent back once, with the simulated person saying how it came out, and its second print counts instead. Models that weren't replayed keep their first prints.",
+  key: "after_feedback", label: "Reprint after feedback", kind: "headline", category: "headline",
+  description: "Every first print, counted the way the scorecard's Reprint after feedback column counts it: a first print that passed counts as it is; one that didn't was sent back once, with the simulated person saying how it came out, and its second print counts instead. Models that weren't replayed keep their first prints.",
 };
 const CATEGORY_LABEL = { "control or pilot": "Controls and pilots", "infrastructure check": "Infrastructure checks", "replay study": "Replay studies" };
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -361,8 +361,8 @@ function renderFinding() {
   const heading = $("finding");
   add(clear(heading),
     tile("first", "first", "on the first print", null),
-    tile("after_feedback", "after_feedback", "after one round of feedback", fedNote(pooled), FED),
-    tile("test_first", "test_first", "asking for test prints first", `fewer trials ran; in ${tell.told} of ${tell.trials} the person couldn't say how a test piece came out`));
+    tile("after_feedback", "after_feedback", "reprint after feedback", fedNote(pooled), FED),
+    tile("test_first", "test_first", "test prints first", `fewer trials ran; in ${tell.told} of ${tell.trials} the person couldn't say how a test piece came out`));
   heading.removeAttribute("aria-busy");
   $("kicker").textContent = `${pooled.models} language models were asked, in a person's own words, for a part to 3D print. Of their designs, this many pass:`;
 
@@ -489,10 +489,10 @@ function renderScorecard() {
     h("thead", {}, h("tr", {},
       h("th", { scope: "col" }, "Model"),
       h("th", { scope: "col" }, "First print", h("small", {}, "can ask for measurements, no test prints")),
-      h("th", { scope: "col" }, "After one round of feedback", h("small", {}, "passes first time, plus second prints that pass")),
+      h("th", { scope: "col" }, "Reprint after feedback", h("small", {}, "passes first time, plus second prints that pass")),
       h("th", { scope: "col", "aria-sort": "descending" }, "Test prints first ", h("span", { class: "sort-mark", title: "Sorted by this column, highest first" }, "▼"),
         h("small", {}, `the person couldn't say how a test piece came out in ${tell.told} of ${tell.trials} trials; ${tell.passes_after_cant_tell} of the ${tell.passes} passes came after such an answer`)),
-      h("th", { scope: "col", class: "num" }, "Per passing design, with test prints first", h("small", {}, "API cost; print time and filament are slicer estimates, nothing was printed")))));
+      h("th", { scope: "col", class: "num" }, "Per passing design, test prints first", h("small", {}, "API cost; print time and filament are slicer estimates, nothing was printed")))));
   const body = h("tbody", {});
   const rate = (label, cell, patch, extra) => cellLink(label, patch, { trials: cell.trials, passes: cell.passes },
     { class: "cell", "aria-label": `${label}: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} trials.` },
@@ -521,9 +521,9 @@ function renderScorecard() {
     body.append(h("tr", {},
       h("th", { scope: "row" }, modelLink(entry, "table"), h("small", {}, `${tokens(entry.tokens_per_trial)} tokens a trial`)),
       h("td", { "data-label": "First print" }, rate(`${entry.short}, first print`, entry.first, { cond: "first", task: "scored", model }), stoppedNote(entry.first.excluded)),
-      h("td", { "data-label": "After one round of feedback" }, afterCell),
+      h("td", { "data-label": "Reprint after feedback" }, afterCell),
       h("td", { "data-label": "Test prints first" }, testCell),
-      h("td", { "data-label": "Per passing design, with test prints first (est.)", class: "td-per num" }, per)));
+      h("td", { "data-label": "Per passing design, test prints first (est.)", class: "td-per num" }, per)));
   }
   table.append(body);
 
@@ -538,8 +538,8 @@ function renderScorecard() {
     h("p", {}, "The three columns aren't a ranking of methods: the test-prints-first column has fewer trials, and a pass after “I can't tell you how that one came out” may owe something to the model moving to a size the records cover."),
     h("p", {}, estoa, " ",
       stateLink({ cond: "first", task: score.harder_task }, {}, "First prints", { fromDefaults: true, toResults: true }), ", ",
-      stateLink({ cond: "after_feedback", task: score.harder_task }, {}, "after feedback", { fromDefaults: true, toResults: true }), ", ",
-      stateLink({ cond: "test_first", task: score.harder_task }, {}, "with test prints first", { fromDefaults: true, toResults: true }), "."));
+      stateLink({ cond: "after_feedback", task: score.harder_task }, {}, "reprint after feedback", { fromDefaults: true, toResults: true }), ", ",
+      stateLink({ cond: "test_first", task: score.harder_task }, {}, "test prints first", { fromDefaults: true, toResults: true }), "."));
 
   const host = $("scorecard-body");
   add(clear(host), renderScorecardChart(), h("h3", { class: "sc-table-h" }, "All three conditions, as a table"),
@@ -598,7 +598,7 @@ function chartRow({ name, model, cell, note, pooled = false, firstOnly = false }
       segment.n / cell.trials >= SHOW_COUNT_FROM ? h("span", { class: "sc-n", "aria-hidden": "true" }, segment.text) : null);
   }));
   const total = cellLink(`chart, ${name}, after feedback`, { ...scope, cond: "after_feedback" }, { trials: cell.trials, passes: cell.passes },
-    { class: "sc-total", "aria-label": `${name}, ${firstOnly ? "first print, no second prints were run" : "after one round of feedback"}: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} designs.` },
+    { class: "sc-total", "aria-label": `${name}, ${firstOnly ? "first print, no second prints were run" : "reprint after feedback"}: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} designs.` },
     [h("span", { class: "rate" }, pct(cell.rate)), h("span", { class: "frac" }, `${cell.passes} of ${cell.trials}`)]);
   const title = stateLink({ model }, { class: "sc-name", "aria-label": `${name}: open ${pooled ? "these models'" : "this model's"} trials` }, name, { fromDefaults: true, toResults: true });
   // The counts behind the percentages. Each opens its designs: the two that aren't bar have no other way in, and a
@@ -628,16 +628,16 @@ function renderScorecardChart() {
   const key = (cls, label) => h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: cls })), label);
   return h("section", { class: "sc-chart", "aria-labelledby": "sc-chart-h" },
     h("div", { class: "sc-head" },
-      h("h3", { id: "sc-chart-h" }, "First print, then one round of feedback"),
+      h("h3", { id: "sc-chart-h" }, "First print, then reprint after feedback"),
       h("p", {}, "The length of each bar is the share of a model's counted designs, for the four scored parts, that pass. A first print that didn't pass was sent back once, with the simulated person saying how it came out, and its second print counts instead. Each piece of a bar, and each count under it, opens exactly the designs it counts."),
-      h("p", { class: "sc-order" }, "Sorted by pass rate after feedback, highest first", firstOnly.length ? "; the models with no second prints follow, by first-print pass rate." : ".")),
+      h("p", { class: "sc-order" }, "Sorted by the Reprint after feedback pass rate, highest first", firstOnly.length ? "; the models with no second prints follow, by first-print pass rate." : ".")),
     h("p", { class: "bar-legend sc-legend" },
       key("bar-pass", "pass on the first print"), key("bar-pass2", "pass on the second print, after feedback (+)"),
       h("span", { class: "key" }, "Not graded is never a pass, so it is no part of a bar; it is counted under each one, with the designs that didn't pass.")),
     h("div", { class: "sc-axis", "aria-hidden": "true" },
       h("span", {}, "Model"),
       h("span", { class: "sc-ticks" }, [0, 25, 50, 75, 100].map((tick) => h("span", { style: `left:${tick}%` }, `${tick}%`))),
-      h("span", {}, firstOnly.length ? "Pass rate" : "Pass after feedback"),
+      h("span", {}, firstOnly.length ? "Pass rate" : "Pass after reprint"),
       h("span", { class: "sc-axis-cost" }, COST_LABEL)),
     h("p", { class: "sc-cost-note" }, `The dollar figure in each row is the ${COST_LABEL}.`),
     h("ul", { class: "sc-rows" }, rows),
@@ -671,7 +671,7 @@ function verifyChart(same) {
 
 // ---- small multiples: one panel per model, parts down, the three conditions across ----
 
-const MULTI_CONDS = [["first", "First", "first"], ["after_feedback", "After feedback", "after_feedback"], ["test_first", "Test prints first", "test_first"]];
+const MULTI_CONDS = [["first", "First print", "first"], ["after_feedback", "Reprint after feedback", "after_feedback"], ["test_first", "Test prints first", "test_first"]];
 
 // The Estoa box has no per-model block in the scorecard for first print and after feedback: counted from the rows.
 function harderCell(cond, model, task) {
@@ -825,7 +825,7 @@ function renderFilters() {
   add(clear(form),
     h("div", { class: "f-row f-cond" }, h("span", { class: "f-label", id: "fl-cond" }, "Condition"),
       h("div", { class: "f-controls", role: "group", "aria-labelledby": "fl-cond" }, seg,
-        h("label", { class: "sr-only", for: "f-other" }, "More runs: second prints, controls, pilots and replay studies"), otherSelect)),
+        h("label", { class: "sr-only", for: "f-other" }, "More runs: reprints after feedback, controls, pilots and replay studies"), otherSelect)),
     h("div", { class: "f-row" }, h("span", { class: "f-label", id: "fl-task" }, "Part"),
       h("div", { class: "f-controls chips", role: "group", "aria-labelledby": "fl-task" }, taskChips)),
     h("div", { class: "f-row" }, h("span", { class: "f-label", id: "fl-verdict" }, "Verdict"),
