@@ -75,12 +75,12 @@ def layers(mesh: trimesh.Trimesh, layer_h):
 
 def _strands(region, angle, spacing):
     """Parallel lines across the region at the given angle, clipped to it."""
-    centre = region.centroid
+    center = region.centroid
     reach = max(region.bounds[2] - region.bounds[0], region.bounds[3] - region.bounds[1])
     lines = []
     for offset in np.arange(-reach, reach + spacing, spacing):
-        lines.append(LineString([(centre.x - reach, centre.y + offset), (centre.x + reach, centre.y + offset)]))
-    rotated = affinity.rotate(MultiLineString(lines), angle, origin=centre)
+        lines.append(LineString([(center.x - reach, center.y + offset), (center.x + reach, center.y + offset)]))
+    rotated = affinity.rotate(MultiLineString(lines), angle, origin=center)
     strands = []
     for line in rotated.geoms:
         cut = line.intersection(region)
@@ -224,7 +224,7 @@ def svg(overhang: Overhang, size=520):
            f'<path d="{path(overhang.region)}" fill="#f6c89f" fill-rule="evenodd" stroke="#c2410c" stroke-width="1"/>']
     for strand, anchored in overhang.strands:
         (x0, y0), (x1, y1) = strand.coords[0], strand.coords[-1]
-        colour = "#2f7a4f" if anchored else "#b42318"
-        out.append(f'<line x1="{x_px(x0)}" y1="{y_px(y0)}" x2="{x_px(x1)}" y2="{y_px(y1)}" stroke="{colour}" stroke-width="1.2"/>')
+        color = "#2f7a4f" if anchored else "#b42318"
+        out.append(f'<line x1="{x_px(x0)}" y1="{y_px(y0)}" x2="{x_px(x1)}" y2="{y_px(y1)}" stroke="{color}" stroke-width="1.2"/>')
     out.append("</svg>")
     return "\n".join(out)

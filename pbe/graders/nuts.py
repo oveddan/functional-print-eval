@@ -135,7 +135,7 @@ class LayerHole:
 
 @dataclass
 class Pocket:
-    centre: Point
+    center: Point
     across: float  # across flats, at its tightest
     depth: float
     z: tuple[float, float]
@@ -164,11 +164,11 @@ def _passes(nut, slice_holes, shrunk_outline):
     return _fits_through(slice_holes, nut) or not shrunk_outline.intersects(nut)
 
 
-def _hexagon(centre, across, degrees):
+def _hexagon(center, across, degrees):
     """A real nut of this across-flats, with a corner at this angle."""
     radius = NUT_CORNERS * across / 2 / math.cos(math.radians(30))
     corners = [math.radians(degrees + corner * 60) for corner in range(6)]
-    return Polygon([(centre.x + radius * math.cos(a), centre.y + radius * math.sin(a)) for a in corners])
+    return Polygon([(center.x + radius * math.cos(a), center.y + radius * math.sin(a)) for a in corners])
 
 
 def _nut_in(hole, across):
@@ -176,10 +176,10 @@ def _nut_in(hole, across):
     It's sized from the hole, not from the catalog's nut: this asks whether the hole is
     hex-shaped, and the fit check compares its size with the real nut. A real nut's chamfered
     corners give it over 5 degrees of play either way, so trying every 5 degrees finds any fit."""
-    centre = polylabel(hole, tolerance=0.001)
+    center = polylabel(hole, tolerance=0.001)
     room = hole.buffer(TOL)
     for degrees in range(0, 60, 5):
-        nut = _hexagon(centre, across, degrees)
+        nut = _hexagon(center, across, degrees)
         if room.contains(nut):
             return nut
     return None
@@ -277,7 +277,7 @@ def _nuts_pocket(mesh, af):
     middle = Point(mesh.centroid[:2])
 
     def nearest_then_deepest(found):
-        return round(found.centre.distance(middle), 1), -found.depth
+        return round(found.center.distance(middle), 1), -found.depth
     return min(find_pockets(mesh, af), key=nearest_then_deepest, default=None)
 
 
@@ -519,7 +519,7 @@ def sentence_saying_to_clear_it(sub):
 
 def bolt_passes(sub, built, nut, d_min):
     """The bolt goes through the nut and out the other side: at every layer, a circle of d_min
-    around the pocket's centre is clear. A layer or three left across the hole passes only if
+    around the pocket's center is clear. A layer or three left across the hole passes only if
     the manual says to clear it (a drill-out layer)."""
     part, why = single_final(sub, built)
     if part is None:
@@ -528,7 +528,7 @@ def bolt_passes(sub, built, nut, d_min):
     if found is None:
         return None, "no hex pocket to line the bolt up with"
     layer_h, sections = sections_by_layer(part.mesh, 2, LAYER)
-    clears = [_clear_around(holes_in(polys), _outline(polys), found.centre) for polys in sections]
+    clears = [_clear_around(holes_in(polys), _outline(polys), found.center) for polys in sections]
     blocked = [i for i, c in enumerate(clears) if c < d_min - TOL]
     if not blocked:
         height = len(sections) * layer_h
@@ -542,13 +542,13 @@ def bolt_passes(sub, built, nut, d_min):
     return False, f"only {clears[blocked[0]]:.2f} clear at z = {z:.1f} (want at least {d_min})"
 
 
-def _clear_around(slice_holes, outline, centre):
+def _clear_around(slice_holes, outline, center):
     """The widest circle around this point that's clear in this layer: in a hole, or in open air
     outside the part's outline, beside a feature standing higher up. 0 if it's solid."""
-    hole = next((found for found in slice_holes if found.contains(centre)), None)
+    hole = next((found for found in slice_holes if found.contains(center)), None)
     if hole is not None:
-        return 2 * hole.boundary.distance(centre)
-    return math.inf if outline.is_empty else 2 * outline.distance(centre)
+        return 2 * hole.boundary.distance(center)
+    return math.inf if outline.is_empty else 2 * outline.distance(center)
 
 
 def summarize(sub, built, nut, label):

@@ -72,7 +72,7 @@ FIGURES = [
 ]
 
 
-# ---- the mesh, sitting on the bed and centred ----
+# ---- the mesh, sitting on the bed and centered ----
 
 def _design(fig):
     """(folder, submission) with the design's parts built into folder/parts."""
@@ -164,37 +164,37 @@ def _frame(ax, geom, pad=3.0):
     ax.set_axis_off()
 
 
-def hexagon(across, centre=(0.0, 0.0), degrees=0.0):
+def hexagon(across, center=(0.0, 0.0), degrees=0.0):
     r = across / math.sqrt(3)
     points = [(r * math.cos(math.radians(60 * i)), r * math.sin(math.radians(60 * i))) for i in range(6)]
-    return affinity.translate(affinity.rotate(Polygon(points), degrees, origin=(0, 0)), *centre)
+    return affinity.translate(affinity.rotate(Polygon(points), degrees, origin=(0, 0)), *center)
 
 
-def _best_turn(hole, across, centre):
+def _best_turn(hole, across, center):
     """The nut's turn that lines up best with the pocket."""
-    return max(range(0, 60, 2), key=lambda deg: hexagon(across, centre, deg).intersection(hole).area)
+    return max(range(0, 60, 2), key=lambda deg: hexagon(across, center, deg).intersection(hole).area)
 
 
 def _pocket(mesh, nut):
     found = nuts.find_pockets(mesh, catalog.resolve(nut)["af"])
-    return min(found, key=lambda pocket: pocket.centre.distance(Polygon([(0, 0), (0, 0.01), (0.01, 0)]))) if found else None
+    return min(found, key=lambda pocket: pocket.center.distance(Polygon([(0, 0), (0, 0.01), (0.01, 0)]))) if found else None
 
 
-def _hole_at(layer, centre):
+def _hole_at(layer, center):
     holes = [Polygon(ring) for poly in (layer.geoms if hasattr(layer, "geoms") else [layer]) for ring in poly.interiors]
-    near = affinity.translate(Polygon([(0, 0), (0, .01), (.01, 0)]), *centre)
+    near = affinity.translate(Polygon([(0, 0), (0, .01), (.01, 0)]), *center)
     return min(holes, key=lambda hole: hole.distance(near)) if holes else None
 
 
-def _tightest_layer(mesh, pocket, across, centre):
+def _tightest_layer(mesh, pocket, across, center):
     """(z, layer, hole) where the nut overlaps the most plastic: the layer with ribs, clips or a lip."""
     best = None
     for z in np.arange(pocket.z[0] + 0.1, pocket.z[1], 0.2):
         layer = cut_across(mesh, z)
-        hole = _hole_at(layer, centre) if layer is not None else None
+        hole = _hole_at(layer, center) if layer is not None else None
         if hole is None:
             continue
-        nut_shape = hexagon(across, centre, _best_turn(hole, across, centre))
+        nut_shape = hexagon(across, center, _best_turn(hole, across, center))
         overlap = nut_shape.difference(hole).area
         if best is None or overlap > best[0]:
             best = (overlap, z, layer, hole)
@@ -205,9 +205,9 @@ def draw_across(ax, mesh, nut, dimensions=False):
     """The pocket cut across where it's tightest, with the nut drawn where it has to go."""
     spec = catalog.resolve(nut)
     pocket = _pocket(mesh, nut)
-    centre = (pocket.centre.x, pocket.centre.y)
-    z, layer, hole = _tightest_layer(mesh, pocket, spec["af"], centre)
-    nut_shape = hexagon(spec["af"], centre, _best_turn(hole, spec["af"], centre))
+    center = (pocket.center.x, pocket.center.y)
+    z, layer, hole = _tightest_layer(mesh, pocket, spec["af"], center)
+    nut_shape = hexagon(spec["af"], center, _best_turn(hole, spec["af"], center))
     ax.add_patch(_patch(layer, facecolor=PART, edgecolor=EDGE, lw=0.8))
     ax.add_patch(_patch(nut_shape, facecolor="none", edgecolor=HARDWARE, lw=1.6, ls="--"))
     overlap = nut_shape.difference(hole) if hole is not None else None
@@ -215,20 +215,20 @@ def draw_across(ax, mesh, nut, dimensions=False):
         ax.add_patch(_patch(overlap, facecolor=HARDWARE, edgecolor="none", alpha=0.75))
     view = nut_shape.buffer(spec["af"] * 0.9)
     if dimensions:
-        view = view.union(_dimensions(ax, pocket, spec, centre, layer.bounds[2]))
+        view = view.union(_dimensions(ax, pocket, spec, center, layer.bounds[2]))
     _frame(ax, view, pad=0.5)
 
 
-def _width_line(ax, x0, x1, y, text, colour):
+def _width_line(ax, x0, x1, y, text, color):
     """A dimension line from x0 to x1 at height y, with its label above."""
-    ax.annotate("", xy=(x0, y), xytext=(x1, y), arrowprops={"arrowstyle": "<->", "color": colour, "lw": 1.0})
-    ax.text((x0 + x1) / 2, y + 0.35, text, ha="center", va="bottom", fontsize=7.5, color=colour)
+    ax.annotate("", xy=(x0, y), xytext=(x1, y), arrowprops={"arrowstyle": "<->", "color": color, "lw": 1.0})
+    ax.text((x0 + x1) / 2, y + 0.35, text, ha="center", va="bottom", fontsize=7.5, color=color)
 
 
-def _dimensions(ax, pocket, spec, centre, knob_right):
+def _dimensions(ax, pocket, spec, center, knob_right):
     """The pocket's measured width across flats over it, and the nut drawn to its right with its own width, so the
     two numbers sit side by side. Returns the area the labels take, for framing."""
-    cx, cy = centre
+    cx, cy = center
     half = pocket.across / 2
     top = cy + spec["af"] / math.sqrt(3) + 0.6
     _width_line(ax, cx - half, cx + half, top, f"pocket {pocket.across:.2f} mm", EDGE)
@@ -299,7 +299,7 @@ def draw_side(ax, mesh, fig):
     if fig.nut:
         spec = catalog.resolve(fig.nut)
         pocket = _pocket(mesh, fig.nut)
-        x = pocket.centre.x if pocket and along == "x" else (pocket.centre.y if pocket else 0.0)
+        x = pocket.center.x if pocket and along == "x" else (pocket.center.y if pocket else 0.0)
         top = mesh.bounds[1][2]
         z = pocket.z[0] if pocket else top - spec["h"]
         ax.add_patch(Rectangle((x - spec["af"] / 2, z), spec["af"], spec["h"], facecolor=HARDWARE, alpha=0.55,

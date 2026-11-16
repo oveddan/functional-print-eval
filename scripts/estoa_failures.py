@@ -18,7 +18,7 @@ import numpy as np  # noqa: E402
 from matplotlib.patches import FancyArrowPatch, Rectangle  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import failure_figures  # noqa: E402  the part colour, edge and drawing helpers
+import failure_figures  # noqa: E402  the part color, edge and drawing helpers
 
 from pbe.graders import enclosure, placed  # noqa: E402
 from pbe.parts import submission  # noqa: E402

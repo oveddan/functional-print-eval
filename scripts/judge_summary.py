@@ -2,7 +2,7 @@
 
     uv run python scripts/judge_summary.py results/judges/2026-11-12   # writes summary.json and summary.md there
 
-Two agreements: with the key the run recorded (code, or fit_cards' colours), and with the key after Claude's hand
+Two agreements: with the key the run recorded (code, or fit_cards' colors), and with the key after Claude's hand
 check of every disagreement (results/judges/hand-labels.yaml, `hand_checked`). The baseline is what always giving
 the commonest answer in the checked key would score. Latency is per call; cost is what OpenRouter reported.
 """

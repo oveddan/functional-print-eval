@@ -61,7 +61,7 @@ def test_a_build_error_has_no_view_and_says_why():
     assert "NameError" in entry["caption"]
 
 
-def test_an_inside_out_mesh_has_no_pieces_to_colour():
+def test_an_inside_out_mesh_has_no_pieces_to_color():
     inside_out = trimesh.creation.box(extents=(10, 10, 5))
     inside_out.invert()
     entry = views.draw_one(design_of(inside_out), finding("connected_bodies", detail="0 bodies"))
@@ -69,7 +69,7 @@ def test_an_inside_out_mesh_has_no_pieces_to_colour():
     assert "no piece with positive volume" in entry["no_view_reason"]
 
 
-def test_two_loose_bodies_are_coloured():
+def test_two_loose_bodies_are_colored():
     one = trimesh.creation.box(extents=(10, 10, 5))
     two = trimesh.creation.box(extents=(3, 3, 3), transform=trimesh.transformations.translation_matrix((20, 0, 0)))
     entry = views.draw_one(design_of(trimesh.util.concatenate([one, two])), finding("connected_bodies", detail="2 bodies"))

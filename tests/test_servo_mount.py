@@ -177,7 +177,7 @@ def test_a_channel_narrower_than_the_rib_fails_only_flush(tmp_path):
     only_failed(design(channel_w=1.2), tmp_path, {"R3"})
 
 
-def test_inside_edges_read_as_centres_fail_only_screws(tmp_path):
+def test_inside_edges_read_as_centers_fail_only_screws(tmp_path):
     only_failed(design(code=plate_code(), pitch=44.61), tmp_path, {"R2"})
 
 

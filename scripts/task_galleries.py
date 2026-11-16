@@ -98,7 +98,7 @@ def gallery(task: str, png: Path) -> None:
     rows = [("Pass", passes, "#2f7a4f"), ("Fail", fails, "#b0392b")]
     fig, axes = plt.subplots(2, PER_ROW, figsize=(PER_ROW * 2.6, 2 * 2.7), dpi=150)
     with tempfile.TemporaryDirectory() as scratch:
-        for row, (label, trials, colour) in enumerate(rows):
+        for row, (label, trials, color) in enumerate(rows):
             for col in range(PER_ROW):
                 ax = axes[row][col]
                 ax.set_axis_off()
@@ -121,7 +121,7 @@ def gallery(task: str, png: Path) -> None:
                 title = f"{label}: {short_model(record.model)}, trial {record.trial}"
                 if record.task.count("/"):
                     title += f" ({record.task.split('/')[1]})"
-                ax.set_title(title, fontsize=8.5, color=colour, fontweight="bold")
+                ax.set_title(title, fontsize=8.5, color=color, fontweight="bold")
                 if label == "Fail":
                     ax.text(0.5, -0.04, "\n".join(_wrap(failed_reason(record), 34)), transform=ax.transAxes,
                             ha="center", va="top", fontsize=7.5, color="#3b4440")

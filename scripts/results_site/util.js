@@ -30,7 +30,7 @@ export function clear(el) {
   return el;
 }
 
-// ---- icons: one shape per verdict, so colour is never the only signal ----
+// ---- icons: one shape per verdict, so color is never the only signal ----
 
 const ICON_PATHS = {
   check: '<path d="M3.2 8.6l3.1 3.1 6.5-7.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',

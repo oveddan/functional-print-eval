@@ -31,7 +31,7 @@ def test_the_documented_response_parses():
     decision = dz.Decision(model="m", answers=reply["answers"], usage=reply["usage"], seconds=1.0)
     assert decision.answers["is_bug"].noul == 0.96
     assert decision.answers["team"].probabilities["payments"] == 0.84
-    assert decision.answers["where"].box.centre() == (0.4, 0.2)
+    assert decision.answers["where"].box.center() == (0.4, 0.2)
     assert decision.cost == 0.000019992
 
 
@@ -103,7 +103,7 @@ SESSION = [
     {"role": "user", "content": "make me a box"},
     {"role": "assistant", "content": "", "reasoning": "private thoughts", "tool_calls": [
         _call("measure", '{"item": "USB-C charger plug", "what": "overmold width"}'),
-        _call("measure", '{"item": "own:esp32", "what": "height of the centre of the port, with the ESP32 plugged in"}'),
+        _call("measure", '{"item": "own:esp32", "what": "height of the center of the port, with the ESP32 plugged in"}'),
         _call("print_test", '{"params": {}, "parts": "' + "x" * 3000 + ' keyhole slot"}'),
         _call("submit_design", '{"code": "' + "y" * 5000 + '"}'),
     ]},

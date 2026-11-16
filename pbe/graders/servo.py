@@ -3,7 +3,7 @@ cutout (class C2), do screws through the tabs land in the plate's holes (C3), an
 flush against the plate (C5)?
 
 The servo's place comes from the plate's own cutout: the opening the body fits through gives its
-centre and which way it runs. Nothing assumes how the plate is built or which way up it prints.
+center and which way it runs. Nothing assumes how the plate is built or which way up it prints.
 Which limits, and the record behind each, are in tasks/servo-mount/brief.md. A case no record
 decides comes back None, "not graded", which is never a pass.
 """
@@ -34,20 +34,20 @@ class Body:
 
 @dataclass(frozen=True)
 class Tabs:
-    pitch: tuple[float, ...]  # centre to centre along the servo, end to end: each value a record gives
-    pair: float  # centre to centre of the two holes in one tab
+    pitch: tuple[float, ...]  # center to center along the servo, end to end: each value a record gives
+    pair: float  # center to center of the two holes in one tab
     hole: float  # the tab hole's diameter
 
 
 @dataclass(frozen=True)
 class Frame:
     """The servo's place on the plate, in the plane of the plate's layers."""
-    centre: np.ndarray
+    center: np.ndarray
     along: np.ndarray  # unit vector along the servo's length
     across: np.ndarray
 
     def at(self, x, y):
-        return self.centre + x * self.along + y * self.across
+        return self.center + x * self.along + y * self.across
 
     def rect(self, x0, x1, y0, y1) -> Polygon:
         return Polygon([self.at(x0, y0), self.at(x1, y0), self.at(x1, y1), self.at(x0, y1)])
@@ -113,12 +113,12 @@ def _span(region, point, direction, reach=500.0):
     return None
 
 
-def _middle(region, centre, direction, sideways, offsets):
-    """The middle of the region along `direction`, read on lines at `offsets` sideways of `centre`,
-    so a notch on the centreline (room for a cable or the rib) doesn't pull it off the body."""
+def _middle(region, center, direction, sideways, offsets):
+    """The middle of the region along `direction`, read on lines at `offsets` sideways of `center`,
+    so a notch on the centerline (room for a cable or the rib) doesn't pull it off the body."""
     middles = []
     for offset in offsets:
-        span = _span(region, centre + offset * sideways, direction)
+        span = _span(region, center + offset * sideways, direction)
         if span is not None:
             middles.append((span[0] + span[1]) / 2)
     return float(np.mean(middles)) if middles else 0.0
@@ -131,12 +131,12 @@ def _frame(cutout, body) -> Frame:
     longest = max(edges, key=np.linalg.norm)
     along = longest / np.linalg.norm(longest)
     across = np.array([-along[1], along[0]])
-    centre = np.asarray(rect.centroid.coords[0])
+    center = np.asarray(rect.centroid.coords[0])
     near_sides = (-(body.width / 2 - 1), body.width / 2 - 1)
-    centre = centre + along * _middle(cutout, centre, along, across, near_sides)
+    center = center + along * _middle(cutout, center, along, across, near_sides)
     near_ends = (-(body.length / 2 - 2), body.length / 2 - 2)
-    centre = centre + across * _middle(cutout, centre, across, along, near_ends)
-    return Frame(centre, along, across)
+    center = center + across * _middle(cutout, center, across, along, near_ends)
+    return Frame(center, along, across)
 
 
 def _body_fits(cutout, frame, body, per_side):
@@ -274,7 +274,7 @@ def _screw_axis_region(opening, screw_d):
 def _plate_holes(mount):
     """The holes clear through the whole plate, apart from the cutout."""
     holes = holes_in(_pieces(_solid([mount.layers[index] for index in mount.plate])))
-    return [hole for hole in holes if not hole.intersects(Point(mount.frame.centre))]
+    return [hole for hole in holes if not hole.intersects(Point(mount.frame.center))]
 
 
 def _blind_hole_at(mount, spot, screw_d):
@@ -284,7 +284,7 @@ def _blind_hole_at(mount, spot, screw_d):
 
 
 def _lands(mount, holes, x, y, tabs, screw_d) -> Verdict:
-    """Whether a screw through the tab hole centred at (x, y) goes into a hole in the plate."""
+    """Whether a screw through the tab hole centered at (x, y) goes into a hole in the plate."""
     room = max(tabs.hole / 2 - screw_d / 2, 0.01)
     spot = Point(mount.frame.at(x, y)).buffer(room)
     if any(_screw_axis_region(hole, screw_d).intersects(spot) for hole in holes):
@@ -292,7 +292,7 @@ def _lands(mount, holes, x, y, tabs, screw_d) -> Verdict:
     # the tab hole is a U-slot open to the tab's end; how far the tab runs past it wasn't measured
     outward = mount.frame.rect(x, x + np.sign(x) * 10, y - room, y + room)
     if any(_screw_axis_region(hole, screw_d).intersects(outward) for hole in holes):
-        return Verdict(None, "only past the tab hole's centre, in the open end of the U-slot, whose length wasn't measured")
+        return Verdict(None, "only past the tab hole's center, in the open end of the U-slot, whose length wasn't measured")
     if mount.cutout.buffer(-TOL).intersects(spot):
         return Verdict(False, "the tab hole is over the cutout, with nothing to screw into")
     if _blind_hole_at(mount, spot, screw_d):
@@ -365,7 +365,7 @@ def _area_in(solid, region):
 def _contact(mount, order, tab_rect):
     """The first layer, going in from one face, with solid under the tab: the face the tab meets.
     A layer that's solid at the servo's middle, such as a box's floor, is something else."""
-    middle = Point(mount.frame.centre)
+    middle = Point(mount.frame.center)
     return next((index for index in order
                  if _area_in(mount.layers[index], tab_rect) > AREA and not mount.layers[index].contains(middle)), None)
 
@@ -433,7 +433,7 @@ def _cable_route(mount, servo, tabs, cable_stopped) -> Verdict:
     seats = [_seat(mount, order, servo, tabs) for order in (up, up[::-1])]
     if all(contact is None for contact, _ in seats):
         return Verdict(False, f"from above: {seats[0][1]}")
-    span = _span(mount.cutout, mount.frame.centre, mount.frame.along)
+    span = _span(mount.cutout, mount.frame.center, mount.frame.along)
     if span is None:
         return Verdict(False, "from above: no cutout at the servo's middle")
     room = max(-span[0], span[1]) - servo.length / 2

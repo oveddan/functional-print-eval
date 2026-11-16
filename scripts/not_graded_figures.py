@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RUNS = ROOT / "results/runs"
 OUT = ROOT / "docs/media/not-graded"
 EXAMPLES = OUT / "examples.json"
-POCKET_CLOSE_UP_MM = 10.0  # around the part's centre, so a nut pocket fills the picture
+POCKET_CLOSE_UP_MM = 10.0  # around the part's center, so a nut pocket fills the picture
 
 
 def slug(reason: str) -> str:

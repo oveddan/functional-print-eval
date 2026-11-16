@@ -278,10 +278,10 @@ def fill(ax, geom, z=1, **style):
         ax.add_patch(ff._patch(poly, zorder=z, **style))
 
 
-def silhouette(ax, mesh, axes, colour, z=1, alpha=1.0):
+def silhouette(ax, mesh, axes, color, z=1, alpha=1.0):
     """The mesh seen along the third axis, as its triangles filled flat."""
     triangles = np.asarray(mesh.triangles)[:, :, list(axes)]
-    ax.add_collection(PolyCollection(triangles, facecolors=colour, edgecolors=colour, linewidths=0.15, zorder=z, alpha=alpha))
+    ax.add_collection(PolyCollection(triangles, facecolors=color, edgecolors=color, linewidths=0.15, zorder=z, alpha=alpha))
 
 
 def frame(ax, bounds, pad=None, bottom_room=0.12):
@@ -365,9 +365,9 @@ def render(view, caption):
     return out.getvalue()
 
 
-def _rgb(colour):
+def _rgb(color):
     from matplotlib.colors import to_rgba
-    rgba = to_rgba(colour)
+    rgba = to_rgba(color)
     return None if rgba[3] == 0 else tuple(round(c, 2) for c in rgba[:3])
 
 
@@ -378,8 +378,8 @@ def _visible_in(ax, extent):
             and extent.y1 >= box.y0 and extent.y0 <= box.y1)
 
 
-def drawn_colours(fig):
-    """({fill colours}, {line and edge colours}) of what is actually drawn inside the panels."""
+def drawn_colors(fig):
+    """({fill colors}, {line and edge colors}) of what is actually drawn inside the panels."""
     fig.canvas.draw()
     fills, lines = set(), set()
     for ax in fig.axes:
@@ -407,9 +407,9 @@ def drawn_colours(fig):
 
 def drawn_entries(fig, legend):
     """The legend entries whose mark is drawn in the figure: a filled swatch needs that fill somewhere, a line needs
-    that line or edge colour, a marker needs that marker. An entry for something not drawn is dropped, so the legend
+    that line or edge color, a marker needs that marker. An entry for something not drawn is dropped, so the legend
     never names a thing the picture doesn't show."""
-    fills, lines = drawn_colours(fig)
+    fills, lines = drawn_colors(fig)
     kept = []
     for handle in legend:
         if isinstance(handle, Line2D):
@@ -487,12 +487,12 @@ def collapse_blank_rows(picture, keep=36):
     return Image.fromarray(pixels[rows].astype(np.uint8))
 
 
-def patch_key(colour, words, edge=None, ls="-"):
-    return Patch(facecolor=colour, edgecolor=edge or colour, label=words, ls=ls)
+def patch_key(color, words, edge=None, ls="-"):
+    return Patch(facecolor=color, edgecolor=edge or color, label=words, ls=ls)
 
 
-def line_key(colour, words, ls="-", lw=1.6):
-    return Line2D([], [], color=colour, ls=ls, lw=lw, label=words)
+def line_key(color, words, ls="-", lw=1.6):
+    return Line2D([], [], color=color, ls=ls, lw=lw, label=words)
 
 
 # ---- generic printability checks ----
@@ -601,8 +601,8 @@ def view_connected(design, finding, part_id):
         for piece in loose:  # a sliver too small to see gets a ring round it
             plow, phigh = piece.bounds
             if max(phigh[axes[0]] - plow[axes[0]], phigh[axes[1]] - plow[axes[1]]) < 0.04 * span:
-                centre = ((plow[axes[0]] + phigh[axes[0]]) / 2, (plow[axes[1]] + phigh[axes[1]]) / 2)
-                target.add_patch(Circle(centre, 0.035 * span, fill=False, ec=FAIL, lw=1.4, zorder=5))
+                center = ((plow[axes[0]] + phigh[axes[0]]) / 2, (plow[axes[1]] + phigh[axes[1]]) / 2)
+                target.add_patch(Circle(center, 0.035 * span, fill=False, ec=FAIL, lw=1.4, zorder=5))
         scale_bar(target)
     side.axhline(bed, color=EDGE, lw=0.8, ls="--")
     top.set_title("From above")
@@ -618,9 +618,9 @@ def view_bed_fit(design, finding, part_id):
     bed = printer().bed_mm
     fig, (top, side) = new_figure("two")
     low, high = mesh.bounds
-    centre = (low + high) / 2
+    center = (low + high) / 2
     moved = mesh.copy()
-    moved.apply_translation([bed[0] / 2 - centre[0], bed[1] / 2 - centre[1], -low[2]])
+    moved.apply_translation([bed[0] / 2 - center[0], bed[1] / 2 - center[1], -low[2]])
     for target, axes, size in ((top, (0, 1), (bed[0], bed[1])), (side, (0, 2), (bed[0], bed[2]))):
         target.add_patch(Rectangle((0, 0), size[0], size[1], fill=False, ec=BOARD, lw=1.2, ls="--", zorder=4))
         silhouette(target, moved, axes, PART, z=2)
@@ -650,32 +650,32 @@ def _knob_pocket(design, mesh):
     return spec, nuts._nuts_pocket(mesh, spec["af"])
 
 
-def _nut_turned(hole, af, centre):
-    return max(range(0, 60, 2), key=lambda degrees: nuts._hexagon(centre, af, degrees).intersection(hole).area)
+def _nut_turned(hole, af, center):
+    return max(range(0, 60, 2), key=lambda degrees: nuts._hexagon(center, af, degrees).intersection(hole).area)
 
 
 def _draw_across(ax, mesh, spec, found):
     """The pocket cut across at its tightest layer, with a real nut (catalog size, chamfered corners) laid in it."""
     af = spec["af"]
-    centre = (found.centre.x, found.centre.y)
-    z, layer, hole = ff._tightest_layer(mesh, found, af, centre)
-    nut_shape = nuts._hexagon(found.centre, af, _nut_turned(hole, af, found.centre))
+    center = (found.center.x, found.center.y)
+    z, layer, hole = ff._tightest_layer(mesh, found, af, center)
+    nut_shape = nuts._hexagon(found.center, af, _nut_turned(hole, af, found.center))
     fill(ax, layer, fc=PART, ec=EDGE, lw=0.6)
     fill(ax, nut_shape, z=3, fc="none", ec=HARDWARE, lw=1.4, ls="--")
     overlap = nut_shape.difference(hole)
     if overlap.area > 0.005:
         fill(ax, overlap, z=4, fc=HARDWARE, ec="#9a4a0c", lw=1.2, alpha=0.9)
-    ax.text(found.centre.x, found.centre.y, f"pocket {found.across:.2f}\nnut {af:g}", ha="center", va="center", fontsize=7.5, zorder=6)
+    ax.text(found.center.x, found.center.y, f"pocket {found.across:.2f}\nnut {af:g}", ha="center", va="center", fontsize=7.5, zorder=6)
     frame(ax, nut_shape.buffer(af * 0.55).bounds, pad=0)
     ax.set_title(f"Cut across at z = {z - mesh.bounds[0][2]:.1f} mm, where the nut meets most plastic")
     scale_bar(ax)
     return overlap.area
 
 
-def _draw_knob_side(ax, mesh, spec, found, centre=None, along=(1, 0, 0)):
+def _draw_knob_side(ax, mesh, spec, found, center=None, along=(1, 0, 0)):
     """A vertical cut through the pocket (or the part's middle), with the nut drawn at catalog size where it seats."""
     bottom = mesh.bounds[0][2]
-    cx, cy = (found.centre.x, found.centre.y) if found else (centre if centre else mesh.bounds[:, :2].mean(axis=0))
+    cx, cy = (found.center.x, found.center.y) if found else (center if center else mesh.bounds[:, :2].mean(axis=0))
     cut = plane_cut([mesh], (cx, cy, bottom), along, (0, 0, 1))
     fill(ax, cut, fc=PART, ec=EDGE, lw=0.6)
     nut_box = None
@@ -721,14 +721,14 @@ def view_knob_r2(design, finding):
     fig, (ax,) = new_figure("one")
     silhouette(ax, mesh, (0, 1), PART)
     low, high = mesh.bounds
-    centre = (low[:2] + high[:2]) / 2
+    center = (low[:2] + high[:2]) / 2
     for diameter, style in ((args["d"], "-"), (args["d"] * (1 - args["tol_frac"]), "--"), (args["d"] * (1 + args["tol_frac"]), "--")):
-        ax.add_patch(Circle(centre, diameter / 2, fill=False, ec=OK, lw=1.2, ls=style, zorder=3))
+        ax.add_patch(Circle(center, diameter / 2, fill=False, ec=OK, lw=1.2, ls=style, zorder=3))
     width = float(max(mesh.extents[:2]))
     ax.annotate("", xy=(low[0], low[1] - 1.5), xytext=(high[0], low[1] - 1.5), arrowprops={"arrowstyle": "<->", "color": FAIL})
-    ax.text(centre[0], low[1] - 2.2, f"{width:.1f} mm", ha="center", va="top", color=FAIL)
+    ax.text(center[0], low[1] - 2.2, f"{width:.1f} mm", ha="center", va="top", color=FAIL)
     reach = args["d"] * (1 + args["tol_frac"]) / 2
-    frame(ax, (centre[0] - reach, centre[1] - reach - 4, centre[0] + reach, centre[1] + reach))
+    frame(ax, (center[0] - reach, center[1] - reach - 4, center[0] + reach, center[1] + reach))
     ax.set_title("The knob from above")
     scale_bar(ax)
     return View("plan-width", fig, [patch_key(PART, "The knob"), line_key(OK, f"{args['d']} mm asked"),
@@ -756,21 +756,21 @@ def _view_no_pocket(mesh, spec):
     """No hex pocket the nut's size along z: the part cut down its middle and across where its central hole is
     widest, with the nut drawn where a pocket would have to be."""
     bottom, top = mesh.bounds[0][2], mesh.bounds[1][2]
-    centre = Point(*mesh.bounds[:, :2].mean(axis=0))
+    center = Point(*mesh.bounds[:, :2].mean(axis=0))
     best = None
     for z in np.linspace(bottom + 0.1, top - 0.1, 40):
         layer = ff.cut_across(mesh, z)
         if layer is None:
             continue
         holes = [Polygon(ring) for poly in polygons_of(layer) for ring in poly.interiors]
-        here = [hole for hole in holes if hole.buffer(0.5).contains(centre)]
+        here = [hole for hole in holes if hole.buffer(0.5).contains(center)]
         score = -abs(sections.clear_width(here[0]) - spec["af"]) if here else -math.inf
         if best is None or score > best[0]:
             best = (score, z, layer, here[0] if here else None)
     if best is None:
         raise NoView("the part has no cross-section to cut")
     _, z, layer, hole = best
-    nut_at = polylabel(hole, tolerance=0.01) if hole is not None else centre
+    nut_at = polylabel(hole, tolerance=0.01) if hole is not None else center
     nut_shape = nuts._hexagon(nut_at, spec["af"], _nut_turned(hole, spec["af"], nut_at) if hole is not None else 0)
     fig, (across, side) = new_figure("two")
     fill(across, layer, fc=PART, ec=EDGE, lw=0.6)
@@ -832,7 +832,7 @@ def view_knob_r5(design, finding):
         raise NoView("today's grader finds no hex pocket to line the bolt up with")
     d_min = design.args("R5")["d_min"]
     layer_h, cuts = sections.sections_by_layer(mesh, 2, nuts.LAYER)
-    clears = [nuts._clear_around(sections.holes_in(polys), nuts._outline(polys), found.centre) for polys in cuts]
+    clears = [nuts._clear_around(sections.holes_in(polys), nuts._outline(polys), found.center) for polys in cuts]
     blocked = [i for i, clear in enumerate(clears) if clear < d_min - nuts.TOL]
     if not blocked:
         raise NoView("today's check finds the bolt's path clear, so there's no blockage to draw")
@@ -840,7 +840,7 @@ def view_knob_r5(design, finding):
     bottom = mesh.bounds[0][2]
 
     def blocked_area(along):  # the cut that shows the most of the blockage: a web across half the bore hides in the other
-        cut = plane_cut([mesh], (found.centre.x, found.centre.y, bottom), along, (0, 0, 1))
+        cut = plane_cut([mesh], (found.center.x, found.center.y, bottom), along, (0, 0, 1))
         bands = [box_of((-d_min / 2, i * layer_h, d_min / 2, (i + 1) * layer_h)) for i in blocked]
         return merged(bands).intersection(cut).area
     along = max(((1, 0, 0), (0, 1, 0)), key=blocked_area)
@@ -853,10 +853,10 @@ def view_knob_r5(design, finding):
     side.set_title("Side cut: bolt's path dotted")
     first = blocked[0]
     fill(across, merged(cuts[first]), fc=PART, ec=EDGE, lw=0.6)
-    across.add_patch(Circle((found.centre.x, found.centre.y), d_min / 2, fill=False, ec=FAIL, lw=1.4, ls="--", zorder=5))
+    across.add_patch(Circle((found.center.x, found.center.y), d_min / 2, fill=False, ec=FAIL, lw=1.4, ls="--", zorder=5))
     if 0 < clears[first] < math.inf:
-        across.add_patch(Circle((found.centre.x, found.centre.y), clears[first] / 2, fill=False, ec=OK, lw=1.2, zorder=5))
-    frame(across, Point(found.centre.x, found.centre.y).buffer(spec["af"] * 1.1).bounds, pad=0)
+        across.add_patch(Circle((found.center.x, found.center.y), clears[first] / 2, fill=False, ec=OK, lw=1.2, zorder=5))
+    frame(across, Point(found.center.x, found.center.y).buffer(spec["af"] * 1.1).bounds, pad=0)
     across.set_title(f"Cut across at z = {(first + 0.5) * layer_h:.1f} mm")
     scale_bar(across)
     legend = [patch_key(PART, "Printed knob, cut", EDGE), line_key(FAIL, f"The bolt needs {d_min} mm clear", "--"),
@@ -894,8 +894,8 @@ def _wheel_cut(mesh, seat_range, bearing_width=7.0, bearings=2):
     in_plane = [other for other in range(3) if other != axis]
     point = mesh.bounds.mean(axis=0)
     if stack:
-        centre = min(stack, key=sections.clear_width).centroid
-        point[in_plane[0]], point[in_plane[1]] = centre.x, centre.y
+        center = min(stack, key=sections.clear_width).centroid
+        point[in_plane[0]], point[in_plane[1]] = center.x, center.y
     point[axis] = mesh.bounds[0][axis]
     u, v = np.eye(3)[in_plane[0]], np.eye(3)[axis]
     cut = plane_cut([mesh], point, u, v)
@@ -1104,11 +1104,11 @@ def _clamped_side(mesh, axis):
     return side, plan_axes
 
 
-def _plate_cut(mesh, axis, centre=None):
+def _plate_cut(mesh, axis, center=None):
     side, plan_axes = _clamped_side(mesh, axis)
     point = mesh.bounds.mean(axis=0)
-    if centre is not None:
-        point[plan_axes[0]], point[plan_axes[1]] = centre
+    if center is not None:
+        point[plan_axes[0]], point[plan_axes[1]] = center
     point[axis] = mesh.bounds[0][axis]
     cut = plane_cut([mesh], point, np.eye(3)[plan_axes[side]], np.eye(3)[axis])
     widths, _ = bolted._clamped_widths(mesh, axis)
@@ -1204,12 +1204,12 @@ def view_tripod_bolt(design, finding):
     bore = bolted._main_bore(mesh, axis, bolt_across if check == "R3" else args["bolt_across"], told is not None)
     side, plan_axes = _clamped_side(mesh, axis)
     stack = _bore_holes(mesh, axis, bore) if bore else None
-    centre = None
+    center = None
     if stack:
         tight = min(stack, key=sections.clear_width).centroid
-        centre = (tight.x, tight.y)
-    plate = _plate_cut(mesh, axis, centre)
-    if plate.cut.is_empty:  # the bore's centre found off the plate (a gap read open at the side): cut the middle instead
+        center = (tight.x, tight.y)
+    plate = _plate_cut(mesh, axis, center)
+    if plate.cut.is_empty:  # the bore's center found off the plate (a gap read open at the side): cut the middle instead
         plate = _plate_cut(mesh, axis)
     if plate.cut.is_empty:
         raise NoView("a cut through the plate comes back empty (the mesh isn't clean there)")
@@ -1335,8 +1335,8 @@ def view_estoa_r1(design, finding):
         zoom.add_patch(Circle((x, 0), args["hole"] / 2, fill=False, ec=BOARD, lw=0.9, zorder=6))
         zoom.add_patch(Circle((x, 0), args["screw"] / 2, fill=False, ec=HARDWARE, lw=1.2, ls="--", zorder=6))
     frame(whole, disk.bounds)
-    centre = span.centroid
-    frame(zoom, centre.buffer(7).bounds, pad=0)
+    center = span.centroid
+    frame(zoom, center.buffer(7).bounds, pad=0)
     whole.set_title("From the disk's side")
     zoom.set_title(f"Its hole at {span.coords[0][0]:+.1f} mm")
     for ax in (whole, zoom):
@@ -1564,12 +1564,12 @@ def view_estoa_r6(design, finding):
     def draw_keyholes(ax, lw):
         fill(ax, back, fc=PART, ec=EDGE, lw=0.5)
         for keyhole, verdict in zip(found, verdicts):
-            centre, entry, slot, direction, travel = keyhole
-            colour = FAIL if verdict.ok is False else (OK if verdict.ok else WARN)
-            ax.add_patch(Circle(centre, entry / 2, fill=False, ls="--", ec=colour, lw=lw, zorder=4))
-            rest = centre + direction * travel
+            center, entry, slot, direction, travel = keyhole
+            color = FAIL if verdict.ok is False else (OK if verdict.ok else WARN)
+            ax.add_patch(Circle(center, entry / 2, fill=False, ls="--", ec=color, lw=lw, zorder=4))
+            rest = center + direction * travel
             ax.add_patch(Circle(rest, head / 2, fill=False, ec=HARDWARE, lw=lw * 1.2, zorder=5))
-            ax.annotate("", xy=rest, xytext=centre, arrowprops={"arrowstyle": "-|>", "color": colour, "lw": lw}, zorder=6)
+            ax.annotate("", xy=rest, xytext=center, arrowprops={"arrowstyle": "-|>", "color": color, "lw": lw}, zorder=6)
     draw_keyholes(overview, 0.9)
     span = bounds_of(back)
     size = max(span[2] - span[0], span[3] - span[1])
@@ -1585,13 +1585,13 @@ def view_estoa_r6(design, finding):
               line_key(HARDWARE, f"A {head} mm screw head where the slot ends"), line_key(BOARD, "Up when it hangs: the way the slots run")]
     if not found:
         return View("back-keyholes", fig, legend, "no keyhole shape was found in the back")
-    centre, entry, slot, direction, travel = worst
-    rest = centre + direction * travel
+    center, entry, slot, direction, travel = worst
+    rest = center + direction * travel
     zoom = axes[1]
     draw_keyholes(zoom, 1.4)
-    window = Point(*((centre + rest) / 2)).buffer(max(head, entry) * 0.5 + travel / 2 + 3)
+    window = Point(*((center + rest) / 2)).buffer(max(head, entry) * 0.5 + travel / 2 + 3)
     frame(zoom, window.bounds, pad=0)
-    zoom.text(centre[0], centre[1], f"entry {entry:.1f}", fontsize=6.8, ha="center", va="center", zorder=8)
+    zoom.text(center[0], center[1], f"entry {entry:.1f}", fontsize=6.8, ha="center", va="center", zorder=8)
     zoom.set_title(f"Zoomed: slot {slot:.2f} wide")
     scale_bar(zoom)
     overview.add_patch(Circle(window.centroid.coords[0], size * 0.06, fill=False, ec=FAIL, lw=1.2, zorder=8))

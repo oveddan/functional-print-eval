@@ -76,7 +76,7 @@ def own_part(ref):
                     (PERFBOARD["width"] / 2, PERFBOARD["length"] / 2, 0.0))
     if ref == "own:esp32":
         depth, across, tall = ESP32["port"]
-        top = -tall / 2  # the frame's origin is the port mouth's centre, and the port sits on the board's top face
+        top = -tall / 2  # the frame's origin is the port mouth's center, and the port sits on the board's top face
         board = _box((-ESP32["length"], -ESP32["width"] / 2, top - ESP32["board"]), (0.0, ESP32["width"] / 2, top))
         port = _box((-depth, -across / 2, -tall / 2), (0.0, across / 2, tall / 2))
         return trimesh.util.concatenate([board, port])

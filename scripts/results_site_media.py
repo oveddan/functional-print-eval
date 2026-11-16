@@ -207,14 +207,14 @@ def _bridge_faces(mesh):
     from pbe.parts.printer import printer
     layer = printer().layer_mm
     bottom = mesh.bounds[0][2]
-    centres, normals = mesh.triangles_center, mesh.face_normals
+    centers, normals = mesh.triangles_center, mesh.face_normals
     faces, sheets = set(), []
     for found in overhangs(mesh):
         if found.ok or found.narrow:
             continue
         z = found.z + bottom  # overhangs() puts the bed at z = 0
-        near = (centres[:, 2] > z - 0.05) & (centres[:, 2] < z + layer + 0.05) & (normals[:, 2] < -0.2)
-        inside = near & shapely.contains_xy(found.region.buffer(0.4), centres[:, 0], centres[:, 1])
+        near = (centers[:, 2] > z - 0.05) & (centers[:, 2] < z + layer + 0.05) & (normals[:, 2] < -0.2)
+        inside = near & shapely.contains_xy(found.region.buffer(0.4), centers[:, 0], centers[:, 1])
         if inside.any():
             faces.update(np.flatnonzero(inside).tolist())
         else:
@@ -271,10 +271,10 @@ def _nut_pocket_faces(mesh, task):
     found = nuts._nuts_pocket(mesh, af)
     if found is None:
         return set()
-    centres = mesh.triangles_center
+    centers = mesh.triangles_center
     reach = found.across / np.sqrt(3) + 0.3  # the hexagon's corner radius, and a little
-    distance = np.hypot(centres[:, 0] - found.centre.x, centres[:, 1] - found.centre.y)
-    inside = (distance <= reach) & (centres[:, 2] >= found.z[0] - 0.05) & (centres[:, 2] <= found.z[1] + 0.05)
+    distance = np.hypot(centers[:, 0] - found.center.x, centers[:, 1] - found.center.y)
+    inside = (distance <= reach) & (centers[:, 2] >= found.z[0] - 0.05) & (centers[:, 2] <= found.z[1] + 0.05)
     return set(np.flatnonzero(inside).tolist())
 
 
@@ -326,10 +326,10 @@ def choose_view(mesh, faces):
 def _polydata(mesh, faces, rgb):
     import pyvista as pv
     data = pv.PolyData.from_regular_faces(np.asarray(mesh.vertices), np.asarray(mesh.faces))
-    colours = np.tile(np.array(PART_RGB, np.uint8), (len(mesh.faces), 1))
+    colors = np.tile(np.array(PART_RGB, np.uint8), (len(mesh.faces), 1))
     if faces:
-        colours[list(faces)] = rgb
-    data.cell_data["rgb"] = colours
+        colors[list(faces)] = rgb
+    data.cell_data["rgb"] = colors
     return data
 
 
@@ -339,11 +339,11 @@ def _frame(plotter, mesh, direction):
     right = np.cross(up, direction)
     right /= np.linalg.norm(right)
     true_up = np.cross(direction, right)
-    centre = mesh.bounds.mean(axis=0)
+    center = mesh.bounds.mean(axis=0)
     span = float(np.linalg.norm(mesh.extents)) or 1.0
-    points = mesh.vertices - centre
+    points = mesh.vertices - center
     across, tall = np.ptp(points @ right), np.ptp(points @ true_up)
-    middle = centre + right * ((points @ right).max() + (points @ right).min()) / 2 \
+    middle = center + right * ((points @ right).max() + (points @ right).min()) / 2 \
         + true_up * ((points @ true_up).max() + (points @ true_up).min()) / 2
     plotter.camera.position = tuple(middle + direction * span * 3)
     plotter.camera.focal_point = tuple(middle)

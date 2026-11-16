@@ -83,7 +83,7 @@ class Edges(BaseModel):
     left: float
     right: float
 
-    def centre(self) -> tuple[float, float]:
+    def center(self) -> tuple[float, float]:
         return (self.left + self.right) / 2, (self.top + self.bottom) / 2
 
 

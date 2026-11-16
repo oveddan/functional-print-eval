@@ -56,7 +56,7 @@ class PlacedScrew:
     length: float
     head_d: float  # 0 where the catalog doesn't say
     head_h: float
-    head: np.ndarray  # the centre of the underside of its head
+    head: np.ndarray  # the center of the underside of its head
     direction: np.ndarray  # unit, head to tip
 
     @property
@@ -145,10 +145,10 @@ def box(low, high) -> trimesh.Trimesh:
 
 def column(radius, z_low, z_high, inner=0.0) -> trimesh.Trimesh:
     """A cylinder (or, with `inner`, a tube) on the z axis."""
-    centre = trimesh.transformations.translation_matrix((0, 0, (z_low + z_high) / 2))
+    center = trimesh.transformations.translation_matrix((0, 0, (z_low + z_high) / 2))
     if inner > 0:
-        return trimesh.creation.annulus(r_min=inner, r_max=radius, height=z_high - z_low, transform=centre, sections=48)
-    return trimesh.creation.cylinder(radius=radius, height=z_high - z_low, transform=centre, sections=48)
+        return trimesh.creation.annulus(r_min=inner, r_max=radius, height=z_high - z_low, transform=center, sections=48)
+    return trimesh.creation.cylinder(radius=radius, height=z_high - z_low, transform=center, sections=48)
 
 
 def plastic_in(meshes, probe) -> list[trimesh.Trimesh]:

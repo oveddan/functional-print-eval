@@ -13,14 +13,14 @@ import numpy as np
 import trimesh
 from PIL import Image
 
-BACKGROUND = (248, 248, 248)  # OpenSCAD's "Tomorrow" colour scheme; made transparent after
+BACKGROUND = (248, 248, 248)  # OpenSCAD's "Tomorrow" color scheme; made transparent after
 
 
 def _cutaway_scad(stl):
-    """OpenSCAD source for the part with everything in front of its centre (lower y) cut away."""
-    centre_x, centre_y, centre_z = trimesh.load(stl, force="mesh").bounds.mean(axis=0)
+    """OpenSCAD source for the part with everything in front of its center (lower y) cut away."""
+    center_x, center_y, center_z = trimesh.load(stl, force="mesh").bounds.mean(axis=0)
     return (f'difference() {{ import("{stl}"); '
-            f'translate([{centre_x - 500:.3f}, {centre_y - 1000:.3f}, {centre_z - 500:.3f}]) cube([1000, 1000, 1000]); }}\n')
+            f'translate([{center_x - 500:.3f}, {center_y - 1000:.3f}, {center_z - 500:.3f}]) cube([1000, 1000, 1000]); }}\n')
 
 
 def _openscad_png(scad, size):
@@ -44,7 +44,7 @@ def _clear_background(image):
 
 
 def render_png(stl, size=(880, 720)) -> bytes:
-    """The part with its front half (y below the centre) cut away, seen from the front
+    """The part with its front half (y below the center) cut away, seen from the front
     left and above, orthographic. Cropped to the part, transparent background."""
     stl = Path(stl).resolve()
     image = _clear_background(_openscad_png(_cutaway_scad(stl), size))
@@ -54,10 +54,10 @@ def render_png(stl, size=(880, 720)) -> bytes:
 
 
 def section_path(mesh: trimesh.Trimesh, scale=9.0, pad=14.0):
-    """The section through the centre in the x-z plane (the cutaway's cut face), as SVG
+    """The section through the center in the x-z plane (the cutaway's cut face), as SVG
     path data in px with z up. Returns (path, width, height)."""
-    centre = mesh.bounds.mean(axis=0)
-    cut = mesh.section(plane_origin=centre, plane_normal=[0, 1, 0])
+    center = mesh.bounds.mean(axis=0)
+    cut = mesh.section(plane_origin=center, plane_normal=[0, 1, 0])
     if cut is None:
         return "", 0, 0
     (x0, _, z0), (x1, _, z1) = mesh.bounds

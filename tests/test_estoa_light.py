@@ -84,7 +84,7 @@ def socket_set_back(extra, **params):
 
 
 def corner_posts(size):
-    """The front plate's insert posts drawn `size` mm square, with the plate's screws moved to their new centres."""
+    """The front plate's insert posts drawn `size` mm square, with the plate's screws moved to their new centers."""
     sub = design(corner_post=size)
     corner = 160 / 2 - 3 - size / 2
     for screw in screws_of(sub, "plate-screw"):
@@ -333,7 +333,7 @@ def test_a_square_ended_slot_reads_straight_up(tmp_path):
 
 def test_a_big_opening_in_one_wall_still_encloses_the_board(tmp_path):
     # Gemini 4 Argon's 40 mm USB cutout in pilot-estoa (here 40 x 26, low enough to reach the probe): R5 once
-    # probed only from the board's centre, went out through the opening and called the board outside the box
+    # probed only from the board's center, went out through the opening and called the board outside the box
     findings = {f.check: f for f in grade(design(usb_w=40, usb_h=26), tmp_path)}
     assert findings["R5"].ok is True, findings["R5"].detail
 

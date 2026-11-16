@@ -4,7 +4,7 @@
 
 Tests (docs/decisions-api.md):
   1  does a submission's text ask for supports?   key: pbe/parts/supports.py, plus results/judges/hand-labels.yaml
-  2  Dan's spoken outcomes as verdicts            key: the colours coupons/fit_cards.py gives them, plus hand labels
+  2  Dan's spoken outcomes as verdicts            key: the colors coupons/fit_cards.py gives them, plus hand labels
   3  test-print photos: roof looks, and Box       key: Dan's outcomes, cells placed by pbe/judges/photo_cells.py
   3c the roof photos again, ok or failed, with   key: Dan's outcomes; examples from other cells only
      two labelled example crops of each
@@ -151,15 +151,15 @@ class Outcome(BaseModel):
 
 def outcome_cases(data_root: Path) -> list[Outcome]:
     fit_cards = module_from(data_root / "coupons/fit_cards.py", "fit_cards")
-    colour_names = {fit_cards.GOOD: "good", fit_cards.LOOSE: "too_loose", fit_cards.TIGHT: "too_tight"}
+    color_names = {fit_cards.GOOD: "good", fit_cards.LOOSE: "too_loose", fit_cards.TIGHT: "too_tight"}
     cases = []
     for card in fit_cards.cards():
         for attempt in card.tries:
-            if attempt.colour == fit_cards.UNTRIED:
+            if attempt.color == fit_cards.UNTRIED:
                 continue
-            key = colour_names[attempt.colour]
+            key = color_names[attempt.color]
             if card.shape == "strand" and key == "too_tight":
-                key = "failed"  # the strand card colours a messed-up roof red
+                key = "failed"  # the strand card colors a messed-up roof red
             words = attempt.said.split(": ", 1)[-1] if card.shape == "strand" else attempt.said
             cases.append(Outcome(item=f"{card.title} @ {attempt.size:g}", job=card.job, words=words, key=key,
                                  source="coupons/fit_cards.py"))
@@ -175,7 +175,7 @@ def on_strand_card(item: str, strand_said: list[str]) -> bool:
 
 
 def roof_outcomes(data_root: Path, strand_said: list[str]) -> list[Outcome]:
-    """Every roof cell, span and crop fit_cards.py doesn't colour, keyed by hand (results/judges/hand-labels.yaml).
+    """Every roof cell, span and crop fit_cards.py doesn't color, keyed by hand (results/judges/hand-labels.yaml).
     One row per record, even where two records' words are the same."""
     r3 = yaml.safe_load((data_root / "results/predictions/round3-coupons.yaml").read_text())
     r3b = yaml.safe_load((data_root / "results/predictions/round3b-roofs.yaml").read_text())
@@ -225,7 +225,7 @@ def run_roof_with_references(cell: photo_cells.Cell, photos: dict[str, bytes], m
 
 
 def run_box(photo: str, photos: dict[str, bytes], budget: dz.Budget) -> list[Row]:
-    """Jev's Box, one question per cell placed by position; a hit when the box's centre is inside Claude's box."""
+    """Jev's Box, one question per cell placed by position; a hit when the box's center is inside Claude's box."""
     cells = [c for c in photo_cells.CELLS if c.photo == photo and c.where]
     questions = {f"c{i}": dz.Box(instructions=f"Find {c.where} on this test print.") for i, c in enumerate(cells)}
     decision = dz.decide(dz.Request(model=dz.JEV, state=[dz.Image.jpeg(photos[photo])], questions=questions), budget)
@@ -234,7 +234,7 @@ def run_box(photo: str, photos: dict[str, bytes], budget: dz.Budget) -> list[Row
         answer = decision.answers.get(f"c{i}")
         hit = None
         if answer and answer.box:
-            x, y = answer.box.centre()
+            x, y = answer.box.center()
             e = cell.edges
             hit = e.left <= x <= e.right and e.top <= y <= e.bottom
         rows.append(Row(test="3-box", item=f"{photo.split()[-1]} {cell.name}", model=decision.model, question="where",

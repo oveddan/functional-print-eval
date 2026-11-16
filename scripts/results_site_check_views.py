@@ -112,7 +112,7 @@ def pass_bridges(design, finding, part_id):
 
 
 def pass_connected(design, finding, part_id):
-    """The part from above and from the side, one colour: a single body."""
+    """The part from above and from the side, one color: a single body."""
     mesh = design.mesh(part_id)
     pieces = [shell for shell in mesh.split(only_watertight=False) if shell.volume > 0]
     fig, (top, side) = views.new_figure("two")
@@ -130,7 +130,7 @@ def pass_connected(design, finding, part_id):
 
 def draw_keyholes(design, finding):
     """Estoa R6 as enclosure.keyholes reads it today: the back cut at_depth from the wall, each keyhole's entry and slot
-    coloured by its own verdict, with the head of the first common fastener it hangs on drawn where the slot ends.
+    colored by its own verdict, with the head of the first common fastener it hangs on drawn where the slot ends.
     (The views script's R6 drawer predates the common-fastener rule and no longer runs.)"""
     import numpy as np
     from matplotlib.patches import Circle
@@ -161,14 +161,14 @@ def draw_keyholes(design, finding):
     def draw_all(ax, lw):
         views.fill(ax, back, fc=views.PART, ec=views.EDGE, lw=0.5)
         for keyhole, verdict in zip(found, verdicts):
-            centre, entry, slot, direction, travel = keyhole
-            colour = views.FAIL if verdict.ok is False else (views.OK if verdict.ok else views.WARN)
-            ax.add_patch(Circle(centre, entry / 2, fill=False, ls="--", ec=colour, lw=lw, zorder=4))
+            center, entry, slot, direction, travel = keyhole
+            color = views.FAIL if verdict.ok is False else (views.OK if verdict.ok else views.WARN)
+            ax.add_patch(Circle(center, entry / 2, fill=False, ls="--", ec=color, lw=lw, zorder=4))
             fits = enclosure._hangs_on(entry, slot, fasteners, args["entry_margin"])
-            rest = centre + direction * travel
+            rest = center + direction * travel
             if fits:
                 ax.add_patch(Circle(rest, fits[0].head / 2, fill=False, ec=views.HARDWARE, lw=lw * 1.2, zorder=5))
-            ax.annotate("", xy=rest, xytext=centre, arrowprops={"arrowstyle": "-|>", "color": colour, "lw": lw}, zorder=6)
+            ax.annotate("", xy=rest, xytext=center, arrowprops={"arrowstyle": "-|>", "color": color, "lw": lw}, zorder=6)
     draw_all(overview, 0.9)
     span = views.bounds_of(back)
     size = max(span[2] - span[0], span[3] - span[1])
@@ -179,12 +179,12 @@ def draw_keyholes(design, finding):
     overview.set_title("The back, seen from the front")
     views.scale_bar(overview)
     worst = next((k for k, v in zip(found, verdicts) if v.ok is not True), found[0])
-    centre, entry, slot, direction, travel = worst
+    center, entry, slot, direction, travel = worst
     zoom = axes[1]
     draw_all(zoom, 1.4)
-    window = Point(*(centre + direction * travel / 2)).buffer(entry / 2 + travel / 2 + 4)
+    window = Point(*(center + direction * travel / 2)).buffer(entry / 2 + travel / 2 + 4)
     views.frame(zoom, window.bounds, pad=0)
-    zoom.text(centre[0], centre[1], f"entry {entry:.1f}", fontsize=6.8, ha="center", va="center", zorder=8)
+    zoom.text(center[0], center[1], f"entry {entry:.1f}", fontsize=6.8, ha="center", va="center", zorder=8)
     zoom.set_title(f"Zoomed: slot {slot:.2f} wide")
     views.scale_bar(zoom)
     legend += [views.line_key(views.OK, "Keyhole entry (green: hangs, red: fails, orange: not graded)", "--"),
