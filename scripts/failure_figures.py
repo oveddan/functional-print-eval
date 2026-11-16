@@ -19,11 +19,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import trimesh  # noqa: E402
-from matplotlib.patches import Patch, PathPatch, Rectangle  # noqa: E402
+from matplotlib.patches import Ellipse, Patch, PathPatch, Rectangle  # noqa: E402
 from matplotlib.path import Path as MplPath  # noqa: E402
 from shapely import affinity  # noqa: E402
 from shapely.geometry import Polygon  # noqa: E402
 from shapely.geometry.polygon import orient  # noqa: E402
+from shapely.ops import unary_union  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import results_page  # noqa: E402  its part rebuilding, so both pages read the same meshes
@@ -36,6 +37,8 @@ from pbe.runner import tasks  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs/media/failures"
 PART = "#c9d3dc"
+BEYOND = "#e6ebef"  # the part behind a side cut, seen through it
+BEYOND_EDGE = "#a3afba"
 EDGE = "#3b4a57"
 HARDWARE = "#d9822b"
 BEARING = dict(od=22.0, bore=8.0, width=7.0)  # 608, as in catalog/hardware.yaml
@@ -116,6 +119,17 @@ def cut_side(mesh, along="x", at=0.0):
     section = mesh.section(plane_origin=origin, plane_normal=normal)
     planar, _ = section.to_2D(to_2D=np.array(to_2d, dtype=float), check=False)
     return _even_odd(planar.polygons_closed)
+
+
+def beyond_cut(mesh, along="x", at=0.0):
+    """The half of the part behind a side cut, as seen through the cut: what a drafter draws faintly behind a section,
+    so the material that joins the two cut faces around a bore or hole shows in the gap between them."""
+    normal = [0, 1, 0] if along == "x" else [1, 0, 0]
+    origin = [0, at, 0] if along == "x" else [at, 0, 0]
+    half = trimesh.intersections.slice_mesh_plane(mesh, plane_normal=normal, plane_origin=origin, cap=False)
+    seen = half.triangles[:, :, [0, 2]] if along == "x" else half.triangles[:, :, [1, 2]]
+    faces = [Polygon(tri) for tri in seen]
+    return unary_union([face.buffer(0.01) for face in faces if face.area > 1e-6]).buffer(-0.01)
 
 
 # ---- drawing ----
@@ -226,13 +240,48 @@ def _dimensions(ax, pocket, spec, centre, knob_right):
     return Polygon([(cx - half, cy), (nut_x + spec["af"], cy), (nut_x + spec["af"], top + 1.6), (cx - half, top + 1.6)])
 
 
+def _gap_center(section):
+    """The middle of the gap a center cut leaves between the part's sides (a bore or hole): the gap in the
+    pieces' x spans nearest x = 0. None if the cut came out in one piece."""
+    polys = section.geoms if hasattr(section, "geoms") else [section]
+    spans = sorted((poly.bounds[0], poly.bounds[2]) for poly in polys)
+    gaps, reach = [], spans[0][1]
+    for low, high in spans[1:]:
+        if low > reach:
+            gaps.append((reach + low) / 2)
+        reach = max(reach, high)
+    return min(gaps, key=abs) if gaps else None
+
+
+def _mark_axis(ax, section, height, hole_words, rim):
+    """Show that a center cut's separate-looking sides are one part: a dash-dot center line through the gap and a note
+    saying they join around it; for a round part also the rim it turns around, as a dashed ellipse over the top."""
+    x = _gap_center(section)
+    if x is None:
+        return 0.0
+    minx, _, maxx, _ = section.bounds
+    lift = min(4.0, (maxx - minx) * 0.15) if rim else 0.0
+    ax.plot([x, x], [-2.0, height + lift / 2 + 1.0], color=EDGE, lw=0.8, ls=(0, (8, 2, 1.5, 2)), zorder=6)
+    ax.text(x, -2.3, "axis" if rim else "center line", ha="center", va="top", fontsize=7, color=EDGE)
+    if rim:
+        ax.add_patch(Ellipse((x, height), maxx - minx, lift, fill=False, edgecolor=EDGE, lw=0.7, ls=(0, (3, 2)),
+                             alpha=0.8, zorder=5))
+    ax.text(x, height + lift / 2 + 1.2, f"one piece: the light gray behind the cut joins both sides around {hole_words}", ha="center", va="bottom",
+            fontsize=6.5, color=EDGE)
+    return lift / 2 + 3.5
+
+
 def draw_side(ax, mesh, fig):
     extents = mesh.extents
     along = "x" if extents[0] >= extents[1] or fig.bearings or fig.nut else "y"
     if fig.name.startswith("tripod"):  # cut across the plate's length, to show the profile the clamp grips
         along = "y" if extents[0] >= extents[1] else "x"
     section = cut_side(mesh, along)
-    ax.add_patch(_patch(section, facecolor=PART, edgecolor=EDGE, lw=0.8))
+    ax.add_patch(_patch(beyond_cut(mesh, along), facecolor=BEYOND, edgecolor=BEYOND_EDGE, lw=0.6))
+    ax.add_patch(_patch(section, facecolor=PART, edgecolor=EDGE, lw=0.8, hatch="////"))
+    round_part = fig.bearings or bool(fig.nut)
+    room = _mark_axis(ax, section, mesh.bounds[1][2], "the axis" if round_part else "the hole", rim=round_part)
+    ax.set_title("Section: cut through the center", fontsize=8, color=EDGE, loc="left")
     if fig.bearings:
         height = mesh.bounds[1][2]
         for z in (0.0, height - BEARING["width"]):
@@ -241,10 +290,11 @@ def draw_side(ax, mesh, fig):
                 ax.add_patch(Rectangle((x, z), (BEARING["od"] - BEARING["bore"]) / 2, BEARING["width"],
                                        facecolor=HARDWARE, alpha=0.55, edgecolor=HARDWARE, lw=1))
         ax.add_patch(Rectangle((-4, -1), 8, height + 2, facecolor="none", edgecolor=HARDWARE, lw=1, ls=":"))
-        ax.legend(handles=[Patch(facecolor=PART, edgecolor=EDGE, label="Printed wheel"),
+        ax.legend(handles=[Patch(facecolor=PART, edgecolor=EDGE, label="Wheel, cut face"),
+                           Patch(facecolor=BEYOND, edgecolor=BEYOND_EDGE, label="Wheel behind the cut"),
                            Patch(facecolor=HARDWARE, alpha=0.55, edgecolor=HARDWARE, label="Bearings"),
                            Patch(facecolor="none", edgecolor=HARDWARE, ls=":", label="Bolt")],
-                  loc="upper center", bbox_to_anchor=(0.5, -0.02), ncol=3, frameon=False, fontsize=7.5,
+                  loc="upper center", bbox_to_anchor=(0.5, -0.02), ncol=2, frameon=False, fontsize=7.5,
                   handlelength=1.2, columnspacing=1.0)
     if fig.nut:
         spec = catalog.resolve(fig.nut)
@@ -255,6 +305,9 @@ def draw_side(ax, mesh, fig):
         ax.add_patch(Rectangle((x - spec["af"] / 2, z), spec["af"], spec["h"], facecolor=HARDWARE, alpha=0.55,
                                edgecolor=HARDWARE, lw=1))
     _frame(ax, section)
+    if room:  # space over the part for the note
+        y0, y1 = ax.get_ylim()
+        ax.set_ylim(y0, y1 + room)
 
 
 def draw_strands(path, mesh):
