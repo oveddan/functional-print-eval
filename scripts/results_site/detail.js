@@ -278,7 +278,7 @@ function mediaSection(row, detail, options = {}) {
   const caption = h("div", { class: "stage-caption" });
   const controls = h("div", { class: "stage-controls" });
   const tabs = h("div", { class: "part-tabs", role: "group", "aria-label": "Parts of this design" });
-  const titleOf = (check) => detail.findings.find((finding) => finding.check === check)?.title || check;
+  const titleOf = (check) => detail.findings.find((finding) => finding.check === check)?.check_title || check;
 
   // A passing design's part can be taken away as an STL. Only passing ones: a file offered here reads as "print this".
   const stlButton = (part) => {
@@ -702,7 +702,7 @@ function changes(first, second) {
   if (moved.length) {
     kids.push(h("div", { class: "table-scroll" }, h("table", { class: "plain moves" },
       h("thead", {}, h("tr", {}, ["Check", "First print", "Second print"].map((label) => h("th", { scope: "col" }, label)))),
-      h("tbody", {}, moved.map((check) => h("tr", {}, h("th", { scope: "row" }, (now.get(check) || was.get(check)).title || check, " ", h("code", { class: "check-id" }, check)), h("td", {}, cell(was.get(check))), h("td", {}, cell(now.get(check)))))))));
+      h("tbody", {}, moved.map((check) => h("tr", {}, h("th", { scope: "row" }, (now.get(check) || was.get(check)).check_title || check, " ", h("code", { class: "check-id" }, check)), h("td", {}, cell(was.get(check))), h("td", {}, cell(now.get(check)))))))));
   } else {
     kids.push(h("p", {}, "Every counted check came out the same as on the first print."));
   }

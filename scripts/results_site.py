@@ -97,6 +97,38 @@ CHECK_TITLES = {  # a few plain words per check, so a page can show titles and k
                     "R7": "No screw sticks out the back"},
     "m5-spacer": {"R1": "One printed part", "R2": "Right length and width", "R3": "M5 bolt clears the hole", "R4": "Round"},
 }
+# what a failed check is called: the failure itself, so a red X never sits beside a success phrase. Each one is true
+# of every way its grader in pbe/graders/ can fail (and of every saved failure); a grader that crashed is CRASHED.
+CHECK_FAILED_TITLES = {
+    "*": {"builds": "Code doesn't build the part", "connected_bodies": "A part isn't one solid piece",
+          "bed_fit": "Too big for the printer's bed", "bridges": "An overhang can't be bridged"},
+    "tripod-plate": {"R1": "There's no plate", "R2": "Doesn't fit the tripod's clamp",
+                     "R3": "Bolt can't go through with its head on the clamp side", "R4": "Bolt head doesn't fit its recess",
+                     "R5": "Bolt doesn't reach far enough into the camera"},
+    "bearing-wheel": {"R1": "Not the size of the old wheel", "R2": "No room for both bearings",
+                      "R3": "Bearings won't press in and stay", "R4": "M8 bolt won't slide through"},
+    "nut-knob": {"R1": "Wrong number of printed parts", "R2": "Wrong size across", "R3": "No hex pocket that holds the nut",
+                 "R4": "Nut won't press in and stay", "R5": "Bolt's hole is too tight"},
+    "estoa-light": {"R1": "Disk screws don't go into the box", "R2": "Disk screws don't hold safely",
+                    "R3": "USB-C plug can't reach the port", "R4": "A heat-set insert isn't in a proven post",
+                    "R5": "Electronics don't fit inside", "R6": "Won't hang on the wall screws",
+                    "R7": "A screw sticks out the back"},
+    "m5-spacer": {"R1": "Wrong number of printed parts", "R2": "Wrong length or width",
+                  "R3": "No M5 clearance hole through it", "R4": "Not round"},
+}
+CRASHED = "The check's code crashed on this shape"  # requirements._run_grader's "grader error: ..." counts as a fail
+
+
+def check_title(task: str, check: str, ok: bool | None = True, detail: str = "") -> str:
+    """The check's title for a finding: its failed wording when it failed, else its plain one. task is a task or a
+    task family ("nut-knob/M3" or "nut-knob")."""
+    family = task.split("/")[0]
+    if ok is not False:
+        return (CHECK_TITLES["*"] | CHECK_TITLES.get(family, {})).get(check, check)
+    if (detail or "").startswith("grader error"):
+        return CRASHED
+    failed = CHECK_FAILED_TITLES["*"] | CHECK_FAILED_TITLES.get(family, {})
+    return failed.get(check) or check_title(task, check)
 
 # the generic checks every part gets (pbe/graders/checks.py), in a reader's words
 GENERIC_CHECKS = {
@@ -787,7 +819,8 @@ def finding_rows(entry: Entry, findings: list[CheckResult], declined: str | None
         rows.append(view_of(entry, finding, declined) | {"check": finding.check, "part": finding.part, "ok": finding.ok, "detail": clip(finding.detail, CAP["detail"]),
                      "explained": explained_href(entry.task, finding.check),
                      "test_print": finding.test_print, "counted": counted, "state": check_state(finding),
-                     "title": meanings.get(finding.check, {}).get("title", finding.check),
+                     "title": check_title(entry.task, finding.check, finding.ok, finding.detail),
+                     "check_title": meanings.get(finding.check, {}).get("title", finding.check),
                      "meaning": meanings.get(finding.check, {}).get("text"),
                      "diagnosis": diagnosed.get((finding.check, finding.part)) if counted and finding.ok is not True else None,
                      "reference": reference_of(entry, finding) if counted and finding.ok is not True else None})
@@ -1600,6 +1633,7 @@ def example_of(example: dict, family: str, check: str, by_id: dict[str, Entry]) 
              "href": f"./?trial={entry.slug}", "model_short": short_name(entry.model), "task": entry.task,
              "task_label": TASK_NAMES.get(entry.task, entry.task), "trial": entry.trial, "verdict": entry.verdict, "part": part,
              "note": example.get("note"), "state": check_state(finding) if finding else None,
+             "failed_title": check_title(family, check, False, finding.detail) if finding and finding.ok is False else None,
              "detail": plain_detail(reader_words(finding.detail)) if finding else None,
              "via_test_print": via_test_print(finding) if finding else False, "view": None, "no_view_reason": None}
     if finding is None:
