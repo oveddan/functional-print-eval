@@ -758,7 +758,7 @@ def test_a_fit_outcome_comes_only_from_the_saved_words():
 
 def test_assembled_scenes_draw_the_hardware_where_the_saved_findings_say():
     """Every built wheel, plate and knob design has an assembled view or a stated reason. A view's printed part has a
-    matrix, its hardware has its own colours, and a fit is played only with the outcome the saved finding's words give,
+    matrix, its hardware has its own colors, and a fit is played only with the outcome the saved finding's words give,
     the same outcome on every piece, along a unit axis, stopping short of seated only when it stops."""
     import hardware_scene
     media = results_site.media()

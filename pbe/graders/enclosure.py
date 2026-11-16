@@ -39,7 +39,7 @@ UNREADABLE = "a part's mesh isn't a closed volume, so this can't be read"
 
 
 class Envelope(NamedTuple):
-    """A box standing on a board's top face, centred on its origin: across, along, and how high."""
+    """A box standing on a board's top face, centered on its origin: across, along, and how high."""
     width: float
     length: float
     height: float
@@ -88,7 +88,7 @@ def _uses(sub, ref):
 
 
 def _stadium(width, height):
-    """A slot shape, long side along x, centred on the origin."""
+    """A slot shape, long side along x, centered on the origin."""
     straight = max(width - height, 0) / 2
     return LineString([(-straight, 0), (straight, 0)]).buffer(height / 2, quad_segs=32)
 
@@ -97,27 +97,27 @@ def _stadium(width, height):
 
 def _hole_spans(holes_r):
     """Where each of a board's two holes can be, in its own frame: a short stretch of its x axis either
-    side of the centre."""
+    side of the center."""
     near, far = holes_r
     return [LineString([(side * near, 0), (side * far, 0)]) for side in (1, -1)]
 
 
 def _threaded(width, screw, inserts, insert_hole):
-    """Whether a hole this wide holds the screw at its centre: a pilot it cuts its thread in, or an insert."""
+    """Whether a hole this wide holds the screw at its center: a pilot it cuts its thread in, or an insert."""
     return width < screw - TOL or (inserts and insert_hole[0] <= width <= insert_hole[1])
 
 
 def _room_for_screw(material, near, screw, inserts, insert_hole):
     """Where a screw's axis can be at one depth: anywhere it clears in an open space or a clearance
-    hole, but only at the centre of a hole that threads it."""
+    hole, but only at the center of a hole that threads it."""
     room = []
     free = near.difference(unary_union(material))
     for space in getattr(free, "geoms", [free]):
         if space.is_empty or not isinstance(space, Polygon):
             continue
-        centre, width = clear_circle(space)
+        center, width = clear_circle(space)
         if _threaded(width, screw, inserts, insert_hole):
-            room.append(centre.buffer(0.05))
+            room.append(center.buffer(0.05))
         elif width >= screw - TOL:
             room.append(space.buffer(-screw / 2 + TOL))
     return unary_union(room) if room else Polygon()
@@ -175,7 +175,7 @@ def _board_in_plastic(meshes, board_radius, board_thickness, spans, hole):
 
 def _board_holes(sub, built, item, holes_r, hole, screw, insert, insert_hole, board_radius, board_thickness, rests_within, depth):
     """A screw through each of the board's holes goes into the box, for anywhere the person's readings put
-    the holes: through a clearance hole it can move in, or into a thread at the hole's centre."""
+    the holes: through a clearance hole it can move in, or into a thread at the hole's center."""
     piece, why = placed.piece(sub, built)
     if piece is None:
         return Verdict(None, why)
@@ -610,7 +610,7 @@ def _wall_at_port(meshes, socket, way_in):
 
 
 def _holds_slot(passage, size):
-    """Whether the passage holds a slot shape this size, centred on the socket's axis."""
+    """Whether the passage holds a slot shape this size, centered on the socket's axis."""
     return _stadium(*size).buffer(-TOL).difference(passage).area < 0.01
 
 
@@ -620,12 +620,12 @@ def _component_at_axis(covered, window):
 
 
 def _fits_somewhere(shape, hole, turns=18):
-    """Whether the shape fits in the hole, centred on the hole's widest point, turned any way."""
-    centre, _ = clear_circle(hole)
+    """Whether the shape fits in the hole, centered on the hole's widest point, turned any way."""
+    center, _ = clear_circle(hole)
     for turn in range(turns):
         angle = np.pi * turn / turns
         cos, sin = np.cos(angle), np.sin(angle)
-        coords = [(centre.x + x * cos - y * sin, centre.y + x * sin + y * cos) for x, y in shape.exterior.coords]
+        coords = [(center.x + x * cos - y * sin, center.y + x * sin + y * cos) for x, y in shape.exterior.coords]
         if Polygon(coords).difference(hole).area < 0.01:
             return True
     return False
@@ -834,7 +834,7 @@ def board_room(sub, built, item, certain, room, slab, holes, disk, disk_radius, 
         return Verdict(None, f"{item} isn't placed once")
     obstacles = _obstacles(piece, _placed_once(piece, disk), disk_radius, disk_thickness, False)
     certain, room, slab = Envelope(*certain), Envelope(*room), Envelope(*slab)
-    # a side is open only if nothing is on it from the board's centre and from each corner: from the centre
+    # a side is open only if nothing is on it from the board's center and from each corner: from the center
     # alone, a probe can leave through a big opening in one wall (Gemini 4 Argon's 40 mm USB cutout in pilot-estoa)
     starts = [np.array([across, along, 2.0]) for across, along in
               [(0.0, 0.0)] + [(sx * room.width / 2, sy * room.length / 2) for sx in (-1, 1) for sy in (-1, 1)]]
@@ -857,9 +857,9 @@ def board_room(sub, built, item, certain, room, slab, holes, disk, disk_radius, 
 # --- hanging on the wall ---
 
 def _keyhole(hole):
-    """A keyhole's (entry centre, entry width, slot width, slot direction, travel), or None if the hole isn't one."""
-    centre, entry = clear_circle(hole)
-    rest = hole.difference(centre.buffer(entry / 2 + 0.3, quad_segs=64))
+    """A keyhole's (entry center, entry width, slot width, slot direction, travel), or None if the hole isn't one."""
+    center, entry = clear_circle(hole)
+    rest = hole.difference(center.buffer(entry / 2 + 0.3, quad_segs=64))
     pieces = [piece for piece in getattr(rest, "geoms", [rest]) if isinstance(piece, Polygon) and piece.area > 1.0]
     if not pieces:
         return None
@@ -867,9 +867,9 @@ def _keyhole(hole):
     _, slot_width = clear_circle(slot)
     if slot_width >= entry - 1.0:
         return None
-    # the slot's direction runs from the entry's centre through the slot's own centre: towards its farthest
+    # the slot's direction runs from the entry's center through the slot's own center: towards its farthest
     # point instead, a square-ended slot reads as tilted towards one corner (Sonnet's in pilot-estoa, by 11 degrees)
-    origin = np.array([centre.x, centre.y])
+    origin = np.array([center.x, center.y])
     direction = np.array([slot.centroid.x, slot.centroid.y]) - origin
     direction /= np.linalg.norm(direction)
     reach = float(max((np.asarray(slot.exterior.coords) - origin) @ direction))
@@ -903,9 +903,9 @@ def _keyhole_verdict(found, up, fasteners, entry_margin, angle_limits: AngleLimi
     2026-11-13: "r6 can hang on a common nail, tahts fine"): the person picks the fastener to suit the keyhole and
     sets how far it stands out of the wall, so the plastic's thickness at the slot doesn't fail it ("Fine if the
     screws can just go further out")."""
-    centre, entry_width, slot, direction, travel = found
+    center, entry_width, slot, direction, travel = found
     angle = float(np.degrees(np.arccos(np.clip(np.dot(direction, up), -1, 1))))
-    where = f"keyhole at ({centre[0]:.0f}, {centre[1]:.0f})"
+    where = f"keyhole at ({center[0]:.0f}, {center[1]:.0f})"
     sizes = f"entry {entry_width:.1f}, slot {slot:.2f} running {travel:.1f} mm, {angle:.0f} degrees from up"
     failures = []
     if angle > angle_limits.fails_beyond:

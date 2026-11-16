@@ -64,7 +64,7 @@ class GalleryTrial(BaseModel):
 
 
 def _shaded_faces(mesh):
-    """The faces to draw, at most MAX_DRAWN_FACES of them, each with a colour lit from above left."""
+    """The faces to draw, at most MAX_DRAWN_FACES of them, each with a color lit from above left."""
     light = np.array([0.45, -0.35, 0.82])
     faces = mesh.triangles
     normals = mesh.face_normals
@@ -72,8 +72,8 @@ def _shaded_faces(mesh):
         keep = np.linspace(0, len(faces) - 1, MAX_DRAWN_FACES).astype(int)
         faces, normals = faces[keep], normals[keep]
     shade = 0.32 + 0.6 * np.clip(normals @ light, 0, 1)
-    colours = np.column_stack([shade * 0.86, shade * 0.9, shade * 0.98, np.ones(len(shade))])
-    return faces, colours
+    colors = np.column_stack([shade * 0.86, shade * 0.9, shade * 0.98, np.ones(len(shade))])
+    return faces, colors
 
 
 def render(stl_and_png):
@@ -81,12 +81,12 @@ def render(stl_and_png):
     if png.exists() and png.stat().st_mtime > stl.stat().st_mtime:
         return
     mesh = trimesh.load(stl, force="mesh")
-    faces, colours = _shaded_faces(mesh)
+    faces, colors = _shaded_faces(mesh)
     fig = plt.figure(figsize=(4, 3.2), dpi=110)
     fig.patch.set_alpha(0)
     ax = fig.add_axes([0, 0, 1, 1], projection="3d")
     ax.patch.set_alpha(0)
-    ax.add_collection3d(Poly3DCollection(faces, facecolors=colours, edgecolors="none", antialiaseds=False))
+    ax.add_collection3d(Poly3DCollection(faces, facecolors=colors, edgecolors="none", antialiaseds=False))
     low, high = mesh.bounds
     middle, reach = (low + high) / 2, float((high - low).max()) * 0.47
     ax.set_xlim(middle[0] - reach, middle[0] + reach)

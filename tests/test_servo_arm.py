@@ -249,6 +249,7 @@ def test_no_bearing_in_the_hardware_list_is_not_graded(tmp_path):
 # --- R6: the arm's length ----------------------------------------------------------------------------
 
 def test_a_short_arm_fails_only_its_length(tmp_path):
+    # `centres` is the parameter name in the saved reference submission, so it keeps its spelling
     findings = grade(design(centres=50), tmp_path)
     assert arm_checks(findings) == {"R4": True, "R5": True, "R6": False, "R7": True}, not_passing(findings)
 
@@ -299,7 +300,7 @@ def test_a_blind_bore_goes_on_one_way_only(tmp_path):
 
 def test_a_horn_pocket_under_a_screw_hole_goes_on_one_way_only(tmp_path):
     """The hub can't come in through the 3.4 mm screw hole over the pocket, so only the pocket's side is a
-    way on (Codex review, PR 4: the centre-point test let the arm on from either side)."""
+    way on (Codex review, PR 4: the center-point test let the arm on from either side)."""
     from pbe.parts.build import build_parts
     sub = design(arm=horn_arm(pocket=15.0))
     built = build_parts(sub, tmp_path / "parts")

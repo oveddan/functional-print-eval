@@ -193,7 +193,7 @@ def test_the_slicers_own_reason_is_kept(tmp_path):
 
 
 def test_a_part_goes_onto_the_bed_without_turning(tmp_path):
-    box = trimesh.creation.box((10, 20, 30))  # centred on the origin, so half of it is under the bed
+    box = trimesh.creation.box((10, 20, 30))  # centered on the origin, so half of it is under the bed
     box.export(tmp_path / "box.stl")
     height = se.on_the_bed(tmp_path / "box.stl", tmp_path / "placed.stl")
     placed = trimesh.load(tmp_path / "placed.stl")

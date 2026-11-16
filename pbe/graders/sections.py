@@ -82,9 +82,9 @@ def clear_width(hole):
 
 
 def clear_circle(hole):
-    """The largest circle that fits in the hole: (its centre, its diameter)."""
-    centre = polylabel(hole, tolerance=0.001)
-    return centre, 2 * hole.boundary.distance(centre)
+    """The largest circle that fits in the hole: (its center, its diameter)."""
+    center = polylabel(hole, tolerance=0.001)
+    return center, 2 * hole.boundary.distance(center)
 
 
 def single_final(sub, built):

@@ -67,7 +67,7 @@ _ARC = "a short printed roof strip between two blocks"
 CELLS += [
     Cell(photo=BRIDGES, name="100 mm span", where="the longest bar, lying diagonally", edges=_px(225, 160, 575, 1320),
          what=_BRIDGE, dan_said=STRINGY, clean=False),
-    Cell(photo=BRIDGES, name="80 mm span", where="the second-longest bar, right of centre", edges=_px(600, 235, 840, 1180),
+    Cell(photo=BRIDGES, name="80 mm span", where="the second-longest bar, right of center", edges=_px(600, 235, 840, 1180),
          what=_BRIDGE, dan_said=STRINGY, clean=False),
     Cell(photo=BRIDGES, name="60 mm span", where="the third-longest bar, in the middle", edges=_px(500, 205, 665, 965),
          what=_BRIDGE, dan_said=STRINGY, clean=False),

@@ -36,7 +36,7 @@ class Bore:
     clear: float  # the tightest clear width along the run
     depth: float
     plain: bool  # round all the way, the only kind the test prints measured
-    centre: np.ndarray  # in the plane of the layers
+    center: np.ndarray  # in the plane of the layers
     mesh: object
     span: tuple[float, float] = (0.0, 0.0)  # where the run starts and ends along the axis
     horn: bool = False  # a pocket for the aluminium horn's hub, not a bore on the spline
@@ -72,10 +72,10 @@ def _bores_along(part_id, mesh, axis, size, min_depth):
             continue
         widths = [clear_width(hole) for hole in run]
         plain = all(_is_plain(hole) for hole in run)
-        middle = run[len(run) // 2]  # the centre of its clear circle, so a horn-shaped pocket centres on the hub
-        centre = np.asarray(polylabel(middle, tolerance=0.001).coords[0])
+        middle = run[len(run) // 2]  # the center of its clear circle, so a horn-shaped pocket centers on the hub
+        center = np.asarray(polylabel(middle, tolerance=0.001).coords[0])
         span = (low + first * layer_h, low + (first + len(run)) * layer_h)
-        bores.append(Bore(part_id, axis, min(widths), depth, plain, centre, mesh, span))
+        bores.append(Bore(part_id, axis, min(widths), depth, plain, center, mesh, span))
     return bores
 
 
@@ -165,7 +165,7 @@ def _horn_pocket(sub, built, horn_hub, body):
 
 def _coaxial(bore, other, within=1.0):
     return (bore.part_id == other.part_id and bore.axis == other.axis
-            and float(np.linalg.norm(bore.centre - other.centre)) <= within)
+            and float(np.linalg.norm(bore.center - other.center)) <= within)
 
 
 def _hub(sub, built, size, grips, loose, min_depth, body=None, horn_hub=None):
@@ -206,7 +206,7 @@ def shaft_fit(sub, built, size, grips, loose, min_depth, body=None, horn_hub=Non
 # --- the arm on the horn -----------------------------------------------------------------------------
 # Round 3's piece N: three round pockets 2 mm deep, 0.1, 0.5 and 1.0 mm over the horn's 14.66 hub, with
 # the hub set in each by hand. Its outcomes go into the predictions file in the person's words; the
-# requirement's `outcomes` says which words mean the pocket works (the hub goes in and centres the arm)
+# requirement's `outcomes` says which words mean the pocket works (the hub goes in and centers the arm)
 # and which don't. Until a pocket's outcome is recorded it isn't a record, and with none recorded, an
 # arm on the horn is not graded. The horn's own screw holes weren't on the piece, so nothing here reads them.
 
@@ -233,7 +233,7 @@ def horn_records(file, piece, outcomes):
 
 
 def horn_fit(pocket, records, depth) -> Verdict:
-    """The horn's hub seats in the arm's pocket and centres it, from the recorded pockets: no bigger than a
+    """The horn's hub seats in the arm's pocket and centers it, from the recorded pockets: no bigger than a
     pocket the hub wouldn't go in, or no smaller than a loose one, fails; a size on a pocket that worked, or
     between two that worked, passes; within the assumption tolerance of one, takes the nearest's; else None."""
     where = f"{pocket.clear:.2f} mm pocket for the aluminium horn's hub in {pocket.part_id}"
@@ -298,7 +298,7 @@ def _reach(bore):
     """How far the part reaches from the bore's axis, across it."""
     plane = [i for i in range(3) if i != bore.axis]
     points = bore.mesh.vertices[:, plane]
-    return float(np.max(np.linalg.norm(points - bore.centre, axis=1)))
+    return float(np.max(np.linalg.norm(points - bore.center, axis=1)))
 
 
 def length(sub, built, size, grips, loose, min_depth, reach, body=None, horn_hub=None):
@@ -325,7 +325,7 @@ DEG = 360  # angle bins
 
 
 def _points(mesh):
-    """The centres of the voxels inside the part, at PITCH."""
+    """The centers of the voxels inside the part, at PITCH."""
     return np.asarray(mesh.voxelized(PITCH).fill().points)
 
 
@@ -349,11 +349,11 @@ def _mask(r, angle, h, r_bins, h_low, h_bins):
     keep = (rb < r_bins) & (hb >= 0) & (hb < h_bins)
     rb, hb, r, angle = rb[keep], hb[keep], r[keep], angle[keep]
     half = np.minimum(np.ceil(np.degrees(PITCH * 0.75 / np.maximum(r, 1e-6))), 180).astype(int)
-    centre = np.floor(angle).astype(int)
+    center = np.floor(angle).astype(int)
     for width in np.unique(half):
         pick = half == width
         for offset in range(-width, width + 1):
-            grid[rb[pick], hb[pick], np.mod(centre[pick] + offset, DEG)] = True
+            grid[rb[pick], hb[pick], np.mod(center[pick] + offset, DEG)] = True
     return grid
 
 
@@ -363,11 +363,11 @@ OPEN_AREA = 0.05  # mm²; less solid than this over the hub's circle is faceting
 def _arm_frames(bore):
     """For each way the arm can go onto the shaft: (sign of the shaft's direction along the bore's axis,
     the bore's mouth along that axis). A blind bore goes on one way, a through bore either way. An end
-    counts as open only if the whole hub fits through it, not just its centre: a horn pocket under a
+    counts as open only if the whole hub fits through it, not just its center: a horn pocket under a
     screw hole goes on from the pocket's side only (Codex review, PR 4)."""
     mesh, axis = bore.mesh, bore.axis
     low, high = mesh.bounds[:, axis]
-    hub = Point(bore.centre).buffer(max(bore.clear / 2 - 0.1, TOL), 64)
+    hub = Point(bore.center).buffer(max(bore.clear / 2 - 0.1, TOL), 64)
     frames = []
     for direction, mouth, beyond in ((1, bore.span[0], bore.span[0] - STEP / 2), (-1, bore.span[1], bore.span[1] + STEP / 2)):
         frac = (beyond - low) / (high - low)
@@ -379,7 +379,7 @@ def _arm_frames(bore):
 def _arm_cylinder(bore, direction, mouth, points):
     """The arm around its own bore: height measured from the mouth, away from the servo."""
     plane = [i for i in range(3) if i != bore.axis]
-    flat = points[:, plane] - bore.centre
+    flat = points[:, plane] - bore.center
     return _cylinder(flat, (points[:, bore.axis] - mouth) * direction, _handed(bore.axis) * direction)
 
 
@@ -422,7 +422,7 @@ def _obstacles(mount, mount_points, pose, end, offset, body, case):
     heights = (mount_points[:, mount.axis] - case_top) * direction
     sign = _handed(mount.axis) * direction
     # the case: its own x along the servo, so place it in the plane the same way
-    case_flat = np.outer(case[:, 0], frame.along) + np.outer(case[:, 1], frame.across) + frame.centre - shaft
+    case_flat = np.outer(case[:, 0], frame.along) + np.outer(case[:, 1], frame.across) + frame.center - shaft
     r1, a1, h1 = _cylinder(flat, heights, sign)
     r2, a2, h2 = _cylinder(case_flat, case[:, 2], sign)
     return np.concatenate([r1, r2]), np.concatenate([a1, a2]), np.concatenate([h1, h2])

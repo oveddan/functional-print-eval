@@ -57,7 +57,7 @@ NO_THROUGH_HOLE = HELPERS + '''
 def build(p):
     return blank(p).cut(pocket_on_top(p))
 '''
-OFF_CENTRE_HOLE = HELPERS + '''
+OFF_CENTER_HOLE = HELPERS + '''
 def build(p):
     return blank(p).cut(bolt_hole(p, x=1.5)).cut(pocket_on_top(p))
 '''
@@ -309,7 +309,7 @@ def test_every_size_loads_with_its_own_nut_in_its_reference(nut):
     # the bolt can't get through
     pytest.param(design(code=NO_THROUGH_HOLE), {"R5"}, set(), id="no-through-hole"),
     pytest.param(design(bolt_hole=5.0), {"R5"}, set(), id="bolt-hole-at-the-bolts-own-diameter"),
-    pytest.param(design(code=OFF_CENTRE_HOLE), {"R5"}, set(), id="off-centre-bolt-hole"),
+    pytest.param(design(code=OFF_CENTER_HOLE), {"R5"}, set(), id="off-center-bolt-hole"),
     pytest.param(design(code=HEX_CELLS, knob_d=36), {"R5"}, set(), id="a-hex-lightening-cell-isnt-the-nuts-path"),
     pytest.param(design(code=BED_POCKET_DRILL_OUT), {"R5"}, set(), id="closed-layer-nobody-told-to-clear"),
     # two printed parts; the checks that need one part can't say

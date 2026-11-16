@@ -51,7 +51,7 @@ def bearing_608():
 # ---- shapes ----
 
 def ring(outer, inner, low, high, axis=2):
-    """A tube along an axis (0, 1 or 2) from low to high, centred on that axis."""
+    """A tube along an axis (0, 1 or 2) from low to high, centered on that axis."""
     shape = trimesh.creation.annulus(r_min=inner / 2, r_max=outer / 2, height=high - low, sections=64)
     shape.apply_translation((0, 0, (low + high) / 2))
     return along_axis(shape, axis)
@@ -77,7 +77,7 @@ def along_axis(shape, axis):
 
 
 def at(shape, plane_xy, axis):
-    """Move a shape centred on an axis to sit at this point of the plane across it."""
+    """Move a shape centered on an axis to sit at this point of the plane across it."""
     offset = np.zeros(3)
     offset[[i for i in range(3) if i != axis]] = plane_xy
     shape = shape.copy()
@@ -97,10 +97,10 @@ def column_major(transform):
 
 def stand(mesh, rotation):
     """A transform turning the part by `rotation` (3x3) about its middle and standing it on z = 0."""
-    centre = mesh.bounds.mean(axis=0)
+    center = mesh.bounds.mean(axis=0)
     transform = np.eye(4)
     transform[:3, :3] = rotation
-    transform[:3, 3] = -rotation @ centre
+    transform[:3, 3] = -rotation @ center
     turned = trimesh.transform_points(mesh.vertices, transform)
     transform[2, 3] -= turned[:, 2].min()
     return transform
@@ -194,7 +194,7 @@ def wheel_outcome(found):
 
 def wheel_seats(mesh, seat_range, bearing_width, bearings):
     """Each seat the grader reads in the wheel's bore, with where it is: (Seat, first layer, last layer, its
-    centre in the plane across the bore), the bore's layer count, layer thickness and axis."""
+    center in the plane across the bore), the bore's layer count, layer thickness and axis."""
     from itertools import groupby
 
     from pbe.graders import wheel
@@ -209,8 +209,8 @@ def wheel_seats(mesh, seat_range, bearing_width, bearings):
         run = list(run)
         if sized:
             seat = wheel._read_seat(run, layer, tightest, bearing_width, bearings)
-            centre, _ = clear_circle(max(run, key=clear_width))
-            found.append((seat, index, index + len(run) - 1, (centre.x, centre.y)))
+            center, _ = clear_circle(max(run, key=clear_width))
+            found.append((seat, index, index + len(run) - 1, (center.x, center.y)))
         index += len(run)
     return found, len(stack), layer, axis
 
@@ -241,7 +241,7 @@ def wheel_scene(sub, built, findings):
     notes, fits, closed_match, drawn = [], 0, False, 0
     # a bearing in each of two seats, else both in the one seat
     plan = [(entry, 1) for entry in holding[:2]] if len(holding) >= 2 else [(holding[0], min(holding[0][0].bearings, bearings))]
-    for (seat, first, last, centre), count in plan:
+    for (seat, first, last, center), count in plan:
         start, end = low + first * layer, low + (last + 1) * layer
         opens_low, opens_high = first == 0, last == layers - 1
         # pressed in until it meets the shoulder where the bore narrows, standing proud of the face if the seat is
@@ -259,7 +259,7 @@ def wheel_scene(sub, built, findings):
             groups = [(middle - width * count / 2, middle + width * count / 2, None)]
             notes.append("A seat inside the wheel opens to neither face, so a bearing can't be pressed into it; it's drawn in the middle.")
         for g_low, g_high, sign in groups:
-            shape = at(ring(size["od"], size["bore"], g_low, g_high, axis), centre, axis)
+            shape = at(ring(size["od"], size["bore"], g_low, g_high, axis), center, axis)
             fit = None
             matches = across is not None and abs(seat.across - across) <= 0.02
             closed_match |= sign is None and matches
@@ -279,9 +279,9 @@ def wheel_scene(sub, built, findings):
     bolt = requirement_args("bearing-wheel", "R4")["bolt"]
     head = _screw_head(f"M{int(bolt)}")
     bolt_low, bolt_high = low - 4, high + 4
-    centre = holding[0][3]
+    center = holding[0][3]
     scene.add("bolt", at(trimesh.util.concatenate([rod(bolt, bolt_low, bolt_high, axis),
-                                                     rod(head["head_d"], bolt_low - head["head_h"], bolt_low, axis)]), centre, axis))
+                                                     rod(head["head_d"], bolt_low - head["head_h"], bolt_low, axis)]), center, axis))
     fit_note = None
     found = finding(findings, "R3")
     if unmatched and closed_match:
@@ -341,7 +341,7 @@ def tripod_scene(sub, built, findings):
     holes = results_site_views._bore_holes(mesh, axis, bore)
     if holes is None:
         return None, "the hole the bolt check read couldn't be traced through the plate again to put the bolt in"
-    centre = bolt_centre(min(holes, key=lambda hole: clear_circle(hole)[1]), r5_across=requirement_args("tripod-plate", "R5")["bolt_across"])
+    center = bolt_center(min(holes, key=lambda hole: clear_circle(hole)[1]), r5_across=requirement_args("tripod-plate", "R5")["bolt_across"])
     notes = []
     if any(opens_to_the_edge(mesh, axis, hole, frac) for hole, frac in zip(holes, bolted._layers(mesh, axis))):
         notes.append("The bolt check took a notch open to the plate's edge for the bolt's hole, so the bolt is drawn in it.")
@@ -366,7 +366,7 @@ def tripod_scene(sub, built, findings):
     head_d, head_h, length, shank = r4["fits"], r4["head_height"], r5["bolt_length"], r5["bolt_across"]
     head = rod(head_d, min(floor, floor - inward * head_h), max(floor, floor - inward * head_h), axis)
     stem = rod(shank, min(floor, floor + inward * length), max(floor, floor + inward * length), axis)
-    bolt = at(trimesh.util.concatenate([head, stem]), (centre.x, centre.y), axis)
+    bolt = at(trimesh.util.concatenate([head, stem]), (center.x, center.y), axis)
     outcome, stopper, why = tripod_outcome(finding(findings, "R3"), finding(findings, "R4"))
     travel = depth + length + LEAD  # from its tip LEAD mm outside the face to seated
     fit = None
@@ -388,7 +388,7 @@ def tripod_scene(sub, built, findings):
     return scene.result(plate.part_id, caption, fit_note, notes, failed), None
 
 
-def bolt_centre(hole, r5_across):
+def bolt_center(hole, r5_across):
     """Where the bolt goes in the bore's tightest hole: its middle (centroid) when the bolt fits there, as in a slot
     whose largest clear circle can sit anywhere along it; otherwise the middle of that circle."""
     from pbe.graders.sections import clear_circle
@@ -419,7 +419,7 @@ def nut_outcome(found):
     return NUT_SAYS.get(said.group(1)) if said else None
 
 
-def nut_outline(centre, af, degrees):
+def nut_outline(center, af, degrees):
     """An ISO 4032 nut's outline: a hexagon af across its flats, its corners chamfered to the standard's smallest
     across-corners (nuts.NUT_CORNERS of a sharp hexagon's), turned to put a corner at `degrees`."""
     from shapely.geometry import Polygon
@@ -427,13 +427,13 @@ def nut_outline(centre, af, degrees):
     from pbe.graders import nuts
     radius = af / 2 / math.cos(math.radians(30))
     corners = [math.radians(degrees + corner * 60) for corner in range(6)]
-    sharp = Polygon([(centre.x + radius * math.cos(a), centre.y + radius * math.sin(a)) for a in corners])
-    return sharp.intersection(centre.buffer(nuts.NUT_CORNERS * radius, 64))
+    sharp = Polygon([(center.x + radius * math.cos(a), center.y + radius * math.sin(a)) for a in corners])
+    return sharp.intersection(center.buffer(nuts.NUT_CORNERS * radius, 64))
 
 
 def pocket_hex_layers(mesh, pocket, af):
     """The pocket's hex layers as the grader reads them (nuts._read_pocket's hex_layers: nut-sized holes round the
-    pocket's centre that a nut fits in, corners and all): [(z low, z high, hole, width)], bottom first."""
+    pocket's center that a nut fits in, corners and all): [(z low, z high, hole, width)], bottom first."""
     from pbe.graders import nuts
     from pbe.graders.sections import clear_width, holes_in, sections_by_layer
     layer_h, sections = sections_by_layer(mesh, 2, nuts.LAYER)
@@ -444,7 +444,7 @@ def pocket_hex_layers(mesh, pocket, af):
         if not pocket.z[0] <= z <= pocket.z[1]:
             continue
         for hole in holes_in(polys):
-            if not hole.buffer(0.01).contains(Point(pocket.centre)):
+            if not hole.buffer(0.01).contains(Point(pocket.center)):
                 continue
             width = clear_width(hole)
             if nuts._nut_sized(width, af) and nuts._is_hex(hole, width):
@@ -458,7 +458,7 @@ def nut_turn(pocket, hex_layers, af):
     _, _, hole, width = min(hex_layers, key=lambda layer: layer[3])
     fitted = nuts._nut_in(hole, width)
     corner = np.asarray(fitted.exterior.coords[0]) - np.asarray(fitted.centroid.coords[0])
-    return nut_outline(Point(pocket.centre), af, math.degrees(math.atan2(corner[1], corner[0])))
+    return nut_outline(Point(pocket.center), af, math.degrees(math.atan2(corner[1], corner[0])))
 
 
 def knob_scene(sub, built, findings, variant):
@@ -492,7 +492,7 @@ def knob_scene(sub, built, findings, variant):
         seat_low, way_in, face, mouth = (hex_low + hex_high - height) / 2, None, None, None
         notes.append("The pocket opens to both faces, so nothing stops the nut; it's drawn in the middle."
                      if pocket.opens else "The pocket is closed, so a nut can't be pressed in; it's drawn where the pocket is.")
-    shape = trimesh.creation.extrude_polygon(hexagon.difference(Point(pocket.centre).buffer(nut_bore(variant) / 2, 32)), height)
+    shape = trimesh.creation.extrude_polygon(hexagon.difference(Point(pocket.center).buffer(nut_bore(variant) / 2, 32)), height)
     shape.apply_translation((0, 0, seat_low))
     outcome = nut_outcome(finding(findings, "R4"))
     fit = None
@@ -505,7 +505,7 @@ def knob_scene(sub, built, findings, variant):
     scene = Scene(stand(mesh, np.diag([1.0, -1.0, -1.0]) if pocket.opens == ["bed"] else np.eye(3)), "knob")
     scene.add("nut", shape, fit)
     d = nut_bore(variant)
-    scene.add("bolt", at(rod(d, bottom - 6, top + 6), (pocket.centre.x, pocket.centre.y), 2))
+    scene.add("bolt", at(rod(d, bottom - 6, top + 6), (pocket.center.x, pocket.center.y), 2))
     found = finding(findings, "R4")
     fit_note = None
     if fit is None:

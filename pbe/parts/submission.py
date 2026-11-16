@@ -138,7 +138,7 @@ class ItemPlacement(Placement):
 
 class ScrewPlacement(BaseModel):
     item: str = Field(description="The id of a screw in `hardware`; one entry per screw, as many as its qty")
-    head: Vector = Field(description="The centre of the underside of its head, in the finished piece's frame")
+    head: Vector = Field(description="The centre of the underside of its head, in the finished piece's frame")  # model-facing schema text: the spelling is pinned by tests/test_prompt_rule.py's prompt hashes
     direction: Vector = Field(description="The way it points, head to tip")
 
 

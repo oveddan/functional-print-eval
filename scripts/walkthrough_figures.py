@@ -48,9 +48,9 @@ def mesh_of(folder: Path) -> trimesh.Trimesh:
     return trimesh.load(stl, force="mesh")
 
 
-def around(mesh: trimesh.Trimesh, centre, half: float) -> trimesh.Trimesh:
-    """The part of the mesh within `half` mm of `centre` in x and y, so a close-up shows the opening."""
-    cx, cy = centre
+def around(mesh: trimesh.Trimesh, center, half: float) -> trimesh.Trimesh:
+    """The part of the mesh within `half` mm of `center` in x and y, so a close-up shows the opening."""
+    cx, cy = center
     for normal, origin in (((1, 0, 0), (cx - half, 0, 0)), ((-1, 0, 0), (cx + half, 0, 0)),
                            ((0, 1, 0), (0, cy - half, 0)), ((0, -1, 0), (0, cy + half, 0))):
         mesh = mesh.slice_plane(origin, normal, cap=True)
@@ -59,36 +59,36 @@ def around(mesh: trimesh.Trimesh, centre, half: float) -> trimesh.Trimesh:
 
 def shaded(mesh: trimesh.Trimesh, failed=None, toward=None):
     """Every face, lit from above left as in the gallery, with the plastic printed over the failed roof in red: every face
-    above the roof's height whose centre lies over the region the bridge check found unsupported."""
+    above the roof's height whose center lies over the region the bridge check found unsupported."""
     light = np.array([0.45, -0.35, 0.82])  # the gallery's light, without its cap on how many faces are drawn
     faces, normals = mesh.triangles, mesh.face_normals
     if toward is not None:  # drop faces turned away from the camera: matplotlib sorts them in front of nearer ones
         facing = normals @ toward > 0
         faces, normals = faces[facing], normals[facing]
     shade = 0.32 + 0.6 * np.clip(normals @ light, 0, 1)
-    colours = np.column_stack([shade * 0.86, shade * 0.9, shade * 0.98, np.ones(len(shade))])
+    colors = np.column_stack([shade * 0.86, shade * 0.9, shade * 0.98, np.ones(len(shade))])
     if failed is None:
-        return faces, colours
+        return faces, colors
     over = failed.region.buffer(0.5)
-    centres = faces.mean(axis=1)
-    for index, (x, y, z) in enumerate(centres):
+    centers = faces.mean(axis=1)
+    for index, (x, y, z) in enumerate(centers):
         if z >= failed.z - 0.2 and over.contains(Point(x, y)):
-            shade = colours[index][2] / 0.98
-            colours[index] = [min(1.0, shade * 1.05), shade * 0.38, shade * 0.32, 1.0]
-    return faces, colours
+            shade = colors[index][2] / 0.98
+            colors[index] = [min(1.0, shade * 1.05), shade * 0.38, shade * 0.32, 1.0]
+    return faces, colors
 
 
 def render(mesh: trimesh.Trimesh, png: Path, azim: float, failed=None, elev: float = 24) -> None:
     """Seen from outside the wall that holds the USB opening, the failed roof in red."""
     toward = np.array([math.cos(math.radians(elev)) * math.cos(math.radians(azim)),
                        math.cos(math.radians(elev)) * math.sin(math.radians(azim)), math.sin(math.radians(elev))])
-    faces, colours = shaded(mesh, failed, toward)
+    faces, colors = shaded(mesh, failed, toward)
     fig = plt.figure(figsize=(4.4, 3.6), dpi=240)
     fig.patch.set_alpha(0)
     ax = fig.add_axes([0, 0, 1, 1], projection="3d")
     ax.patch.set_alpha(0)
-    # each face's edge in its own colour hides the seams between neighbouring triangles
-    ax.add_collection3d(Poly3DCollection(faces, facecolors=colours, edgecolors=colours, linewidths=0.4))
+    # each face's edge in its own color hides the seams between neighbouring triangles
+    ax.add_collection3d(Poly3DCollection(faces, facecolors=colors, edgecolors=colors, linewidths=0.4))
     low, high = mesh.bounds
     middle, reach = (low + high) / 2, float((high - low).max()) * 0.5
     ax.set_xlim(middle[0] - reach, middle[0] + reach)
@@ -115,16 +115,16 @@ def reply_text() -> str:
     return "I printed what you sent. " + " ".join(lines)
 
 
-def text_panel(ax, title: str, body: str, colour: str) -> None:
+def text_panel(ax, title: str, body: str, color: str) -> None:
     ax.set_axis_off()
     ax.add_patch(FancyBboxPatch((0.02, 0.04), 0.96, 0.9, boxstyle="round,pad=0.01,rounding_size=0.03",
-                                transform=ax.transAxes, facecolor=colour, edgecolor="#c9cfcc", linewidth=0.8))
+                                transform=ax.transAxes, facecolor=color, edgecolor="#c9cfcc", linewidth=0.8))
     ax.text(0.07, 0.86, title, transform=ax.transAxes, fontsize=12, fontweight="bold", va="top", color="#1d2421")
     ax.text(0.07, 0.72, textwrap.fill(f"\u201c{body}\u201d", 42), transform=ax.transAxes, fontsize=10.5, va="top",
             color="#2c3431", linespacing=1.45)
 
 
-def image_panel(ax, title: str, png: Path, caption: str, caption_colour: str) -> None:
+def image_panel(ax, title: str, png: Path, caption: str, caption_color: str) -> None:
     ax.set_axis_off()
     ax.text(0.5, 0.97, title, transform=ax.transAxes, fontsize=12, fontweight="bold", ha="center", va="top", color="#1d2421")
     picture = plt.imread(png)
@@ -137,7 +137,7 @@ def image_panel(ax, title: str, png: Path, caption: str, caption_colour: str) ->
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.set_aspect("auto")
-    ax.text(0.5, 0.06, caption, transform=ax.transAxes, fontsize=10.5, ha="center", color=caption_colour)
+    ax.text(0.5, 0.06, caption, transform=ax.transAxes, fontsize=10.5, ha="center", color=caption_color)
 
 
 def storyboard(png: Path) -> None:
@@ -251,10 +251,10 @@ def main():
     first, second = mesh_of(FIRST), mesh_of(SECOND)
     failed = [found for found in bridges.overhangs(first) if not found.ok]
     (OUT / "first-roof.svg").write_text(bridges.svg(failed[0]))
-    centre = failed[0].region.centroid
-    azim = math.degrees(math.atan2(centre.y - first.bounds.mean(axis=0)[1], centre.x - first.bounds.mean(axis=0)[0]))
-    render(around(first, (centre.x, centre.y), 34.0), OUT / "first-design.png", azim, failed[0])
-    render(around(second, (centre.x, centre.y), 34.0), OUT / "second-design.png", azim)
+    center = failed[0].region.centroid
+    azim = math.degrees(math.atan2(center.y - first.bounds.mean(axis=0)[1], center.x - first.bounds.mean(axis=0)[0]))
+    render(around(first, (center.x, center.y), 34.0), OUT / "first-design.png", azim, failed[0])
+    render(around(second, (center.x, center.y), 34.0), OUT / "second-design.png", azim)
     render(first, OUT / "first-whole.png", azim, failed[0], elev=38)
     render(second, OUT / "second-whole.png", azim, elev=38)
     for name in ("first", "second"):

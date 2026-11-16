@@ -31,7 +31,7 @@ FIGURES = {  # name: the design to draw
     "nut-knob-ribs": RUNS / "pilot-nut-knob/nut-knob/M5/can_ask/anthropic__claude-opus-5.5/t2/submission.yaml",
 }
 VIEWS = {"nut-knob-ribs": {"azim": -60, "elev": 62}}  # from above, into the pocket, so the ribs show
-CLOSE_UP = {"nut-knob-ribs": 9.0}  # mm around the part's centre, so the pocket fills the picture
+CLOSE_UP = {"nut-knob-ribs": 9.0}  # mm around the part's center, so the pocket fills the picture
 
 
 def load(design):
@@ -58,8 +58,8 @@ def main():
         with tempfile.TemporaryDirectory() as out:
             mesh = main_part(design, Path(out))
             if name in CLOSE_UP:
-                centre = mesh.bounds.mean(axis=0)
-                mesh = walk.around(mesh, (centre[0], centre[1]), CLOSE_UP[name])
+                center = mesh.bounds.mean(axis=0)
+                mesh = walk.around(mesh, (center[0], center[1]), CLOSE_UP[name])
             walk.render(mesh, OUT / f"{name}.png", **VIEWS.get(name, {"azim": -55}))
     print(f"wrote {len(FIGURES)} pictures to {OUT.relative_to(ROOT)}")
 

@@ -106,7 +106,7 @@ export function timelineControl(phases, slug, onSelect) {
     start(key) {
       const at = phases.findIndex((phase) => phase.key === key);
       select(at >= 0 ? at : phases.indexOf(ownPhase(phases, slug)));
-      // The strip has no width until it's in the page: centre the chosen step once it has.
+      // The strip has no width until it's in the page: center the chosen step once it has.
       requestAnimationFrame(() => { const tab = tabs[current]; steps.scrollLeft = tab.offsetLeft - (steps.clientWidth - tab.offsetWidth) / 2; });
     },
   };

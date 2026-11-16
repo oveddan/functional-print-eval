@@ -214,7 +214,7 @@ def roof_lines(mesh) -> list[ReportLine]:
 
 
 # --- Estoa's test pieces, answered from the same records the checks use (tasks/estoa-light/requirements.yaml) ---
-DISK_HOLE_CENTRES = (33.2, 34.22)  # mm apart: Dan's calipers, 2 x 16.6 to 2 x 17.11 (30.2 between the holes' edges + 3.3)
+DISK_HOLE_CENTERS = (33.2, 34.22)  # mm apart: Dan's calipers, 2 x 16.6 to 2 x 17.11 (30.2 between the holes' edges + 3.3)
 DISK_SCREW_PLAY = 0.15  # mm a side: a 3.0 mm screw in the disk's 3.3 mm holes
 USB_SEATED = (14.0, 8.5)  # the opening a plug seated through
 USB_STOPPED_W = 11.5  # the opening width that stopped the plug's boot
@@ -280,7 +280,7 @@ def _insert_line(hole, plastic) -> ReportLine:
 def _disk_hole_line(first, second) -> ReportLine:
     """Against Dan's caliper readings of the disk's holes, with the screws' play in them."""
     apart = first.centroid.distance(second.centroid)
-    low, high = DISK_HOLE_CENTRES[0] - DISK_SCREW_PLAY * 2, DISK_HOLE_CENTRES[1] + DISK_SCREW_PLAY * 2
+    low, high = DISK_HOLE_CENTERS[0] - DISK_SCREW_PLAY * 2, DISK_HOLE_CENTERS[1] + DISK_SCREW_PLAY * 2
     if low <= apart <= high:
         return ReportLine(f"holes {apart:.1f} mm apart: I held it against the disk and both screws go through its holes.", "Dan's calipers")
     off = low - apart if apart < low else apart - high
