@@ -6,7 +6,7 @@ The README asks which model gets to a working print fastest, cheapest and with t
 
 ## What was looked at first (2026-11-06)
 
-| Option | Licence | Headless? | Used? |
+| Option | License | Headless? | Used? |
 |---|---|---|---|
 | Bambu Studio's command line (`BambuStudio --slice`), installed here as 02.08.02.61 | AGPL-3.0 | Yes: loads presets as JSON, slices, writes G-code and a `result.json`, no window | **Yes**, called as a program; no code copied |
 | OrcaSlicer's command line (a Bambu Studio fork, same flags) | AGPL-3.0 | Yes | No: not installed, and Bambu Studio is what Dan's test prints were sliced in |

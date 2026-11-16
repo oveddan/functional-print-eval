@@ -244,7 +244,6 @@ Every condition also has `report_limitation`, which changes nothing and records 
 - **Test prints are graded but don't count.** The generic checks run on test prints too, and `summary.csv` lists their failures (`test_print_failed`), but a test print can't fail a trial on its own.
 - **Grade the outcome, not the technique.** `bridges` asks whether every overhang will print, so a stepped roof, flipping the part or moving the feature all pass.
 - **How the checks are tested** (`tests/`): each reference passes every check; versions of the real failures fail the check aimed at them and no other; simple reward hacks fail; designs unlike the reference pass; and cases between two records come back not graded.
-- **No independent CAD or printing expert has reviewed the checks or the verdicts.** Dan wrote the tasks from his own builds and made the calls listed under [Limits](../README.md#limits). Claude wrote the checks, and the audits are further readings by Claude and Codex.
 
 ## Full results
 
@@ -534,6 +533,119 @@ Most knob trials that didn't pass weren't failed: 167 pass, 120 fail and 39 are 
 The control. 55 of 57 trials pass.
 <!-- wrong-m5-spacer:end -->
 
+## The test prints behind the checks
+
+These test prints provide the ground truth for parts of the 3D printing simulation. Each print tests the ground truth of one thing. For example, if there's a roof over a hole, will it print successfully? We printed nut pockets at different sizes, using different techniques, to see which size a nut would fit into snugly without falling out.
+
+What each print tests, why we printed it, and what happened, from the test-print code (`coupons/coupons.py`) and the records of each round with my notes (`results/predictions/`):
+
+| Round one, printing | Round two, printing |
+|---|---|
+| ![Timelapse of the first round of test prints on the printer](https://media.danoved.xyz/print-build-eval/nogit/7dfd078a/timelapse-round1.gif) | ![Timelapse of the second round of test prints on the printer](https://media.danoved.xyz/print-build-eval/nogit/72451465/timelapse-round2.gif) |
+
+| The print | What it tests | Why we printed it | What happened |
+|---|---|---|---|
+| ![Pressing nuts into the nut-pocket test print, Oct 29, at 2.5 times speed](https://media.danoved.xyz/print-build-eval/nogit/854da3b2/nut-test-print.gif) | **Nut pockets.** I wanted to find the actual best size to print the opening so it holds the nut. I took nuts of different sizes (M3, M5, M8 and 1/4-20), pressed them into pockets from exactly the nut's size to 0.3 mm over, and saw which one was the most snug while still realistic to push in (Oct 29, at 2.5 times speed) | In the past, I'd had nuts that wouldn't fit snugly into an opening in a 3D print, and when you turned the part a certain way, the nut would fall out | M3 needs 0.2 mm over ("goes in with pushing, snug"); at 0.1 it "really struggles". M5 holds at 0 and 0.1 mm over, and is loose at 0.2. M8 and 1/4-20 hold only at the nut's exact size |
+| ![The roof strip: square pockets roofed at 20 to 50 mm, walls on all four sides](https://media.danoved.xyz/print-build-eval/nogit/ddb66572/test-print-roof-strip.jpg) ![The underside of the tunnel print: the roof printed as loose strands](https://media.danoved.xyz/print-build-eval/nogit/d2483df5/IMG_5409.jpg) | **Bridges and overhangs.** I wanted to test different scenarios to see what kind of overhang prints work and which ones fail and result in strands: roofs over pockets 20 to 50 mm wide with walls on all four sides, one with a hole cut through it, and tunnels open at their ends | I've had a bunch of successes and failures when printing with overhangs and bridges | When there are no walls on one side, it fails, as you can see here in both attempts, but if there are walls on four sides, it seems to be pretty successful, even when you get pretty wide. The roofs with four walls printed clean up to 50 mm (the 40 mm one sagged in round one and printed clean in round two); the roof with a hole through it tangled; the tunnels printed as strands both times |
+| | **Bearing seats.** 608 bearing seats from 22.0 to 22.3 mm, and 8 mm pegs for the bearing's bore | The closet-door wheel task: does a bearing press in and stay in, and at what size? | The 22.0 mm seat wouldn't take the bearing; 22.1, 22.2 and 22.3 took it and held it upside down. Only the tightest 8 mm peg was snug |
+
+**Round three**, on 2026-11-11 and 12, went after the designs the first two rounds couldn't grade: crush-ribbed nut pockets, narrow roof ledges, bolt holes and bearing seats between the sizes I'd printed, and six roofs cut straight out of the models' own Estoa designs. Five of the six roofs strung as the bridge check predicted.
+
+| Bridges and roofs cut from the models' designs | GPT's roof, the one that printed clean | Ring roofs: stepped clean, plain tangled | A tightened M5 nut on the 1.3 mm ledge |
+|---|---|---|---|
+| ![The undersides of the 60, 80 and 100 mm bridges and five roof crops, every one strung across](https://media.danoved.xyz/print-build-eval/nogit/16e6737/46cc720f/bridges-and-roof-crops-underside.jpg) | ![GPT-6.1 Sol's roof crop held up: a short roof with a clean underside](https://media.danoved.xyz/print-build-eval/nogit/16e6737/5828c4a9/gpt-roof-crop-clean.jpg) | ![The ring-roof plate from underneath: the stepped roofs printed solid, the plain ones over the bigger pockets tangled](https://media.danoved.xyz/print-build-eval/nogit/16e6737/86844df7/ring-roofs-underside.jpg) | ![An M5 bolt through ring roof 5 with its nut tightened underneath, sitting slightly proud on the strands](https://media.danoved.xyz/print-build-eval/nogit/16e6737/5e7b512a/ring-roof-cell5-m5-nut.jpg) |
+| All strung: the bridge check failed each of these, and the 50 mm span limit stands | Its longest unsupported strand is 6.8 mm, so short-strand roofs now pass | 9 of 10 cells came out as the bridge check predicted | It holds, just not flush: the miss the short-strand rule fixes |
+
+## Task galleries
+
+Four passing and four failing designs per task, from the saved trials, each labelled with its model and trial; failures are seen from below with the failing roof or ledge in red.
+
+![Four passing and four failing tripod plates from the saved trials, each labelled with its model and trial](media/tasks/tripod-plate-gallery.png)
+
+![Four passing and four failing wheels from the saved trials, each labelled with its model and trial](media/tasks/bearing-wheel-gallery.png)
+
+![Four passing and four failing knobs from the saved trials, each labelled with its model and trial](media/tasks/nut-knob-gallery.png)
+
+## A trial that passed after feedback
+
+In each trial, nothing actually gets printed. We have checks, run by code, that simulate the model's parts and compare them with the results of my test prints to see if they would print successfully. Here's an example of a trial in the Reprint after feedback condition: it failed, then succeeded after we gave the model feedback about what failed (Gemini 4 Argon on the Estoa light, from the earlier loop, where the feedback came after its first print):
+
+![One trial in four panels: the request, the first simulated print failing on the roof over the USB window, the person's one-line report, and the second print passing with an open channel](media/walkthrough/storyboard.png)
+
+## Reference solutions and more task examples
+
+The hand-made reference solution for each task, which passes every check, and the examples cut from the README's task section.
+
+### Tripod plate
+
+| Reference solution | Fail: dovetail upside down |
+|---|---|
+| ![The reference camera plate](media/tasks/tripod-plate-reference.png) | ![Sonnet's plate cut across: the bevels are on the wrong face](media/failures/tripod-dovetail-upside-down.png) |
+| Hand-written, after the plate Dan printed | Sonnet 5.5, trial 1, cut end-on: the plate narrows toward the tripod, the opposite of what the clamp's angled jaws hook over. Flipped to fit, the bolt head ends up on the camera's side |
+
+### Closet door wheel
+
+| Reference solution | Fail since round 3: a narrow ledge |
+|---|---|
+| ![The reference wheel](media/tasks/bearing-wheel-reference.png) | ![Sonnet's wheel cut through the middle: a narrow ledge](media/failures/wheel-narrow-ledge.png) |
+| Seats for both bearings | Sonnet 5.5, trial 3: a ledge about 2.5 mm wide. It wasn't graded until round 3's ring roofs, where a 2 mm ledge round a bolt hole tangled; now it fails |
+
+### Hand knob (M3 and M5)
+
+| Reference solution | Pass |
+|---|---|
+| ![The reference knob](media/tasks/nut-knob-reference.png) | ![Sonnet 5.5's M3 knob, its pocket set from its own test print](media/tasks/nut-knob-pass.png) |
+| Pocket at a size the test print held | Sonnet 5.5, M3, trial 2 with test prints: it asked for a test print of four pocket sizes and heard 5.40 and 5.50 mm won't go in, 5.60 mm really struggles, and 5.70 mm goes in snug and stays upside down. Its knob uses 5.70 mm |
+
+### Estoa light box
+
+| Reference solution | A perfboard with no wall on one side |
+|---|---|
+| ![The reference box](media/tasks/estoa-light-reference.png) | ![Sol's box cut just above the perfboard: the wall stops short of the board's side](media/failures/estoa-perfboard-open.png) |
+| A box the disc screws onto; any shape that passes the checks works | GPT-6.1 Sol, trial 3 with test prints: the wall stops short of the perfboard's side, so the board isn't inside the box |
+
+### The README's task examples
+
+The requests in full, with one pass and one failure per task.
+
+#### Tripod plate
+
+> "I borrowed my friend's tripod, and I can't seem to find the part that connects the camera to the tripod. How hard would it be to 3D print it, both the flat part and the part that screws in? Just as a temporary thing until I find the real one. I know it's metal normally."
+
+| Pass | Fail: roof over the bolt's hole |
+|---|---|
+| ![Opus 5.5's plate, t5](media/tasks/tripod-plate-pass.png) | ![The bridge check's strands across GPT-6 Luna's roof](media/failures/tripod-holed-roof.svg) |
+| Opus 5.5, trial 5 | GPT-6 Luna, trial 1, the bolt's recess seen from below: the hole is cut through the roof, so the red strands end in mid-air; only 66% land on plastic at both ends |
+
+#### Closet door wheel
+
+> "The roller wheel on my sliding closet door snapped. I've got two 608 skateboard bearings and an M8 bolt I could use. Could I 3D print a new wheel that spins on the bolt? The old one was about 50 mm across and about 16 mm wide."
+
+| Pass: a cone roof | Fail: a flat roof |
+|---|---|
+| ![Opus's wheel cut through the middle: the roof is a cone](media/failures/wheel-cone.png) | ![Sonnet's wheel cut through the middle: a flat roof over the lower bearing](media/failures/wheel-flat-roof.png) |
+| Opus 5.5, trial 1: the ledge between the bearings steps inward each layer, so nothing is printed over air | Sonnet 5.5, trial 1: a flat ledge over the empty lower bearing seat; only 22% of strands land on plastic at both ends, so it would sag |
+
+#### Hand knob (M3 and M5)
+
+> "I want a hand knob for an M3 bolt, about 20 mm across, so I can tighten it without a tool. It's one printed piece. An M3 hex nut (ISO 4032) presses into the knob by hand and has to stay in when I turn the knob upside down, no glue."
+
+| Fail: no clearance | Pass since round 3: crush ribs |
+|---|---|
+| ![Sonnet's M3 pocket cut across with the nut's outline](media/failures/knob-no-clearance.png) | ![Close-up of Opus's M5 knob: small round ridges stand out from the hex pocket's walls](media/tasks/nut-knob-ribs.png) |
+| Sonnet 5.5, M3 trial 1, cut across: the pocket is exactly as wide as the nut, with no gap. Dan's test print at that size wouldn't take the nut | Opus 5.5, M5 trial 2: the small round ridges on the pocket's walls are meant to grip the nut. No test print had ribs until round 3, where a pocket with three round ribs took an M5 pressed in on a bolt and held it upside down. These ribs are within 0.2 mm of that one, so the check passes them, saying which print it assumed from |
+
+#### Estoa light box (harder task)
+
+> "I'm making a round light to hang on my wall: an Adafruit DotStar LED disc, the 255-LED one. … for now I only need that box, with the disc screwed onto it."
+
+| The real one | A roof over air |
+|---|---|
+| ![The real Estoa back box open, with the ESP32 and battery inside](https://media.danoved.xyz/print-build-eval/nogit/f6d3b3c4/estoa-enclosure-inside.jpg) | ![Argon's first box, whole and close up: the strip over the USB opening, in red, has nothing under it](media/walkthrough/first-whole-and-close-up.png) |
+| Dan's build | Gemini 4 Argon, trial 2: the top edge of the USB opening (red) spans thin air and would sag |
+
+We ran out of time to make the test-print loop work on this task.
+
 ## What wasn't graded, and the prints that would settle it
 
 A check is not graded when no recorded print decides it. A trial can have more than one. Dan's call on 2026-10-30 was no more prints before publishing; he later printed a third round (2026-11-11 and 12), and what the records still can't decide is future work; `docs/limitations.md` has the full list.
@@ -650,7 +762,7 @@ Also:
 
 ## Prior art
 
-| Work | Licence | How it's used |
+| Work | License | How it's used |
 |---|---|---|
 | BenchCAD (`BenchCAD/BenchCAD-main`, HF `BenchCAD/BenchCAD`) | MIT code, CC-BY data (per its README; read its LICENSE before reuse) | CadQuery sandbox, standard fastener families |
 | BenchCAD 2.0 library (`BenchCAD-org/benchcad-2`) | MIT | part-family format (a build file plus a check file), cited |
