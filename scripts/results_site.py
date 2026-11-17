@@ -50,6 +50,7 @@ import results_page  # noqa: E402  issues_of, KIND, HELP: the same diagnoses as 
 import results_site_timeline  # noqa: E402  a trial's phases in order, and the renders of the test prints it asked for
 import scorecard  # noqa: E402  the README's counting rules
 
+import numpy as np  # noqa: E402
 import yaml  # noqa: E402
 
 from pbe.assumptions import Assumed  # noqa: E402
@@ -1449,6 +1450,32 @@ def task_names() -> dict:
     return {task: {"label": TASK_NAMES[task], "short": TASK_SHORT[task]} for task in HEADLINE_TASKS}
 
 
+RESAMPLES = 20000
+
+
+def rank_odds(rows: list[dict], order: list[str]) -> dict:
+    """How often each model would rank first, in the top two, or last, if each one's test-first trials were run again.
+    Each resample redraws every model's passes task by task (a binomial at that task's saved pass rate, with its saved
+    number of trials), so it measures trial-to-trial noise on these four tasks only, not how the order would hold on
+    other tasks. Ties in a resample are broken at random. A fixed seed, so the numbers repeat."""
+    rng = np.random.default_rng(0)
+    tested = [row for row in rows if row["test_first"] and row["model"] in order]
+    passes = np.zeros((RESAMPLES, len(tested)))
+    trials = np.zeros(len(tested))
+    for at, row in enumerate(tested):
+        for task in scorecard.TASKS:  # the four scored tasks the chart counts, not the harder Estoa task
+            cell = row["test_first"]["by_task"].get(task)
+            if cell and cell["trials"]:
+                passes[:, at] += rng.binomial(cell["trials"], cell["passes"] / cell["trials"], RESAMPLES)
+                trials[at] += cell["trials"]
+    rates = passes / trials + rng.random(passes.shape) * 1e-9  # random tie-break
+    place = (-rates).argsort(axis=1).argsort(axis=1)  # 0 = first
+    last = len(tested) - 1
+    return {"note": " ".join(rank_odds.__doc__.split()), "resamples": RESAMPLES,
+            "models": {row["model"]: {"first": float((place[:, at] == 0).mean()), "top_two": float((place[:, at] <= 1).mean()),
+                                      "last": float((place[:, at] == last).mean())} for at, row in enumerate(tested)}}
+
+
 def scorecard_block(listed: list, entries: list[Entry]) -> dict:
     """The README's aggregates, from scorecard.py's own Row and Trial methods, keyed by task id."""
     tested = scorecard.tested_order(listed)
@@ -1508,6 +1535,7 @@ def scorecard_block(listed: list, entries: list[Entry]) -> dict:
                    "first_rate": first_n[0] / first_n[1],
                    "test_first_rate": sum(sum(t.passed() for t in r.tested_trials()) for r in tested) / sum(len(r.tested_trials()) for r in tested)},
         "matched_trial_numbers": matched(entries, tested),
+        "rank_odds": rank_odds(rows, [row.model for row in tested]),
         "cant_tell": {"trials": len(told), "told": sum(t.told_cant_tell for t in told),
                       "passes": sum(t.passed() for t in told), "passes_after_cant_tell": sum(t.passed() and t.told_cant_tell for t in told)},
         "estoa_line": scorecard.estoa_line(),
