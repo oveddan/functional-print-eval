@@ -7,7 +7,7 @@ Everything behind the [README](../README.md): the failure classes, how to run ea
 <!-- failure-classes:start (written by report/atlas/build.py --readme; don't edit by hand) -->
 57 failures from real builds with an AI agent, each traced to its session (`seeds/`) and sorted into one of 10 classes that don't depend on the object (`seeds/classes.yaml`). They came from: Tripod and phone stand (12), Estoa light piece (34), Lamp mount and organizer (8), The eval's own test prints (3). The graded tasks test 6 of the classes; each is below with the requirements that test it, one real failure, and photos, which are hosted rather than committed.
 
-#### C1: Designing from unmeasured dimensions
+#### C1: Printed the wrong size for the item it holds
 
 13 failures in the builds. Tested by:
 
@@ -20,7 +20,7 @@ Everything behind the [README](../README.md): the failure classes, how to run ea
 |---|---|
 | Estoa's back-box skeleton, Oct 3, with the real power bank on it. The bay was drawn from a guessed 154 mm battery and a guessed cable exit; the power bank didn't fit. *Dan's photo* | Half an hour later, the fix. A 1:1 paper floor plan with the real power bank, USB-C breakout and cable laid on it, before anything else was printed. *Dan's photo* |
 
-#### C2: Fit clearance wrong for the printer
+#### C2: Pocket the wrong size for a snug fit
 
 4 failures in the builds. Tested by:
 
@@ -30,7 +30,7 @@ Everything behind the [README](../README.md): the failure classes, how to run ea
 
 **From the builds** (Tripod and phone stand): Nut pockets at af+0.3 mm; every nut fell out. Found by: three rounds of test prints.
 
-#### C3: Fastener stack-up arithmetic
+#### C3: Fasteners don't properly connect to each other
 
 6 failures in the builds. Tested by:
 
@@ -46,7 +46,7 @@ Everything behind the [README](../README.md): the failure classes, how to run ea
 |---|---|
 | A lid-screw post after its heat-set insert went in, Oct 5. The post was too thin and tall for a 5 mm insert, so its walls flared and the insert sat off-centre. *Dan's photo* | The tripod's phone clamp, Oct 24. The design treated an M5x50 as fully threaded; it's threaded only at the far end, so the lock nut couldn't reach the end wall. *Dan's photo* |
 
-#### C5: Mating-part envelopes
+#### C5: A cable can't reach the port it plugs into
 
 6 failures in the builds. Tested by:
 
@@ -65,7 +65,7 @@ Everything behind the [README](../README.md): the failure classes, how to run ea
 |---|
 | The ESP32's USB-C opening in Estoa's back box. Sized to the port, not the plug, at the end of a 9 mm recess; ordinary plug heads couldn't reach. *Dan's photo* |
 
-#### C6: Printability in the chosen orientation
+#### C6: Can't print the way it's oriented
 
 11 failures in the builds. Tested by:
 
@@ -78,7 +78,7 @@ Everything behind the [README](../README.md): the failure classes, how to run ea
 |---|---|---|
 | The underside of the tripod's Arca plate, Oct 12, the project's first print. The roof over the bolt-head recess was a plain bridge with a slot cut through it, and it printed as a tangle. *Dan's photo* | Estoa's test wall, Oct 1. A screw hole through a bridged pocket roof printed as loose strands and closed up; the slicer had warned of a floating cantilever. *Dan's photo* | The fix, already used in Estoa a week earlier. Each pair of layers bridges onto the last, so the hole has a solid edge to print on. *Diagram from the Estoa repo* |
 
-#### C7: Works in the orientation it's used
+#### C7: Doesn't work the way it's mounted
 
 3 failures in the builds. Tested by:
 
@@ -86,7 +86,7 @@ Everything behind the [README](../README.md): the failure classes, how to run ea
 
 **From the builds** (Estoa light piece): The lid's keyhole slots ran down from the entry hole, so the piece couldn't drop onto the wall screws. Found by: agent review before printing.
 
-**Recorded but not tested by any task yet:** C4 tool and hand access (3); C8 test-plan coverage (3); C9 manual correctness (5); C10 print process and material settings (3).
+**Recorded but not tested by any task yet:** C4 can't reach it with the tool (3); C8 tested the wrong thing (3); C9 wrong assembly instructions (5); C10 wrong print settings (3).
 <!-- failure-classes:end -->
 
 ## What existed before the hackathon
