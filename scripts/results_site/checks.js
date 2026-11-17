@@ -30,6 +30,7 @@ function exampleCard(example) {
       badge(state, { small: true, label: example.label || OUTCOME_WORD[state] || meta.label }),
       h("a", { href: example.href }, `${example.model_short}, ${example.task_label}, trial ${example.trial}`),
       example.part && example.part !== "-" ? h("span", { class: "fine" }, " on ", h("code", {}, example.part)) : null),
+    example.failed_title ? h("p", { class: "ck-fail-title" }, example.failed_title) : null,
     example.detail ? h("p", { class: "ck-found" }, h("span", { class: "ck-label" }, "The check found: "), example.detail) : null,
     example.via_test_print && !example.label ? h("p", { class: "ck-note" }, "This pass rests on the design's test print or template, not on its size as drawn.") : null,
     example.note ? h("p", { class: "ck-note" }, example.note) : null,

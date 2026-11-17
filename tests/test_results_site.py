@@ -288,6 +288,28 @@ def test_a_failed_check_in_a_trial_detail_carries_its_view(drawn_views):
     assert next(row for row in rows if row["check"] == "R1").get("view", "absent") == "absent"  # a pass has no view keys
 
 
+def test_every_check_title_has_a_failed_wording():
+    """A failed check is shown by what went wrong, never by its success phrase beside a red X."""
+    for family, titles in results_site.CHECK_TITLES.items():
+        failed = results_site.CHECK_FAILED_TITLES.get(family, {})
+        assert set(failed) == set(titles), family
+        assert all(failed[check] != titles[check] for check in titles), family
+
+
+def test_a_failed_finding_is_titled_by_its_failure_and_a_pass_by_the_check():
+    entries = {entry.id: entry for entry in results_site.collect()}
+    entry = entries["pilot-estoa/estoa-light/can_ask/anthropic__claude-opus-5.5/t4"]
+    rows = results_site.finding_rows(entry, entry.record.findings, getattr(entry.record, "declined", None))
+    bridges = next(row for row in rows if row["check"] == "bridges" and row["part"] == "back_box")
+    assert bridges["title"] == "An overhang can't be bridged" and bridges["check_title"] == "Overhangs can be bridged"
+    passed = next(row for row in rows if row["ok"] is True)
+    assert passed["title"] == passed["check_title"]
+    for row in rows:
+        if row["ok"] is None:  # not graded keeps the check's own title
+            assert row["title"] == row["check_title"]
+    assert results_site.check_title("nut-knob/M3", "R3", False, "grader error: GEOSException: …") == results_site.CRASHED
+
+
 def test_view_audit_attaches_only_to_existing_views(drawn_views):
     """Each audit entry names a drawn view in the manifest, p is a probability, and view_of carries it as view.audit."""
     audit = results_site.view_audit()
