@@ -1831,7 +1831,7 @@ def with_share_text(page: str, pooled: dict) -> str:
 def placeholder_page() -> str:
     return """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Print Build Eval results</title>
+<title>Funk3D-Bench results</title>
 <style>:root{--bg:#fff;--fg:#1f262b}@media (prefers-color-scheme: dark){:root{--bg:#15191c;--fg:#e4e9ec}}
 body{background:var(--bg);color:var(--fg);font:15px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;margin:0 16px}</style>
 </head><body><h1>Results</h1><p id="out">Loading data/index.json...</p>

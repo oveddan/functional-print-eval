@@ -1,4 +1,4 @@
-# Functional 3D Printing Eval
+# Funk3D-Bench: can LLMs design functional 3D prints?
 
 Made by [Dan Oved](https://danoved.xyz).
 
@@ -224,7 +224,7 @@ OPENROUTER_API_KEY=... uv run python -m pbe.eval --run mine --condition can_test
 | [CADEngBench](https://arxiv.org/abs/2608.09296) | Parametric parts graded on valid solids and design-for-manufacturing checks | Fit limits come from test prints on one printer, and the model can ask for measurements and hear how a print came out |
 | [Hephaestus-CCX](https://arxiv.org/abs/2605.17448) | Requirements written as typed checks | Borrowed: each task's requirements are typed checks (`requirements.yaml`) |
 
-Code from BenchCAD (MIT) is used for its CadQuery sandbox; [CADEngBench](https://github.com/coderjs-lab/cadengbench) has no license, so its layered grading is reimplemented and cited. [Prior art](docs/reference.md#prior-art) has the full list.
+Code from BenchCAD (MIT) is used for its CadQuery sandbox; [CADEngBench](https://github.com/coderjs-lab/cadengbench) has no license, so its layered grading is reimplemented and cited. [FDM-Bench](https://arxiv.org/abs/2412.09819) is an existing 3D printing benchmark. It simulates G-code generation and spots errors, but doesn't test actually designing parts. [Prior art](docs/reference.md#prior-art) has the full list.
 
 ## More
 
