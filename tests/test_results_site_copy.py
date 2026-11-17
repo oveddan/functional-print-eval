@@ -16,7 +16,7 @@ def test_the_site_never_says_nothing_a_model_designed_was_printed():
         assert "No model's design was printed" not in text, name
     page = texts["index.html"]
     assert "No complete model design was printed" in page
-    assert f'href="{REPO}#the-test-prints-behind-the-checks"' in page
+    assert f'href="{REPO}/blob/main/docs/reference.md#the-test-prints-behind-the-checks"' in page
 
 
 def test_the_pass_definition_points_at_the_assumptions_and_the_anchor_exists():

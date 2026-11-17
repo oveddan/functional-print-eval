@@ -1,0 +1,11 @@
+## 2026-11-16: README rewritten as a shorter, story-first page (no result changed)
+
+- **Order:** story, failure classes, how the eval was built, tools, tasks, the agent, results, limits, run it, prior work. Dan wrote the opening, the questions, the story and the process section in his own words; Claude trimmed.
+- **Failure classes** are named for what goes wrong (C1 "Printed the wrong size for the item it holds", C2 "Pocket the wrong size for a snug fit", ...), and each row shows the test print behind its check, captioned with what really decides it (C1 asks for measurements, C3's round 3 insert posts aren't recorded yet, C5 uses Dan's measured USB-C plug, C7 has no test print). C2's real failure is a new clip of a loose nut falling out of its pocket, and C5's a new photo of a USB-C plug stopping short of the port (Dan, 2026-11-16). Renaming the classes in `seeds/`, the reference and the site is a follow-up.
+- **How I built the eval:** a loop diagram, Dan's six steps, the Print Verdict Review screenshot (`docs/media/process/review-page.png`) and how much could be graded before and after round 3: 79.5% of the 774 trials that handed in a design before, 93.3% after (803 saved; 29 declined or handed in nothing), the same trials read at `ddb67f17` and `a91400d7` by the new `scripts/gradability_by_round.py` (read-only; it reads saved `grades.json` files from git).
+- **Moved to `docs/reference.md`, nothing deleted:** the test-print tables and round 3 photos, the task galleries, the reference solutions and task examples, and the reprint storyboard. The results site's link to the test-print section points there now (`tests/test_results_site_copy.py`).
+- **Results notes** written by `scripts/scorecard.py` are shorter; the numbers are computed as before.
+- **Limits** add: no final design was printed, one printer and setting (4 walls, 15% infill), simple tasks, a fixed hardware list, cost and reruns, and a possible bias toward Claude. The reference's "no independent expert" line is removed (Dan reviewed the verdicts).
+- **Spelling:** "license" in the README, reference, `docs/slice-estimates.md` and the results site.
+
+Evidence: `uv run python scripts/scorecard.py --check` passes; `tests/test_results_site.py`, `test_results_site_copy.py`, `test_results_site_open_source.py` pass.

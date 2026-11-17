@@ -247,21 +247,13 @@ def undecided_then_passed(row: Row) -> int:
 
 def note(listed: list[Row]) -> str:
     replayed = [row for row in listed if row.replayed()]
-    gained = {row.model: row.passes(True) - row.passes() for row in replayed}
     hinted = {row.model: undecided_then_passed(row) for row in replayed}
-    parts = [f"{SHORT.get(m, m)} {hinted[m]} of its {gained[m]}" for m in sorted(hinted, key=lambda m: -hinted[m]) if hinted[m]]
-    if not parts:
-        return "No new pass in the reprint after feedback came from a design that wasn't graded on the first print."
-    others = [SHORT.get(m, m) for m in hinted if not hinted[m] and gained[m]]
-    sentence = ("Some of the gain in the reprint after feedback comes from a gap in the simulation, not from what a builder would say. "
-                "When no recorded print decides a part, such as a ribbed nut pocket, the person can only answer \"I can't "
-                "tell you how that one came out\", and a model can then switch to a shape the test prints cover, which "
-                "passes. The final design is verified, but a real builder would have said whether the part worked. "
-                f"New passes that came this way: {', '.join(parts)}.")
-    if others:
-        names = others[0] if len(others) == 1 else ", ".join(others[:-1]) + " and " + others[-1]
-        sentence += f" {names} had none."
-    return sentence
+    who = [SHORT.get(m, m) for m in sorted(hinted, key=lambda m: -hinted[m]) if hinted[m]]
+    total = sum(hinted.values())
+    if not total:
+        return "In the reprints, that accounts for no new pass."
+    names = who[0] if len(who) == 1 else ", ".join(who[:-1]) + " and " + who[-1]
+    return f"In the reprints, that accounts for {total} new {'pass' if total == 1 else 'passes'} ({names})."
 
 
 def estoa_line() -> str:
@@ -278,11 +270,8 @@ def estoa_line() -> str:
     tested = [record for _, record in TrialRecord.all_in(RUNS / TEST_FIRST)
               if record.task == HARDER[0] and record.outcome != "error"]
     tested_passes = sum(record.verdict == "pass" for record in tested)
-    return (f"**The Estoa light box**, the harder task, isn't in the four-task total: {len(models)} models, "
-            f"{len(records)} trials. {first} of {len(records)} designs pass on the first print. In the Reprint after feedback condition, after the person says "
-            f"how the box came out, {after} of the {len(arms)} designs replayed (every one that had failed when the replays ran) {'passes' if after == 1 else 'pass'}. "
-            f"With test prints first, {tested_passes} of {len(tested)} pass (its row in the table). We ran out of "
-            f"time to make the test-print loop work on this task ([the Estoa section](#estoa-light-box-harder-task)).")
+    return (f"**Estoa,** the harder task, is kept out of the total: {first} of {len(records)} designs pass on the first "
+            f"print, {after} of {len(arms)} after feedback, and {tested_passes} of {len(tested)} with test prints first.")
 
 
 def chart(listed: list[Row]) -> str:
@@ -446,9 +435,9 @@ def cant_tell_line(listed: list[Row]) -> str:
     told = [t for t in trials if t.told_cant_tell]
     passes = [t for t in trials if t.passed()]
     after = [t for t in passes if t.told_cant_tell]
-    return (f"In {len(told)} of these {len(trials)} trials the person answered at least one test piece with \"I can't tell "
-            f"you how that one came out\", for a size my test prints never tried. {len(after)} of the {len(passes)} passes "
-            "came after such an answer, so some may owe part of the pass to moving to a size I did print (see Limits).")
+    return (f"Some passes may lean on a gap in the simulation: in {len(told)} of {len(trials)} trials, at least one test "
+            f"piece got \"I can't tell you how that one came out\" (a size I never printed), and {len(after)} of the "
+            f"{len(passes)} passes came after one.")
 
 
 def markers() -> tuple[str, str]:
