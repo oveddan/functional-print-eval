@@ -1,0 +1,347 @@
+task: nut-knob/M3
+note: 'One printed part, no glue, no tools for assembly. Grip is 12 half-round vertical
+  ribs on a 17.6 mm core, giving 20.0 mm across - printable standing up with no supports
+  and no bridges.\n\nThe nut pocket is the part that needed care. Your 5.45 mm straight
+  test pocket would not accept the nut, so the printed hex holes run tight relative
+  to the nut and the printer''s exact hole error could not be measured. A single straight
+  pocket size would therefore be a coin flip between \"won''t press in\" and \"falls
+  out\". Instead the pocket is 5.8 mm across flats at the mouth and narrows to 5.0
+  mm at the seat over 6.2 mm of depth. The nut goes in by hand through the clear 5.8
+  mm entry, then wedges in the hex taper (7.6 deg half-angle, well inside self-locking),
+  so it both grips and never rattles out. Tightening the bolt pulls the nut deeper
+  into the narrowing taper, which only makes it tighter. It cannot be pushed out the
+  far side: the seat is 5.0 mm across flats and the far-side hole is 3.4 mm, both
+  smaller than the nut''s 5.5 mm across flats.\n\nPrint orientation is chosen so the
+  pocket''s wide opening is at the top of the print (no overhang, no supports) and
+  the 3.4 mm bolt hole is a plain vertical hole. The pocket coupon above is the same
+  pocket geometry, printed the same way, if you want one more check before committing
+  filament to the knob.\n\nOpen items I could not close down: your nut''s actual across-flats
+  was never measured (catalog 5.5 used) and I could not learn how the larger coupon
+  pockets behaved, so the wedge is sized to cover a printed-hole error of roughly
+  -0.3 to +0.3 mm. Outside that band, tell me what the nut does and I will re-tune
+  the taper.'
+questions:
+- text: How thick is the material you will be clamping? That sets the bolt length
+    (it needs to be at least that plus 12 mm so the tip comes out of the top of the
+    knob).
+  answer: null
+- text: 'If you can get a caliper on it later: what is your M3 nut''s width across
+    the flats? I used the ISO 4032 catalog value of 5.5 mm.'
+  answer: null
+- text: When you pressed the nut into the pocket, did it go in with a thumb push and
+    stay in when the knob was upside down? If it was too hard to press, or it came
+    loose, tell me which and I will shift the taper.
+  answer: null
+params:
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 thread major diameter (catalog d = 3 for ISO 4762 M3)
+  core_d:
+    value: 17.6
+    unit: mm
+    kind: design
+    source: design
+    note: cylinder the grip ribs sit on
+  coupon_h:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: fit-check coupon thickness (> pocket depth)
+  coupon_w:
+    value: 22.0
+    unit: mm
+    kind: design
+    source: design
+    note: fit-check coupon square size
+  knob_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: overall across the grip ribs = 2*(rib_pitch_r + rib_r)
+  knob_h:
+    value: 12.0
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut, across flats. The person could not measure it, so the
+      catalog value is used.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut height
+  pocket_af_floor:
+    value: 5.0
+    unit: mm
+    kind: design
+    source: design
+    note: across-flats at the pocket floor (seat end). Deliberately narrower than
+      the nut so the taper always finds grip and the nut can never pass the far side.
+  pocket_af_mouth:
+    value: 5.8
+    unit: mm
+    kind: design
+    source: design
+    note: across-flats of the straight entry section. Larger than the nut so it always
+      enters by hand for any realistic printed-hole error (the 5.45 mm straight test
+      pocket would not accept the nut).
+  pocket_depth:
+    value: 6.2
+    unit: mm
+    kind: design
+    source: design
+    note: straight_len + taper_len
+  rib_count:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: grip flutes; count
+  rib_pitch_r:
+    value: 8.8
+    unit: mm
+    kind: design
+    source: design
+    note: radius to each grip rib's axis
+  rib_r:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: grip rib radius; rib_pitch_r + rib_r = 10.0 gives the 20 mm across
+  straight_len:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: straight hex entry, measured from the knob's bottom face
+  taper_len:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: tapered (wedging) section, 0.267 mm across-flats per mm = 7.6 deg half-angle,
+      well inside self-locking
+  through_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: bolt_d + 0.4 mm; the bolt tip leaves the knob through this
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    H = p.knob_h\n    # body: core cylinder\
+    \ plus 12 vertical grip ribs\n    body = cq.Workplane(\"XY\").circle(p.core_d\
+    \ / 2.0).extrude(H)\n    n = int(p.rib_count)\n    for i in range(n):\n      \
+    \  a = 2.0 * math.pi * i / n\n        rib = (cq.Workplane(\"XY\").circle(p.rib_r).extrude(H)\n\
+    \               .translate((p.rib_pitch_r * math.cos(a),\n                   \
+    \        p.rib_pitch_r * math.sin(a), 0.0)))\n        body = body.union(rib)\n\
+    \n    c30 = math.cos(math.radians(30.0))\n    ac_mouth = p.pocket_af_mouth / c30\n\
+    \    ac_floor = p.pocket_af_floor / c30\n\n    # hex nut pocket: straight entry,\
+    \ then a taper that narrows toward the seat\n    straight = (cq.Workplane(\"XY\"\
+    ).polygon(6, ac_mouth)\n                .extrude(p.straight_len)\n           \
+    \     .translate((0.0, 0.0, H - p.straight_len)))\n    taper = (cq.Workplane(\"\
+    XY\").polygon(6, ac_mouth)\n             .workplane(offset=p.taper_len)\n    \
+    \         .polygon(6, ac_floor)\n             .loft()\n             .translate((0.0,\
+    \ 0.0, H - p.pocket_depth)))\n    body = body.cut(straight).cut(taper)\n\n   \
+    \ # M3 clearance hole through the shoulder and out the far side\n    body = body.cut(cq.Workplane(\"\
+    XY\").circle(p.through_d / 2.0)\n                    .extrude(H + 2.0).translate((0.0,\
+    \ 0.0, -1.0)))\n    return body\n"
+  print_orientation: 'The z = 0 face goes on the bed: the flat disc with the 3.4 mm
+    hole in it. The hex pocket opens upward at the top of the print, the 12 grip ribs
+    are vertical, and the pocket walls lean outward as they rise (no overhang). No
+    supports, no bridges.'
+  use_orientation: Flip the printed knob over. The flat disc with the 3.4 mm hole
+    is now the knob's TOP; the hex pocket faces DOWN toward the workpiece. The M3
+    nut is pushed up into the pocket from below and wedges in the tapered hex walls,
+    sitting wholly inside the knob and stopped by the shoulder.
+- id: pocket_coupon
+  role: coupon
+  material: PLA (high-speed PLA, black)
+  code: "import math\n\ndef build(p):\n    c30 = math.cos(math.radians(30.0))\n  \
+    \  W = p.coupon_w\n    Hc = p.coupon_h\n    body = cq.Workplane(\"XY\").box(W,\
+    \ W, Hc, centered=(True, True, False))\n    ac_mouth = p.pocket_af_mouth / c30\n\
+    \    ac_floor = p.pocket_af_floor / c30\n    straight = (cq.Workplane(\"XY\").polygon(6,\
+    \ ac_mouth)\n                .extrude(p.straight_len)\n                .translate((0.0,\
+    \ 0.0, Hc - p.straight_len)))\n    taper = (cq.Workplane(\"XY\").polygon(6, ac_mouth)\n\
+    \             .workplane(offset=p.taper_len)\n             .polygon(6, ac_floor)\n\
+    \             .loft()\n             .translate((0.0, 0.0, Hc - p.pocket_depth)))\n\
+    \    body = body.cut(straight).cut(taper)\n    body = body.cut(cq.Workplane(\"\
+    XY\").circle(p.through_d / 2.0)\n                    .extrude(Hc + 2.0).translate((0.0,\
+    \ 0.0, -1.0)))\n    return body\n"
+  print_orientation: Flat bottom on the bed, z = 0. The hex pocket opens upward. No
+    supports.
+  use_orientation: Pre-flight check. The pocket in this block is identical to the
+    knob's (same across-flats, same taper, same depth, same 3.4 mm floor hole) and
+    it is printed in the same orientation, so if the nut presses in and holds here
+    it will do the same in the knob.
+hardware:
+- id: h_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: h_bolt
+  ref: ISO 4762 M3x25
+  qty: 1
+joints:
+- id: j_bolt
+  fastener: h_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 22.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: hex nut pocket, open volume from the mouth down to the nut
+    role: clearance
+  - part: knob
+    feature: 3.4 mm through hole in the shoulder
+    role: clearance
+  nut: h_nut
+  external: the workpiece being clamped - the bolt head bears on its far face (axis_origin
+    assumes a 10 mm thick workpiece; the head sits 10 mm beyond the knob's bottom
+    face)
+criteria:
+- id: c1
+  part: knob
+  feature: hex nut pocket (5.8 mm across flats at the mouth, tapering to 5.0 mm at
+    the seat)
+  relation: engages
+  hardware: h_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af_mouth
+  - pocket_af_floor
+  - straight_len
+  - taper_len
+  check:
+    method: coupon
+    ref: pocket_coupon
+    description: 'Press the M3 nut squarely into the pocket: the 5.8 mm entry is clear
+      of it (so it always starts by hand even though a 5.45 mm straight pocket would
+      not), then it wedges in the taper. It stops where your thumb force balances
+      the taper grip, and is then held by a self-locking wedge.'
+- id: c2
+  part: knob
+  feature: hex pocket 6.2 mm deep from the knob's bottom face
+  relation: contains
+  hardware: h_nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  - pocket_af_mouth
+  - pocket_af_floor
+  check:
+    method: coupon
+    ref: pocket_coupon
+    description: The nut ends up below the knob's bottom face for any realistic printed
+      size (it stops between 0.8 mm and 3.2 mm inside), so it is fully inside and
+      the knob still sits flat on the workpiece.
+- id: c3
+  part: knob
+  feature: pocket seat / shoulder ring around the 3.4 mm hole
+  relation: seats
+  hardware: h_nut
+  clearance_mm: null
+  params:
+  - pocket_af_floor
+  - nut_af
+  - through_d
+  check:
+    method: template
+    ref: null
+    description: The seat end of the pocket is 5.0 mm across flats and the far-side
+      hole is 3.4 mm, both smaller than the nut's 5.5 mm across flats, so the nut
+      cannot be pushed out through the far side - it is stopped by the shoulder.
+- id: c4
+  part: knob
+  feature: 3.4 mm through hole (shoulder and out the top)
+  relation: clears
+  hardware: h_bolt
+  clearance_mm: 0.4
+  params:
+  - through_d
+  - bolt_d
+  check:
+    method: template
+    ref: null
+    description: The bolt threads through the nut and its tip passes out of the knob's
+      far side through this hole.
+manual:
+- n: '1'
+  text: 'Optional pre-flight: print the pocket coupon (any layer height, no supports).
+    Press the M3 hex nut squarely into the hex pocket with your thumb. It should push
+    in with a firm push, stop on its own, and not fall out when you turn the block
+    upside down. If it does that, the knob will too - skip straight to step 2.'
+  parts:
+  - pocket_coupon
+  hardware:
+  - h_nut
+  tool: null
+- n: '2'
+  text: 'Print the knob in PLA, 0.2 mm layers, no supports. It goes on the bed as
+    modelled: the flat disc with the small hole face down, hex pocket opening upward,
+    grip ribs standing vertical.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Turn the knob so the flat disc with the small hole is up and the big hex pocket
+    faces down. Push the M3 hex nut up into the pocket, square to the hole, with your
+    thumb. It enters easily and then wedges - keep pushing until it stops and sits
+    below the pocket rim, fully inside the knob.
+  parts:
+  - knob
+  hardware:
+  - h_nut
+  tool: null
+- n: '4'
+  text: 'Check it: turn the knob upside down and shake it. The nut must stay in. If
+    it ever works loose, press it in a little further - the pocket tightens as the
+    nut goes deeper. No glue is used anywhere.'
+  parts:
+  - knob
+  hardware:
+  - h_nut
+  tool: null
+- n: '5'
+  text: Push the M3 bolt through your workpiece from the back so the thread sticks
+    out, then start the knob onto it and turn the knob until snug. The bolt's tip
+    will appear through the small hole in the top of the knob. Choose a bolt at least
+    12 mm longer than the thickness of what you are clamping - a 10 mm stack wants
+    an M3x25 or so.
+  parts:
+  - knob
+  hardware:
+  - h_bolt
+  - h_nut
+  tool: null
+- n: '6'
+  text: To take it apart, unscrew the knob off the bolt. The nut stays captive in
+    the knob; if you ever need it out, poke it out from the far side with a thin punch
+    through the 3.4 mm hole.
+  parts:
+  - knob
+  hardware:
+  - h_nut
+  tool: null

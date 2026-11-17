@@ -1,0 +1,326 @@
+task: nut-knob/M3
+note: 'One printed part: a 20 mm fluted hand knob with a captive M3 hex nut.
+
+
+  How it works: the knob has a hexagonal socket in its underside (as printed, it opens
+  at the top). The nut is a hand press fit into that socket. The socket floor is 3.0
+  mm deep, so the 2.4 mm nut seats 0.6 mm inside the knob''s mouth and is fully enclosed.
+  The floor leaves only a 3.4 mm M3 clearance hole, far smaller than the nut''s 5.5
+  mm across-flats, so the nut cannot be pushed out the far side. Your bolt enters
+  the socket from below, threads right through the captive nut, and its tip exits
+  through the 3.4 mm hole in the knob''s plain top face. Because the nut is recessed
+  0.6 mm, only the knob''s plastic rim bears against the clamped part.
+
+
+  Printing: the part is modelled exactly as printed — the plain fluted face (the one
+  with the 3.4 mm hole, which is the TOP of the knob in use) sits on the bed and the
+  hexagonal socket opens upward. Every wall is vertical, nothing overhangs or bridges,
+  so no supports. Turn the knob over after printing and the socket faces down, which
+  is the way it is used.
+
+
+  Open item — the press fit: you printed the 5-pocket fit coupon (5.30 to 5.70 mm
+  across flats) but could not report how it came out, so pocket_af is my best judgment:
+  5.45 mm, i.e. 0.05 mm under the nut''s nominal across-flats. FDM prints internal
+  pockets slightly under nominal, so this should land as a firm hand press that holds
+  the nut when the knob is inverted. Note that real ISO 4032 M3 nuts vary in across-flats
+  (about 5.35 to 5.50): if yours is at the small end the fit will be a little looser,
+  and if it is at the top end it may want a gentle squeeze with a clamp to go home.
+  The counterbore lead-in at the socket mouth (0.6 mm wider per side) is there to
+  start the nut square.
+
+
+  The knob suits any M3 bolt with about 5 mm of thread free beyond the surface it
+  clamps; a 20 mm socket head screw is listed as the reference example, adjust the
+  length to suit your part.'
+questions:
+- text: How did the nut press in - loose enough to fall out, a firm hand press, or
+    did it need a clamp?
+  answer: null
+params:
+  knob_d:
+    value: 20.0
+    unit: mm
+    kind: design
+    source: design
+    note: knob diameter across the flutes, per the request for about 20 mm across
+  knob_h:
+    value: 10.0
+    unit: mm
+    kind: design
+    source: design
+    note: knob height along the thread axis
+  flute_n:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: number of grip flutes around the rim
+  flute_depth:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: radial depth of the grip flutes; grip diameter runs 17.6 to 20 mm
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut, width across flats; person could not measure their
+      own nut
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height
+  bolt_d:
+    value: 3.0
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 bolt nominal major diameter
+  pocket_af:
+    value: 5.45
+    unit: mm
+    kind: design
+    source: design
+    note: hex socket across flats, 0.05 mm under the nut's nominal across-flats so
+      the printed socket grips it; main uncertainty of the design
+  pocket_depth:
+    value: 3.0
+    unit: mm
+    kind: design
+    source: design
+    note: socket depth; with the 2.4 mm nut seated on the floor the nut is fully inside,
+      0.6 mm in from the mouth
+  pocket_lead_depth:
+    value: 1.0
+    unit: mm
+    kind: design
+    source: design
+    note: depth of the wider counterbore lead-in at the socket mouth
+  pocket_lead_step:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: extra half-width per side of the lead-in vs the gripping socket (6.65 mm
+      across flats)
+  nut_recess:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: 'pocket_depth - nut_h: how far the seated nut''s outer face sits inside
+      the knob''s mouth'
+  bolt_clear_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance hole through the socket floor and out the top face; also what
+      blocks the nut from being pushed out the far side
+parts:
+- id: knob
+  role: final
+  material: PLA (high-speed PLA, black)
+  code: "import cadquery as cq\nimport math\n\ndef hex_pts(af):\n    ac = af / math.cos(math.pi\
+    \ / 6.0)\n    return [(ac * math.cos(math.pi / 6.0 + k * math.pi / 3.0),\n   \
+    \          ac * math.sin(math.pi / 6.0 + k * math.pi / 3.0)) for k in range(6)]\n\
+    \ndef build(p):\n    # fluted grip body, built in the print orientation (z=0 on\
+    \ the bed)\n    R = p.knob_d / 2.0\n    n = int(p.flute_n)\n    N = 200\n    Rm\
+    \ = R - p.flute_depth / 2.0\n    A = p.flute_depth / 2.0\n    prof = []\n    for\
+    \ i in range(N):\n        th = 2.0 * math.pi * i / N\n        r = Rm + A * math.cos(n\
+    \ * th)\n        prof.append((r * math.cos(th), r * math.sin(th)))\n    body =\
+    \ cq.Workplane(\"XY\").polyline(prof).close().extrude(p.knob_h)\n\n    zf = p.knob_h\
+    \ - p.pocket_depth      # socket floor\n    zb = p.knob_h - p.pocket_lead_depth\
+    \ # lead-in floor\n\n    # hex nut socket, opening at the top of the print\n \
+    \   hp = hex_pts(p.pocket_af)\n    body = body.cut(cq.Workplane(\"XY\").workplane(offset=zf)\n\
+    \                    .polyline(hp).close().extrude(p.pocket_depth + 1.0))\n\n\
+    \    # wider counterbore lead-in at the socket mouth so the nut starts square\n\
+    \    hp2 = hex_pts(p.pocket_af + 2.0 * p.pocket_lead_step)\n    body = body.cut(cq.Workplane(\"\
+    XY\").workplane(offset=zb)\n                    .polyline(hp2).close().extrude(p.pocket_lead_depth\
+    \ + 1.0))\n\n    # M3 bolt clearance hole: from the bed up through the socket\
+    \ floor\n    body = body.cut(cq.Workplane(\"XY\").workplane(offset=-0.5)\n   \
+    \                 .circle(p.bolt_clear_d / 2.0).extrude(zf + 0.6))\n    return\
+    \ body\n"
+  print_orientation: 'Fluted plain face down on the bed: z=0 is the knob''s TOP face
+    in use (the flat fluted disc with the 3.4 mm hole in the middle). The grip flutes
+    run vertically and the hexagonal nut socket opens upward at the top of the print,
+    with its wider counterbore lead-in at the very top. No supports or bridges.'
+  use_orientation: 'Turned over from the print: the hexagonal socket faces DOWN toward
+    the part being clamped; the plain fluted disc with the 3.4 mm hole faces up. Your
+    M3 bolt comes up into the socket from below, threads through the pressed-in nut,
+    and its tip exits through the 3.4 mm hole in the top face. The flat rim around
+    the socket mouth is the bearing face.'
+hardware:
+- id: nut_m3
+  ref: ISO 4032 M3
+  qty: 1
+- id: bolt_m3
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: j_bolt_axis
+  fastener: bolt_m3
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 10.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: 3.4 mm bolt hole, from the socket floor through to the top face
+    role: clearance
+  nut: nut_m3
+  external: null
+criteria:
+- id: c1_nut_press_fit
+  part: knob
+  feature: hexagonal nut socket, 5.45 mm across flats x 3.0 mm deep
+  relation: contains
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - pocket_af
+  - pocket_depth
+  - nut_af
+  - nut_h
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: 5-pocket fit coupon (5.30-5.70 mm across flats) was printed to dial
+      this in, but the result was not reported back; pocket_af was therefore set 0.05
+      mm under the nut's nominal across-flats.
+- id: c2_nut_blocked_far_side
+  part: knob
+  feature: socket floor with its 3.4 mm bolt exit hole
+  relation: supports
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - nut_af
+  check:
+    method: template
+    ref: null
+    description: 'bolt_clear_d 3.4 mm is smaller than the nut''s 5.5 mm across flats,
+      so the floor cannot pass the nut: it cannot be pushed out through the far side.'
+- id: c3_nut_fully_inside
+  part: knob
+  feature: socket depth against nut height
+  relation: contains
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  - nut_recess
+  check:
+    method: template
+    ref: null
+    description: pocket_depth 3.0 mm exceeds nut_h 2.4 mm, so the seated nut ends
+      up 0.6 mm inside the mouth - fully inside the knob.
+- id: c4_bolt_clearance
+  part: knob
+  feature: 3.4 mm bolt hole through the socket floor and the top face
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_clear_d
+  - bolt_d
+  check:
+    method: template
+    ref: null
+    description: 3.4 mm hole clears a 3.0 mm M3 bolt; printed holes run about 0.1
+      mm small, which still clears.
+- id: c5_lead_in
+  part: knob
+  feature: counterbore lead-in at the socket mouth (6.65 mm across flats x 1.0 mm
+    deep)
+  relation: clears
+  hardware: nut_m3
+  clearance_mm: null
+  params:
+  - pocket_af
+  - pocket_lead_step
+  - pocket_lead_depth
+  check:
+    method: template
+    ref: null
+    description: the lead-in is 0.6 mm wider per side than the gripping socket, so
+      the nut starts square before it presses in.
+manual:
+- n: '1'
+  text: 'Print ''knob'' exactly as exported: the plain fluted face (the one with the
+    3.4 mm hole in the middle) on the bed, the hexagonal socket opening upward. PLA,
+    0.4 mm nozzle, 0.2 mm layers. No supports, no bridges, no brim needed - every
+    wall is vertical.'
+  parts:
+  - knob
+  hardware: []
+  tool: 3D printer (Bambu Lab X1C, 0.2 mm layers)
+- n: '2'
+  text: 'Fettle the socket: pick any strings or blobs out of the hexagonal socket
+    with a fingernail or the back of a blade. The mouth starts with a 1.0 mm deep,
+    wider counterbore (6.65 mm across the flats) - that is the lead-in the nut drops
+    into.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M3 hex nut into the socket with a firm straight push of the thumb,
+    either flat face leading. It should stop when it seats on the socket floor, leaving
+    the nut's outer face 0.6 mm inside the knob's mouth. If it is stiff, squeeze it
+    home with a small clamp or tap it with a mallet on a block of wood. No glue.
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  tool: null
+- n: '4'
+  text: 'Retention check: turn the knob over so the socket faces the floor and give
+    it a shake. The nut must stay in - the press fit is the only thing holding it.'
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  tool: null
+- n: '5'
+  text: 'Check your bolt: you need an M3 bolt with at least about 5 mm of thread standing
+    free of the surface you are clamping, because the bolt has to pass right through
+    the nut (whose inner face is 3.0 mm inside the knob). A 20 mm socket head screw
+    is the reference example - change the length to suit your part.'
+  parts: []
+  hardware:
+  - bolt_m3
+  tool: null
+- n: '6'
+  text: 'Thread the knob on: bring the socket down over the bolt''s protruding thread
+    and turn the knob clockwise. The bolt threads through the captive nut and its
+    tip comes out through the 3.4 mm hole in the knob''s plain top face - through
+    the nut and out the far side.'
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  - bolt_m3
+  tool: null
+- n: '7'
+  text: 'Tighten by hand: seat the flat rim around the socket mouth against your part
+    and turn the knob clockwise. The hexagonal socket locks the nut against rotation,
+    so the knob screws down the bolt and its plastic rim presses on your part. The
+    bolt tip standing proud of the top face is normal.'
+  parts:
+  - knob
+  hardware:
+  - nut_m3
+  - bolt_m3
+  tool: null

@@ -1,0 +1,241 @@
+task: nut-knob/M3
+note: Single-piece 20 mm hand knob for an M3 bolt and ISO 4032 M3 hex nut. The hex
+  nut pocket across-flats dimension (5.70 mm, i.e. 5.50 mm nominal + 0.20 mm clearance)
+  was verified via test print coupon_loose to give a snug hand press-fit that retains
+  the nut upside down without glue.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across-flats width
+  coupon_h:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the nut-fit test coupon
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of the hand knob (~20 mm requested)
+  nut_af_clearance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats clearance for snug hand press-fit, verified with test print
+      coupon_loose (5.70 mm total AF)
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M3 bolt shaft diameter (ISO 4762 M3)
+  flute_offset:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Radial offset of flute centers outside knob outer radius
+  coupon_od:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the nut-fit test coupon
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height/thickness
+  flute_d:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of each cylindrical grip flute cut
+  flute_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip flutes around the outer perimeter
+  nut_depth_margin:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Extra depth beyond nut height so nut sits recessed 0.6 mm inside the knob
+  bolt_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance for M3 bolt through-hole
+  knob_h:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the hand knob, leaving a 5.0 mm solid shelf below the 3.0
+      mm nut pocket
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    pocket_af = p.nut_af + p.nut_af_clearance\n\
+    \    pocket_ac = pocket_af / math.cos(math.pi / 6)\n    pocket_depth = p.nut_h\
+    \ + p.nut_depth_margin\n    bolt_hole_d = p.bolt_d + p.bolt_clearance\n\n    body\
+    \ = (\n        cq.Workplane(\"XY\")\n        .circle(p.knob_od / 2)\n        .extrude(p.knob_h)\n\
+    \    )\n\n    flute_pts = [\n        (\n            (p.knob_od / 2 + p.flute_offset)\
+    \ * math.cos(2 * math.pi * i / p.flute_count),\n            (p.knob_od / 2 + p.flute_offset)\
+    \ * math.sin(2 * math.pi * i / p.flute_count),\n        )\n        for i in range(int(p.flute_count))\n\
+    \    ]\n\n    body = (\n        body.faces(\">Z\")\n        .workplane()\n   \
+    \     .pushPoints(flute_pts)\n        .circle(p.flute_d / 2)\n        .cutThruAll()\n\
+    \    )\n\n    body = (\n        body.faces(\">Z\")\n        .workplane()\n   \
+    \     .polygon(6, pocket_ac)\n        .cutBlind(-pocket_depth)\n        .faces(\"\
+    <Z\")\n        .workplane()\n        .circle(bolt_hole_d / 2)\n        .cutThruAll()\n\
+    \    )\n\n    return body\n"
+  print_orientation: Flat bottom face on print bed (z = 0), hexagonal nut pocket opening
+    upward (+Z) so no overhangs or supports are required.
+  use_orientation: Hand-turned around the M3 bolt axis; bolt passes through both faces
+    while the M3 nut is retained against the internal shelf.
+- id: coupon_loose
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    pocket_af = p.nut_af + p.nut_af_clearance\n\
+    \    pocket_ac = pocket_af / math.cos(math.pi / 6)\n    pocket_depth = p.nut_h\
+    \ + p.nut_depth_margin\n    bolt_hole_d = p.bolt_d + p.bolt_clearance\n\n    res\
+    \ = (\n        cq.Workplane(\"XY\")\n        .circle(p.coupon_od / 2)\n      \
+    \  .extrude(p.coupon_h)\n        .faces(\">Z\")\n        .workplane()\n      \
+    \  .polygon(6, pocket_ac)\n        .cutBlind(-pocket_depth)\n        .faces(\"\
+    <Z\")\n        .workplane()\n        .circle(bolt_hole_d / 2)\n        .cutThruAll()\n\
+    \    )\n    return res\n"
+  print_orientation: Flat bottom face on print bed (z = 0), hex pocket opening upward
+    (+Z).
+  use_orientation: Press M3 nut into top hex pocket by hand to verify snug press-fit
+    retention.
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: m3_knob_joint
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: bolt_thru_hole
+    role: clearance
+  - part: knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  nut: m3_nut
+  external: null
+criteria:
+- id: nut_press_fit_retention
+  part: knob
+  feature: hex_nut_pocket
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: 0.2
+  params:
+  - nut_af
+  - nut_af_clearance
+  check:
+    method: coupon
+    ref: coupon_loose
+    description: M3 hex nut presses into the 5.70 mm across-flats hex pocket by hand
+      and stays in when turned upside down and shaken, verified with coupon_loose.
+- id: nut_contained_and_stopped
+  part: knob
+  feature: hex_nut_pocket_shelf
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: 0.6
+  params:
+  - nut_h
+  - nut_depth_margin
+  - knob_h
+  check:
+    method: measure
+    ref: null
+    description: Hex nut pocket depth (3.0 mm) exceeds M3 nut thickness (2.4 mm) by
+      0.6 mm so the nut sits fully inside the knob, while the 5.0 mm lower shelf prevents
+      the nut from being pushed out the far side.
+- id: bolt_shaft_clearance
+  part: knob
+  feature: bolt_thru_hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: coupon
+    ref: coupon_loose
+    description: 3.4 mm through-hole clears the M3 bolt shaft (3.0 mm nominal) so
+      the bolt passes freely through the nut and out the other side of the knob.
+- id: knob_outer_diameter
+  part: knob
+  feature: outer_grip_body
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_od
+  - knob_h
+  - flute_count
+  - flute_d
+  - flute_offset
+  check:
+    method: measure
+    ref: null
+    description: Outer diameter is 20.0 mm with 10 perimeter grip flutes for hand
+      tightening without a tool.
+manual:
+- n: '1'
+  text: Print the knob in PLA with its flat bottom face (z = 0) on the print bed and
+    the hexagonal nut pocket facing upward. No supports are needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M3 hex nut with the hexagonal pocket on the top face of
+    the knob and press it firmly in by hand until it seats flat against the internal
+    shelf at the bottom of the pocket. The nut will sit 0.6 mm below the rim and stay
+    retained by friction when turned upside down.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Thread the M3 bolt through the nut so it passes out the other side of the
+    knob (inserting the bolt from the flat bottom face pulls the nut against the internal
+    shelf under tightening load, or inserting from the pocket side pushes the nut
+    against the internal shelf). Tighten by hand using the scalloped grip.
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  - m3_nut
+  tool: null

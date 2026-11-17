@@ -142,7 +142,7 @@ def test_excluded_trials_say_why(index):
     for row in index["trials"]:
         assert row["counted"] or row["excluded_reason"]
     errors = [row for row in index["trials"] if row["verdict"] == "error"]
-    assert errors and all(not row["counted"] for row in errors)
+    assert all(not row["counted"] for row in errors)  # none saved since the 2026-11-17 reruns, but never counted
 
 
 def test_a_trial_detail_has_no_home_paths():
@@ -227,7 +227,8 @@ def test_excluded_and_cant_tell_follow_the_scorecard(index, listed):
         assert tested["cant_tell"]["trials"] == sum(t.told_cant_tell for t in row.tested_trials())
         assert tested["cant_tell"]["passes"] == sum(t.passed() and t.told_cant_tell for t in row.tested_trials())
     argon = block["google/gemini-4-argon"]["test_first"]["excluded"]
-    assert argon["count"] == 12 and argon["by_task"] == {"bearing-wheel": 2, "nut-knob/M3": 5, "nut-knob/M5": 5}
+    # the 12 trials out-of-credit stopped were run again on 2026-11-17 (changes/2026-11-17-finish-credit-trials.md)
+    assert argon["count"] == 0 and argon["by_task"] == {}
     pooled = index["scorecard"]["pooled"]
     tested_rows = [row for row in listed if row.tested_trials()]
     sent_back = [row for row in tested_rows if row.replayed()]

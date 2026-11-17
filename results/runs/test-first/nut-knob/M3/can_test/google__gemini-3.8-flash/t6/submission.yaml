@@ -1,0 +1,228 @@
+task: nut-knob/M3
+note: Ergonomic 20 mm 6-lobe hand knob for M3 bolt tightening, with snug press-fit
+  nut pocket verified via print coupon to retain nut without glue.
+questions: []
+params:
+  scallop_radius:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of finger flute cutters
+  top_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on top outer edge for comfort
+  scallop_dist:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance of finger flute cutters
+  hole_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for M3 bolt shaft
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut nominal width across flats
+  pocket_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of hex pocket (nut is sub-flush)
+  knob_height:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Overall thickness of the hand knob
+  bottom_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Chamfer on bottom face to prevent elephant foot
+  knob_diameter:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter across knob lobes
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket width across flats, validated for snug hand press fit
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of M3 bolt
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nut nominal height
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    # Base cylinder\n\
+    \    knob = cq.Workplane(\"XY\").circle(p.knob_diameter / 2.0).extrude(p.knob_height)\n\
+    \    \n    # Chamfer top and bottom outer circular edges\n    knob = knob.edges(\"\
+    >Z\").chamfer(p.top_chamfer)\n    knob = knob.edges(\"<Z\").chamfer(p.bottom_chamfer)\n\
+    \    \n    # Cut 6 flutes around perimeter for comfortable finger grip\n    for\
+    \ i in range(6):\n        angle_rad = i * math.pi / 3.0\n        x = p.scallop_dist\
+    \ * math.cos(angle_rad)\n        y = p.scallop_dist * math.sin(angle_rad)\n  \
+    \      cutter = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=-1.0)\n\
+    \            .transformed(offset=cq.Vector(x, y, 0))\n            .circle(p.scallop_radius)\n\
+    \            .extrude(p.knob_height + 2.0)\n        )\n        knob = knob.cut(cutter)\n\
+    \        \n    # Cut hex pocket from top face (+Z)\n    hex_d = p.pocket_af /\
+    \ math.cos(math.radians(30))\n    hex_pocket = (\n        cq.Workplane(\"XY\"\
+    , origin=(0, 0, p.knob_height))\n        .polygon(nSides=6, diameter=hex_d)\n\
+    \        .extrude(-p.pocket_depth)\n    )\n    knob = knob.cut(hex_pocket)\n \
+    \   \n    # Cut central through hole for M3 bolt\n    through_hole = (\n     \
+    \   cq.Workplane(\"XY\", origin=(0, 0, -1.0))\n        .circle(p.hole_clearance_d\
+    \ / 2.0)\n        .extrude(p.knob_height + 2.0)\n    )\n    knob = knob.cut(through_hole)\n\
+    \    \n    return knob\n"
+  print_orientation: bottom face (z=0) on build plate
+  use_orientation: bottom face against clamped surface, knob top facing user
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    L = 44.0\n    W\
+    \ = 14.0\n    H = 5.0\n    block = cq.Workplane(\"XY\").box(L, W, H, centered=(True,\
+    \ True, False))\n    xs = [-15.0, -5.0, 5.0, 15.0]\n    afs = [5.4, 5.5, 5.6,\
+    \ p.pocket_af]\n    for x, af in zip(xs, afs):\n        D = af / math.cos(math.radians(30))\n\
+    \        block = (\n            block.faces(\">Z\")\n            .workplane()\n\
+    \            .transformed(offset=cq.Vector(x, 0, 0))\n            .polygon(nSides=6,\
+    \ diameter=D)\n            .cutBlind(-p.pocket_depth)\n        )\n        block\
+    \ = (\n            block.faces(\">Z\")\n            .workplane()\n           \
+    \ .transformed(offset=cq.Vector(x, 0, 0))\n            .circle(p.hole_clearance_d\
+    \ / 2.0)\n            .cutThruAll()\n        )\n    return block\n"
+  print_orientation: face at z=0 on bed
+  use_orientation: z up
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: knob_bolt_joint
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 8.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: knob
+    feature: hex_pocket
+    role: nut_pocket
+  - part: knob
+    feature: central_hole
+    role: clearance
+  nut: m3_nut
+  external: null
+criteria:
+- id: nut_pocket_fit
+  part: knob
+  feature: hex_pocket
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: 0.2
+  params:
+  - pocket_af
+  - pocket_depth
+  - nut_af
+  - nut_h
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: M3 hex nut presses into pocket by hand and stays securely retained
+      when inverted without glue
+- id: nut_recess_depth
+  part: knob
+  feature: hex_pocket
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: 0.6
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Nut sits fully inside the knob, sub-flush beneath the top surface
+- id: nut_shoulder_retention
+  part: knob
+  feature: pocket_shoulder
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - hole_clearance_d
+  - pocket_af
+  check:
+    method: none
+    ref: null
+    description: Solid internal shoulder prevents nut from being pushed out through
+      the far side
+- id: bolt_clearance
+  part: knob
+  feature: central_hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - hole_clearance_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes freely through the through hole and nut out the other
+      side
+manual:
+- n: '1'
+  text: Print the knob on the Bambu Lab X1C with the flat bottom face on the build
+    plate (z = 0), 0.2 mm layer height, and PLA. No supports are needed.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Place the knob on a firm surface with the hexagonal pocket facing up. Orient
+    an ISO 4032 M3 hex nut with the pocket and push it firmly down with your thumb
+    until it seats completely against the internal shoulder. The nut sits fully inside
+    (0.6 mm below the surface) and stays firmly retained when inverted.
+  parts:
+  - knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Pass an M3 bolt through the clearance hole and thread it through the nut.
+    The bolt passes completely through the knob and nut out the opposite side. Hand-tighten
+    the knob via its scalloped finger flutes to secure your assembly.
+  parts:
+  - knob
+  hardware:
+  - m3_bolt
+  tool: null

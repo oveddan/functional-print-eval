@@ -1456,14 +1456,14 @@ RESAMPLES = 20000
 def rank_odds(rows: list[dict], order: list[str]) -> dict:
     """How often each model would rank first, in the top two, or last, if each one's test-first trials were run again.
     Each resample redraws every model's passes task by task (a binomial at that task's saved pass rate, with its saved
-    number of trials), so it measures trial-to-trial noise on these four tasks only, not how the order would hold on
+    number of trials), so it measures trial-to-trial noise on these five tasks only, not how the order would hold on
     other tasks. Ties in a resample are broken at random. A fixed seed, so the numbers repeat."""
     rng = np.random.default_rng(0)
     tested = [row for row in rows if row["test_first"] and row["model"] in order]
     passes = np.zeros((RESAMPLES, len(tested)))
     trials = np.zeros(len(tested))
     for at, row in enumerate(tested):
-        for task in scorecard.TASKS:  # the four scored tasks the chart counts, not the harder Estoa task
+        for task in scorecard.TEST_FIRST_TASKS:  # the five tasks Test prints first counts, Estoa included
             cell = row["test_first"]["by_task"].get(task)
             if cell and cell["trials"]:
                 passes[:, at] += rng.binomial(cell["trials"], cell["passes"] / cell["trials"], RESAMPLES)
@@ -1517,10 +1517,11 @@ def scorecard_block(listed: list, entries: list[Entry]) -> dict:
                 "Results section.",
         "order": {"models": "pass rate after feedback (the second print), highest first, then lower total cost "
                             "(scorecard.rows())",
-                  "test_first_order": "test-first pass rate on the four tasks, highest first, then lower cost per pass "
+                  "test_first_order": "test-first pass rate on the five tasks (Estoa included), highest first, then lower cost per pass "
                                       "(scorecard.tested_order(); the README's ranking and its picture use this order)",
                   "not_tested_order": "first-print pass rate, highest first"},
         "tasks": task_names(), "scored_tasks": list(scorecard.TASKS), "harder_task": scorecard.HARDER[0],
+        "test_first_tasks": list(scorecard.TEST_FIRST_TASKS),
         "min_trials": scorecard.MIN_TRIALS, "skipped": scorecard.SKIPPED, "models": rows,
         "test_first_order": [row.model for row in tested],
         "not_tested_order": [row.model for row in sorted((r for r in listed if not r.tested_trials()), key=lambda r: -r.pass_rate())],

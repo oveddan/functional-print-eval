@@ -42,6 +42,10 @@ NOT_HOLED_ROOFS = {
         "two 40 by 5.5 mm strips under the dovetail's edges, with no hole: ledges, not a holed roof",
     ("tripod-plate", "can_test", "anthropic/claude-sonnet-5.5", 3):
         "a 16 by 56 mm roof along the plate's underside with no hole in it; 19% of strands land at both ends",
+    ("estoa-light", "can_test", "anthropic/claude-sonnet-5.5", 4):
+        "a 24 by 4 mm strip across the box's wall 30 mm up, with no hole in it; half its strands land at both ends",
+    ("estoa-light", "can_test", "google/gemini-4-argon", 4):
+        "a 46 by 5 mm strip across the wall box's wall 31 mm up, with no hole in it; 21% of strands land at both ends",
     ("estoa-light", "can_test", "anthropic/claude-sonnet-5.5", 2):
         "a 38 by 4.5 mm ledge 30 mm up the box wall, with no hole in it",
 }
