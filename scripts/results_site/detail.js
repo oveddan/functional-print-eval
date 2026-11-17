@@ -283,7 +283,7 @@ function mediaSection(row, detail, options = {}) {
   // A passing design's part can be taken away as an STL. Only passing ones: a file offered here reads as "print this".
   const stlButton = (part) => {
     if (row.verdict !== "pass" || !part.mesh || part.role !== "final") return null;
-    const button = h("button", { type: "button", class: "btn", title: "The part as an STL file, in millimetres, as the model drew it" }, icon("download"), "Download STL");
+    const button = h("button", { type: "button", class: "btn", title: "The part as an STL file, in millimeters, as the model drew it" }, icon("download"), "Download STL");
     button.addEventListener("click", async () => {
       button.disabled = true;
       try {

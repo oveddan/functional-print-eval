@@ -1,4 +1,4 @@
-// A part's mesh as an STL file, made in the browser from the same .glb the 3D view shows: millimetres, Z up, as the
+// A part's mesh as an STL file, made in the browser from the same .glb the 3D view shows: millimeters, Z up, as the
 // model wrote it. three.js and its exporter are fetched only when a reader asks for a file.
 
 export async function downloadStl(url, filename) {

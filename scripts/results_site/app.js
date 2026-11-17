@@ -153,7 +153,7 @@ const condShort = (cond) => COND[cond]?.short || lookup.groups.get(cond)?.label 
 
 // ---- URL state ----
 
-const ECHO_MAX = 40;  // how much of an unrecognised URL value the page repeats back
+const ECHO_MAX = 40;  // how much of an unrecognized URL value the page repeats back
 
 function readUrl() {
   const params = new URLSearchParams(location.search);
@@ -492,7 +492,7 @@ function renderScorecard() {
       h("th", { scope: "col" }, "Reprint after feedback", h("small", {}, "passes first time, plus second prints that pass")),
       h("th", { scope: "col", "aria-sort": "descending" }, "Test prints first ", h("span", { class: "sort-mark", title: "Sorted by this column, highest first" }, "▼"),
         h("small", {}, `the person couldn't say how a test piece came out in ${tell.told} of ${tell.trials} trials; ${tell.passes_after_cant_tell} of the ${tell.passes} passes came after such an answer`)),
-      h("th", { scope: "col", class: "num" }, "Per passing design, test prints first", h("small", {}, "API cost; print time and filament are slicer estimates, nothing was printed")))));
+      h("th", { scope: "col", class: "num" }, "Per passing design, test prints first", h("small", {}, "API cost; print time and filament are slicer estimates; no final design was printed")))));
   const body = h("tbody", {});
   const rate = (label, cell, patch, extra) => cellLink(label, patch, { trials: cell.trials, passes: cell.passes },
     { class: "cell", "aria-label": `${label}: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} trials.` },
@@ -641,7 +641,7 @@ function renderScorecardChart() {
       h("span", { class: "sc-axis-cost" }, COST_LABEL)),
     h("p", { class: "sc-cost-note" }, `The dollar figure in each row is the ${COST_LABEL}.`),
     h("ul", { class: "sc-rows" }, rows),
-    h("p", { class: "sc-foot" }, `${COST_LABEL}: what the API provider charged for every first print in the bar, plus each second print that is counted in it, divided by the number of designs that pass after feedback; where no second prints were run it is the first prints' cost over the first prints that pass. A value from fewer than ${FEW_PASSES} passes is shown muted, with the number of passes: one more or one fewer pass would move it a lot. A model with no passing design would have no value, not zero. Print time and filament aren't in it, and nothing a model designed was printed. The table's cost column is for the runs with test prints first, a different condition, so its figures differ.`));
+    h("p", { class: "sc-foot" }, `${COST_LABEL}: what the API provider charged for every first print in the bar, plus each second print that is counted in it, divided by the number of designs that pass after feedback; where no second prints were run it is the first prints' cost over the first prints that pass. A value from fewer than ${FEW_PASSES} passes is shown muted, with the number of passes: one more or one fewer pass would move it a lot. A model with no passing design would have no value, not zero. Print time and filament aren't in it, and no final design was printed. The table's cost column is for the runs with test prints first, a different condition, so its figures differ.`));
 }
 
 // The chart's numbers against the trials, counted by the page's own filtering.
@@ -867,7 +867,7 @@ function summaryText() {
 }
 
 // With a reason chosen (a shared ?reason= link, say), what that failure looks like comes before its designs: the same
-// picture, labelled the same way, as in "Why first prints don't pass".
+// picture, labeled the same way, as in "Why first prints don't pass".
 function reasonHeader() {
   if (!state.reason) return null;
   const picture = index.reason_pictures?.[state.reason];
