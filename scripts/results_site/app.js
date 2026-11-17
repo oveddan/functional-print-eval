@@ -345,26 +345,51 @@ function fedNote(pooled) {
   return left.length ? `${sentence} ${left.join(" and ")}'s first prints weren't sent back.` : sentence;
 }
 
+// "Gemini 4 Argon ranks first in 90% of 20,000 reruns…": the scorecard's resampled rank odds, said plainly.
+function rankOddsLine(score) {
+  const odds = score.rank_odds;
+  if (!odds) return null;
+  const name = (id) => score.models.find((entry) => entry.model === id).short;
+  const ids = Object.keys(odds.models);
+  const by = (key) => [...ids].sort((a, b) => odds.models[b][key] - odds.models[a][key]);
+  const leader = by("first")[0];
+  const runner = by("top_two").find((id) => id !== leader);
+  const last = by("last")[0];
+  const unsettled = ids.filter((id) => ![leader, runner, last].includes(id)).map(name);
+  return h("p", { class: "rank-odds" },
+    h("b", {}, "How settled is the order? "),
+    `If every model's test-prints-first trials were run again (${odds.resamples.toLocaleString("en-US")} simulated reruns, task by task): `,
+    `${name(leader)} ranks first in ${pct(odds.models[leader].first)} of them, ${name(runner)} is in the top two in ${pct(odds.models[runner].top_two)}, `,
+    `and ${name(last)} ranks last in ${pct(odds.models[last].last)}. `,
+    `${unsettled.join(", ").replace(/, ([^,]*)$/, " and $1")} can't be put in order. This is trial-to-trial noise on these four tasks only, not how the order would hold on other tasks.`);
+}
+
+// The headline: each model's pass rate when it can ask for test prints before its final design, best first, with what
+// each working part took. The other two conditions are in the scorecard below.
 function renderFinding() {
   const score = card.scorecard;
-  const pooled = score.pooled;
-  const tell = score.cant_tell;
-  const tile = (key, cond, label, note, model = POOLED) => {
-    const cell = pooled[key];
-    return cellLink(`headline ${key}`, { cond, task: "scored", model }, { trials: cell.trials, passes: cell.passes }, { class: "stat" }, [
-      h("span", { class: "stat-rate" }, pct(cell.rate)),
-      h("span", { class: "stat-label" }, label),
-      h("span", { class: "stat-frac" }, `${cell.passes} of ${cell.trials}`),
-      note ? h("span", { class: "stat-note" }, note) : null,
-    ]);
+  const models = score.test_first_order.map((id) => score.models.find((entry) => entry.model === id));
+  const row = (entry) => {
+    const cell = entry.test_first;
+    return h("li", {}, cellLink(`headline ${entry.model}`, { cond: "test_first", task: "scored", model: entry.model }, { trials: cell.trials, passes: cell.passes },
+      { class: "hl-row", "aria-label": `${entry.short}: ${pct(cell.rate)} pass, ${cell.passes} of ${cell.trials}; per working part ${hours1(cell.est_print_s_per_pass)} printing, ${grams(cell.est_grams_per_pass)} filament, ${money2(cell.cost_per_pass)} API. Open these trials.` },
+      [h("span", { class: "hl-name" }, entry.short),
+        h("span", { class: "hl-track", "aria-hidden": "true" }, h("span", { class: "hl-bar", style: `width:${100 * cell.rate}%` })),
+        h("span", { class: "hl-rate" }, pct(cell.rate), h("small", {}, `${cell.passes} of ${cell.trials}`)),
+        h("span", { class: "hl-per" }, hours1(cell.est_print_s_per_pass)),
+        h("span", { class: "hl-per" }, grams(cell.est_grams_per_pass)),
+        h("span", { class: "hl-per" }, money2(cell.cost_per_pass))]));
   };
   const heading = $("finding");
   add(clear(heading),
-    tile("first", "first", "on the first print", null),
-    tile("after_feedback", "after_feedback", "reprint after feedback", fedNote(pooled), FED),
-    tile("test_first", "test_first", "test prints first", `fewer trials ran; in ${tell.told} of ${tell.trials} the person couldn't say how a test piece came out`));
+    h("div", { class: "hl-head", "aria-hidden": "true" }, h("span", {}, "Model"), h("span", {}, "Pass rate"), h("span", { class: "hl-per" }, "Printing"), h("span", { class: "hl-per" }, "Filament"), h("span", { class: "hl-per" }, "API cost")),
+    h("ul", { class: "hl-rows" }, models.map(row)));
   heading.removeAttribute("aria-busy");
-  $("kicker").textContent = `${pooled.models} language models were asked, in a person's own words, for a part to 3D print. Of their designs, this many pass:`;
+  $("kicker").textContent = `${models.length} language models were asked, in a person's own words, for a part to 3D print, and could ask for test prints before their final design. The share of their designs that pass, and what each passing design took:`;
+  add(clear($("finding-foot")),
+    h("p", {}, "A design passes only if its final print would work: a final print that fails counts as a failure, since that is where the hours and filament are lost, even after test prints. Pass rate on the four scored parts. Printing and filament are slicer estimates for everything the model asked to print, test prints included, per passing design; API cost is what the provider charged, per passing design. No final design was printed. ",
+      "First prints with no test prints, and reprints after feedback, are in ", h("a", { href: "#scorecard" }, "the scorecard"), "."),
+    rankOddsLine(score));
 
   const definitions = card.definitions;
   const term = (name, body) => h("div", {}, h("dt", {}, body), h("dd", {}, definitions[name]));
