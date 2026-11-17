@@ -34,7 +34,7 @@ BEFORE_PROMPT_RULES = {
     "nut-knob/M8 all_given": "d39e771b1c33bbf1e3bc759f31e701c1267047dc5ba420f27518cc018cddd7b0",
     "nut-knob/M8 can_run_code": "c5c76dc348a9e4defb9b64798799d7b80b3575dc546cb6b382aa2a6f8a8ddecf",
     "estoa-light can_ask": "5b11d989c5b17a15c73ea39092c422d22c2bb181afccf26f48b8fd020e90b090",
-    "estoa-light all_given": "2d49252224fd722f2ce3e1f760c91b852fb59b14bd1c8f9f522c57a058c17a03",
+    "estoa-light all_given": "93667cf07025dfe7d4be1d791e829b33e251f932ace13435197146d09f9dd80e",  # the person's new facts, 2026-11-17
     "estoa-light can_run_code": "ffb981b298201e9cf8883537fbcf442481a509766ace03929c86dcd5f9f98fe9",
 }
 
