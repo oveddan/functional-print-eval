@@ -1,5 +1,5 @@
 // The 3D view. three.js is fetched from the CDN (pinned in index.html's import map) the first time a view is opened,
-// never before. Meshes are GLB, in millimetres, Z up, as the designs were built; the view draws only when something
+// never before. Meshes are GLB, in millimeters, Z up, as the designs were built; the view draws only when something
 // changes, so it sits idle otherwise.
 
 let libraries = null;
