@@ -28,6 +28,8 @@ const RED_MEANS = { bridges: "the overhang that can't be bridged", connected_bod
 // A provider's error body can carry an account id; the page doesn't repeat it.
 const maskIds = (text) => String(text).replace(/"user_id"\s*:\s*"[^"]*"?/g, '"user_id":"[left out]"');
 const lowerFirst = (text) => text.charAt(0).toLowerCase() + text.slice(1);
+// the graders write "a 8 mm screw"; numbers said with a vowel sound first (8, 11, 18, 80s) take "an" (results_site.py does the same)
+const anBeforeVowelNumbers = (text) => text.replace(/\b([Aa]) (?=(?:8\d*|11|18)(?:\.\d+)?\b)/g, "$1n ");
 const roleLabel = (part) => part.role_label || (part.role === "final" ? "final part" : "test print");
 const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -269,6 +271,11 @@ function mediaSection(row, detail, options = {}) {
 
   const marked = new Map();  // check id -> the part whose picture marks it in red
   for (const part of media.parts) for (const check of part.highlight_checks || []) if (!marked.has(check)) marked.set(check, part.id);
+  // The assembled view's red layer doesn't say which check each mark is for, and a failed check can have no mark
+  // (an R6 with no keyhole to draw). Only when it has red and exactly one failed check is the red that check's.
+  const sceneRed = media.scene?.layers.some((layer) => layer.key === "problem" && layer.parts.some((part) => part.mesh));
+  const sceneChecks = sceneRed ? media.scene.fails.map((line) => line.match(/^([A-Za-z_]+\d*):/)?.[1]).filter(Boolean) : [];
+  const sceneMarked = new Set(sceneChecks.length === 1 ? sceneChecks : []);
   const views = media.parts.map((part) => ({ kind: "part", part, label: part.id, role: roleLabel(part) }));
   if (media.scene) views.push({ kind: "scene", label: "Assembled", role: "with the person's parts in place" });
   let current = 0;
@@ -378,7 +385,13 @@ function mediaSection(row, detail, options = {}) {
   add(box, tabs, stage, caption, controls, notBuiltNote, noSceneNote(media));
   show();
   return {
-    el: box, marked,
+    el: box, marked, sceneMarked, sceneRed,
+    showScene() {
+      const at = views.findIndex((view) => view.kind === "scene");
+      if (at < 0) return;
+      current = at; mode = modeFor(views[at]); show();
+      box.scrollIntoView({ block: "nearest", behavior: calm() ? "auto" : "smooth" });
+    },
     showPart(id) {
       const at = views.findIndex((view) => view.kind === "part" && view.part.id === id);
       if (at < 0) return;
@@ -405,7 +418,7 @@ function partCaption(caption, part, titleOf, note = "a render of the design; it 
 
 function sceneCaption(caption, scene) {
   // "R6: keyhole at (-50, 75): its slot runs…" reads better without the id; the checks beside the picture carry it.
-  const plain = (line) => line.replace(/^[A-Za-z_]+\d*:\s*/, "");
+  const plain = (line) => anBeforeVowelNumbers(line.replace(/^[A-Za-z_]+\d*:\s*/, ""));
   const marked = scene.layers.some((layer) => layer.key === "problem" && layer.parts.some((part) => part.mesh));
   add(caption, h("p", {}, sceneIntro(scene)), fitCaption(scene),
     scene.fails.length ? [
@@ -501,13 +514,14 @@ function referenceFigure(reference) {
 function whereNote(finding, media) {
   if (finding.state !== "fail" && finding.state !== "not graded") return null;
   const where = media.marked.get(finding.check);
-  const onRender = where ? ["marked in red on the render of ", h("button", { type: "button", class: "linkish", onclick: () => media.showPart(where) }, where)] : null;
+  const onRender = where ? ["marked in red on the render of ", h("button", { type: "button", class: "linkish", onclick: () => media.showPart(where) }, where)]
+    : media.sceneMarked?.has(finding.check) ? ["marked in red on the ", h("button", { type: "button", class: "linkish", onclick: () => media.showScene() }, "Assembled"), " view"] : null;
   if (finding.view) {
     if (finding.state !== "fail") return null;
-    return h("p", { class: "mark-note" }, where ? [h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "Drawn above, and ", onRender, "."] : "Drawn above. The render has no red mark for this check.");
+    return h("p", { class: "mark-note" }, onRender ? [h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "Drawn above, and ", onRender, "."] : media.sceneRed ? "Drawn above." : "Drawn above. The render has no red mark for this check.");
   }
   const none = finding.no_view_reason ? `No drawing: ${finding.no_view_reason}.` : "No drawing of this check.";
-  return h("p", { class: "mark-note" }, where ? [h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "M", onRender[0].slice(1), onRender[1], ". ", none] : none);
+  return h("p", { class: "mark-note" }, onRender ? [h("span", { class: "swatch swatch-red", "aria-hidden": "true" }), "M", onRender[0].slice(1), ...onRender.slice(1), ". ", none] : none);
 }
 
 function checkCard(finding, media) {
@@ -520,7 +534,7 @@ function checkCard(finding, media) {
       finding.part && finding.part !== "-" ? h("span", { class: "check-part" }, "on ", h("code", {}, finding.part)) : null),
     finding.view ? viewFigure(finding) : null,
     !finding.view && finding.meaning && finding.meaning !== finding.title ? h("p", { class: "check-meaning" }, finding.meaning) : null,
-    finding.detail ? h("p", { class: "check-detail" }, h("span", { class: "check-label" }, "Found: "), finding.detail) : null,
+    finding.detail ? h("p", { class: "check-detail" }, h("span", { class: "check-label" }, "Found: "), anBeforeVowelNumbers(finding.detail)) : null,
     diagnosis ? h("p", { class: "check-why" }, h("span", { class: "check-label" }, "Why: "), String(diagnosis.reason || diagnosis.text).replace(/\.$/, ""), ".",
       diagnosis.kind === "decided" ? " Dan ruled that this kind of case fails." : diagnosis.kind === "gap" ? " No recorded test print decides it." : diagnosis.kind === "open" ? " Still to be decided." : "") : null,
     diagnosis?.would_help ? h("p", { class: "check-why" }, h("span", { class: "check-label" }, "What would have helped: "), diagnosis.would_help) : null,

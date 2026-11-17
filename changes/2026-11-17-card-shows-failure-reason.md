@@ -1,0 +1,10 @@
+## 2026-11-17: Results site: a trial card that didn't pass says why (no result changed)
+
+On the results site's trial cards, a failed or not-graded trial now shows its reason (the same reason text the row's filters use, with "+N more" when it has several) where it used to say whether the model asked for test prints. Passing cards still say whether it asked. The row's summary already counts the test prints asked for ("Asked for test prints in 2 of 10"), so the card no longer repeats it on the trials where the reason matters more.
+
+Only `scripts/results_site/app.js` and `style.css` changed; no grade, finding or saved run did. Checked in a local build on the Tripod plate, Opus 5.5, Test prints first row: trial 2 reads "A roof with the bolt's hole cut through it +1 more", trial 1 (not graded) "A tripod head recess under 5 mm deep", and trials 5, 6 and 8 still show their test-print line.
+
+Three wording fixes on the trial page, from the Estoa light box (Gemini 4 Argon, trial 1, after feedback):
+- The graders write "a 8 mm screw"; the page now says "an" before numbers said with a vowel sound (8, 11, 18, the 80s), in the Found line, the assembled view's red-mark list and everything `reader_words` passes. Saved findings keep the graders' text. The drawings' own captions are images and still read "A 8 mm" until they're redrawn.
+- A check marked in red on the Assembled view said "The render has no red mark for this check": the note only looked at the part renders. It now says "marked in red on the Assembled view", with a link that opens that view, but only when that view has red and exactly one failed check: the red layer doesn't record which check each mark is for, and a failed check can have no mark (Codex, PR #52: DeepSeek V4 Pro's Estoa trial 3 after feedback lists R6 with nothing to draw). With red but several failed checks, the note says only "Drawn above."
+- "What would have helped" for a real failure said "Let it run the eval's printability checks", which didn't fit failures like a screw that bottoms out. It now says "Let it run the eval's checks on its design before handing in".

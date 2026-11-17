@@ -571,8 +571,17 @@ def reader_words(text: str) -> str:
     text = LISTED_TEST_PRINTS.sub(lambda m: f"{m.group(1)} ({hold(m.group(2))})", text)
     text = COUPON_LOOP.sub(lambda m: ("Test" if m.group(1).isupper() else "test") + "-print loop", text)
     text = COUPON_WORD.sub(lambda m: ("Test print" if (m.group(1) or m.group(2)).isupper() else "test print") + (m.group(3) or ""), text)
-    return re.sub(r"(test print) \x01(\d+)\x01 (would|has)", lambda m: f"{m.group(1)} “{held[int(m.group(2))]}” {m.group(3)}",
-                  re.sub(r"\((\x01)(\d+)\x01\)", lambda m: f"({held[int(m.group(2))]})", text), flags=re.I)
+    return an_before_vowel_sounds(re.sub(r"(test print) \x01(\d+)\x01 (would|has)", lambda m: f"{m.group(1)} “{held[int(m.group(2))]}” {m.group(3)}",
+                  re.sub(r"\((\x01)(\d+)\x01\)", lambda m: f"({held[int(m.group(2))]})", text), flags=re.I))
+
+
+# "a 8 mm screw" reads "an eight": numbers said with a vowel sound first (8, 11, 18, 80s, 800s) take "an"
+A_BEFORE_VOWEL_NUMBER = re.compile(r"\b([Aa]) (?=(?:8\d*|11|18)(?:\.\d+)?\b)")
+
+
+def an_before_vowel_sounds(text: str) -> str:
+    """The graders write "a {length} mm screw"; saved findings keep that, and the page fixes the article."""
+    return A_BEFORE_VOWEL_NUMBER.sub(lambda m: m.group(1) + "n ", text)
 
 
 UNKNOWN_ROOF_KEY = UNKNOWN_ROOF = "A roof or ledge too wide to bridge (whether the bolt's hole runs through it isn't recorded for this design)"

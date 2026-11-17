@@ -916,6 +916,11 @@ function entryFlag(entry) {
   if (state.cond === "after_feedback") {
     return h("span", { class: "flag" }, entry.via === "second" ? "second print" : entry.verdict === "pass" ? "first time" : "not replayed");
   }
+  // a design that didn't pass says why on its card; the row's summary already counts who asked for test prints
+  if (["fail", "not graded"].includes(entry.verdict) && row.reasons.length) {
+    const [first, ...rest] = row.reasons;
+    return h("span", { class: "flag flag-reason" }, index.reason_groups[first] || first, rest.length ? h("small", {}, ` +${rest.length} more`) : null);
+  }
   if (row.condition_key === "can_test" && row.kind === "trial" && row.verdict !== "error") {
     return h("span", { class: "flag" + (row.test_print_rounds_asked ? "" : " flag-zero") }, row.test_print_rounds_asked ? `asked for test prints ×${row.test_print_rounds_asked}` : "asked for no test prints");
   }

@@ -41,7 +41,7 @@ LOOP_RUNS = {1: "loop-sample", 2: "loop-sample-2"}
 
 HELP = {
     "build": "Let it run its own code before handing in",
-    "checks": "Let it run the eval's printability checks before handing in",
+    "checks": "Let it run the eval's checks on its design before handing in",
     "render": "Show it a render or measurements of what it built",
     "coupon": "Tell it how its test print came out (the coupon loop)",
     "measure": "Let the person measure the clamp, or say plainly they can't",
