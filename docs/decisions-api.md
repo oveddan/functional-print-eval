@@ -141,7 +141,7 @@ One question per known Estoa failure that the estoa-light task can show (`pbe/ju
   - Jev put 49 of 57 in the class on record (86%), Luna 38 (67%). Always answering the commonest class (C1, unmeasured) would score 23%.
   - Hand check (`hand-labels.yaml`, `5-classes-notes`; the key wasn't changed): 4 of Jev's 8 misses are defensible.
     - Three went to C5 (mating envelopes) where the record says C1 (unmeasured): slots that ignored headers, a counterbore that guessed the bolt head, cable holes too tight for its bend. C5's description names exactly those things, "header height", "screw head", "cable bend".
-    - The fourth, screw heads standing proud, went to C3 (stack-up).
+    - The fourth, screw heads standing proud, went to C3 (fasteners don't properly connect).
     - So C1 and C5 overlap as written. That's a definition to sharpen, not a judge to blame.
   - Luna sent all 5 manual records (C9) to process (C10). That's a systematic misread.
 - **5b, flagging something new.** Each record was judged again with its own class removed from the options. A good flagger says "none of these" or answers weakly. On the full run, it shouldn't flag records whose class was offered.
