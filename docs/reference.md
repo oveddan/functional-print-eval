@@ -1,4 +1,4 @@
-# Print-and-Build Eval: reference
+# Funk3D-Bench: reference
 
 Everything behind the [README](../README.md): the failure classes, how to run each step, the tasks, how grading works, the full results, what went wrong, the assumptions and the known limits.
 
