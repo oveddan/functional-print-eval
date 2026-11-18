@@ -32,7 +32,7 @@ const POOLED = "pooled";        // the model filter's value for "the models run 
 const POOLED_SLUG = "run-all-three-ways";
 const FED = "fed";              // the headline's models whose failed first prints were sent back: the after-feedback headline
 const FED_SLUG = "sent-back";
-const DEFAULTS = { cond: "first", task: "all", verdict: "", model: "", reason: "", show: "", trial: "" };
+const DEFAULTS = { cond: "test_first", task: "all", verdict: "", model: "", reason: "", show: "", trial: "" };
 const COND = {
   first: { short: "First print", noun: "first prints" },
   after_feedback: { short: "Reprint after feedback", noun: "first prints, counted with their reprints after feedback" },
@@ -414,11 +414,11 @@ function wireFailingExample() {
   const pick = firsts.find((row) => row.issues.length === 1 && row.issues[0].reason_group === "holed-roof" && row.task === "tripod-plate" && row.views > 0) || firsts[0];
   if (!pick) return;
   for (const link of [$("see-failing"), $("hero-example")]) {
-    link.href = listHref({ task: pick.task, verdict: "fail", trial: pick.slug });
+    link.href = listHref({ cond: "first", task: pick.task, verdict: "fail", trial: pick.slug });
     link.addEventListener("click", (event) => {
       if (!plainClick(event)) return;
       event.preventDefault();
-      navigate({ task: pick.task, verdict: "fail", trial: pick.slug }, { fromDefaults: true, opened: true });
+      navigate({ cond: "first", task: pick.task, verdict: "fail", trial: pick.slug }, { fromDefaults: true, opened: true });
     });
   }
   const image = h("img", { src: pick.thumb, alt: "", width: "640", height: "512", decoding: "async" });
@@ -459,7 +459,7 @@ function renderWhy() {
   const list = clear($("why-body"));
   for (const reason of reasons) {
     const verdict = ISSUE_VERDICT[reason.kind];
-    list.append(h("li", {}, cellLink(`why ${reason.key}`, { reason: reason.key }, { trials: reason.count }, { class: `why-row ${VERDICT[verdict].cls}` }, [
+    list.append(h("li", {}, cellLink(`why ${reason.key}`, { cond: "first", reason: reason.key }, { trials: reason.count }, { class: `why-row ${VERDICT[verdict].cls}` }, [
       whyThumb(reason.key),
       h("span", { class: "why-label" }, icon(VERDICT[verdict].icon), h("span", { class: "why-words" }, h("span", { class: "why-text" }, reason.text), whyTag(reason.key))),
       h("span", { class: "why-track", "aria-hidden": "true" }, h("span", { class: `why-bar${verdict === "not graded" ? " why-bar-ng" : ""}`, style: `width:${(100 * reason.count / most).toFixed(1)}%` })),
@@ -490,7 +490,7 @@ function stoppedNote(excluded) {
 
 // A model's name, linked to its trials the way the chart's names are.
 function modelLink(entry, where) {
-  return cellLink(`${entry.short}, name in the ${where}`, { model: entry.model }, { atLeast: 1 },
+  return cellLink(`${entry.short}, name in the ${where}`, { cond: entry.test_first ? "test_first" : "first", model: entry.model }, { atLeast: 1 },
     { class: "name-link", "aria-label": `${entry.short}: open this model's trials` }, entry.short);
 }
 
@@ -654,7 +654,7 @@ function renderFilters() {
   const counted = (entry) => countable(entry);
 
   // condition
-  const seg = h("div", { class: "seg" }, ["first", "after_feedback", "test_first"].map((key) => h("button", {
+  const seg = h("div", { class: "seg" }, ["test_first", "first", "after_feedback"].map((key) => h("button", {
     type: "button", class: "seg-btn", "aria-pressed": String(key === state.cond), "data-k": "cond:" + key,
     onclick: () => navigate({ cond: key, verdict: "", reason: "", show: "" }),
   }, COND[key].short)));
