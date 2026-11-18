@@ -383,13 +383,17 @@ def test_the_person_answers_what_the_records_say():
     assert "30.2" in person.measure("disk", "distance between the holes")
     assert "3 o'clock" in person.measure("disk", "where are the holes")
     assert "102.54" in person.measure("disk", "hole to the edge")
-    assert "can't measure" in person.measure("disk", "thickness")
+    assert "1.56 mm" in person.measure("disk", "thickness")  # Dan's readings, 2026-11-17
     # pilot-estoa: Sonnet's wording for the wall screws, which once matched nothing
     assert "9 mm" in person.measure("screws you will hang it on", "head diameter, head thickness, shank diameter")
-    assert "can't measure" in person.measure("led disk", "outer diameter")
+    assert "242 mm" in person.measure("led disk", "outer diameter")
     assert "12.54" in person.measure("esp32", "usb port height")
     assert "4.80" in person.measure("esp32", "usb port")
-    assert "16 mm" in person.measure("esp32", "height above the perfboard")
+    assert "18 mm above the bottom of the perfboard" in person.measure("esp32", "height above the perfboard")
+    assert "1.6 mm" in person.measure("perfboard", "thickness")
+    # the plug head Dan measured on 2026-11-12, in the wordings the saved trials used and got nothing for
+    for item in ("USB-C charger cable plug", "usb-c plug", "plug end of your USB-C charger cable", "USB-C wall charger"):
+        assert "11.58 mm wide and 6.44 mm thick" in person.measure(item, "size")
     assert "2.4 mm" in person.measure("perfboard", "corner holes")
     assert "3.5 mm" in person.measure("wall screws", "how far they stick out")
 
