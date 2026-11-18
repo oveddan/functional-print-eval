@@ -684,7 +684,7 @@ Estoa has merged, and its trials are in the results above. Servo mount has merge
 
 ### Estoa light
 
-The failures that come up most, by trial: a roof that can't be bridged (11 of 18), an insert post with less plastic than the 1.85 mm that bulged on the real build (6), and a keyhole it can't hang from (6): Haiku's three run from the slot downward, and the others are sized wrong for the screw's head or too thick for how far the screws stand out of the wall. Most of the not graded checks need something nobody recorded, such as the board's thickness.
+The failures that come up most, by trial: a roof that can't be bridged (11 of 18), an insert post with less plastic than the 1.85 mm that bulged on the real build (6), and a keyhole it can't hang from (6): Haiku's three run from the slot downward, and the others are sized wrong for the screw's head or too thick for how far the screws stand out of the wall. Most of the not graded checks are on parts whose mesh isn't a closed solid, which the checker can't read yet; the rest mostly need something nobody recorded, such as the heights of the parts on the perfboard.
 
 The failure is when an overhang or a roof is designed in a way that cannot be 3D printed without an error. It designed basically a roof that cannot be 3D printed.
 
