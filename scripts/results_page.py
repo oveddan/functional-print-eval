@@ -68,10 +68,16 @@ def estoa_missing(check, detail):
     """An Estoa light check no record decides."""
     if "isn't placed once" in detail:
         return "Not graded: the design doesn't say where the person's parts go", "format", "placed"
+    if "isn't a closed volume" in detail:  # enclosure.UNREADABLE: the checker can't probe the mesh, on any check
+        return "Not graded: a part isn't a closed solid, so the checker can't read it", "gap", "reader"
+    if check == "R2" and "runs over the perfboard" in detail:
+        return "Not graded: the screws run over the perfboard, where its parts' heights aren't all recorded", "gap", "prints"
+    if check == "R2" and "no screw through the disk's hole" in detail:
+        return "Not graded: no screw through one of the disk's holes, whose spot R1 couldn't settle", "gap", "prints"
     if check == "R1":
         return "Not graded: inserts hold the disk's screws at one spot, and nothing checks the holes first", "gap", "prints"
     if check == "R2":
-        return "Not graded: the screws may bottom out; the disk's thickness was never measured", "gap", "prints"
+        return "Not graded: the disk's screws grip by less thread or nut than any print showed holds", "gap", "prints"
     if check == "R3":
         return "Not graded: a USB opening between the size that stopped plugs and the one that seated", "gap", "prints"
     if check == "R4":

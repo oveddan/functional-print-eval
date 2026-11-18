@@ -343,6 +343,9 @@ def test_view_audit_is_optional(monkeypatch, tmp_path):
 # Photos kept for a reason no saved design has now, each with why, so a misspelled key can't hide here.
 PARKED_REASON_PHOTOS = {
     "insert-posts-thinner-than-any-printed",  # Estoa R4 passes for now (Dan, 2026-11-13); back when R4 is tightened
+    # Estoa R3's USB opening between the size that stopped plugs and the one that seated: no saved design has one.
+    # The cards that showed it were parts the checker couldn't read, labeled from the check id alone until 2026-11-18
+    "a-usb-opening-between-the-size-that-stopped-plugs-and-the-one-that-seated",
 }
 
 
