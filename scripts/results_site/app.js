@@ -147,7 +147,11 @@ const fedModels = () => card.scorecard.pooled.after_feedback.model_ids;
 const modelSet = (model) => (model === POOLED ? pooledModels() : model === FED ? fedModels() : null);
 const modelSetLabel = (model) => (model === POOLED ? `the ${pooledModels().length} models run all three ways`
   : `the ${fedModels().length} headline models whose failed first prints were sent back`);
-const taskMatches = (row, task) => task === "all" || (task === "scored" ? meta().tasks[row.task].scored : row.task === task);
+// "scored" is the parts a condition's headline counts: the four scored parts, and in Test prints first the Estoa box too.
+const countedTasks = (cond = state.cond) => (cond === "test_first" && card.scorecard.test_first_tasks) || card.scorecard.scored_tasks;
+const countedTasksLabel = (cond = state.cond) => `the ${NUMBER_WORDS[countedTasks(cond).length] || countedTasks(cond).length} scored parts`;
+const NUMBER_WORDS = { 4: "four", 5: "five" };
+const taskMatches = (row, task, cond = state.cond) => task === "all" || (task === "scored" ? countedTasks(cond).includes(row.task) : row.task === task);
 const modelMatches = (row, model) => !model || (modelSet(model) ? modelSet(model).includes(row.model) : row.model === model);
 const condShort = (cond) => COND[cond]?.short || lookup.groups.get(cond)?.label || cond;
 
@@ -284,7 +288,7 @@ function cellLink(label, patch, expect, attrs, kids) {
 // ---- filtering ----
 
 function scopeEntries(s, { task = true, model = true } = {}) {
-  return (lookup.entries.get(s.cond) || []).filter((entry) => (!task || taskMatches(entry.row, s.task)) && (!model || modelMatches(entry.row, s.model)));
+  return (lookup.entries.get(s.cond) || []).filter((entry) => (!task || taskMatches(entry.row, s.task, s.cond)) && (!model || modelMatches(entry.row, s.model)));
 }
 
 // Verdict filter values that aren't one verdict. The scorecard chart links with them, so each piece of a bar opens
@@ -361,7 +365,7 @@ function rankOddsLine(score) {
     `If every model's test-prints-first trials were run again (${odds.resamples.toLocaleString("en-US")} simulated reruns, task by task): `,
     `${name(leader)} ranks first in ${pct(odds.models[leader].first)} of them, ${name(runner)} is in the top two in ${pct(odds.models[runner].top_two)}, `,
     `and ${name(last)} ranks last in ${pct(odds.models[last].last)}. `,
-    `${unsettled.join(", ").replace(/, ([^,]*)$/, " and $1")} can't be put in order. This is trial-to-trial noise on these four tasks only, not how the order would hold on other tasks.`);
+    `${unsettled.join(", ").replace(/, ([^,]*)$/, " and $1")} can't be put in order. This is trial-to-trial noise on these ${NUMBER_WORDS[countedTasks("test_first").length] || countedTasks("test_first").length} tasks only, not how the order would hold on other tasks.`);
 }
 
 // The headline: each model's pass rate when it can ask for test prints before its final design, best first, with what
@@ -387,7 +391,7 @@ function renderFinding() {
   heading.removeAttribute("aria-busy");
   $("kicker").textContent = `${models.length} language models were asked, in a person's own words, for a part to 3D print, and could ask for test prints before their final design. The share of their designs that pass, and what each passing design took:`;
   add(clear($("finding-foot")),
-    h("p", {}, "A design passes only if its final print would work: a final print that fails counts as a failure, since that is where the hours and filament are lost, even after test prints. Pass rate on the four scored parts. Printing and filament are slicer estimates for everything the model asked to print, test prints included, per passing design; API cost is what the provider charged, per passing design. No final design was printed. ",
+    h("p", {}, "A design passes only if its final print would work: a final print that fails counts as a failure, since that is where the hours and filament are lost, even after test prints. ", `Pass rate on ${countedTasksLabel("test_first")}${countedTasks("test_first").includes(score.harder_task) ? `, the ${taskShort(score.harder_task)} included` : ""}. `, "Printing and filament are slicer estimates for everything the model asked to print, test prints included, per passing design; API cost is what the provider charged, per passing design. No final design was printed. ",
       "First prints with no test prints, and reprints after feedback, are in ", h("a", { href: "#scorecard" }, "the scorecard"), "."),
     rankOddsLine(score));
 
@@ -507,10 +511,13 @@ function openTargetedFold() {
 
 function renderScorecard() {
   const score = card.scorecard;
+  // index.html's line is written for the four parts; Test prints first now counts more, so say both
+  const sub = $("scorecard-sub");
+  if (sub) sub.textContent = `Pass rate on ${countedTasksLabel("first")} for the first print and the reprint, and on ${countedTasksLabel("test_first")} with test prints first. Every number opens exactly the trials it counts.`;
   const byModel = new Map(score.models.map((entry) => [entry.model, entry]));
   const tell = score.cant_tell;
   const table = h("table", { class: "score" },
-    h("caption", { class: "sr-only" }, "Pass rate on the four scored parts, per model and condition"),
+    h("caption", { class: "sr-only" }, `Pass rate per model and condition: first print and reprint on ${countedTasksLabel("first")}, test prints first on ${countedTasksLabel("test_first")}`),
     h("thead", {}, h("tr", {},
       h("th", { scope: "col" }, "Model"),
       h("th", { scope: "col" }, "First print", h("small", {}, "can ask for measurements, no test prints")),
@@ -788,7 +795,7 @@ function renderFilters() {
   if (tasks.length > 1) taskChips.push(chip("task:all", "All parts", taskEntries.length, state.task === "all", { task: "all", reason: "" }));
   const scored = taskEntries.filter((entry) => taskMatches(entry.row, "scored"));
   if (scored.length && scored.length < taskEntries.length) {
-    taskChips.push(chip("task:scored", "The four scored parts", scored.length, state.task === "scored", { task: "scored", reason: "" }));
+    taskChips.push(chip("task:scored", countedTasksLabel().replace(/^t/, "T"), scored.length, state.task === "scored", { task: "scored", reason: "" }));
   }
   for (const task of tasks) {
     taskChips.push(chip("task:" + task, taskLabel(task), taskEntries.filter((entry) => entry.row.task === task).length, state.task === task || tasks.length === 1, { task, reason: "" }));
@@ -880,7 +887,7 @@ function summaryText() {
   const total = scopeEntries(state).filter((entry) => countable(entry)).length;
   const noun = COND[state.cond]?.noun || `entries in “${lookup.groups.get(state.cond).label}”`;
   const narrowed = [];
-  if (state.task === "scored") narrowed.push("the four scored parts");
+  if (state.task === "scored") narrowed.push(countedTasksLabel());
   else if (state.task !== "all") narrowed.push(taskLabel(state.task));
   if (state.model) narrowed.push(modelSet(state.model) ? modelSetLabel(state.model) : modelShort(state.model));
   const picked = [];

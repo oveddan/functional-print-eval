@@ -1,0 +1,253 @@
+task: nut-knob/M5
+note: Single-piece ergonomic M5 hand knob (~30 mm across) with press-fit hex nut retention
+  verified by coupon test. Supports pass-through M5 bolts of any length. Prints 100%
+  support-free.
+questions: []
+params:
+  scallop_r:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of cylindrical finger grip flutes
+  leadin_r_bottom:
+    value: 4.2
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom radius of lead-in chamfer cone
+  scallop_dist:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance of scallop cutters from center axis
+  knob_outer_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter across the tips of the grip lobes (~30 mm)
+  leadin_chamfer_depth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of conical lead-in chamfer at hex pocket entrance
+  bolt_clearance_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole clearance diameter for M5 bolt
+  nut_af:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: Nut pocket width across flats, confirmed by physical coupon test for snug
+      hand-press retention
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal height of ISO 4032 M5 hex nut
+  nut_af_nominal:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal width across flats for ISO 4032 M5 nut
+  nut_pocket_depth:
+    value: 5.2
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of hex pocket (5.2 mm ensures nut is recessed 0.5 mm inside)
+  leadin_r_top:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Top radius of lead-in chamfer cone
+  knob_height:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Total axial height of the knob for comfortable finger grip
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of M5 bolt
+  shoulder_thickness:
+    value: 5.8
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of solid internal stop shoulder under the nut
+  scallop_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of finger grip flutes around perimeter
+parts:
+- id: m5_hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    r_outer = p.knob_outer_d / 2.0\n    body\
+    \ = cq.Workplane(\"XY\").circle(r_outer).extrude(p.knob_height)\n    \n    # 6\
+    \ ergonomic finger scallops around perimeter\n    for i in range(int(p.scallop_count)):\n\
+    \        angle = math.radians(i * (360.0 / p.scallop_count))\n        sx = p.scallop_dist\
+    \ * math.cos(angle)\n        sy = p.scallop_dist * math.sin(angle)\n        scallop\
+    \ = (\n            cq.Workplane(\"XY\")\n            .transformed(offset=cq.Vector(sx,\
+    \ sy, -1.0))\n            .circle(p.scallop_r)\n            .extrude(p.knob_height\
+    \ + 2.0)\n        )\n        body = body.cut(scallop)\n        \n    # Central\
+    \ through-hole for M5 bolt clearance\n    bolt_hole = (\n        cq.Workplane(\"\
+    XY\")\n        .transformed(offset=cq.Vector(0, 0, -1.0))\n        .circle(p.bolt_clearance_d\
+    \ / 2.0)\n        .extrude(p.knob_height + 2.0)\n    )\n    body = body.cut(bolt_hole)\n\
+    \    \n    # Hex nut pocket from top face down to internal shoulder\n    z_floor\
+    \ = p.knob_height - p.nut_pocket_depth\n    ac = p.nut_af / math.cos(math.radians(30))\n\
+    \    hex_pocket = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=z_floor)\n\
+    \        .polygon(6, ac)\n        .extrude(p.nut_pocket_depth + 1.0)\n    )\n\
+    \    body = body.cut(hex_pocket)\n    \n    # Lead-in chamfer at hex pocket entrance\
+    \ for smooth hand alignment\n    z_chamfer_bottom = p.knob_height - p.leadin_chamfer_depth\n\
+    \    leadin = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=z_chamfer_bottom)\n\
+    \        .circle(p.leadin_r_bottom)\n        .workplane(offset=p.leadin_chamfer_depth\
+    \ + 0.5)\n        .circle(p.leadin_r_top)\n        .loft()\n    )\n    body =\
+    \ body.cut(leadin)\n    \n    return body\n"
+  print_orientation: Flat base on bed (z=0), nut pocket opening facing up (+z)
+  use_orientation: Flat base faces mating surface; bolt threads through central bore
+hardware:
+- id: m5_nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: m5_bolt
+  ref: ISO 4762 M5x20
+  qty: 1
+joints:
+- id: knob_fastener_joint
+  fastener: m5_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: m5_hand_knob
+    feature: through_hole
+    role: clearance
+  - part: m5_hand_knob
+    feature: nut_pocket
+    role: nut_pocket
+  nut: m5_nut
+  external: null
+criteria:
+- id: nut_pocket_retention
+  part: m5_hand_knob
+  feature: nut_pocket
+  relation: seats
+  hardware: m5_nut
+  clearance_mm: 0.1
+  params:
+  - nut_af
+  - nut_pocket_depth
+  check:
+    method: coupon
+    ref: nut_pocket_coupon
+    description: 'Tested on 8.10 mm coupon pocket: presses in snugly by hand and stays
+      retained upside down without glue'
+- id: bolt_clearance
+  part: m5_hand_knob
+  feature: through_hole
+  relation: clears
+  hardware: m5_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_clearance_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Through-hole diameter 5.4 mm allows M5 bolt (5.0 mm nominal) to pass
+      freely through
+- id: nut_shoulder_stop
+  part: m5_hand_knob
+  feature: internal_shoulder
+  relation: supports
+  hardware: m5_nut
+  clearance_mm: null
+  params:
+  - shoulder_thickness
+  - bolt_clearance_d
+  - nut_af
+  check:
+    method: none
+    ref: null
+    description: Solid 5.8 mm shoulder with 5.4 mm through-hole supports the 8.0 mm
+      hex nut and prevents it from being pushed out the far side
+- id: nut_recessed
+  part: m5_hand_knob
+  feature: nut_pocket
+  relation: contains
+  hardware: m5_nut
+  clearance_mm: 0.5
+  params:
+  - nut_pocket_depth
+  - nut_h
+  check:
+    method: none
+    ref: null
+    description: Pocket depth 5.2 mm exceeds nut height 4.7 mm by 0.5 mm, keeping
+      nut fully inside the knob
+manual:
+- n: '1'
+  text: Print the m5_hand_knob part flat on the print bed with the base at z=0 (nut
+    pocket opening facing up). No supports required.
+  parts:
+  - m5_hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Orient an ISO 4032 M5 hex nut over the hexagonal pocket on the top face of
+    the knob. The beveled lead-in chamfer will help center and align the flats.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '3'
+  text: Press the nut straight down into the pocket by hand using your thumb (or by
+    pressing the knob down against a flat table surface) until the nut seats firmly
+    against the internal shoulder. The top of the nut will sit recessed ~0.5 mm inside
+    the knob.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '4'
+  text: 'Turn the knob upside down and shake it to verify retention: the nut stays
+    firmly held inside the knob by the snug friction fit without needing any glue.'
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_nut
+  tool: null
+- n: '5'
+  text: Thread the knob onto your M5 bolt. The bolt enters through the central clearance
+    hole, threads through the nut, and can pass out the other side. Tighten firmly
+    by hand using the ergonomic fluted lobes.
+  parts:
+  - m5_hand_knob
+  hardware:
+  - m5_bolt
+  - m5_nut
+  tool: null

@@ -1,0 +1,295 @@
+task: bearing-wheel
+note: Replacement closet door roller wheel engineered for two 608 bearings on an M8
+  bolt. Features dual flat shoulders with a central 1.5 mm concave groove to support
+  both flat tracks and beaded rails, plus custom standoff spacers to isolate the rotating
+  wheel from the bolt head and bracket.
+questions:
+- text: Does the wheel work on both flat channels and grooved or beaded tracks?
+  answer: Yes. The outer profile combines two 3 mm flat outer shoulders (50 mm OD)
+    to roll smoothly in flat channels, with a central 1.5 mm deep concave radius to
+    ride securely on raised round or bead rails without derailing.
+- text: Why are the printed spacer bushings necessary?
+  answer: Standard M8 bolt heads and hex nuts have diameters of 13 mm or more, which
+    would rub against the rotating 608 bearing shields and wheel face. The 3D-printed
+    spacers have an outer diameter of 11.5 mm, ensuring they contact only the stationary
+    8 mm inner ring, giving 3 mm of axial clearance for 100% friction-free spinning.
+params:
+  test_pocket_tight:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: Tight test pocket diameter for coupon
+  spacer_thickness:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of spacer washer isolating wheel from bracket/bolt
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Outer diameter of the wheel
+  test_pocket_medium:
+    value: 22.25
+    unit: mm
+    kind: design
+    source: design
+    note: Medium test pocket diameter for coupon
+  coupon_thickness:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Coupon block total thickness
+  shoulder_id:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: Shoulder opening diameter clearing bearing shield and inner ring
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bearing nominal width
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M8 bolt diameter
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Total width of the wheel
+  bearing_pocket_depth:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of bearing pocket accommodating two 7mm 608 bearings
+  pocket_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: measured
+    note: Bearing pocket diameter, verified snug press-fit on test print
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bearing nominal outer diameter
+  groove_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of concave track groove on outer rim
+  rim_flat_w:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Width of flat shoulder on each side of the rim
+  bolt_clearance_d:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance hole diameter for M8 bolt
+  spacer_od:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of spacer contacting only bearing inner ring
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: 608 bearing nominal inner diameter
+  shoulder_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Bottom retaining shoulder thickness
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    r_in = p.shoulder_id / 2.0\n    r_pocket = p.pocket_d\
+    \ / 2.0\n    r_out = p.wheel_od / 2.0\n    r_groove = r_out - p.groove_depth\n\
+    \    h = p.wheel_width\n    z_sh = p.shoulder_t\n    w_flat = p.rim_flat_w\n \
+    \   z_mid = h / 2.0\n    chamfer = 0.5\n\n    wire = (\n        cq.Workplane(\"\
+    XZ\")\n        .moveTo(r_in, 0)\n        .lineTo(r_out, 0)\n        .lineTo(r_out,\
+    \ w_flat)\n        .threePointsArc((r_groove, z_mid), (r_out, h - w_flat))\n \
+    \       .lineTo(r_out, h - chamfer)\n        .lineTo(r_out - chamfer, h)\n   \
+    \     .lineTo(r_pocket, h)\n        .lineTo(r_pocket, z_sh)\n        .lineTo(r_in,\
+    \ z_sh)\n        .close()\n    )\n    return wire.revolve()\n"
+  print_orientation: Bottom face on build plate (Z=0)
+  use_orientation: Vertical, rotating around M8 axle bolt
+- id: spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    r_in = p.bolt_clearance_d / 2.0\n    r_out = p.spacer_od\
+    \ / 2.0\n    h = p.spacer_thickness\n    wire = (\n        cq.Workplane(\"XZ\"\
+    )\n        .moveTo(r_in, 0)\n        .lineTo(r_out, 0)\n        .lineTo(r_out,\
+    \ h)\n        .lineTo(r_in, h)\n        .close()\n    )\n    return wire.revolve()\n"
+  print_orientation: Flat face on build plate (Z=0)
+  use_orientation: Slid onto M8 bolt between bearing inner race and bracket/bolt head
+- id: bearing_fit_coupon
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    base = cq.Workplane(\"XY\").box(60, 32, p.coupon_thickness).translate((0,\
+    \ 0, p.coupon_thickness / 2.0))\n    res = (\n        base.faces(\">Z\").workplane()\n\
+    \        .pushPoints([(-16, 0)])\n        .hole(p.shoulder_id)\n        .faces(\"\
+    >Z\").workplane()\n        .pushPoints([(-16, 0)])\n        .hole(p.test_pocket_tight,\
+    \ p.bearing_w)\n        .faces(\">Z\").workplane()\n        .pushPoints([(16,\
+    \ 0)])\n        .hole(p.shoulder_id)\n        .faces(\">Z\").workplane()\n   \
+    \     .pushPoints([(16, 0)])\n        .hole(p.test_pocket_medium, p.bearing_w)\n\
+    \        .faces(\">Z\").workplane()\n        .pushPoints([(0, 0)])\n        .hole(p.bolt_clearance_d)\n\
+    \    )\n    return res\n"
+  print_orientation: Bottom face on build plate (Z=0)
+  use_orientation: Top face up (+Z), test inserting 608 bearing into pockets and M8
+    bolt through center hole
+hardware:
+- id: bearing_608
+  ref: 608ZZ
+  qty: 2
+- id: m8_bolt
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: m8_nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: m8_washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: axle_joint
+  fastener: m8_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: spacer
+    feature: bore
+    role: clearance
+  - part: wheel
+    feature: bearing_pocket
+    role: clearance
+  - part: spacer
+    feature: bore
+    role: clearance
+  nut: m8_nut
+  external: null
+criteria:
+- id: bearing_fit
+  part: wheel
+  feature: bearing_pocket
+  relation: contains
+  hardware: bearing_608
+  clearance_mm: 0.1
+  params:
+  - pocket_d
+  - bearing_od
+  check:
+    method: coupon
+    ref: bearing_fit_coupon
+    description: 608 bearing pressed into pocket, confirmed snug fit on coupon
+- id: shoulder_clearance
+  part: wheel
+  feature: bottom_shoulder
+  relation: clears
+  hardware: bearing_608
+  clearance_mm: 4.0
+  params:
+  - shoulder_id
+  check:
+    method: measure
+    ref: null
+    description: Bore opening clears bearing inner ring (OD ~12mm)
+- id: bolt_clearance
+  part: spacer
+  feature: bore
+  relation: clears
+  hardware: m8_bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_clearance_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: M8 bolt slides freely through spacer
+- id: spacer_inner_race
+  part: spacer
+  feature: contact_face
+  relation: seats
+  hardware: bearing_608
+  clearance_mm: 0.5
+  params:
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Spacer OD contacts only inner race, avoiding bearing shield
+manual:
+- n: '1'
+  text: Press the first 608 bearing into the wheel's bearing pocket until it firmly
+    seats against the bottom retaining shoulder.
+  parts:
+  - wheel
+  hardware:
+  - bearing_608
+  tool: null
+- n: '2'
+  text: Press the second 608 bearing into the pocket directly on top of the first
+    bearing until it sits flush with the top face of the wheel.
+  parts:
+  - wheel
+  hardware:
+  - bearing_608
+  tool: null
+- n: '3'
+  text: Slide an M8 washer onto the M8 bolt, followed by one printed spacer, and insert
+    the bolt through the bearings from either side of the wheel.
+  parts:
+  - wheel
+  - spacer
+  hardware:
+  - m8_bolt
+  - m8_washer
+  tool: null
+- n: '4'
+  text: Slide the second printed spacer onto the protruding end of the M8 bolt on
+    the opposite side of the wheel.
+  parts:
+  - spacer
+  hardware:
+  - m8_bolt
+  tool: null
+- n: '5'
+  text: Pass the bolt through the door mounting bracket, place an M8 washer on the
+    threaded end, and secure with the M8 lock nut. Tighten firmly and verify that
+    the wheel spins smoothly with zero wobble or rubbing.
+  parts: []
+  hardware:
+  - m8_bolt
+  - m8_washer
+  - m8_nut
+  tool: 6mm hex key and 13mm wrench

@@ -220,7 +220,7 @@ Each task is a folder in `tasks/`: the person's request (`brief.md`), the facts 
 | `nut-knob` (M3, M5, M8) | A hand knob with a hex nut pressed in, which must stay in upside down | one part; about the right size; a pocket that takes the nut, stops it turning and stops it going through; the nut presses in and holds on this printer, or a test print would find a size that does; the bolt passes through | draft, not approved: runs are exploratory. M8 has a reference but no runs |
 | `bearing-wheel` | A closet-door roller wheel on two 608 bearings and an M8 bolt | about the old wheel's size; room for both bearings; the bearings press in and stay, or a test print would find a size; the bolt goes through | written by Claude and not reviewed by Dan; the door is invented: runs are exploratory |
 | `m5-spacer` | A 20 mm spacer for an M5 bolt, everything stated | one part; size; a clearance hole; round | a control: if models fail it, the harness is broken |
-| `estoa-light` | The box behind Dan's Estoa wall light | 7 checks on the assembled box | merged; 30 `can_ask` trials (`pilot-estoa`) and 18 `can_test` trials (`test-first`), in the README's results |
+| `estoa-light` | The box behind Dan's Estoa wall light | 7 checks on the assembled box | merged; 30 `can_ask` trials (`pilot-estoa`) and 35 `can_test` trials (`test-first`, 5 per model, counted in the Test prints first total) |
 | `phone-stand` | A desk-clamp phone stand | its `requirements.yaml` names checks that were never built | **can't run** |
 
 Why each is hard, and every limit's source, is in its `brief.md`. The fit limits come from test prints made on one Bambu Lab X1C in one PLA, recorded with predictions committed before printing (`results/predictions/`). Photos of those prints are hosted, not committed; `docs/media/photos.md` indexes them.
@@ -268,15 +268,15 @@ The scorecard: every listed model's first print, its print after feedback, and t
 <!-- scorecard:end -->
 
 <!-- results:start (written by scripts/results_table.py; don't edit by hand) -->
-850 trials of 13 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 12 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
+867 trials of 13 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 12 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
 
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
 | `can_ask` | 525 | 180 | 287 | 40 | 10 | 8 | $47.07 |
 | `can_run_code` | 19 | 3 | 11 | 0 | 5 | 0 | $2.55 |
-| `can_test` | 296 | 128 | 105 | 16 | 3 | 44 | $33.48 |
-| **all** | **850** | 312 | 410 | 57 | 19 | 52 | $84.22 |
+| `can_test` | 313 | 153 | 130 | 23 | 3 | 4 | $43.13 |
+| **all** | **867** | 337 | 435 | 64 | 19 | 12 | $93.87 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
@@ -296,9 +296,9 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | `can_test` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.04 |
 | `can_test` | anthropic/claude-opus-5.5 | 12 | 4 | 8 | 0 | 0 | 0 | $2.32 |
 | `can_test` | anthropic/claude-sonnet-5.5 | 12 | 0 | 12 | 0 | 0 | 0 | $1.21 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 11 | 2 | 4 | 0 | 0 | 5 | $0.34 |
-| `can_test` | google/gemini-3.8-flash | 11 | 5 | 1 | 0 | 0 | 5 | $0.82 |
-| `can_test` | google/gemini-4-argon | 11 | 6 | 2 | 1 | 0 | 2 | $1.47 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 11 | 5 | 6 | 0 | 0 | 0 | $0.65 |
+| `can_test` | google/gemini-3.8-flash | 11 | 8 | 3 | 0 | 0 | 0 | $1.46 |
+| `can_test` | google/gemini-4-argon | 11 | 6 | 3 | 2 | 0 | 0 | $1.77 |
 | `can_test` | openai/gpt-6.1-sol | 12 | 9 | 1 | 2 | 0 | 0 | $0.80 |
 
 ### `estoa-light` (drafted from Dan's answers, approved by Dan)
@@ -312,30 +312,31 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | `can_ask` | google/gemini-4-argon | 5 | 0 | 5 | 0 | 0 | 0 | $4.33 |
 | `can_ask` | google/gemini-4-carbon | 1 | 0 | 0 | 0 | 0 | 1 | $1.50 |
 | `can_ask` | openai/gpt-6.1-sol | 5 | 1 | 3 | 0 | 0 | 1 | $0.87 |
-| `can_test` | anthropic/claude-opus-5.5 | 3 | 0 | 2 | 1 | 0 | 0 | $1.67 |
-| `can_test` | anthropic/claude-sonnet-5.5 | 3 | 1 | 2 | 0 | 0 | 0 | $1.90 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 3 | 1 | 2 | 0 | 0 | 0 | $0.16 |
-| `can_test` | google/gemini-3.8-flash | 3 | 0 | 1 | 1 | 0 | 1 | $0.42 |
-| `can_test` | google/gemini-4-argon | 3 | 0 | 2 | 0 | 0 | 1 | $4.85 |
-| `can_test` | openai/gpt-6.1-sol | 3 | 2 | 0 | 1 | 0 | 0 | $0.51 |
+| `can_test` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.23 |
+| `can_test` | anthropic/claude-opus-5.5 | 5 | 0 | 3 | 2 | 0 | 0 | $2.76 |
+| `can_test` | anthropic/claude-sonnet-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $3.05 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 5 | 1 | 4 | 0 | 0 | 0 | $0.34 |
+| `can_test` | google/gemini-3.8-flash | 5 | 0 | 2 | 1 | 0 | 2 | $0.96 |
+| `can_test` | google/gemini-4-argon | 5 | 0 | 3 | 1 | 0 | 1 | $7.05 |
+| `can_test` | openai/gpt-6.1-sol | 5 | 3 | 1 | 1 | 0 | 0 | $0.95 |
 
-Each check across the 17 graded designs (one verdict per design), on the records alone and then with the assumptions below (`python -m pbe.assumptions`). A check the records decide never changes.
+Each check across the 49 graded designs (one verdict per design), on the records alone and then with the assumptions below (`python -m pbe.assumptions`). A check the records decide never changes.
 
 | Check | Pass | Fail | Not graded | With assumptions: pass | fail | not graded |
 |---|---|---|---|---|---|---|
-| builds | 17 | 0 | 0 | 17 | 0 | 0 |
-| connected_bodies | 16 | 1 | 0 | 16 | 1 | 0 |
-| bed_fit | 17 | 0 | 0 | 17 | 0 | 0 |
-| bridges | 8 | 9 | 0 | 8 | 9 | 0 |
-| R1 | 9 | 1 | 7 | 14 | 1 | 2 |
-| R2 | 10 | 3 | 4 | 10 | 3 | 4 |
-| R3 | 12 | 2 | 3 | 12 | 2 | 3 |
-| R4 | 17 | 0 | 0 | 17 | 0 | 0 |
-| R5 | 11 | 2 | 4 | 11 | 2 | 4 |
-| R6 | 14 | 0 | 3 | 14 | 0 | 3 |
-| R7 | 16 | 1 | 0 | 16 | 1 | 0 |
+| builds | 47 | 2 | 0 | 47 | 2 | 0 |
+| connected_bodies | 46 | 1 | 0 | 46 | 1 | 0 |
+| bed_fit | 47 | 0 | 0 | 47 | 0 | 0 |
+| bridges | 21 | 26 | 0 | 21 | 26 | 0 |
+| R1 | 25 | 3 | 21 | 42 | 3 | 4 |
+| R2 | 32 | 7 | 10 | 32 | 7 | 10 |
+| R3 | 34 | 8 | 7 | 34 | 8 | 7 |
+| R4 | 47 | 0 | 2 | 47 | 0 | 2 |
+| R5 | 35 | 6 | 8 | 35 | 6 | 8 |
+| R6 | 42 | 2 | 5 | 42 | 2 | 5 |
+| R7 | 46 | 1 | 2 | 46 | 1 | 2 |
 
-Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not graded.
+Verdicts with the assumptions, of 49 graded designs: 10 pass, 37 fail, 2 not graded.
 
 ### `m5-spacer` (control, draft wording: exploratory)
 
@@ -373,9 +374,9 @@ Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not grad
 | `can_test` | anthropic/claude-haiku-5.5 | 5 | 2 | 0 | 3 | 0 | 0 | $0.03 |
 | `can_test` | anthropic/claude-opus-5.5 | 12 | 6 | 2 | 4 | 0 | 0 | $1.80 |
 | `can_test` | anthropic/claude-sonnet-5.5 | 12 | 11 | 1 | 0 | 0 | 0 | $0.96 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 11 | 2 | 2 | 2 | 0 | 5 | $0.30 |
-| `can_test` | google/gemini-3.8-flash | 11 | 4 | 2 | 0 | 0 | 5 | $0.50 |
-| `can_test` | google/gemini-4-argon | 11 | 5 | 1 | 0 | 0 | 5 | $0.80 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 11 | 2 | 5 | 4 | 0 | 0 | $0.72 |
+| `can_test` | google/gemini-3.8-flash | 11 | 8 | 3 | 0 | 0 | 0 | $1.00 |
+| `can_test` | google/gemini-4-argon | 11 | 7 | 2 | 2 | 0 | 0 | $1.22 |
 | `can_test` | openai/gpt-6.1-sol | 12 | 7 | 5 | 0 | 0 | 0 | $0.51 |
 
 ### `nut-knob/M5` (draft, not approved by Dan: exploratory)
@@ -397,9 +398,9 @@ Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not grad
 | `can_test` | anthropic/claude-haiku-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $0.03 |
 | `can_test` | anthropic/claude-opus-5.5 | 10 | 9 | 1 | 0 | 0 | 0 | $1.14 |
 | `can_test` | anthropic/claude-sonnet-5.5 | 10 | 10 | 0 | 0 | 0 | 0 | $0.87 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 10 | 4 | 3 | 0 | 0 | 3 | $0.39 |
-| `can_test` | google/gemini-3.8-flash | 10 | 4 | 1 | 0 | 0 | 5 | $0.51 |
-| `can_test` | google/gemini-4-argon | 10 | 5 | 0 | 0 | 0 | 5 | $0.64 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 10 | 6 | 4 | 0 | 0 | 0 | $0.57 |
+| `can_test` | google/gemini-3.8-flash | 10 | 9 | 1 | 0 | 0 | 0 | $1.03 |
+| `can_test` | google/gemini-4-argon | 10 | 10 | 0 | 0 | 0 | 0 | $1.10 |
 | `can_test` | openai/gpt-6.1-sol | 10 | 10 | 0 | 0 | 0 | 0 | $0.34 |
 
 ### `tripod-plate` (Dan's own words, approved by Dan)
@@ -437,7 +438,7 @@ Verdicts with the assumptions, of 17 graded designs: 1 pass, 15 fail, 1 not grad
 | `can_test` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.03 |
 | `can_test` | anthropic/claude-opus-5.5 | 10 | 3 | 6 | 1 | 0 | 0 | $1.60 |
 | `can_test` | anthropic/claude-sonnet-5.5 | 10 | 1 | 9 | 0 | 0 | 0 | $1.53 |
-| `can_test` | deepseek/deepseek-v4.1-flash | 10 | 3 | 6 | 0 | 0 | 1 | $0.64 |
+| `can_test` | deepseek/deepseek-v4.1-flash | 10 | 3 | 7 | 0 | 0 | 0 | $0.70 |
 | `can_test` | google/gemini-3.8-flash | 10 | 2 | 7 | 0 | 0 | 1 | $2.07 |
 | `can_test` | google/gemini-4-argon | 10 | 7 | 3 | 0 | 0 | 0 | $1.74 |
 | `can_test` | openai/gpt-6.1-sol | 10 | 2 | 5 | 0 | 3 | 0 | $0.54 |
@@ -462,16 +463,16 @@ Counts are trials, from the saved runs; a trial can fail more than one way. The 
 | What went wrong | Trials |
 |---|---|
 | A roof with the bolt's hole cut through it (`bridges`) | 80 |
+| Dovetail upside down: the bolt head's recess is on the camera's side | 28 |
 | Straight sides, nothing for the clamp's lips to grip | 28 |
-| Dovetail upside down: the bolt head's recess is on the camera's side | 27 |
 | No usable bolt hole | 24 |
 | Declined: handed in only a test print, because the clamp's size isn't known | 19 |
 | A roof or ledge too wide to bridge, with no hole through it | 10 |
 | Code didn't run | 10 |
 | Bolt doesn't reach far enough into the camera | 9 |
 | A part in pieces | 7 |
-| No design handed in | 5 |
 | Head recess too small for the bolt's head | 4 |
+| No design handed in | 4 |
 | A broken shape | 1 |
 <!-- wrong-tripod-plate:end -->
 
@@ -491,12 +492,12 @@ The bridge check's picture of GPT-6 Luna's roof (`pilot-tripod` t1, 449 mm² at 
 
 | What went wrong | Trials |
 |---|---|
-| A roof with the bolt's hole cut through it (`bridges`), over the seat that opens at the bed | 74 |
-| Bearing seat a size the prints don't take | 32 |
-| Other wheel geometry | 16 |
-| Code didn't run | 14 |
-| No design handed in | 13 |
+| A roof with the bolt's hole cut through it (`bridges`), over the seat that opens at the bed | 76 |
+| Bearing seat a size the prints don't take | 34 |
+| Other wheel geometry | 17 |
+| Code didn't run | 15 |
 | A part in pieces | 9 |
+| No design handed in | 1 |
 <!-- wrong-bearing-wheel:end -->
 
 | Fails: a flat roof | Fails since round 3: a narrow ledge | Passes: a cone |
@@ -509,16 +510,16 @@ The bridge check's picture of GPT-6 Luna's roof (`pilot-tripod` t1, 449 mm² at 
 
 | What went wrong | Trials |
 |---|---|
-| Nut pocket a size the prints don't take | 77 |
-| No design handed in | 30 |
-| The pocket is closed, so the nut can't be pressed in | 29 |
-| Code didn't run | 16 |
-| A roof with the bolt's hole cut through it | 5 |
-| A part in pieces | 3 |
-| A roof or ledge too wide to bridge, with no hole through it | 1 |
+| Nut pocket a size the prints don't take | 78 |
+| The pocket is closed, so the nut can't be pressed in | 32 |
+| Code didn't run | 17 |
+| A roof with the bolt's hole cut through it | 6 |
+| A part in pieces | 4 |
+| A roof or ledge too wide to bridge, with no hole through it | 2 |
+| No design handed in | 2 |
 | Its test print labelled as a final part | 1 |
 
-Most knob trials that didn't pass weren't failed: 167 pass, 120 fail and 39 are not graded, mostly for the pockets below.
+Most knob trials that didn't pass weren't failed: 185 pass, 126 fail and 43 are not graded, mostly for the pockets below.
 <!-- wrong-nut-knob:end -->
 
 | No clearance | A closed pocket |
@@ -653,12 +654,12 @@ A check is not graded when no recorded print decides it. A trial can have more t
 <!-- not-graded:start (written by scripts/failure_tables.py; don't edit by hand) -->
 | Not graded because | Example | Trials | The print that would settle it |
 |---|---|---|---|
-| A tripod head recess under 5 mm deep | <img src="media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 3"><br><sub>Haiku 5.5, tripod plate, trial 3</sub> | 33 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
-| A nut pocket with ribs, clips or a lip unlike any printed | <img src="media/not-graded/a-nut-pocket-with-ribs-clips-or-a-lip-unlike-any-printed.png" width="160" alt="A nut pocket with ribs, clips or a lip unlike any printed: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 29 | That rib shape and bite. Round 3 printed 3 and 6 round ribs, 6 flat ribs and two lips; each model's ribs differ, so one print settles only designs like it |
-| A nut pocket no recorded print settles | <img src="media/not-graded/a-nut-pocket-no-recorded-print-settles.png" width="160" alt="A nut pocket no recorded print settles: DeepSeek V4.1 Flash, knob M5, trial 6"><br><sub>DeepSeek V4.1 Flash, knob M5, trial 6</sub> | 12 | A print of that pocket |
+| A tripod head recess under 5 mm deep | <img src="media/not-graded/a-tripod-head-recess-under-5-mm-deep.png" width="160" alt="A tripod head recess under 5 mm deep: Haiku 5.5, tripod plate, trial 3"><br><sub>Haiku 5.5, tripod plate, trial 3</sub> | 34 | Recesses 3, 4 and 4.5 mm deep for the 5 mm head |
+| A nut pocket with ribs, clips or a lip unlike any printed | <img src="media/not-graded/a-nut-pocket-with-ribs-clips-or-a-lip-unlike-any-printed.png" width="160" alt="A nut pocket with ribs, clips or a lip unlike any printed: Haiku 5.5, knob M5, trial 1"><br><sub>Haiku 5.5, knob M5, trial 1</sub> | 32 | That rib shape and bite. Round 3 printed 3 and 6 round ribs, 6 flat ribs and two lips; each model's ribs differ, so one print settles only designs like it |
+| A nut pocket no recorded print settles | <img src="media/not-graded/a-nut-pocket-no-recorded-print-settles.png" width="160" alt="A nut pocket no recorded print settles: DeepSeek V4.1 Flash, knob M5, trial 6"><br><sub>DeepSeek V4.1 Flash, knob M5, trial 6</sub> | 13 | A print of that pocket |
+| A roof ledge 1.5 to 2 mm wide | <img src="media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 11 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
 | A plate width outside 37 to 39 mm | <img src="media/not-graded/a-plate-width-outside-37-to-39-mm.png" width="160" alt="A plate width outside 37 to 39 mm: DeepSeek V4.1 Flash, tripod plate, trial 2"><br><sub>DeepSeek V4.1 Flash, tripod plate, trial 2</sub> | 11 | Dovetail plates from 34 to 45 mm tried in the clamp |
-| A roof ledge 1.5 to 2 mm wide | <img src="media/not-graded/a-roof-ledge-1-5-to-2-mm-wide.png" width="160" alt="A roof ledge 1.5 to 2 mm wide: Qwen 3.8 Flash, knob M3, trial 10"><br><sub>Qwen 3.8 Flash, knob M3, trial 10</sub> | 10 | Ring roofs 1.6 to 1.9 mm wide: round 3's 1.5 mm ledge printed and its 2 mm ledge tangled |
-| A pocket shape the checker can't read | <img src="media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 2 | None: the checker needs fixing |
+| A pocket shape the checker can't read | <img src="media/not-graded/a-pocket-shape-the-checker-can-t-read.png" width="160" alt="A pocket shape the checker can't read: GPT-6 Luna, knob M3, trial 1"><br><sub>GPT-6 Luna, knob M3, trial 1</sub> | 3 | None: the checker needs fixing |
 | A test print whose pockets are ribbed or unsettled | <img src="media/not-graded/a-test-print-whose-pockets-are-ribbed-or-unsettled.png" width="160" alt="A test print whose pockets are ribbed or unsettled: Sonnet 5.5, knob M3, trial 5"><br><sub>Sonnet 5.5, knob M3, trial 5</sub> | 2 | The ribbed pockets above, and coupon B2's finer steps |
 | A bearing seat between printed sizes, or ribbed | <img src="media/not-graded/a-bearing-seat-between-printed-sizes-or-ribbed.png" width="160" alt="A bearing seat between printed sizes, or ribbed: GLM 5.3 Flash, bearing wheel, trial 2"><br><sub>GLM 5.3 Flash, bearing wheel, trial 2</sub> | 1 | A ribbed, lobed or slotted seat: only plain round seats were printed (22.1 to 22.3 mm took a 608 and held it) |
 <!-- not-graded:end -->
@@ -678,7 +679,7 @@ Estoa has merged, and its trials are in the results above. Servo mount has merge
 
 | Task | Branch | What it tests | Model trials | Result | Cost |
 |---|---|---|---|---|---|
-| Estoa light | merged in [a04b153](https://github.com/oveddan/functional-print-eval/commit/a04b153), run `pilot-estoa` | A solid enclosure that hangs on the wall for an ESP32 that powers an LED disc | 30 + 18 | first print 5 of 30 pass; with test prints first 4 of 18 (README, Results) | $20.25 |
+| Estoa light | merged in [a04b153](https://github.com/oveddan/functional-print-eval/commit/a04b153), run `pilot-estoa` | A solid enclosure that hangs on the wall for an ESP32 that powers an LED disc | 30 + 35 | first print 5 of 30 pass; with test prints first 5 of 35 (README, Results) | $26.08 |
 | Servo mount | merged in [e7dc82b](https://github.com/oveddan/functional-print-eval/commit/e7dc82b), runs `servo-first-look`, `servo-first-look-2`, `servo-datasheet` | A 3D-printed mount for a servo that's going to drive a robotic arm | 29 | 4 pass, 23 fail, 2 not graded (regraded 2026-11-12 on round 3's frames and channels, and Dan's rule that no gap for the rib fails) | $4.81 |
 
 ### Estoa light
@@ -702,10 +703,10 @@ These are treated as true without a print that shows them for that exact case. T
 <!-- assumptions:start (written by scripts/results_table.py; don't edit by hand) -->
 | Assumption | Check | What rests on it in the saved runs |
 |---|---|---|
-| The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (144 pass, 9 fail), so all 32 tripod passes |
-| One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (131 pass, 28 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 110 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
-| Each hole's centre is at the middle of where Dan's readings put it, 16.85 mm out. Source: the middle of 16.60 to 17.11, from Dan's calipers; no reading pins it closer. | estoa-light R1 | Graded apart: 5 pass, 0 fail of the estoa-light designs it decides |
+| The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (145 pass, 9 fail), so all 32 tripod passes |
+| One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (132 pass, 28 fail) |
+| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 115 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
+| Each hole's centre is at the middle of where Dan's readings put it, 16.85 mm out. Source: the middle of 16.60 to 17.11, from Dan's calipers; no reading pins it closer. | estoa-light R1 | Graded apart: 17 pass, 0 fail of the estoa-light designs it decides |
 | Each hole's centre is 16.85 mm out, as in R1's assumption. Source: the middle of 16.60 to 17.11, from Dan's calipers; the board's 1.6 mm is in the args since 2026-11-13. | estoa-light R2 | Graded apart: 2 pass, 2 fail of the estoa-light designs it decides |
 <!-- assumptions:end -->
 

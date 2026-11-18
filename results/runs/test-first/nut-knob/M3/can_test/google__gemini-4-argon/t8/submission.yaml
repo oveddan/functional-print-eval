@@ -1,0 +1,256 @@
+task: nut-knob/M3
+note: One-piece 20 mm fluted hand knob for an M3 bolt with a blind-shouldered hex
+  pocket and vertical crush ribs for tool-free hand press fit and upside-down retention
+  of an ISO 4032 M3 nut.
+questions: []
+params:
+  crush_rib_r:
+    value: 0.12
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of vertical crush ribs on each flat of the hex pocket for hand-press
+      retention
+  pocket_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Total depth of hex pocket from top face (> nut_h so nut sits fully inside)
+  pocket_af_clearance:
+    value: 0.08
+    unit: mm
+    kind: design
+    source: design
+    note: Clearance added to nut_af for the base hex pocket before crush ribs allow
+      easy alignment and hand press
+  flute_count:
+    value: 10
+    unit: count
+    kind: design
+    source: design
+    note: Number of grip flutes around the knob perimeter
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut width across flats
+  knob_h:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob
+  m3_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 nominal screw diameter
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the hand knob (~20 mm across)
+  hub_d:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Diameter of the lower hub/neck section
+  flute_cut_depth:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Radial depth of each grip flute cut into the outer diameter
+  bolt_clearance_d:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole diameter for M3 bolt clearance (m3_d + 0.4 mm)
+  flute_r:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of cylindrical flute cutter
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut thickness/height
+  hub_h:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Height of the lower hub section (transitions with 45-deg chamfer to grip)
+parts:
+- id: m3_hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    # Base knob profile: hub at bottom (z=0\
+    \ to hub_h), 45-deg transition chamfer, main grip body up to knob_h\n    r_hub\
+    \ = p.hub_d / 2.0\n    r_knob = p.knob_d / 2.0\n    chamfer_h = r_knob - r_hub\
+    \  # 45 degree overhang transition (no supports needed)\n    z_grip_start = p.hub_h\
+    \ + chamfer_h\n\n    # Revolve profile or loft/extrude sections\n    pts = [\n\
+    \        (0, 0),\n        (r_hub, 0),\n        (r_hub, p.hub_h),\n        (r_knob,\
+    \ z_grip_start),\n        (r_knob, p.knob_h - 0.8),\n        (r_knob - 0.8, p.knob_h),\n\
+    \        (0, p.knob_h),\n    ]\n    knob = cq.Workplane(\"XZ\").polyline(pts).close().revolve(360,\
+    \ (0, 0, 0), (0, 1, 0))\n\n    # Cut grip flutes around the main grip cylinder\
+    \ (with 45-deg bevel lead-in from bottom of grip)\n    n_flutes = int(p.flute_count)\n\
+    \    flute_center_r = r_knob + p.flute_r - p.flute_cut_depth\n    for i in range(n_flutes):\n\
+    \        ang = math.radians(i * (360.0 / n_flutes))\n        fx = flute_center_r\
+    \ * math.cos(ang)\n        fy = flute_center_r * math.sin(ang)\n        flute_cutter\
+    \ = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=p.hub_h)\n\
+    \            .center(fx, fy)\n            .circle(p.flute_r)\n            .extrude(p.knob_h\
+    \ - p.hub_h + 1.0)\n        )\n        knob = knob.cut(flute_cutter)\n\n    #\
+    \ Cut through-hole for the M3 bolt\n    knob = knob.faces(\">Z\").workplane().circle(p.bolt_clearance_d\
+    \ / 2.0).cutThruAll()\n\n    # Cut hexagonal pocket from top (+Z) to pocket_depth\n\
+    \    pocket_af = p.nut_af + p.pocket_af_clearance\n    r_circum = pocket_af /\
+    \ math.sqrt(3.0)\n    knob = (\n        knob.faces(\">Z\")\n        .workplane()\n\
+    \        .polygon(6, 2.0 * r_circum)\n        .cutBlind(-p.pocket_depth)\n   \
+    \ )\n\n    # Add 6 vertical crush ribs along the flats of the hex pocket\n   \
+    \ # Recessed 0.5 mm below the top face to give an easy alignment lead-in when\
+    \ pressing by hand\n    lead_in = 0.5\n    rib_h = p.pocket_depth - lead_in\n\
+    \    z_pocket_floor = p.knob_h - p.pocket_depth\n    if p.crush_rib_r > 0 and\
+    \ rib_h > 0:\n        for i in range(6):\n            # cq.polygon(6, d) has vertices\
+    \ at multiples of 60 deg, so flats are at 30 + i*60 deg\n            ang = math.radians(30.0\
+    \ + i * 60.0)\n            dist = pocket_af / 2.0\n            rx = dist * math.cos(ang)\n\
+    \            ry = dist * math.sin(ang)\n            rib = (\n                cq.Workplane(\"\
+    XY\")\n                .workplane(offset=z_pocket_floor)\n                .center(rx,\
+    \ ry)\n                .circle(p.crush_rib_r)\n                .extrude(rib_h)\n\
+    \            )\n            knob = knob.union(rib)\n\n    return knob\n"
+  print_orientation: Hub face down on the build plate (z = 0), hex nut pocket facing
+    up (+Z) so there are no overhangs > 45 degrees and no bridging required.
+  use_orientation: Can be used in any orientation; bolt passes axially along Z through
+    the internal nut and out the far side.
+- id: nut_fit_coupon
+  role: coupon
+  material: PLA
+  code: "import math\n\ndef build(p):\n    h = 5.0\n    wp = cq.Workplane(\"XY\").box(14.0,\
+    \ 14.0, h, centered=(True, True, False))\n    wp = wp.faces(\">Z\").workplane().circle(p.bolt_clearance_d\
+    \ / 2.0).cutThruAll()\n    pocket_af = p.nut_af + p.pocket_af_clearance\n    r_circum\
+    \ = pocket_af / math.sqrt(3.0)\n    wp = wp.faces(\">Z\").workplane().polygon(6,\
+    \ 2.0 * r_circum).cutBlind(-p.pocket_depth)\n    lead_in = 0.5\n    rib_h = p.pocket_depth\
+    \ - lead_in\n    z_floor = h - p.pocket_depth\n    for i in range(6):\n      \
+    \  ang = math.radians(30.0 + i * 60.0)\n        dist = pocket_af / 2.0\n     \
+    \   rx = dist * math.cos(ang)\n        ry = dist * math.sin(ang)\n        rib\
+    \ = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=z_floor)\n\
+    \            .center(rx, ry)\n            .circle(p.crush_rib_r)\n           \
+    \ .extrude(rib_h)\n        )\n        wp = wp.union(rib)\n    return wp\n"
+  print_orientation: Flat on bed (z = 0), pocket open at top (+Z)
+  use_orientation: Test press-fit and upside-down retention of ISO 4032 M3 nut
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x20
+  qty: 1
+joints:
+- id: knob_m3_joint
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 12.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: m3_hand_knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  - part: m3_hand_knob
+    feature: bolt_thru_hole
+    role: clearance
+  nut: m3_nut
+  external: null
+criteria:
+- id: nut_press_fit
+  part: m3_hand_knob
+  feature: hex_nut_pocket
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: 0.0
+  params:
+  - nut_af
+  - nut_h
+  - pocket_af_clearance
+  - crush_rib_r
+  - pocket_depth
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: M3 hex nut presses in by hand and stays retained when inverted without
+      glue
+- id: nut_fully_inside
+  part: m3_hand_knob
+  feature: hex_nut_pocket
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: 0.6
+  params:
+  - nut_h
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: Nut sits fully inside the knob below the top surface
+- id: nut_stop_shoulder
+  part: m3_hand_knob
+  feature: pocket_bottom_floor
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - bolt_clearance_d
+  - knob_h
+  - pocket_depth
+  check:
+    method: none
+    ref: null
+    description: Internal shoulder prevents nut from being pushed out through the
+      far side
+- id: bolt_pass_through
+  part: m3_hand_knob
+  feature: bolt_thru_hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.4
+  params:
+  - m3_d
+  - bolt_clearance_d
+  check:
+    method: none
+    ref: null
+    description: M3 bolt passes freely through the knob and out the other side
+manual:
+- n: '1'
+  text: Align the M3 hex nut (ISO 4032 M3) with the hexagonal pocket on the top face
+    of the printed hand knob and press it firmly by hand until it seats against the
+    internal bottom stop shoulder below the top rim. The crush ribs inside the pocket
+    hold the nut securely in place even when turned upside down.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '2'
+  text: Thread the M3 bolt through the nut and the through-hole of the knob so the
+    bolt passes out the other side, and use the fluted outer grip to tighten by hand
+    without tools.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_bolt
+  - m3_nut
+  tool: null

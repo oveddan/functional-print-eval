@@ -7,7 +7,10 @@ suggests (pass rate, pass^k, cost), plus pass@k and the slicer's print time and 
 
 What it counts (Claude's calls, delegated by Dan on 2026-11-07):
 - `can_ask` trials on the four scored tasks: tripod-plate, bearing-wheel, nut-knob M3 and M5. The spacer is a
-  control that every model passes, and estoa-light has 3 trials for 6 models, so neither is in the totals.
+  control that every model passes, and two listed models have no first-print estoa-light trials, so neither is in
+  the first-print and after-feedback totals.
+- Test prints first (the test-first run) counts five tasks: the four plus estoa-light, which every model in it has 5
+  trials on (Dan, 2026-11-17). Its ranking, costs per pass and pooled rate cover all five.
 - The ranking is the verified pass rate: trials where every counted check passes, over all trials. A trial
   that's not graded (no recorded print decides one of its checks) hasn't been shown to work, so it isn't a
   verified pass, and the Not graded column sits beside the rate so it's visible that it isn't a failure either
@@ -41,11 +44,13 @@ RUNS = ROOT / "results/runs"
 README = ROOT / "README.md"
 CHART = ROOT / "docs/media/scorecard.svg"
 REFERENCE = ROOT / "docs/reference.md"  # carries the full scorecard table and the chart
-HARDER = ("estoa-light", "Estoa light box (harder)")  # in the test-first table as its own row, not in the four-task total
+HARDER = ("estoa-light", "Estoa light box (harder)")  # out of the first-print totals; one of the five test-first tasks
 TEST_FIRST = "test-first"  # the run where the model may ask for test prints before its final design (agent.TEST_CONDITION)
 SKIPPED = "Grok 4.7 was left out because it was too expensive to run 10 trials on."
 TASKS = {"tripod-plate": "Tripod plate", "bearing-wheel": "Bearing wheel", "nut-knob/M3": "Knob M3", "nut-knob/M5": "Knob M5"}
+TEST_FIRST_TASKS = {**TASKS, HARDER[0]: HARDER[1]}  # what Test prints first counts: the four tasks and Estoa
 MIN_TRIALS = 5
+NUMBER_WORDS = {4: "four", 5: "five"}
 SHORT = {
     "anthropic/claude-opus-5.5": "Opus 5.5", "anthropic/claude-sonnet-5.5": "Sonnet 5.5",
     "anthropic/claude-haiku-5.5": "Haiku 5.5", "google/gemini-4-argon": "Gemini 4 Argon",
@@ -95,8 +100,8 @@ class Row:
     tested: dict[str, list[Trial]] = field(default_factory=lambda: defaultdict(list))  # the test-first run, if any
 
     def tested_trials(self) -> list[Trial]:
-        """The test-first trials on the four scored tasks (the harder task is its own row, not in the total)."""
-        return [trial for task, trials in self.tested.items() if task in TASKS for trial in trials]
+        """The test-first trials on the five tasks it counts (TEST_FIRST_TASKS), Estoa included."""
+        return [trial for task, trials in self.tested.items() if task in TEST_FIRST_TASKS for trial in trials]
 
     def tested_rate(self, task: str | None = None) -> float | None:
         trials = self.tested.get(task, []) if task else self.tested_trials()
@@ -183,7 +188,7 @@ def rows() -> list[Row]:
             trial = Trial(first, tokens, second, cant_tell)
             table.setdefault(record.model, Row(record.model)).by_task[record.task].append(trial)
     for folder, record in sorted(TrialRecord.all_in(RUNS / TEST_FIRST), key=lambda pair: pair[1].trial) if (RUNS / TEST_FIRST).exists() else []:
-        if (record.task not in TASKS and record.task != HARDER[0]) or record.model not in table or record.outcome == "error":
+        if record.task not in TEST_FIRST_TASKS or record.model not in table or record.outcome == "error":
             continue  # an infrastructure stop (out of credit) isn't a result
         estimate = sliced.get((TEST_FIRST, record.task, record.condition, record.model, record.trial), {})
         tokens = sum((call.usage or {}).get("total_tokens") or 0 for call in record.calls or [])
@@ -256,12 +261,27 @@ def note(listed: list[Row]) -> str:
     return f"In the reprints, that accounts for {total} new {'pass' if total == 1 else 'passes'} ({names})."
 
 
+def estoa_first_prints() -> list[TrialRecord]:
+    """Every first print of the Estoa light box (pilot-estoa, can_ask)."""
+    return [record for _, record in TrialRecord.all_in(RUNS / "pilot-estoa") if record.condition == "can_ask"]
+
+
+def first_print_gap(tested: list[Row]) -> str:
+    """Why the first-print columns leave Estoa out, in words: the test-first models with no first-print Estoa trial."""
+    have = {record.model for record in estoa_first_prints()}
+    missing = [SHORT.get(row.model, row.model) for row in tested if row.model not in have]
+    if not missing:
+        return "not every model has 5 first-print Estoa trials"
+    names = missing[0] if len(missing) == 1 else ", ".join(missing[:-1]) + " and " + missing[-1]
+    return f"{names} {'has' if len(missing) == 1 else 'have'} no first-print Estoa trials"
+
+
 def estoa_line() -> str:
-    """The harder task in one sentence: first-print passes, and passes after the Estoa test-print loop (loop-estoa),
-    from the saved runs. It isn't a scorecard column: fewer models and trials, and almost no passes to rank by."""
+    """The harder task in one sentence: first-print passes, passes after the Estoa test-print loop (loop-estoa), and
+    passes with test prints first, from the saved runs. It's one of the five Test prints first tasks, and out of the
+    first-print and after-feedback totals."""
     from pbe.runner import coupon_loop
-    records = [record for _, record in TrialRecord.all_in(RUNS / "pilot-estoa") if record.condition == "can_ask"]
-    models = sorted({record.model for record in records})
+    records = estoa_first_prints()
     first = sum(record.verdict == "pass" for record in records)
     arms = [coupon_loop.LoopRecord.load(path.parent)
             for path in (RUNS / "loop-estoa").glob("pilot-estoa/*/can_ask/*/t*/feedback/" + coupon_loop.FILE_NAME)]
@@ -270,8 +290,9 @@ def estoa_line() -> str:
     tested = [record for _, record in TrialRecord.all_in(RUNS / TEST_FIRST)
               if record.task == HARDER[0] and record.outcome != "error"]
     tested_passes = sum(record.verdict == "pass" for record in tested)
-    return (f"**Estoa,** the harder task, is kept out of the total: {first} of {len(records)} designs pass on the first "
-            f"print, {after} of {len(arms)} after feedback, and {tested_passes} of {len(tested)} with test prints first.")
+    return (f"**Estoa,** the harder task, counts in the Test prints first results above and is kept out of the first "
+            f"print and reprint columns: {first} of {len(records)} designs pass on the first print, {after} of "
+            f"{len(arms)} after feedback, and {tested_passes} of {len(tested)} with test prints first.")
 
 
 def chart(listed: list[Row]) -> str:
@@ -335,7 +356,8 @@ def ranking(listed: list[Row]) -> str:
     """Best to worst, in words: the test-first models by their pass rate, then the rest by their first print."""
     tested = tested_order(listed)
     lines = [f"**Best to worst, when the model can ask for test prints** ({len(tested)} models, "
-             f"{min(len(row.tested.get(task, [])) for row in tested for task in TASKS)} or more trials on each of the four tasks):", ""]
+             f"{min(len(row.tested.get(task, [])) for row in tested for task in TEST_FIRST_TASKS)} or more trials on each of "
+             f"the {NUMBER_WORDS.get(len(TEST_FIRST_TASKS), len(TEST_FIRST_TASKS))} tasks, Estoa included):", ""]
     for place, row in enumerate(tested, 1):
         passes, trials = sum(t.passed() for t in row.tested_trials()), len(row.tested_trials())
         cost, hours = row.tested_per_pass("cost"), row.tested_per_pass("print_s")
@@ -350,16 +372,18 @@ def ranking(listed: list[Row]) -> str:
 
 
 def improvement(listed: list[Row]) -> str:
-    """What asking for test prints changed, model by model, on the four tasks: the first print without them (can_ask),
-    the second print after hearing how the first came out (the replays), and asking for test prints before the final
-    design (test-first). Pooled over the six models in one sentence first."""
+    """What asking for test prints changed, model by model: the first print without them (can_ask) and the second print
+    after hearing how the first came out (the replays), both on the four tasks, and asking for test prints before the
+    final design (test-first) on the five, Estoa included. Pooled over the models in one sentence first."""
     tested = tested_order(listed)
     first = sum(row.passes() for row in tested) / sum(len(row.all_trials()) for row in tested)
     with_tests = sum(sum(t.passed() for t in row.tested_trials()) for row in tested) / sum(
         len(row.tested_trials()) for row in tested)
     lines = [f"**What asking for test prints changed.** Across these {len(tested)} models, {percent(first)} of first "
-             f"prints pass without test prints, and {percent(with_tests)} pass when the model can ask for test prints "
-             f"before its final design.", "",
+             f"prints pass without test prints on the four tasks, and {percent(with_tests)} pass on the five, Estoa "
+             f"included, when the model can ask for test prints before its final design. The first print and the "
+             f"reprint leave Estoa out because {first_print_gap(tested)}, so the change column compares four tasks "
+             f"with five.", "",
              "| Model | First print | Reprint after feedback | "
              "Test prints first | Change from the first print |", "|---|---|---|---|---|"]
     for row in tested:
@@ -376,8 +400,7 @@ def results_table(listed: list[Row]) -> str:
     separates the models; a column per task, then the costs per working part. The best in each column is bold, and a
     0% tie wins nothing. (A picture with the best cell in green until 2026-11-13, when Dan asked for markdown.)"""
     tested = tested_order(listed)
-    harder = [(HARDER[1], "pass", HARDER[0])] if any(row.tested.get(HARDER[0]) for row in tested) else []
-    columns = [(name, "pass", task) for task, name in TASKS.items()] + [("All four tasks", "pass", None)] + harder + [
+    columns = [(name, "pass", task) for task, name in TEST_FIRST_TASKS.items()] + [(f"All {NUMBER_WORDS.get(len(TEST_FIRST_TASKS), len(TEST_FIRST_TASKS))} tasks", "pass", None)] + [
                ("Print hours per pass", "print_s", None), ("Filament per pass", "grams", None),
                ("Cost per pass", "cost", None)]
 

@@ -1,0 +1,436 @@
+task: nut-knob/M5
+note: 'Hand knob for an M5 bolt, one printed piece, no supports, no glue.
+
+
+  How the nut is held: the bottom of the knob has a hexagonal socket whose mouth is
+  a tapered snap lip on six flexible fingers. The lip''s across-flats is 7.4 mm against
+  a nominal 8.0 mm nut, so it grips anywhere in the ISO 4032 tolerance band (7.64-8.00
+  mm): a small nut wedges near the mouth (~0.8 mm deep), a max-size nut wedges ~2
+  mm deep. Both sit fully inside, and both are held by the lip''s self-locking taper
+  (8.4 deg, below the ~17 deg friction angle), so the nut stays put when the knob
+  is turned upside down. The roof above the socket is solid except for a 5.6 mm bolt
+  clearance hole - smaller than the nut''s 7.64 mm across-flats - so the nut can never
+  be pushed out the far side, and the M5 bolt passes through the nut and out the top
+  face.
+
+
+  Two things to know. First, I could not get the nut measured and could not get feedback
+  from the coupon, so the grip is sized for the whole tolerance band rather than your
+  specific nut; the coupon in this submission is the three-variant test piece (7.30/7.43/7.53
+  mm lips, marked with 1, 2 and 3 pips) if you want to re-check which lip feels best.
+  The printed coupon pockets measured 0.03 mm over nominal, which I used in the sizing.
+  Second, this is a snap-fit grip, not a structural one: hand-tighten until snug.
+  Under tightening load the nut is pushed down into the taper, which makes it grip
+  harder (and at extreme torque it simply bottoms out on the clamped surface) - it
+  will not strip out, but do not treat it as a wrench-tight fastener.
+
+
+  Print the knob bottom-face-down on the bed. Everything is a vertical wall or a small
+  bridge (the roof spans about 1.2 mm each side of the bolt hole; the relief gap and
+  slits bridge 1.1-1.5 mm), so no supports are needed.'
+questions: []
+params:
+  bolt_hole_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: M5 clearance hole through the roof; larger than the 5.0 mm bolt, smaller
+      than the 7.64 mm nut so the nut cannot pass
+  bot_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: bottom edge chamfer
+  collar_r:
+    value: 5.15
+    unit: mm
+    kind: design
+    source: design
+    note: outer radius of the flexible finger collar; finger wall is collar_r - pocket
+      apothem = 5.15 - 4.025 = 1.13 mm
+  gap_w:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: radial relief gap behind the fingers so they can flex outward; also keeps
+      the slots from fusing
+  knob_d:
+    value: 30
+    unit: mm
+    kind: design
+    source: asked
+    note: user asked for about 30 mm across
+  knob_h:
+    value: 16
+    unit: mm
+    kind: design
+    source: design
+    note: overall height of the knob
+  lip_af:
+    value: 7.4
+    unit: mm
+    kind: design
+    source: design
+    note: across-flats of the snap lip at the bottom mouth; 0.24 mm under the smallest
+      allowed nut so it grips the whole tolerance band
+  lip_h:
+    value: 2.2
+    unit: mm
+    kind: design
+    source: design
+    note: height of the tapered lip = finger tip region; 8.4 deg half-angle, self-locking
+  nut_af_max:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 maximum width across flats
+  nut_af_min:
+    value: 7.64
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 minimum width across flats; the person could not measure their
+      nut, so the design must grip the whole band
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut height
+  pocket_af:
+    value: 8.05
+    unit: mm
+    kind: design
+    source: design
+    note: across-flats of the socket above the lip; just clears a maximum-size nut
+  printed_hex_offset:
+    value: 0.03
+    unit: mm
+    kind: world
+    source: measured
+    note: the coupon's 7.30/7.40/7.50 mm hex pockets measured 7.33/7.43/7.53 mm, so
+      the printed lip is expected at about 7.43 mm
+  scallop_dist:
+    value: 23.5
+    unit: mm
+    kind: design
+    source: design
+    note: scallop axis offset from the knob axis; cuts 1.5 mm deep grip grooves
+  scallop_n:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: eight vertical grip scallops around the rim
+  scallop_r:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: scallop cutter radius; 32 deg of rim each, 13 deg lands between
+  seat_gap:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: clearance between the nut top face and the roof when the nut is seated
+  slit_w:
+    value: 1.1
+    unit: mm
+    kind: design
+    source: design
+    note: width of the six corner slits that separate the fingers
+  top_chamfer:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: top edge chamfer for hand comfort
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    R = p.knob_d / 2.0\n\
+    \    ceiling = p.lip_h + p.nut_h + p.seat_gap\n\n    def hex2d(af):\n        rr\
+    \ = (af / 2.0) / math.cos(math.pi / 6.0)\n        return [(rr * math.cos(math.radians(30.0\
+    \ + 60.0 * i)),\n                 rr * math.sin(math.radians(30.0 + 60.0 * i)))\
+    \ for i in range(6)]\n\n    # outer body: revolved profile with chamfered top\
+    \ and bottom edges\n    prof = (cq.Workplane(\"XZ\")\n            .moveTo(0, 0)\n\
+    \            .lineTo(R - p.bot_chamfer, 0)\n            .lineTo(R, p.bot_chamfer)\n\
+    \            .lineTo(R, p.knob_h - p.top_chamfer)\n            .lineTo(R - p.top_chamfer,\
+    \ p.knob_h)\n            .lineTo(0, p.knob_h)\n            .close())\n    body\
+    \ = prof.revolve(360.0, (0, 0, 0), (0, 1, 0))\n\n    # vertical grip scallops\n\
+    \    for i in range(int(p.scallop_n)):\n        c = (cq.Workplane(\"XY\").circle(p.scallop_r).extrude(p.knob_h\
+    \ + 2.0)\n             .translate((p.scallop_dist, 0.0, -1.0))\n             .rotate((0,\
+    \ 0, 0), (0, 0, 1), 360.0 / p.scallop_n * i))\n        body = body.cut(c)\n\n\
+    \    # hex nut socket: tapered snap lip at the mouth, straight bore above it\n\
+    \    lip = (cq.Workplane(\"XY\").polyline(hex2d(p.lip_af)).close()\n         \
+    \  .workplane(offset=p.lip_h).polyline(hex2d(p.pocket_af)).close()\n         \
+    \  .loft())\n    bore = (cq.Workplane(\"XY\").workplane(offset=p.lip_h)\n    \
+    \        .polyline(hex2d(p.pocket_af)).close()\n            .extrude(ceiling -\
+    \ p.lip_h))\n    body = body.cut(lip).cut(bore)\n\n    # bolt clearance hole through\
+    \ the roof (also clears the socket interior)\n    body = body.cut(cq.Workplane(\"\
+    XY\").circle(p.bolt_hole_d / 2.0)\n                    .extrude(p.knob_h + 2.0).translate((0,\
+    \ 0, -1.0)))\n\n    # annular relief gap around the finger collar\n    ring =\
+    \ (cq.Workplane(\"XY\").circle(p.collar_r + p.gap_w).extrude(ceiling + 1.0)\n\
+    \            .cut(cq.Workplane(\"XY\").circle(p.collar_r).extrude(ceiling + 1.0))\n\
+    \            .translate((0, 0, -1.0)))\n    body = body.cut(ring)\n\n    # six\
+    \ slits at the hex corners -> six flexible fingers\n    r_in = 2.0\n    r_out\
+    \ = p.collar_r + p.gap_w + 0.5\n    for i in range(6):\n        s = (cq.Workplane(\"\
+    XY\").box(r_out - r_in, p.slit_w, ceiling + 2.0)\n             .translate((r_in\
+    \ + (r_out - r_in) / 2.0, 0.0, (ceiling + 2.0) / 2.0 - 1.0))\n             .rotate((0,\
+    \ 0, 0), (0, 0, 1), 30.0 + 60.0 * i))\n        body = body.cut(s)\n\n    return\
+    \ body\n"
+  print_orientation: bottom face (nut socket mouth) on the bed, knob axis vertical,
+    z = 0 on the bed
+  use_orientation: knob upright on the clamped part, nut socket facing down, M5 bolt
+    entering from below
+- id: fit_coupon
+  role: coupon
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    ceiling = p.lip_h\
+    \ + p.nut_h + p.seat_gap\n    cup_r = 8.5\n    cup_h = ceiling + 2.5\n\n    def\
+    \ hex2d(af):\n        rr = (af / 2.0) / math.cos(math.pi / 6.0)\n        return\
+    \ [(rr * math.cos(math.radians(30.0 + 60.0 * i)),\n                 rr * math.sin(math.radians(30.0\
+    \ + 60.0 * i))) for i in range(6)]\n\n    def cup(af_lip):\n        c = cq.Workplane(\"\
+    XY\").circle(cup_r).extrude(cup_h)\n        lip = (cq.Workplane(\"XY\").polyline(hex2d(af_lip)).close()\n\
+    \               .workplane(offset=p.lip_h).polyline(hex2d(p.pocket_af)).close()\n\
+    \               .loft())\n        bore = (cq.Workplane(\"XY\").workplane(offset=p.lip_h)\n\
+    \                .polyline(hex2d(p.pocket_af)).close()\n                .extrude(ceiling\
+    \ - p.lip_h))\n        c = c.cut(lip).cut(bore)\n        c = c.cut(cq.Workplane(\"\
+    XY\").circle(p.bolt_hole_d / 2.0).extrude(cup_h + 2.0)\n                  .translate((0,\
+    \ 0, -1.0)))\n        ring = (cq.Workplane(\"XY\").circle(p.collar_r + p.gap_w).extrude(ceiling\
+    \ + 1.0)\n                .cut(cq.Workplane(\"XY\").circle(p.collar_r).extrude(ceiling\
+    \ + 1.0))\n                .translate((0, 0, -1.0)))\n        c = c.cut(ring)\n\
+    \        r_in = 2.0\n        r_out = p.collar_r + p.gap_w + 0.5\n        for i\
+    \ in range(6):\n            s = (cq.Workplane(\"XY\").box(r_out - r_in, p.slit_w,\
+    \ ceiling + 2.0)\n                 .translate((r_in + (r_out - r_in) / 2.0, 0.0,\
+    \ (ceiling + 2.0) / 2.0 - 1.0))\n                 .rotate((0, 0, 0), (0, 0, 1),\
+    \ 30.0 + 60.0 * i))\n            c = c.cut(s)\n        return c\n\n    out = None\n\
+    \    for i, d in enumerate([-0.1, 0.0, 0.1]):\n        c = cup(p.lip_af + d).translate((20.0\
+    \ * i - 20.0, 0.0, 0.0))\n        for k in range(i + 1):\n            ang = [-60.0,\
+    \ 0.0, 60.0][k]\n            pip = (cq.Workplane(\"XY\").circle(1.0).extrude(1.2)\n\
+    \                   .translate((7.0 * math.cos(math.radians(ang)),\n         \
+    \                      7.0 * math.sin(math.radians(ang)), cup_h)))\n         \
+    \   c = c.union(pip)\n        out = c if out is None else out.union(c)\n    return\
+    \ out\n"
+  print_orientation: bottom faces (socket mouths) on the bed, same orientation as
+    the knob, z = 0 on the bed
+  use_orientation: cups upright, nut pressed in from below into each cup
+hardware:
+- id: nut1
+  ref: ISO 4032 M5
+  qty: 1
+- id: screw1
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: nut_in_socket
+  fastener: nut1
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: hex nut socket (tapered lip, straight bore, roof)
+    role: nut_pocket
+  nut: null
+  external: null
+- id: bolt_through_nut_and_roof
+  fastener: screw1
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: roof bolt clearance hole
+    role: clearance
+  nut: nut1
+  external: clamped part / workpiece below, bolt head under it
+criteria:
+- id: nut_fully_inside
+  part: knob
+  feature: hex nut socket
+  relation: contains
+  hardware: nut1
+  clearance_mm: null
+  params:
+  - lip_af
+  - lip_h
+  - nut_h
+  - seat_gap
+  - nut_af_max
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: Press the nut in by hand and confirm it seats fully inside, below
+      the bottom face, with the bolt hole still clear above it.
+- id: nut_cannot_exit_far_side
+  part: knob
+  feature: roof bolt clearance hole
+  relation: supports
+  hardware: nut1
+  clearance_mm: null
+  params:
+  - bolt_hole_d
+  - nut_af_min
+  check:
+    method: template
+    ref: null
+    description: 5.6 mm roof hole is smaller than the nut's 7.64 mm across-flats,
+      so the nut cannot pass; a hard stop, not a fit.
+- id: bolt_clears_roof
+  part: knob
+  feature: roof bolt clearance hole
+  relation: clears
+  hardware: screw1
+  clearance_mm: 0.6
+  params:
+  - bolt_hole_d
+  check:
+    method: none
+    ref: null
+    description: 0.6 mm diametral clearance around a 5.0 mm M5 shank.
+- id: lip_grips_nut
+  part: knob
+  feature: tapered snap lip
+  relation: engages
+  hardware: nut1
+  clearance_mm: null
+  params:
+  - lip_af
+  - pocket_af
+  - lip_h
+  - nut_af_min
+  - nut_af_max
+  - printed_hex_offset
+  check:
+    method: coupon
+    ref: fit_coupon
+    description: 'Lip 7.4 mm (prints ~7.43 mm) against a nut of 7.64-8.00 mm gives
+      0.10-0.29 mm radial grip per side; the 8.4 deg taper is self-locking, so the
+      nut wedges rather than falls out. Confirm with the coupon: the nut must stay
+      in when the cup is inverted and shaken.'
+- id: nut_recessed_above_bottom_face
+  part: knob
+  feature: tapered snap lip
+  relation: seats
+  hardware: nut1
+  clearance_mm: null
+  params:
+  - lip_h
+  - lip_af
+  - pocket_af
+  - nut_af_min
+  - nut_af_max
+  check:
+    method: measure
+    ref: null
+    description: The seated nut sits 0.8-2.0 mm up from the bottom face, so it is
+      fully inside the knob.
+- id: prints_without_supports
+  part: knob
+  feature: socket roof
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - pocket_af
+  - bolt_hole_d
+  - gap_w
+  - slit_w
+  check:
+    method: template
+    ref: null
+    description: Roof bridges about 1.2 mm each side of the bolt hole, plus 1.1-1.5
+      mm over the slits and relief gap - far below the 50 mm clean-bridge limit, so
+      no supports.
+manual:
+- n: '1'
+  text: 'Print the knob in the orientation given: bottom face (the nut socket mouth)
+    flat on the bed, knob axis vertical. No supports and no raft. It is a 30 x 30
+    x 16 mm part; expect roughly 30-40 minutes.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: 'Optional check: print fit_coupon too. Its three cups have lip sizes 7.30,
+    7.43 and 7.53 mm, marked with 1, 2 and 3 pips. Press your nut into each and note
+    which one presses in firmly and still holds when the cup is turned upside down
+    and shaken. The knob ships with a 7.4 mm lip, which is the middle of that range.'
+  parts:
+  - knob
+  - fit_coupon
+  hardware: []
+  tool: null
+- n: '3'
+  text: Press the M5 hex nut into the socket in the bottom of the knob. Turn the nut
+    so its hex lines up with the socket hex (any of the six positions works), then
+    push it straight in with both thumbs until it snaps past the lip and seats. It
+    takes a firm push, not a hammer. You will feel it click in and it will end up
+    1-2 mm inside the bottom face.
+  parts:
+  - knob
+  hardware:
+  - nut1
+  tool: null
+- n: '4'
+  text: 'Turn the knob upside down and shake it. The nut must stay in. Look into the
+    bottom: the nut should be fully inside, its bottom face below the knob''s bottom
+    face.'
+  parts:
+  - knob
+  hardware:
+  - nut1
+  tool: null
+- n: '5'
+  text: 'Check the far side: from the top of the knob, you should see the nut down
+    the 5.6 mm bolt hole but you must not be able to push the nut out through it -
+    the hole is smaller than the nut.'
+  parts:
+  - knob
+  hardware:
+  - nut1
+  tool: null
+- n: '6'
+  text: 'Assemble: push the M5 bolt up through the part you are clamping, then thread
+    the knob onto it by hand. The bolt runs through the nut and its tip comes out
+    of the top of the knob, so you can see how much thread engagement you have.'
+  parts:
+  - knob
+  hardware:
+  - nut1
+  - screw1
+  tool: null
+- n: '7'
+  text: Tighten by hand until snug. The tightening load pushes the nut down into the
+    taper, which makes it grip harder - it will not strip out. Do not use a wrench
+    or a cheater bar on the knob.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '8'
+  text: To remove the nut later, lever it out sideways with a flat screwdriver blade
+    between the nut's bottom face and the lip. The lip is a snap fit and releases
+    with a firm push.
+  parts:
+  - knob
+  hardware:
+  - nut1
+  tool: null

@@ -1,0 +1,246 @@
+task: nut-knob/M5
+note: One-piece supportless hand knob with integrated crush ribs for press-fit M5
+  hex nut retention.
+questions: []
+params:
+  num_lobes:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of ergonomic finger grip lobes
+  knob_diameter:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter of the knob across the lobes
+  pocket_af:
+    value: 8.25
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket width across flats before ribs
+  pocket_depth:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Depth of the hex nut pocket
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut width across flats
+  bolt_hole_d:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Through-hole diameter for M5 clearance
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nut nominal thickness
+  flute_radius:
+    value: 4.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of the finger grip flutes on the perimeter
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M5 bolt diameter
+  rib_protrusion:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Height of each crush rib into the pocket
+  rib_lead_in:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Distance below top surface where crush ribs begin
+  rib_radius:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of the cylindrical crush rib profile
+  knob_height:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: Total height of the knob
+  flute_distance:
+    value: 16.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from knob center to finger flute centers
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import cadquery as cq\nimport math\n\ndef build(p):\n    knob_d = p.knob_diameter\n\
+    \    knob_h = p.knob_height\n    num_lobes = int(p.num_lobes)\n    flute_r = p.flute_radius\n\
+    \    flute_dist = p.flute_distance\n\n    bolt_hole_d = p.bolt_hole_d\n    pocket_af\
+    \ = p.pocket_af\n    pocket_depth = p.pocket_depth\n    rib_r = p.rib_radius\n\
+    \    rib_protrusion = p.rib_protrusion\n    rib_lead_in = p.rib_lead_in\n\n  \
+    \  # 1. Outer fluted knob body\n    body = cq.Workplane(\"XY\").circle(knob_d\
+    \ / 2.0).extrude(knob_h)\n\n    for i in range(num_lobes):\n        angle = i\
+    \ * (2.0 * math.pi / num_lobes)\n        fx = flute_dist * math.cos(angle)\n \
+    \       fy = flute_dist * math.sin(angle)\n        flute = cq.Workplane(\"XY\"\
+    , origin=(fx, fy, 0)).circle(flute_r).extrude(knob_h)\n        body = body.cut(flute)\n\
+    \n    # 2. Continuous M5 clearance through-hole\n    through_hole = (\n      \
+    \  cq.Workplane(\"XY\", origin=(0, 0, -1))\n        .circle(bolt_hole_d / 2.0)\n\
+    \        .extrude(knob_h + 2)\n    )\n    body = body.cut(through_hole)\n\n  \
+    \  # 3. Hex nut pocket cut from top face\n    # In CadQuery, polygon(6, D) has\
+    \ vertices at 0, 60, 120... and flats at 30, 90, 150...\n    d_hex = pocket_af\
+    \ / math.cos(math.radians(30))\n    pocket_z_bottom = knob_h - pocket_depth\n\
+    \    hex_pocket = (\n        cq.Workplane(\"XY\", origin=(0, 0, pocket_z_bottom))\n\
+    \        .polygon(6, d_hex)\n        .extrude(pocket_depth + 1)\n    )\n    body\
+    \ = body.cut(hex_pocket)\n\n    # 4. Six compliant crush ribs on the flats with\
+    \ domed lead-ins\n    r_flat = pocket_af / 2.0\n    r_rib_center = r_flat + rib_r\
+    \ - rib_protrusion\n    rib_z_start = pocket_z_bottom\n    rib_z_top = knob_h\
+    \ - rib_lead_in\n    rib_h = rib_z_top - rib_z_start\n\n    for i in range(6):\n\
+    \        angle = math.radians(30 + 60 * i)\n        rx = r_rib_center * math.cos(angle)\n\
+    \        ry = r_rib_center * math.sin(angle)\n\n        # Cylindrical rib body\n\
+    \        rib_cyl = (\n            cq.Workplane(\"XY\", origin=(rx, ry, rib_z_start))\n\
+    \            .circle(rib_r)\n            .extrude(rib_h)\n        )\n        body\
+    \ = body.union(rib_cyl)\n\n        # Spherical lead-in dome at the top of the\
+    \ rib\n        rib_cap = (\n            cq.Workplane(\"XY\", origin=(rx, ry, rib_z_top))\n\
+    \            .sphere(rib_r)\n        )\n        body = body.union(rib_cap)\n\n\
+    \    # Trim any rib dome material protruding above the top face\n    top_trim\
+    \ = (\n        cq.Workplane(\"XY\", origin=(0, 0, knob_h))\n        .circle(knob_d)\n\
+    \        .extrude(5)\n    )\n    body = body.cut(top_trim)\n\n    return body\n"
+  print_orientation: Bottom flat face on the build plate (Z=0). Fully self-supporting,
+    no supports required.
+  use_orientation: Vertical with hex nut pocket opening facing up toward the user
+    or bolt entry point.
+hardware:
+- id: nut
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt
+  ref: ISO 4762 M5x20
+  qty: 1
+joints:
+- id: knob_bolt_joint
+  fastener: bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: knob
+    feature: nut_pocket
+    role: nut_pocket
+  - part: knob
+    feature: bolt_through_hole
+    role: clearance
+  nut: nut
+  external: null
+criteria:
+- id: nut_retention
+  part: knob
+  feature: nut_pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: -0.15
+  params:
+  - pocket_af
+  - rib_protrusion
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Nut presses into pocket with thumb force and does not fall out when
+      inverted
+- id: nut_recessed
+  part: knob
+  feature: nut_pocket
+  relation: seats
+  hardware: nut
+  clearance_mm: 1.3
+  params:
+  - pocket_depth
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Nut seats fully inside pocket, recessed below the knob top face
+- id: bolt_clearance
+  part: knob
+  feature: bolt_through_hole
+  relation: clears
+  hardware: bolt
+  clearance_mm: 0.4
+  params:
+  - bolt_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: M5 bolt passes cleanly through clearance bore without binding
+manual:
+- n: '1'
+  text: Place the 3D printed knob on a firm flat surface with the hex pocket opening
+    facing upwards. Inspect the pocket and center through-hole to ensure they are
+    clean and free of any debris.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M5 hex nut over the hex pocket opening. The top 1.2 mm
+    has lead-in clearance to orient the nut easily by hand.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Press the M5 nut firmly into the pocket using thumb pressure (or by pressing
+    down against a flat tabletop) until it seats fully against the bottom internal
+    shoulder. The integrated crush ribs on the hex flats will compress slightly, locking
+    the nut in place.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: 'Turn the knob upside down to verify retention: the nut stays firmly inside
+    without glue. Notice that the nut sits fully inside the pocket, recessed 1.3 mm
+    below the top face, and cannot be pushed through the far side due to the solid
+    internal shelf.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '5'
+  text: Thread an M5 bolt through the knob and nut as needed. The through-hole clears
+    the bolt completely, allowing it to exit out the other side. Tighten or loosen
+    the bolt by hand using the 6 ergonomic flutes.
+  parts:
+  - knob
+  hardware:
+  - bolt
+  - nut
+  tool: null

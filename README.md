@@ -139,49 +139,49 @@ A trial where the model asked for a test print before its final design (Sonnet 5
 **[Browse every trial on the results site](https://oveddan.github.io/functional-print-eval/)**: pick a condition and a part, then open any model's design to see its render, each check with its reason, the test prints it asked for, its code and its transcript.
 
 <!-- scorecard:start (written by scripts/scorecard.py; don't edit by hand) -->
-| Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | All four tasks | Estoa light box (harder) | Print hours per pass | Filament per pass | Cost per pass |
+| Model | Tripod plate | Bearing wheel | Knob M3 | Knob M5 | Estoa light box (harder) | All five tasks | Print hours per pass | Filament per pass | Cost per pass |
 |---|---|---|---|---|---|---|---|---|---|
-| Gemini 4 Argon | **70% (7/10)** | 75% (6/8) | **100% (5/5)** | **100% (5/5)** | **82% (23/28)** | 0% (0/3) | **0.4 h** | **13 g** | $0.19 |
-| GPT-6.1 Sol | 20% (2/10) | 70% (7/10) | 60% (6/10) | **100% (10/10)** | 63% (25/40) | **67% (2/3)** | 0.5 h | 18 g | $0.08 |
-| Gemini 3.8 Flash | 20% (2/10) | **100% (5/5)** | 60% (3/5) | 80% (4/5) | 56% (14/25) | 0% (0/3) | **0.4 h** | 14 g | $0.26 |
-| Opus 5.5 | 30% (3/10) | 40% (4/10) | 50% (5/10) | 90% (9/10) | 53% (21/40) | 0% (0/3) | 0.5 h | 17 g | $0.29 |
-| Sonnet 5.5 | 10% (1/10) | 0% (0/10) | 90% (9/10) | **100% (10/10)** | 50% (20/40) | 33% (1/3) | 0.7 h | 23 g | $0.21 |
-| DeepSeek V4.1 Flash | 33% (3/9) | 40% (2/5) | 20% (1/5) | 57% (4/7) | 38% (10/26) | 33% (1/3) | 1.0 h | 35 g | $0.16 |
-| Haiku 5.5 | 0% (0/5) | 0% (0/5) | 40% (2/5) | 20% (1/5) | 15% (3/20) | not run | 2.0 h | 74 g | **$0.04** |
+| Gemini 4 Argon | **70% (7/10)** | 60% (6/10) | 70% (7/10) | **100% (10/10)** | 0% (0/5) | **67% (30/45)** | 0.9 h | 37 g | $0.42 |
+| GPT-6.1 Sol | 20% (2/10) | 70% (7/10) | 60% (6/10) | **100% (10/10)** | **60% (3/5)** | 62% (28/45) | 1.0 h | 37 g | **$0.10** |
+| Gemini 3.8 Flash | 20% (2/10) | **80% (8/10)** | 70% (7/10) | 90% (9/10) | 0% (0/5) | 58% (26/45) | **0.7 h** | **27 g** | $0.24 |
+| Sonnet 5.5 | 10% (1/10) | 0% (0/10) | **90% (9/10)** | **100% (10/10)** | 20% (1/5) | 47% (21/45) | 1.4 h | 56 g | $0.34 |
+| Opus 5.5 | 30% (3/10) | 40% (4/10) | 50% (5/10) | 90% (9/10) | 0% (0/5) | 47% (21/45) | 1.0 h | 40 g | $0.42 |
+| DeepSeek V4.1 Flash | 30% (3/10) | 50% (5/10) | 10% (1/10) | 60% (6/10) | 20% (1/5) | 36% (16/45) | 1.7 h | 70 g | $0.18 |
+| Haiku 5.5 | 0% (0/5) | 0% (0/5) | 40% (2/5) | 20% (1/5) | 0% (0/5) | 12% (3/25) | 7.6 h | 359 g | $0.12 |
 
 The rows are the Test prints first condition: the model can ask for test prints before its final design (all three conditions are defined in [How a trial runs](#how-a-trial-runs)). Each row is a model, best first; the best in each column is bold. A pass means every check passes against my recorded test prints, under the assumptions listed in [the reference](docs/reference.md#assumptions-the-verdicts-rest-on). Print hours and filament are slicer estimates and cost is what the API charged; each counts everything the model asked to print, test prints included, divided by the designs that pass. Nothing a model designed was printed.
 
-**Best to worst, when the model can ask for test prints** (7 models, 5 or more trials on each of the four tasks):
+**Best to worst, when the model can ask for test prints** (7 models, 5 or more trials on each of the five tasks, Estoa included):
 
-1. **Gemini 4 Argon**, 82% of trials pass (23/28): $0.19 and 0.4 print hours per working part
-2. **GPT-6.1 Sol**, 63% of trials pass (25/40): $0.08 and 0.5 print hours per working part
-3. **Gemini 3.8 Flash**, 56% of trials pass (14/25): $0.26 and 0.4 print hours per working part
-4. **Opus 5.5**, 53% of trials pass (21/40): $0.29 and 0.5 print hours per working part
-5. **Sonnet 5.5**, 50% of trials pass (20/40): $0.21 and 0.7 print hours per working part
-6. **DeepSeek V4.1 Flash**, 38% of trials pass (10/26): $0.16 and 1.0 print hours per working part
-7. **Haiku 5.5**, 15% of trials pass (3/20): $0.04 and 2.0 print hours per working part
+1. **Gemini 4 Argon**, 67% of trials pass (30/45): $0.42 and 0.9 print hours per working part
+2. **GPT-6.1 Sol**, 62% of trials pass (28/45): $0.10 and 1.0 print hours per working part
+3. **Gemini 3.8 Flash**, 58% of trials pass (26/45): $0.24 and 0.7 print hours per working part
+4. **Sonnet 5.5**, 47% of trials pass (21/45): $0.34 and 1.4 print hours per working part
+5. **Opus 5.5**, 47% of trials pass (21/45): $0.42 and 1.0 print hours per working part
+6. **DeepSeek V4.1 Flash**, 36% of trials pass (16/45): $0.18 and 1.7 print hours per working part
+7. **Haiku 5.5**, 12% of trials pass (3/25): $0.12 and 7.6 print hours per working part
 
 Not run with test prints, ranked by their first print without them: GLM 5.3 Flash 23%, GPT-6 Luna 8%, DeepSeek V4 Pro 5%, Qwen 3.8 Flash 3%. Grok 4.7 was left out because it was too expensive to run 10 trials on.
 
-**What asking for test prints changed.** Across these 7 models, 37% of first prints pass without test prints, and 53% pass when the model can ask for test prints before its final design.
+**What asking for test prints changed.** Across these 7 models, 37% of first prints pass without test prints on the four tasks, and 49% pass on the five, Estoa included, when the model can ask for test prints before its final design. The first print and the reprint leave Estoa out because Gemini 3.8 Flash and DeepSeek V4.1 Flash have no first-print Estoa trials, so the change column compares four tasks with five.
 
 | Model | First print | Reprint after feedback | Test prints first | Change from the first print |
 |---|---|---|---|---|
-| Gemini 4 Argon | 50% (20/40) | 80% | 82% (23/28) | +32 points |
-| GPT-6.1 Sol | 50% (20/40) | 53% | 63% (25/40) | +13 points |
-| Gemini 3.8 Flash | 45% (18/40) | 63% | 56% (14/25) | +11 points |
-| Opus 5.5 | 40% (16/40) | 68% | 53% (21/40) | +13 points |
-| Sonnet 5.5 | 35% (14/40) | 50% | 50% (20/40) | +15 points |
-| DeepSeek V4.1 Flash | 39% (16/41) | 61% | 38% (10/26) | -1 points |
-| Haiku 5.5 | 3% (1/40) | not replayed | 15% (3/20) | +13 points |
+| Gemini 4 Argon | 50% (20/40) | 80% | 67% (30/45) | +17 points |
+| GPT-6.1 Sol | 50% (20/40) | 53% | 62% (28/45) | +12 points |
+| Gemini 3.8 Flash | 45% (18/40) | 63% | 58% (26/45) | +13 points |
+| Sonnet 5.5 | 35% (14/40) | 50% | 47% (21/45) | +12 points |
+| Opus 5.5 | 40% (16/40) | 68% | 47% (21/45) | +7 points |
+| DeepSeek V4.1 Flash | 39% (16/41) | 61% | 36% (16/45) | -3 points |
+| Haiku 5.5 | 3% (1/40) | not replayed | 12% (3/25) | +10 points |
 
-Some passes may lean on a gap in the simulation: in 155 of 219 trials, at least one test piece got "I can't tell you how that one came out" (a size I never printed), and 78 of the 116 passes came after one.
+Some passes may lean on a gap in the simulation: in 200 of 295 trials, at least one test piece got "I can't tell you how that one came out" (a size I never printed), and 96 of the 145 passes came after one.
 <!-- scorecard:end --> 
 
 <!-- scorecard-note:start (written by scripts/scorecard.py; don't edit by hand) -->
 In the reprints, that accounts for 1 new pass (Sonnet 5.5).
 
-**Estoa,** the harder task, is kept out of the total: 5 of 30 designs pass on the first print, 12 of 26 after feedback, and 4 of 18 with test prints first.
+**Estoa,** the harder task, counts in the Test prints first results above and is kept out of the first print and reprint columns: 5 of 30 designs pass on the first print, 12 of 26 after feedback, and 5 of 35 with test prints first.
 <!-- scorecard-note:end -->
 
 ### Where models fail
@@ -199,7 +199,7 @@ The replies only come from my test prints. For a size I never printed, the perso
 In my own 3D printing workflow, I'm constantly adding to a self-learning knowledge base of mistakes that gives the model context and failure cases when 3D modeling. The models in this eval didn't have it, which leads to more failures.
 
 - **One printer, one material, one setting.** Every test print was on my Bambu Lab X1C, in black high-speed PLA, at 0.2 mm layers with 4 walls and 15% infill. It doesn't test other infill patterns or densities, other print settings, or other materials like PETG.
-- **Simple tasks.** The tasks are small parts, nothing really complicated. The one multi-part enclosure, Estoa, is kept out of the total.
+- **Simple tasks.** The tasks are small parts, nothing really complicated. The one multi-part enclosure, Estoa, counts in the Test prints first total only: two of the models have no first-print Estoa trials.
 - **No choosing its own bill of materials.** The model picks from a fixed list of hardware I give it, rather than choosing its own parts.
 - **Possible bias toward Claude.** I built the eval with Claude (Opus 5.5): it wrote the checks and most of the code, and Claude models are among those graded. The checks are code that compares each design with my recorded test prints, not Claude's judgment; I reviewed the verdicts myself, and Codex and other models reviewed the code.
 - **Cost.** I did this on my own budget, so I couldn't do more runs. Every time I fixed how the trials run, I had to rerun everything, so there are several sets of results from different versions, and it can be confusing to tell them apart.

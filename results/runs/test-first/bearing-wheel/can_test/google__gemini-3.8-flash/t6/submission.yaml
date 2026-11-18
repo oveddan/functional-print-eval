@@ -1,0 +1,311 @@
+task: bearing-wheel
+note: Replacement 50 mm x 16 mm sliding closet door roller wheel engineered for two
+  608 bearings on an M8 axle. Dual-profile tread works on both beaded rails and flat
+  channels. Self-supporting geometry prints cleanly without supports. Dedicated printed
+  axle spacers isolate the rotating wheel from the mounting bracket.
+questions: []
+params:
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal width of standard 608 bearing
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal outer diameter of standard 608 bearing
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: design
+    source: asked
+    note: Total width of closet door roller wheel requested by user
+  groove_width:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: Axial width of central concave groove for track rail engagement
+  edge_chamfer:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree protective chamfer on outer rim edges
+  spacer_length:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Total length of primary axle spacer (1 mm recess engagement + 2 mm bracket
+      clearance)
+  bore_entry_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Lead-in chamfer at open end of bore for smooth bearing insertion
+  bearing_fit_clearance:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance to achieve a firm push-fit on Bambu X1C in PLA without
+      cracking
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter of closet door roller wheel requested by user
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal inside bore diameter of standard 608 bearing
+  spacer_od:
+    value: 11.8
+    unit: mm
+    kind: design
+    source: design
+    note: Outside diameter of axle spacer; contacts only the 8-12 mm bearing inner
+      race land
+  spacer_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: Inside diameter of axle spacer for M8 bolt clearance
+  lip_thickness:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Axial thickness of internal bearing retaining lip at base
+  lip_bore:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: Inside diameter of retaining lip; clears 12 mm inner race while supporting
+      22 mm outer race
+  shim_length:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of optional fit-adjustment shim
+  groove_depth:
+    value: 1.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial depth of central concave groove
+parts:
+- id: roller_wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    r_lip = p.lip_bore / 2.0\n\
+    \    r_bearing = (p.bearing_od + p.bearing_fit_clearance) / 2.0\n    r_outer =\
+    \ p.wheel_od / 2.0\n    r_groove_bottom = r_outer - p.groove_depth\n\n    z_lip\
+    \ = p.lip_thickness\n    z_chamfer_bottom = p.edge_chamfer\n    z_groove_start\
+    \ = (p.wheel_width - p.groove_width) / 2.0\n    z_groove_center = p.wheel_width\
+    \ / 2.0\n    z_groove_end = (p.wheel_width + p.groove_width) / 2.0\n    z_chamfer_top\
+    \ = p.wheel_width - p.edge_chamfer\n    z_top = p.wheel_width\n    z_entry_chamfer\
+    \ = z_top - p.bore_entry_chamfer\n    r_entry = r_bearing + p.bore_entry_chamfer\n\
+    \n    profile = (\n        cq.Workplane(\"XZ\")\n        .moveTo(r_lip, 0.0)\n\
+    \        .lineTo(r_outer - p.edge_chamfer, 0.0)\n        .lineTo(r_outer, z_chamfer_bottom)\n\
+    \        .lineTo(r_outer, z_groove_start)\n        .threePointArc((r_groove_bottom,\
+    \ z_groove_center), (r_outer, z_groove_end))\n        .lineTo(r_outer, z_chamfer_top)\n\
+    \        .lineTo(r_outer - p.edge_chamfer, z_top)\n        .lineTo(r_entry, z_top)\n\
+    \        .lineTo(r_bearing, z_entry_chamfer)\n        .lineTo(r_bearing, z_lip)\n\
+    \        .lineTo(r_lip, z_lip)\n        .close()\n    )\n\n    return profile.revolve()\n"
+  print_orientation: Bottom face with retaining lip flat on print bed (z = 0)
+  use_orientation: Vertical plane, wheel rolls horizontally along door track
+- id: axle_spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    r_out = p.spacer_od / 2.0\n\
+    \    r_in = p.spacer_id / 2.0\n\n    return (\n        cq.Workplane(\"XY\")\n\
+    \        .circle(r_out)\n        .circle(r_in)\n        .extrude(p.spacer_length)\n\
+    \    )\n"
+  print_orientation: Flat annular face on print bed (z = 0)
+  use_orientation: Sits on M8 bolt between bearing inner race and bracket ear
+- id: axle_shim
+  role: final
+  material: PLA
+  code: "def build(p):\n    import cadquery as cq\n\n    r_out = p.spacer_od / 2.0\n\
+    \    r_in = p.spacer_id / 2.0\n\n    return (\n        cq.Workplane(\"XY\")\n\
+    \        .circle(r_out)\n        .circle(r_in)\n        .extrude(p.shim_length)\n\
+    \    )\n"
+  print_orientation: Flat annular face on print bed (z = 0)
+  use_orientation: Optional adjustment shim on M8 bolt for bracket spacing
+hardware:
+- id: bearing_1
+  ref: 608ZZ
+  qty: 1
+- id: bearing_2
+  ref: 608ZZ
+  qty: 1
+- id: axle_bolt
+  ref: ISO 4762 M8x35
+  qty: 1
+- id: axle_nut
+  ref: ISO 4032 M8
+  qty: 1
+- id: axle_washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: wheel_axle
+  fastener: axle_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -5.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: roller_wheel
+    feature: central_bore
+    role: clearance
+  - part: axle_spacer
+    feature: bore
+    role: clearance
+  nut: axle_nut
+  external: null
+criteria:
+- id: bearing_1_seat
+  part: roller_wheel
+  feature: bearing_bore
+  relation: seats
+  hardware: bearing_1
+  clearance_mm: 0.15
+  params:
+  - bearing_od
+  - bearing_fit_clearance
+  check:
+    method: measure
+    ref: null
+    description: Check that bearing 1 presses firmly into the lower bore against the
+      retaining shoulder
+- id: bearing_2_seat
+  part: roller_wheel
+  feature: bearing_bore
+  relation: seats
+  hardware: bearing_2
+  clearance_mm: 0.15
+  params:
+  - bearing_od
+  - bearing_fit_clearance
+  check:
+    method: measure
+    ref: null
+    description: Check that bearing 2 presses firmly into the bore flush against bearing
+      1
+- id: axle_clears_lip
+  part: roller_wheel
+  feature: lip_bore
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: 3.0
+  params:
+  - lip_bore
+  - bearing_bore
+  check:
+    method: none
+    ref: null
+    description: M8 bolt shank passes freely through the internal retaining lip without
+      friction
+- id: spacer_clears_bolt
+  part: axle_spacer
+  feature: bore
+  relation: clears
+  hardware: axle_bolt
+  clearance_mm: 0.4
+  params:
+  - spacer_id
+  - bearing_bore
+  check:
+    method: none
+    ref: null
+    description: M8 bolt shank passes through spacer bore with smooth clearance
+- id: spacer_engages_inner_race
+  part: axle_spacer
+  feature: end_face
+  relation: engages
+  hardware: bearing_1
+  clearance_mm: 0.0
+  params:
+  - spacer_od
+  - spacer_id
+  check:
+    method: measure
+    ref: null
+    description: Spacer outer diameter engages only the 608 inner race without touching
+      the bearing shield
+manual:
+- n: '1'
+  text: '3D print one ''roller_wheel'' (printed flat on its bottom lip face, z = 0,
+    no supports needed) and two ''axle_spacer'' parts. Optionally print two ''axle_shim''
+    parts if your door bracket requires additional width adjustment. Recommended print
+    settings: 0.2 mm layer height, 4 perimeters/wall loops, 25-30% gyroid infill for
+    high strength and rigidity.'
+  parts:
+  - roller_wheel
+  - axle_spacer
+  - axle_shim
+  hardware: []
+  tool: Bambu Lab X1C 3D Printer
+- n: '2'
+  text: Press the first 608 bearing (bearing_1) into the open top of the roller wheel
+    bore. Push it down firmly until it seats squarely against the bottom internal
+    retaining lip. Then take the second 608 bearing (bearing_2) and press it in right
+    behind the first bearing until it rests firmly against bearing_1. Both bearings
+    now sit back-to-back inside the wheel with their inner and outer rings in direct
+    contact.
+  parts:
+  - roller_wheel
+  hardware:
+  - bearing_1
+  - bearing_2
+  tool: null
+- n: '3'
+  text: Slide an M8 washer onto the M8 bolt, followed by the outer ear of the door
+    mounting bracket, then slide on the first printed axle spacer. Insert the bolt
+    through the two 608 bearings inside the roller wheel. Slide the second printed
+    axle spacer onto the protruding bolt, followed by the second bracket ear. Note
+    that the axle spacers contact ONLY the inner races of the bearings, allowing the
+    wheel to spin completely freely without rubbing against the bracket.
+  parts:
+  - roller_wheel
+  - axle_spacer
+  hardware:
+  - axle_bolt
+  - axle_washer
+  tool: null
+- n: '4'
+  text: Add the second M8 washer and thread on the M8 nut. Tighten the nut securely.
+    Because the two bearing inner races and the printed spacers are clamped directly
+    together against the bracket, you can firmly tighten the bolt without binding
+    the bearings. Spin the wheel by hand to verify it rotates buttery-smooth with
+    zero wobble or drag.
+  parts: []
+  hardware:
+  - axle_nut
+  - axle_washer
+  tool: 13 mm wrench / socket and 6 mm hex key
+- n: '5'
+  text: Hang or mount the door back into its track. The wheel's dual-tread design
+    allows it to ride stably on a convex track rail via its central concave groove,
+    or roll on its wide flat outer shoulders if running in a flat box or J-channel.
+  parts:
+  - roller_wheel
+  hardware: []
+  tool: null
