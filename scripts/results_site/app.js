@@ -574,131 +574,9 @@ function renderScorecard() {
       stateLink({ cond: "test_first", task: score.harder_task }, {}, "test prints first", { fromDefaults: true, toResults: true }), "."));
 
   const host = $("scorecard-body");
-  add(clear(host), renderScorecardChart(), h("h3", { class: "sc-table-h" }, "All three conditions, as a table"),
+  add(clear(host), h("h3", { class: "sc-table-h" }, "All three conditions, as a table"),
     phoneFold("scorecard-table", `The table: ${plural(byModel.size, "model")}, all three conditions`, [h("div", { class: "table-scroll" }, table), notes]));
   host.removeAttribute("aria-busy");
-}
-
-// ---- scorecard chart: one stacked bar per model, the first print and then one round of feedback ----
-
-const SHOW_COUNT_FROM = 0.06;  // a segment narrower than this share of its bar has no number on it (the line under it does)
-const FEW_PASSES = 5;          // a cost per passing design from fewer passes than this is shown muted, with the count
-const COST_LABEL = "API cost per passing design, first print plus feedback";
-const FIRST_ONLY_COST_LABEL = "API cost per passing design, first print only";
-const chartChecks = [];        // the numbers each chart row draws, checked against the trials once the index is in
-
-// The headline's models whose failed first prints were sent back, added up from their own rows.
-function pooledChartCell(score) {
-  const rows = score.models.filter((entry) => score.pooled.after_feedback.model_ids.includes(entry.model)).map((entry) => entry.after_feedback);
-  const sum = (key) => rows.reduce((total, cell) => total + cell[key], 0);
-  const cell = { trials: sum("trials"), passes: sum("passes"), passed_first: sum("passed_first"), passed_after_feedback: sum("passed_after_feedback"), not_graded: sum("not_graded"), cost_usd: sum("cost_usd") };
-  return { ...cell, rate: cell.passes / cell.trials, cost_per_pass: cell.passes ? cell.cost_usd / cell.passes : null };
-}
-
-function chartCost(cell, costLabel = COST_LABEL) {
-  const label = h("span", { class: "sc-cost-label" }, costLabel, ": ");
-  if (cell.cost_per_pass === null || cell.cost_per_pass === undefined) return h("span", { class: "sc-cost" }, label, h("span", { class: "sc-cost-none" }, "no passing design, so no value"));
-  const few = cell.passes < FEW_PASSES;
-  return h("span", { class: `sc-cost${few ? " sc-cost-few" : ""}` }, label, h("b", {}, money2(cell.cost_per_pass)),
-    h("small", {}, few ? `from ${plural(cell.passes, "pass", "passes")}, ${money2(cell.cost_usd)} in all` : `${money2(cell.cost_usd)} over ${cell.passes} passes`));
-}
-
-// One row: the model, a bar whose length is the share of its counted designs that pass (first print, then the second
-// print after feedback), that share as a number, and what a passing design cost. The designs that didn't pass or
-// weren't graded are not drawn as bar: they are counted in the line under it, each count opening its designs.
-function chartRow({ name, model, cell, note, pooled = false, firstOnly = false }) {
-  const rest = cell.trials - cell.passes - cell.not_graded;
-  const scope = { task: "scored", model };
-  const share = (n) => pct(n / cell.trials);
-  const segments = [
-    { cls: "bar-pass", n: cell.passed_first, text: share(cell.passed_first), said: `${share(cell.passed_first)} passed on the first print (${cell.passed_first} of ${cell.trials})`,
-      line: `${cell.passed_first} on the first print`, patch: { cond: "first", verdict: "pass" }, passes: cell.passed_first, drawn: true },
-    { cls: "bar-pass2", n: cell.passed_after_feedback, text: `+${share(cell.passed_after_feedback)}`, said: `${share(cell.passed_after_feedback)} more passed on the second print, after feedback (${cell.passed_after_feedback} of ${cell.trials})`,
-      line: `${cell.passed_after_feedback} more after feedback`, patch: { cond: "after_feedback", verdict: "second-pass" }, passes: cell.passed_after_feedback, drawn: true },
-    { cls: "bar-ng", n: cell.not_graded, said: `${cell.not_graded} not graded, never counted as a pass`,
-      line: `${cell.not_graded} not graded`, patch: { cond: "after_feedback", verdict: "not-graded" }, passes: 0 },
-    { cls: "bar-rest", n: rest, said: `${rest} didn't pass: failed, declined or handed in no design`,
-      line: `${rest} didn't pass`, patch: { cond: "after_feedback", verdict: "didnt-pass" }, passes: 0 },
-  ].filter((segment) => segment.n > 0);
-  chartChecks.push({ name, model, trials: cell.trials, first: cell.passed_first, second: cell.passed_after_feedback, notGraded: cell.not_graded, rest, cost: cell.cost_usd, perPass: cell.cost_per_pass,
-    pieces: segments.map((segment) => ({ what: segment.line, n: segment.n, patch: { ...scope, ...segment.patch } })) });
-  const opens = (segment) => `Opens ${segment.n === 1 ? "it" : `those ${segment.n}`}.`;
-  const bar = h("span", { class: "sc-bar" }, segments.filter((segment) => segment.drawn).map((segment) => {
-    const said = `${name}: ${segment.said}. ${opens(segment)}`;
-    return cellLink(`chart, ${name}, ${segment.cls}`, { ...scope, ...segment.patch }, { trials: segment.n, passes: segment.passes },
-      { class: `sc-seg ${segment.cls}`, style: `width:${(100 * segment.n / cell.trials).toFixed(3)}%`, "aria-label": said, title: said },
-      segment.n / cell.trials >= SHOW_COUNT_FROM ? h("span", { class: "sc-n", "aria-hidden": "true" }, segment.text) : null);
-  }));
-  const total = cellLink(`chart, ${name}, after feedback`, { ...scope, cond: "after_feedback" }, { trials: cell.trials, passes: cell.passes },
-    { class: "sc-total", "aria-label": `${name}, ${firstOnly ? "first print, no second prints were run" : "reprint after feedback"}: ${pct(cell.rate)}, ${cell.passes} of ${cell.trials} pass. Open these ${cell.trials} designs.` },
-    [h("span", { class: "rate" }, pct(cell.rate)), h("span", { class: "frac" }, `${cell.passes} of ${cell.trials}`)]);
-  const title = stateLink({ model }, { class: "sc-name", "aria-label": `${name}: open ${pooled ? "these models'" : "this model's"} trials` }, name, { fromDefaults: true, toResults: true });
-  // The counts behind the percentages. Each opens its designs: the two that aren't bar have no other way in, and a
-  // thin piece of bar (one pass of 40) is too narrow to tap, so its count is the way in on a touch screen.
-  const counts = segments.map((segment) => cellLink(`chart count, ${name}, ${segment.cls}`, { ...scope, ...segment.patch }, { trials: segment.n, passes: segment.passes },
-    { class: `sc-count${segment.cls === "bar-ng" ? " sc-count-ng" : ""}`, "aria-label": `${name}: ${segment.said}${segment.drawn ? "" : `, of ${cell.trials} counted designs`}. ${opens(segment)}` }, segment.line));
-  const line = h("span", { class: "sc-line" }, counts.flatMap((item, at) => (at ? [h("span", { class: "sc-sep", "aria-hidden": "true" }, ", "), item] : [item])),
-    note ? h("span", { class: "sc-note" }, `; ${note}`) : null);
-  return h("li", { class: `sc-row${pooled ? " sc-row-pooled" : ""}` }, title, bar, total, line, chartCost(cell, firstOnly ? FIRST_ONLY_COST_LABEL : COST_LABEL));
-}
-
-function renderScorecardChart() {
-  const score = card.scorecard;
-  chartChecks.length = 0;
-  const row = (entry) => chartRow({ name: entry.short, model: entry.model, cell: entry.after_feedback, firstOnly: !entry.replayed });
-  // score.models comes sorted by pass rate after feedback, then lower cost; without second prints that is the first print's
-  const replayed = score.models.filter((entry) => entry.replayed).sort((a, b) => b.after_feedback.rate - a.after_feedback.rate);
-  const firstOnly = score.models.filter((entry) => !entry.replayed).sort((a, b) => b.first.rate - a.first.rate);
-  const pooledFirstOnly = firstOnly.filter((entry) => score.pooled.model_ids.includes(entry.model)).length;
-  const rows = [
-    replayed.map(row),
-    firstOnly.length ? h("li", { class: "sc-divider" }, "First print only: no second prints were run. For these models the percentage is the first-print pass rate and the cost is for first prints alone.") : null,
-    firstOnly.map(row),
-    chartRow({ name: `Headline, ${score.pooled.after_feedback.models} models`, model: FED, cell: pooledChartCell(score), pooled: true,
-      note: `the ${score.pooled.after_feedback.models} headline models whose failed first prints were sent back${pooledFirstOnly ? `; ${score.pooled.after_feedback.not_sent_back.join(" and ")}, first print only, is left out` : ""}` }),
-  ];
-  const key = (cls, label) => h("span", { class: "key" }, h("span", { class: "bar bar-key", "aria-hidden": "true" }, h("span", { class: cls })), label);
-  return h("section", { class: "sc-chart", "aria-labelledby": "sc-chart-h" },
-    h("div", { class: "sc-head" },
-      h("h3", { id: "sc-chart-h" }, "First print, then reprint after feedback"),
-      h("p", {}, "The length of each bar is the share of a model's counted designs, for the four scored parts, that pass. A first print that didn't pass was sent back once, with the simulated person saying how it came out, and its second print counts instead. Each piece of a bar, and each count under it, opens exactly the designs it counts."),
-      h("p", { class: "sc-order" }, "Sorted by the Reprint after feedback pass rate, highest first", firstOnly.length ? "; the models with no second prints follow, by first-print pass rate." : ".")),
-    h("p", { class: "bar-legend sc-legend" },
-      key("bar-pass", "pass on the first print"), key("bar-pass2", "pass on the second print, after feedback (+)"),
-      h("span", { class: "key" }, "Not graded is never a pass, so it is no part of a bar; it is counted under each one, with the designs that didn't pass.")),
-    h("div", { class: "sc-axis", "aria-hidden": "true" },
-      h("span", {}, "Model"),
-      h("span", { class: "sc-ticks" }, [0, 25, 50, 75, 100].map((tick) => h("span", { style: `left:${tick}%` }, `${tick}%`))),
-      h("span", {}, firstOnly.length ? "Pass rate" : "Pass after reprint"),
-      h("span", { class: "sc-axis-cost" }, COST_LABEL)),
-    h("p", { class: "sc-cost-note" }, `The dollar figure in each row is the ${COST_LABEL}.`),
-    h("ul", { class: "sc-rows" }, rows),
-    h("p", { class: "sc-foot" }, `${COST_LABEL}: what the API provider charged for every first print in the bar, plus each second print that is counted in it, divided by the number of designs that pass after feedback; where no second prints were run it is the first prints' cost over the first prints that pass. A value from fewer than ${FEW_PASSES} passes is shown muted, with the number of passes: one more or one fewer pass would move it a lot. A model with no passing design would have no value, not zero. Print time and filament aren't in it, and no final design was printed. The table's cost column is for the runs with test prints first, a different condition, so its figures differ.`));
-}
-
-// The chart's numbers against the trials, counted by the page's own filtering.
-function verifyChart(same) {
-  for (const drawn of chartChecks) {
-    const list = selectEntries({ ...DEFAULTS, cond: "after_feedback", task: "scored", model: drawn.model });
-    const passes = list.filter((item) => item.verdict === "pass");
-    const notGraded = list.filter((item) => item.verdict === "not graded").length;
-    const spend = list.reduce((total, item) => total + item.first.cost_usd + (item.via === "second" ? item.row.cost_usd : 0), 0);
-    same(`chart ${drawn.name} designs`, list.length, drawn.trials);
-    same(`chart ${drawn.name} passed on the first print`, passes.filter((item) => item.via === "first").length, drawn.first);
-    same(`chart ${drawn.name} passed on the second print`, passes.filter((item) => item.via === "second").length, drawn.second);
-    same(`chart ${drawn.name} not graded`, notGraded, drawn.notGraded);
-    same(`chart ${drawn.name} the rest`, list.length - passes.length - notGraded, drawn.rest);
-    same(`chart ${drawn.name} API cost in cents`, Math.round(spend * 100), Math.round(drawn.cost * 100));
-    same(`chart ${drawn.name} cost per passing design`, passes.length ? money2(spend / passes.length) : null, drawn.perPass === null || drawn.perPass === undefined ? null : money2(drawn.perPass));
-    // each piece of the bar opens a list of exactly as many designs as the piece counts, and the pieces make the bar
-    for (const piece of drawn.pieces) same(`chart ${drawn.name} link “${piece.what}” opens`, selectEntries({ ...DEFAULTS, ...piece.patch }).length, piece.n);
-    same(`chart ${drawn.name} pieces add up`, drawn.pieces.reduce((total, piece) => total + piece.n, 0), drawn.trials);
-  }
-  const headline = chartChecks.find((drawn) => drawn.model === FED);
-  const pooled = index.scorecard.pooled;
-  same("chart headline first-print passes", headline.first, pooled.after_feedback.first.passes);
-  same("chart headline passes after feedback", headline.first + headline.second, pooled.after_feedback.passes);
-  same("chart headline designs", headline.trials, pooled.after_feedback.trials);
 }
 
 // ---- small multiples: one panel per model, parts down, the three conditions across ----
@@ -736,7 +614,7 @@ function renderMultiples() {
           bar(cell, { split: cond === "after_feedback" }), h("span", { class: "frac" }, h("b", {}, String(cell.passes)), `/${cell.trials}`),
         ]));
       });
-      return h("tr", { class: harder ? "multi-harder" : "" }, h("th", { scope: "row" }, taskShort(task), harder ? h("small", {}, "not in the totals") : null), cells);
+      return h("tr", { class: harder ? "multi-harder" : "" }, h("th", { scope: "row" }, taskShort(task), harder ? h("small", {}, "in the test prints first total only") : null), cells);
     });
     host.append(h("article", { class: "multi" },
       h("h3", {}, modelLink(entry, "by-part panels")),
@@ -1319,7 +1197,6 @@ function verifyCounts() {
       if (block.excluded) same(`${entry.short} ${cond} excluded`, scopeEntries({ cond, task: "scored", model: entry.model }).filter((item) => !item.counted).length, block.excluded.count);
     }
   }
-  verifyChart(same);
   // After feedback: the entry points at the print whose verdict the scorecard counts.
   for (const item of lookup.entries.get("after_feedback")) same(`after feedback verdict of ${item.first.id}`, item.row.verdict, item.verdict);
   // Every link drawn on the page (headline tiles, reasons chart, scorecard cells, by-part bars) opens a list with
