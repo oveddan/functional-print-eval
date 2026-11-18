@@ -309,3 +309,15 @@ def test_the_loops_person_answers_only_from_coupon_b():
 
     assert nuts.reading("M5", -0.10) == ("won't go in", None)
     assert nuts.reading("M5", -0.10, with_round3=False) == ("holds", 0.0)
+
+
+def test_the_disk_hole_answer_uses_the_checks_holes():
+    # Codex on PR #56: the person's answer for a pair of disk-screw holes kept the old 16.6 to 17.11 mm range after
+    # R1 moved; it now reads R1's holes_r, both holes 16.96 mm out since 2026-11-17 (Dan's call)
+    from shapely.geometry import Point
+    from pbe.runner.coupon_loop import _disk_hole_line, disk_hole_centers
+    assert disk_hole_centers() == (33.92, 33.92)
+    def pair(apart):
+        return Point(0, 0).buffer(1.65), Point(apart, 0).buffer(1.65)
+    assert "both screws go through" in _disk_hole_line(*pair(33.9)).text
+    assert "won't go in" in _disk_hole_line(*pair(33.2)).text  # inside the old range, 0.4 mm short of the holes now
