@@ -268,15 +268,15 @@ The scorecard: every listed model's first print, its print after feedback, and t
 <!-- scorecard:end -->
 
 <!-- results:start (written by scripts/results_table.py; don't edit by hand) -->
-867 trials of 13 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 12 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
+870 trials of 13 models, from the saved runs in `results/runs/` (smoke tests left out). Each model ran 1 to 12 times per task and condition, so these are pilots: raw counts, not pass rates, and no ranking. Other is a trial with no submission or an infrastructure error. Cost is what OpenRouter charged.
 
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
 | `can_ask` | 525 | 180 | 287 | 40 | 10 | 8 | $47.07 |
 | `can_run_code` | 19 | 3 | 11 | 0 | 5 | 0 | $2.55 |
-| `can_test` | 313 | 153 | 130 | 23 | 3 | 4 | $43.13 |
-| **all** | **867** | 337 | 435 | 64 | 19 | 12 | $93.87 |
+| `can_test` | 316 | 153 | 133 | 23 | 3 | 4 | $44.78 |
+| **all** | **870** | 337 | 438 | 64 | 19 | 12 | $95.52 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
@@ -317,26 +317,26 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | `can_test` | anthropic/claude-sonnet-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $3.05 |
 | `can_test` | deepseek/deepseek-v4.1-flash | 5 | 1 | 4 | 0 | 0 | 0 | $0.34 |
 | `can_test` | google/gemini-3.8-flash | 5 | 0 | 2 | 1 | 0 | 2 | $0.96 |
-| `can_test` | google/gemini-4-argon | 5 | 0 | 3 | 1 | 0 | 1 | $7.05 |
+| `can_test` | google/gemini-4-argon | 8 | 0 | 6 | 1 | 0 | 1 | $8.70 |
 | `can_test` | openai/gpt-6.1-sol | 5 | 3 | 1 | 1 | 0 | 0 | $0.95 |
 
-Each check across the 61 graded designs (one verdict per design), on the records alone and then with the assumptions below (`python -m pbe.assumptions`). A check the records decide never changes.
+Each check across the 64 graded designs (one verdict per design), on the records alone and then with the assumptions below (`python -m pbe.assumptions`). A check the records decide never changes.
 
 | Check | Pass | Fail | Not graded | With assumptions: pass | fail | not graded |
 |---|---|---|---|---|---|---|
-| builds | 58 | 3 | 0 | 58 | 3 | 0 |
-| connected_bodies | 56 | 2 | 0 | 56 | 2 | 0 |
-| bed_fit | 58 | 0 | 0 | 58 | 0 | 0 |
-| bridges | 27 | 31 | 0 | 27 | 31 | 0 |
-| R1 | 32 | 3 | 26 | 53 | 3 | 5 |
-| R2 | 41 | 7 | 13 | 41 | 7 | 13 |
-| R3 | 43 | 9 | 9 | 43 | 9 | 9 |
-| R4 | 59 | 0 | 2 | 59 | 0 | 2 |
-| R5 | 44 | 7 | 10 | 44 | 7 | 10 |
-| R6 | 53 | 2 | 6 | 53 | 2 | 6 |
-| R7 | 56 | 2 | 3 | 56 | 2 | 3 |
+| builds | 61 | 3 | 0 | 61 | 3 | 0 |
+| connected_bodies | 59 | 2 | 0 | 59 | 2 | 0 |
+| bed_fit | 61 | 0 | 0 | 61 | 0 | 0 |
+| bridges | 28 | 33 | 0 | 28 | 33 | 0 |
+| R1 | 33 | 3 | 28 | 56 | 3 | 5 |
+| R2 | 43 | 7 | 14 | 43 | 7 | 14 |
+| R3 | 46 | 9 | 9 | 46 | 9 | 9 |
+| R4 | 62 | 0 | 2 | 62 | 0 | 2 |
+| R5 | 46 | 8 | 10 | 46 | 8 | 10 |
+| R6 | 56 | 2 | 6 | 56 | 2 | 6 |
+| R7 | 59 | 2 | 3 | 59 | 2 | 3 |
 
-Verdicts with the assumptions, of 61 graded designs: 18 pass, 41 fail, 2 not graded.
+Verdicts with the assumptions, of 64 graded designs: 18 pass, 44 fail, 2 not graded.
 
 ### `m5-spacer` (control, draft wording: exploratory)
 
@@ -705,8 +705,8 @@ These are treated as true without a print that shows them for that exact case. T
 |---|---|---|
 | The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (145 pass, 9 fail), so all 32 tripod passes |
 | One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (132 pass, 28 fail) |
-| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 115 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
-| Each hole's centre is at the middle of Estoa's two printed positions, 16.96 mm out. Source: the middle of 16.81 and 17.11 (Dan's call, 2026-11-17); which hole is which in a design isn't recorded. | estoa-light R1 | Graded apart: 21 pass, 0 fail of the estoa-light designs it decides |
+| A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 117 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
+| Each hole's centre is at the middle of Estoa's two printed positions, 16.96 mm out. Source: the middle of 16.81 and 17.11 (Dan's call, 2026-11-17); which hole is which in a design isn't recorded. | estoa-light R1 | Graded apart: 23 pass, 0 fail of the estoa-light designs it decides |
 | Each hole's centre is 16.96 mm out, as in R1's assumption. Source: the middle of 16.81 and 17.11, Estoa's printed positions (Dan's call, 2026-11-17); the board's 1.56 mm (Dan's reading, 2026-11-17) is in the args. | estoa-light R2 | Graded apart: 0 pass, 0 fail of the estoa-light designs it decides |
 <!-- assumptions:end -->
 

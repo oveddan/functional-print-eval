@@ -209,6 +209,10 @@ OTHER_GROUPS = {
     "pilot-estoa-carbon": Group("Estoa light box on Gemini 4 Carbon", "One trial on a model released after the lineup "
                                 "was fixed, and the first run told the printer has no supports; not comparable with "
                                 "the other Estoa trials.", PILOT, ("pilot-estoa-carbon",), "can_ask"),
+    "estoa-measured": Group("Estoa light box, with the parts measured", "Three Gemini 4 Argon trials with test prints first, "
+                            "where the person gives the measurements Dan took on 2026-11-17 (the LED disc's diameter and "
+                            "thickness, the perfboard's thickness, the ESP32's height) and the charger plug's head: a probe "
+                            "of whether knowing them helps, kept out of the counts.", PILOT, ("estoa-measured",), "can_test"),
     "pilot-test-first": Group("Test prints first: pilot", "The first 12 trials where the model could ask for test "
                               "prints (6 models, M3 knob and wheel), run before the full set and kept apart from it.",
                               PILOT, ("pilot-test-first",), "can_test"),
