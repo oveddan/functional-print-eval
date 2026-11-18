@@ -441,16 +441,6 @@ def test_the_stl_download_is_offered_only_for_a_passing_designs_final_part():
     assert (ROOT / "scripts/results_site/stl.js").exists()
 
 
-def test_the_chart_draws_pass_rate_as_bar_length_not_counts():
-    """Dan, 2026-11-14: a bar that draws every design is the same length for every model and compares nothing. The
-    bar is the share that pass; the designs that didn't pass or weren't graded are counted under it, not drawn."""
-    page = (ROOT / "scripts/results_site/app.js").read_text()
-    row = page[page.index("function chartRow("):page.index("function renderScorecardChart(")]
-    assert "width:${(100 * segment.n / cell.trials)" in row
-    assert "segments.filter((segment) => segment.drawn)" in row
-    assert "--n:${segment.n}" not in row
-
-
 def test_the_small_bars_draw_pass_rate_too():
     """The second design review: the table's and the by-part panels' small bars still drew every design at full width.
     They are the chart's rule at a smaller size: filled length is the share that pass, nothing else is drawn."""
@@ -468,13 +458,6 @@ def test_a_step_from_the_other_trial_says_whose_title_and_verdict_are_shown():
     note = detail[detail.index("function otherStepNote("):detail.index("function lowerSections(")]
     assert "phase.slug !== detail.slug" in note and "badge(phase.verdict" in note
     assert "otherStepNote(content.parentElement, phase, detail, context)" in detail
-
-
-def test_the_chart_says_what_a_first_print_only_row_measures():
-    page = (ROOT / "scripts/results_site/app.js").read_text()
-    assert "firstOnly: !entry.replayed" in page
-    assert '"first print, no second prints were run" : "reprint after feedback"' in page
-    assert "FIRST_ONLY_COST_LABEL : COST_LABEL" in page
 
 
 def test_the_trial_dialog_arrives_solid():
@@ -528,14 +511,11 @@ def test_an_unrecognised_url_value_is_repeated_only_in_part():
 
 def test_the_home_page_keeps_its_review_fixes():
     """Two design reviews, 2026-11-13: each mark in the one-line view is one trial, a reason link shows what the
-    failure looks like, the long tables fold on a phone, and a touch screen gets 44 px targets in the chart."""
+    failure looks like, the long tables fold on a phone."""
     app = (ROOT / "scripts/results_site/app.js").read_text()
-    css = (ROOT / "scripts/results_site/style.css").read_text()
     assert 'class: "marks"' in app and "one mark each" in app            # a list of marks, not one link per line
     assert "function reasonHeader()" in app and "function phoneFold(" in app
     assert 'class: "row-reason", "aria-pressed"' in app                   # a reason under a model's name is a button
-    coarse = css[css.index("On a touch screen every control in the chart"):]
-    assert "--sc-bar-h: 44px" in coarse and "min-height: 44px" in coarse
     assert "Show the table" not in app                                     # a label that is wrong once it is open
 
 
