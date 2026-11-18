@@ -376,7 +376,7 @@ function renderFinding() {
   const row = (entry) => {
     const cell = entry.test_first;
     return h("li", {}, cellLink(`headline ${entry.model}`, { cond: "test_first", task: "scored", model: entry.model }, { trials: cell.trials, passes: cell.passes },
-      { class: "hl-row", "aria-label": `${entry.short}: ${pct(cell.rate)} pass, ${cell.passes} of ${cell.trials}; per working part ${hours1(cell.est_print_s_per_pass)} printing, ${grams(cell.est_grams_per_pass)} filament, ${money2(cell.cost_per_pass)} API. Open these trials.` },
+      { class: "hl-row", "aria-label": `${entry.short}: ${pct(cell.rate)} pass, ${cell.passes} of ${cell.trials}; per working part ${hours1(cell.est_print_s_per_pass)} printing, ${grams(cell.est_grams_per_pass)} filament, ${money2(cell.cost_per_pass)} API cost. Open these trials.` },
       [h("span", { class: "hl-name" }, entry.short),
         h("span", { class: "hl-track", "aria-hidden": "true" }, h("span", { class: "hl-bar", style: `width:${100 * cell.rate}%` })),
         h("span", { class: "hl-rate" }, pct(cell.rate), h("small", {}, `${cell.passes} of ${cell.trials}`)),
@@ -386,7 +386,7 @@ function renderFinding() {
   };
   const heading = $("finding");
   add(clear(heading),
-    h("div", { class: "hl-head", "aria-hidden": "true" }, h("span", {}, "Model"), h("span", {}, "Pass rate"), h("span", { class: "hl-per" }, "Printing"), h("span", { class: "hl-per" }, "Filament"), h("span", { class: "hl-per" }, "API cost")),
+    h("div", { class: "hl-head", "aria-hidden": "true" }, h("span", { class: "hl-group" }, "Per passing design"), h("span", {}, "Model"), h("span", {}, "Pass rate"), h("span", { class: "hl-per" }, "Printing"), h("span", { class: "hl-per" }, "Filament"), h("span", { class: "hl-per" }, "Cost")),
     h("ul", { class: "hl-rows" }, models.map(row)));
   heading.removeAttribute("aria-busy");
   $("kicker").textContent = `${models.length} language models were asked, in a person's own words, for a part to 3D print, and could ask for test prints before their final design. The share of their designs that pass, and what each passing design took:`;
