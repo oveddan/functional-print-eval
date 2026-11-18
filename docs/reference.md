@@ -273,10 +273,10 @@ The scorecard: every listed model's first print, its print after feedback, and t
 | Condition | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|
 | `all_given` | 10 | 1 | 7 | 1 | 1 | 0 | $1.11 |
-| `can_ask` | 525 | 180 | 287 | 40 | 10 | 8 | $47.07 |
+| `can_ask` | 525 | 184 | 287 | 36 | 10 | 8 | $47.07 |
 | `can_run_code` | 19 | 3 | 11 | 0 | 5 | 0 | $2.55 |
-| `can_test` | 316 | 153 | 133 | 23 | 3 | 4 | $44.78 |
-| **all** | **870** | 337 | 438 | 64 | 19 | 12 | $95.52 |
+| `can_test` | 316 | 157 | 133 | 19 | 3 | 4 | $44.78 |
+| **all** | **870** | 345 | 438 | 56 | 19 | 12 | $95.52 |
 
 ### `bearing-wheel` (draft by Claude, not reviewed by Dan: exploratory)
 
@@ -305,19 +305,19 @@ The scorecard: every listed model's first print, its print after feedback, and t
 
 | Condition | Model | Trials | Pass | Fail | Not graded | Declined | Other | Cost |
 |---|---|---|---|---|---|---|---|---|
-| `can_ask` | anthropic/claude-haiku-5.5 | 5 | 0 | 4 | 1 | 0 | 0 | $0.16 |
+| `can_ask` | anthropic/claude-haiku-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $0.16 |
 | `can_ask` | anthropic/claude-opus-5.5 | 5 | 3 | 2 | 0 | 0 | 0 | $2.54 |
-| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 1 | 1 | 3 | 0 | 0 | $2.26 |
+| `can_ask` | anthropic/claude-sonnet-5.5 | 5 | 4 | 1 | 0 | 0 | 0 | $2.26 |
 | `can_ask` | deepseek/deepseek-v4-pro-0813 | 5 | 0 | 4 | 1 | 0 | 0 | $0.58 |
 | `can_ask` | google/gemini-4-argon | 5 | 0 | 5 | 0 | 0 | 0 | $4.33 |
 | `can_ask` | google/gemini-4-carbon | 1 | 0 | 0 | 0 | 0 | 1 | $1.50 |
 | `can_ask` | openai/gpt-6.1-sol | 5 | 1 | 3 | 0 | 0 | 1 | $0.87 |
 | `can_test` | anthropic/claude-haiku-5.5 | 5 | 0 | 5 | 0 | 0 | 0 | $0.23 |
-| `can_test` | anthropic/claude-opus-5.5 | 5 | 0 | 3 | 2 | 0 | 0 | $2.76 |
+| `can_test` | anthropic/claude-opus-5.5 | 5 | 2 | 3 | 0 | 0 | 0 | $2.76 |
 | `can_test` | anthropic/claude-sonnet-5.5 | 5 | 1 | 4 | 0 | 0 | 0 | $3.05 |
 | `can_test` | deepseek/deepseek-v4.1-flash | 5 | 1 | 4 | 0 | 0 | 0 | $0.34 |
-| `can_test` | google/gemini-3.8-flash | 5 | 0 | 2 | 1 | 0 | 2 | $0.96 |
-| `can_test` | google/gemini-4-argon | 8 | 0 | 6 | 1 | 0 | 1 | $8.70 |
+| `can_test` | google/gemini-3.8-flash | 5 | 1 | 2 | 0 | 0 | 2 | $0.96 |
+| `can_test` | google/gemini-4-argon | 8 | 1 | 6 | 0 | 0 | 1 | $8.70 |
 | `can_test` | openai/gpt-6.1-sol | 5 | 3 | 1 | 1 | 0 | 0 | $0.95 |
 
 Each check across the 64 graded designs (one verdict per design), on the records alone and then with the assumptions below (`python -m pbe.assumptions`). A check the records decide never changes.
@@ -328,7 +328,7 @@ Each check across the 64 graded designs (one verdict per design), on the records
 | connected_bodies | 59 | 2 | 0 | 59 | 2 | 0 |
 | bed_fit | 61 | 0 | 0 | 61 | 0 | 0 |
 | bridges | 28 | 33 | 0 | 28 | 33 | 0 |
-| R1 | 33 | 3 | 28 | 56 | 3 | 5 |
+| R1 | 56 | 3 | 5 | 56 | 3 | 5 |
 | R2 | 43 | 7 | 14 | 43 | 7 | 14 |
 | R3 | 46 | 9 | 9 | 46 | 9 | 9 |
 | R4 | 62 | 0 | 2 | 62 | 0 | 2 |
@@ -706,8 +706,6 @@ These are treated as true without a print that shows them for that exact case. T
 | The webcam bolt is 10 mm long under its head. Nobody recorded it. | tripod R5 | Every tripod R5 verdict (145 pass, 9 fail), so all 32 tripod passes |
 | One 38 mm plate fit the clamp; 37 to 39 mm passes on an estimate of the jaws' travel. | tripod R2 | Every graded tripod R2 verdict (132 pass, 28 fail) |
 | A roof with the bolt's hole cut through it tangles at the models' shapes and sizes, as it did on the Arca plate and coupon A's H cell (a 20 mm square with a 6 mm hole, printed once). | `bridges` | 117 trials that fail on `bridges` alone, on a roof with a hole cut through it (Dan's call: they fail) |
-| Each hole's centre is at the middle of Estoa's two printed positions, 16.96 mm out. Source: the middle of 16.81 and 17.11 (Dan's call, 2026-11-17); which hole is which in a design isn't recorded. | estoa-light R1 | Graded apart: 23 pass, 0 fail of the estoa-light designs it decides |
-| Each hole's centre is 16.96 mm out, as in R1's assumption. Source: the middle of 16.81 and 17.11, Estoa's printed positions (Dan's call, 2026-11-17); the board's 1.56 mm (Dan's reading, 2026-11-17) is in the args. | estoa-light R2 | Graded apart: 0 pass, 0 fail of the estoa-light designs it decides |
 <!-- assumptions:end -->
 
 ### Whose calls these are

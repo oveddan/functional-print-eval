@@ -180,7 +180,9 @@ def test_reference_passes_every_check(tmp_path):
     pytest.param(moved_item("esp32", x_axis=(0, 0, -1), z_axis=(0, -1, 0)), {"R3"}, set(), id="port-facing-the-wall"),
     pytest.param(boss_over_the_esp32(10), {"R5"}, set(), id="front-too-close-to-the-esp32"),
     pytest.param(boss_over_the_esp32(6), set(), {"R5"}, id="front-close-enough-to-touch-the-esp32s-top"),
-    pytest.param(disk_holes_apart(33.0), set(), {"R1"}, id="disk-holes-33-between-the-readings"),
+    # 33.0 apart sat between Dan's readings and was not graded while R1 took a range; since 2026-11-17 both holes
+    # are 16.96 mm out (Dan's call), so a box hole 16.5 mm out misses
+    pytest.param(disk_holes_apart(33.0), {"R1"}, {"R2"}, id="disk-holes-33-apart-miss-the-middle"),
     pytest.param(with_opening_test_print(socket_set_back(4, usb_w=11.5), thickness=1.5), {"R3"}, set(), id="opening-test-print-thinner-than-the-wall"),
     pytest.param(with_opening_test_print(body_code_on(socket_set_back(4, usb_w=11.5), "stadium(p.usb_w, p.usb_h)", "stadium(11.5, p.usb_h)")),
                  {"R3"}, set(), id="opening-test-print-but-the-width-is-hard-coded"),
@@ -229,10 +231,10 @@ def inserts_behind_the_disk(template):
     return checked(sub)
 
 
-@pytest.mark.parametrize("template, want", [(False, None), (True, True)], ids=["no-template", "checked-on-a-template"])
-def test_inserts_behind_the_disk_need_a_template(tmp_path, template, want):
-    # an insert holds a screw at one spot, and Dan's readings put each hole within half a millimetre: no record
-    # says whether the screw meets the disk's hole, unless a template checks the pattern first
+@pytest.mark.parametrize("template, want", [(False, True), (True, True)], ids=["no-template", "checked-on-a-template"])
+def test_inserts_behind_the_disk_meet_the_holes_at_the_middle(tmp_path, template, want):
+    # an insert holds a screw at one spot. While R1 took a range of hole positions this was not graded without a
+    # template; since 2026-11-17 both holes are 16.96 mm out (Dan's call), and these inserts meet them
     findings = {f.check: f.ok for f in grade(inserts_behind_the_disk(template), tmp_path)}
     assert findings["R1"] is want
     assert findings["R2"] is True and findings["R4"] is True
@@ -338,18 +340,13 @@ def test_a_big_opening_in_one_wall_still_encloses_the_board(tmp_path):
     assert findings["R5"].ok is True, findings["R5"].detail
 
 
-def test_an_assumption_grades_only_what_the_records_leave_undecided(tmp_path):
-    from pbe.assumptions import with_assumption
-    from pbe.graders.requirements import _run_grader
-    from pbe.parts.build import build_parts
-    sub = inserts_behind_the_disk(template=False)  # inserts hold the screws at one spot: R1 not graded on the records
-    findings = {f.check: f.ok for f in grade(sub, tmp_path)}
-    assert findings["R1"] is None
-    built = build_parts(sub, tmp_path / "assumed")
-    r1 = next(requirement for requirement in TASK.requirements if requirement.id == "R1")
-    ok, detail = _run_grader(with_assumption(r1), sub, built)  # the holes at the middle of Dan's readings
-    assert ok is True, detail
-    assert all(requirement.assume.source and requirement.assume.text for requirement in TASK.requirements if requirement.assume)
+def test_the_holes_have_no_range_and_no_assumption_left():
+    # Dan's call (2026-11-17): each disk hole at the middle of Estoa's printed positions, 16.96 mm, in R1 and R2
+    # themselves, where it had been an assumption graded apart from a 16.81 to 17.11 mm range
+    for requirement in TASK.requirements:
+        if requirement.id in ("R1", "R2"):
+            assert requirement.args["holes_r"] == [16.96, 16.96]
+            assert requirement.assume is None
 
 
 def test_wall_screws_in_the_keyholes_are_not_proud(tmp_path):
