@@ -402,19 +402,22 @@ def test_the_page_has_an_introduction_and_share_metadata():
     assert "coupon" not in page.lower()
 
 
-def test_a_shared_link_states_the_finding_from_the_scorecard(index):
-    pooled = index["scorecard"]["pooled"]
-    words = results_site.share_text(pooled)
-    first = round(100 * pooled["first"]["passes"] / pooled["first"]["trials"])
-    after = round(100 * pooled["after_feedback"]["passes"] / pooled["after_feedback"]["trials"])
-    before = round(100 * pooled["after_feedback"]["first"]["passes"] / pooled["after_feedback"]["first"]["trials"])
-    assert f"{first}%" in words["share_title"]
-    assert f"{first}%" in words["share_description"]
-    assert f"{before}% rises to {after}%" in words["share_description"]  # like for like: the same models, before and after
-    page = results_site.with_share_text((ROOT / "scripts/results_site/index.html").read_text(), pooled)
+def test_a_shared_link_states_the_headline_from_the_scorecard(index):
+    """A shared link says what the headline chart says: each model's pass rate with test prints first, best first
+    (Dan, 2026-11-18: the old text quoted first-print and feedback rates the page no longer leads with)."""
+    score = index["scorecard"]
+    words = results_site.share_text(score)
+    assert words["share_title"] == results_site.SHARE_TITLE
+    by_id = {entry["model"]: entry for entry in score["models"]}
+    places = []
+    for model in score["test_first_order"]:
+        entry = by_id[model]
+        said = f"{entry['short']} {round(100 * entry['test_first']['passes'] / entry['test_first']['trials'])}%"
+        assert said in words["share_description"], said
+        places.append(words["share_description"].index(said))
+    assert places == sorted(places)  # best first, as the chart orders them
+    page = results_site.with_share_text((ROOT / "scripts/results_site/index.html").read_text(), score)
     assert "{{" not in page and words["share_title"] in page
-
-
 
 def test_after_feedback_counts_only_models_whose_failed_prints_were_sent_back(index, listed):
     """The site once pooled every headline model into "after one round of feedback", so a model whose first prints

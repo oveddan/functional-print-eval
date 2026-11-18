@@ -1814,21 +1814,24 @@ def index_of(entries: list[Entry], listed: list, sliced: dict) -> dict:
     }
 
 
-def share_text(pooled: dict) -> dict:
-    """The title and description a shared link shows, with the headline rates from the saved results."""
-    first, after = pooled["first"], pooled["after_feedback"]
+SHARE_TITLE = "Funk3D-Bench: how well do LLMs design 3D prints that fit real hardware?"
+
+
+def share_text(score: dict) -> dict:
+    """The title and description a shared link shows: the page's title, and each model's pass rate with test prints
+    first, best first, as the headline chart shows them."""
+    by_id = {entry["model"]: entry for entry in score["models"]}
+    ranked = [by_id[model] for model in score["test_first_order"]]
     percent = lambda cell: f"{round(100 * cell['passes'] / cell['trials'])}%"  # noqa: E731
-    # the after-feedback rate is the models whose failed prints were sent back, beside those same models' first prints
-    feedback = (f" For the {after['models']} whose failed prints were sent back once, {percent(after['first'])} rises to "
-                f"{percent(after)}." if after["trials"] else "")
-    return {"share_title": f"LLM-designed 3D prints pass {percent(first)} of the time on the first try",
-            "share_description": f"{pooled['models']} language models were asked, in a person's own words, for parts to 3D print. "
-                                 f"{percent(first)} of their designs pass on the first print.{feedback} Graded by code against "
-                                 "real test prints; every trial is here, with what failed and why."}
+    rates = ", ".join(f"{entry['short']} {percent(entry['test_first'])}" for entry in ranked)
+    return {"share_title": SHARE_TITLE,
+            "share_description": f"{len(ranked)} language models were asked, in a person's own words, for parts to 3D print, "
+                                 f"and could ask for test prints before their final design. The share of designs that pass: "
+                                 f"{rates}. Graded by code against real test prints; every trial is here, with what failed and why."}
 
 
-def with_share_text(page: str, pooled: dict) -> str:
-    for key, text in share_text(pooled).items():
+def with_share_text(page: str, score: dict) -> str:
+    for key, text in share_text(score).items():
         page = page.replace("{{" + key + "}}", text.replace("&", "&amp;").replace('"', "&quot;"))
     return page
 
@@ -1880,7 +1883,7 @@ def build(out: Path = OUT, details: bool = True) -> dict:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(path, target)
     page = out / "index.html"
-    page.write_text(with_share_text(page.read_text(), index["scorecard"]["pooled"]))
+    page.write_text(with_share_text(page.read_text(), index["scorecard"]))
     return {"entries": len(entries), "sizes": sizes, "redactions": dict(hits), "index": index}
 
 
