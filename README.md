@@ -1,4 +1,4 @@
-# Funk3D-Bench: can LLMs design functional 3D prints?
+# Funk3D-Bench: how well do LLMs design 3D prints that fit real hardware?
 
 Made by [Dan Oved](https://danoved.xyz).
 
