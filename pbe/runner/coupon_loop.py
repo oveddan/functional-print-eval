@@ -214,7 +214,6 @@ def roof_lines(mesh) -> list[ReportLine]:
 
 
 # --- Estoa's test pieces, answered from the same records the checks use (tasks/estoa-light/requirements.yaml) ---
-DISK_HOLE_CENTERS = (33.2, 34.22)  # mm apart: Dan's calipers, 2 x 16.6 to 2 x 17.11 (30.2 between the holes' edges + 3.3)
 DISK_SCREW_PLAY = 0.15  # mm a side: a 3.0 mm screw in the disk's 3.3 mm holes
 USB_SEATED = (14.0, 8.5)  # the opening a plug seated through
 USB_STOPPED_W = 11.5  # the opening width that stopped the plug's boot
@@ -277,10 +276,22 @@ def _insert_line(hole, plastic) -> ReportLine:
     return ReportLine(f"the {width:.1f} mm insert hole: {CANT_TELL}", "no record")
 
 
+@cache
+def disk_hole_centers() -> tuple[float, float]:
+    """How far apart the disk's two hole centers are, the least and the most, from R1's `holes_r`
+    (tasks/estoa-light/requirements.yaml), so the person's answer and the check use the same holes. Since
+    2026-11-17 both holes are 16.96 mm out (Dan's call), so 33.92 apart; a copy of the older 16.6 to 17.11 range
+    sat here until then (Codex on PR #56)."""
+    from pbe.runner import tasks
+    near, far = _requirement_args(tasks.load("estoa-light"), "enclosure.board_holes")["holes_r"]
+    return 2 * near, 2 * far
+
+
 def _disk_hole_line(first, second) -> ReportLine:
-    """Against Dan's caliper readings of the disk's holes, with the screws' play in them."""
+    """Against the disk's holes as the checks place them, with the screws' play in them."""
     apart = first.centroid.distance(second.centroid)
-    low, high = DISK_HOLE_CENTERS[0] - DISK_SCREW_PLAY * 2, DISK_HOLE_CENTERS[1] + DISK_SCREW_PLAY * 2
+    centers = disk_hole_centers()
+    low, high = centers[0] - DISK_SCREW_PLAY * 2, centers[1] + DISK_SCREW_PLAY * 2
     if low <= apart <= high:
         return ReportLine(f"holes {apart:.1f} mm apart: I held it against the disk and both screws go through its holes.", "Dan's calipers")
     off = low - apart if apart < low else apart - high
@@ -310,7 +321,7 @@ def estoa_piece_lines(mesh) -> list[ReportLine]:
             small.append(hole)
     pairs = [(a, b) for i, a in enumerate(small) for b in small[i + 1:] if 25.0 <= a.centroid.distance(b.centroid) <= 45.0]
     if pairs:
-        lines.append(_disk_hole_line(*min(pairs, key=lambda pair: abs(pair[0].centroid.distance(pair[1].centroid) - 33.7))))
+        lines.append(_disk_hole_line(*min(pairs, key=lambda pair: abs(pair[0].centroid.distance(pair[1].centroid) - sum(disk_hole_centers()) / 2))))
     return lines
 
 
