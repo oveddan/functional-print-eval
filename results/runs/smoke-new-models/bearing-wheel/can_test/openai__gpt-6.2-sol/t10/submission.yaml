@@ -1,0 +1,290 @@
+task: bearing-wheel
+note: Flat-tread, 50 × 16 mm prototype for a light, bottom-running closet door with
+  a compatible flat track, a two-ear axle bracket, and intact door retainers. The
+  22.10 mm bearing seat is based on the successful snug-fit coupon (reported as 22.09
+  mm). The track profile and bracket dimensions were not confirmed. Do not use this
+  print for a top-hung door, on a track that requires a groove or flange, or where
+  the original axle provides an adjustment this bolt cannot preserve.
+questions:
+- text: What are the original tread profile and exact roller and track dimensions?
+  answer: null
+- text: What are the bracket style, clear gap, axle-hole diameter, ear thicknesses,
+    and original axle adjustment?
+  answer: null
+- text: What are the existing bolt's diameter, length under the head, and smooth-shank
+    length?
+  answer: Approximately 8 mm across the shank; lengths unconfirmed.
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original OD, adopted for prototype.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original width, adopted for prototype.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  seat_allowance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: CAD diameter addition selected from snug coupon.
+  web_opening:
+    value: 19.8
+    unit: mm
+    kind: design
+    source: design
+    note: Confirm upper shoulder bears on outer race rim only.
+  entry_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tread_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  sleeve_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: Must contact the inner race only.
+  sleeve_clearance:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance added to bearing bore.
+  axle_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  axle_length:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Candidate only. Verify measured grip and thread position before installation.
+  axle_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_thickness:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  locknut_height:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bracket_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  bracket_combined_ear_thickness:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  bracket_hole_d:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od/2\n    H = p.wheel_width\n    b = p.bearing_width\n\
+    \    r = (p.bearing_od+p.seat_allowance)/2\n    a = p.web_opening/2\n    e = p.entry_chamfer\n\
+    \    t = p.tread_chamfer\n    z_taper_end = b + r-a\n    assert z_taper_end <\
+    \ H-b and 0 < e < b and 0 < a < r < R-t\n    section = [(r+e,0),(R-t,0),(R,t),(R,H-t),(R-t,H),\n\
+    \               (r+e,H),(r,H-e),(r,H-b),(a,H-b),\n               (a,z_taper_end),(r,b),(r,e)]\n\
+    \    return cq.Workplane('XZ').polyline(section).close().revolve(360,(0,0),(0,1))"
+  print_orientation: Axis vertical; face with the tapered internal shoulder at z=0
+    on the bed. The taper grows inward at 45 degrees, so no internal supports are
+    needed.
+  use_orientation: Axle horizontal, along the original axle line. The flat OD rolls
+    on a compatible flat track. Bearings enter from opposite faces.
+- id: race-sleeve
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.wheel_width - 2*p.bearing_width\n    assert h >\
+    \ 0\n    return cq.Workplane('XY').circle(p.sleeve_od/2).circle((p.bearing_bore+p.sleeve_clearance)/2).extrude(h)"
+  print_orientation: Flat annular face on bed. Print three identical copies; keep
+    both faces flat.
+  use_orientation: One sleeve goes between the inner races and one outside each bearing.
+    All three are coaxial with the axle and must not touch any shield or outer race.
+hardware:
+- id: bearings
+  ref: 608ZZ
+  qty: 2
+- id: axle
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: washers
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints: []
+criteria:
+- id: bearing-fit
+  part: wheel
+  feature: opposed Ø22.10 bearing pockets
+  relation: contains
+  hardware: bearings
+  clearance_mm: 0.1
+  params:
+  - bearing_od
+  - seat_allowance
+  - bearing_width
+  check:
+    method: coupon
+    ref: fit-gauge
+    description: The nominal 22.10 mm coupon fit snugly. Confirm both final pockets
+      accept a bearing squarely by hand and neither bearing rocks.
+- id: isolated-inner-races
+  part: race-sleeve
+  feature: three 11 mm OD sleeve faces
+  relation: seats
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - sleeve_od
+  - bearing_bore
+  - wheel_width
+  - bearing_width
+  check:
+    method: measure
+    ref: null
+    description: Check that sleeve ends bear only on the inner races and the installed
+      wheel rolls freely after the inner stack is snug.
+- id: bracket-fit
+  part: wheel
+  feature: tread, faces, and 20 mm nominal assembled sleeve-to-sleeve span
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_width
+  - bearing_width
+  - axle_d
+  - bracket_gap
+  check:
+    method: measure
+    ref: null
+    description: Verify the track matches a flat tread, both axle holes accept the
+      bolt, and the sleeves reach the ears without spreading or bending them. Verify
+      tread and faces clear stationary parts through a full turn.
+manual:
+- n: '1'
+  text: Secure the door before removing the old roller. Compare the old roller and
+    track to this design before printing. Use it only for a light bottom-running door
+    with a flat running surface, a sound two-ear bracket and intact guides/anti-lift
+    retainers. If the original is grooved, flanged, top-hung, or has an axle adjustment
+    that this bolt cannot preserve, use a matching replacement roller instead.
+  parts:
+  - wheel
+  hardware: []
+  tool: Straightedge or calipers
+- n: '2'
+  text: 'Print one wheel and three race sleeves in PLA, at 0.2 mm layers, with no
+    supports. Use at least five walls and solid infill. Remove any brim or first-layer
+    lip that interferes with the bearing entrances or sleeve bores. The sleeves should
+    slide over the bolt without forcing. Dry-fit a sleeve against each face of a bearing:
+    the sleeve must touch only the inner race, and the outer ring must turn freely.'
+  parts:
+  - wheel
+  - race-sleeve
+  hardware:
+  - bearings
+  - axle
+  tool: null
+- n: '3'
+  text: Press one bearing squarely into the flat-shoulder (print-top) side, using
+    thumb pressure on its outer rim. Place one sleeve in the center, then press in
+    the second bearing from the tapered side, again on the outer rim. Aim for both
+    bearing faces approximately flush. Do not hammer them in or press through the
+    inner race; stop if a pocket cracks, the bearing rocks, or a shoulder rubs the
+    shield.
+  parts:
+  - wheel
+  - race-sleeve
+  hardware:
+  - bearings
+  tool: null
+- n: '4'
+  text: 'Dry-fit in this order: bolt head, washer, first bracket ear, outer sleeve,
+    wheel assembly with its center sleeve, outer sleeve, second ear, washer, locknut.
+    The nominal span across the outer sleeve ends is 20 mm. Do not pull widely spaced
+    ears inward or force the wheel into a narrow bracket. The listed 40 mm bolt is
+    a candidate, not a confirmed fit: before tightening, make sure the nut can reach
+    the washer without bottoming on the unthreaded shank, and that at least two complete
+    threads extend past the locknut after assembly. Reuse your bolt only if it meets
+    these checks and clears surrounding parts.'
+  parts:
+  - wheel
+  - race-sleeve
+  hardware:
+  - axle
+  - bearings
+  - washers
+  - locknut
+  tool: Hex key and wrench
+- n: '5'
+  text: 'Snug the bolt to immobilize the inner-race stack without crushing the PLA
+    sleeves. With the door still supported, spin and wiggle the wheel: it must turn
+    freely without scraping or noticeable side play, and the axle must not move in
+    the bracket. If tightening makes it bind, correct the fit; do not run with a loose
+    axle. Refit the door with its retainers and slide it slowly by hand through its
+    travel. Stop using the print if it deforms, cracks, loosens, rubs or starts climbing
+    the track. Recheck after the first few cycles and periodically; PLA can creep
+    and wear.'
+  parts:
+  - wheel
+  - race-sleeve
+  hardware:
+  - axle
+  - locknut
+  tool: Hex key and wrench

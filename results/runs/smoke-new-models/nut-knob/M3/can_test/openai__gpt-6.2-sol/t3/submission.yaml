@@ -1,0 +1,219 @@
+task: nut-knob/M3
+note: One-piece, 20 mm six-lobe thumb nut. Three shallow ribs retain the recessed
+  M3 nut when inverted; the solid shoulder is the load-bearing stop. The fit strip
+  did not yield a confirmed result, so the middle rib setting is the nominal starting
+  point, not a verified fit. Check with the actual nut before use.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_major_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bore_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance added to nominal M3 major diameter.
+  grip_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lobe_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  core_r:
+    value: 8.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  height:
+    value: 7.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  recess:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Nut top below knob rim when the nut is fully seated.
+  lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hex_extra:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats clearance of the hex before adding the ribs.
+  lead_extra:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_width:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_undersize:
+    value: 0.18
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral undersize of the circle tangent to the three rib tips; 5.32 mm
+      nominal. The alternate coupon settings were 0.04 and 0.32 mm.
+parts:
+- id: thumb-knob
+  role: final
+  material: Black high-speed PLA
+  code: "import math\n\ndef build(p):\n    b = cq.Workplane('XY').circle(p.core_r).extrude(p.height)\n\
+    \    for i in range(6):\n        ang = i*math.pi/3\n        r = p.grip_d/2-p.lobe_r\n\
+    \        x,y = r*math.cos(ang),r*math.sin(ang)\n        b = b.union(cq.Workplane('XY').center(x,y).circle(p.lobe_r).extrude(p.height))\n\
+    \n    floor = p.height-p.nut_h-p.recess\n    a = (p.nut_af+p.hex_extra)/2\n  \
+    \  def profile(z, ap, rib):\n        pts=[]\n        s=ap/math.sqrt(3)\n     \
+    \   for i in range(6):\n            t=i*math.pi/3\n            c,d=math.cos(t),math.sin(t)\n\
+    \            local=[(ap,-s)]\n            if i%2==0:\n                local +=\
+    \ [(ap,-p.rib_width/2),(ap-rib,0),(ap,p.rib_width/2)]\n            for u,v in\
+    \ local:\n                pts.append((u*c-v*d,u*d+v*c))\n        return cq.Workplane('XY').workplane(offset=z).polyline(pts).close().val()\n\
+    \    rib=(p.hex_extra+p.rib_undersize)/2\n    pocket=cq.Solid.makeLoft([\n   \
+    \     profile(floor,a,rib),\n        profile(p.height-p.lead_h,a,rib),\n     \
+    \   profile(p.height+0.02,a+p.lead_extra/2,0.02)\n    ], True)\n    radius=(p.bolt_major_d+p.bore_extra)/2\n\
+    \    bore=cq.Solid.makeCylinder(radius,p.height+0.2,cq.Vector(0,0,-0.1))\n   \
+    \ return b.cut(pocket).cut(bore)"
+  print_orientation: Place the full flat bearing face at z = 0 on the bed. Hex pocket
+    faces straight up; no supports.
+  use_orientation: The flat face bears against the work. The M3 bolt enters the flat
+    face, engages the nut, and can extend out of the recessed hex side.
+hardware:
+- id: hex-nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: press-retention
+  part: thumb-knob
+  feature: Lead-in and three ribs in the hex pocket
+  relation: engages
+  hardware: hex-nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - hex_extra
+  - rib_undersize
+  - rib_width
+  - lead_h
+  check:
+    method: measure
+    ref: null
+    description: Press the nut in squarely by hand. With no bolt installed, invert
+      over a tray and gently shake; the nut must stay seated.
+- id: recess
+  part: thumb-knob
+  feature: Recessed hex pocket
+  relation: contains
+  hardware: hex-nut
+  clearance_mm: 0.8
+  params:
+  - height
+  - nut_h
+  - recess
+  check:
+    method: measure
+    ref: null
+    description: Verify the nut is flat on the shoulder and its top is below the rim.
+- id: nut-stop
+  part: thumb-knob
+  feature: Shoulder around the through-bore
+  relation: supports
+  hardware: hex-nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - height
+  - nut_h
+  - recess
+  - bolt_major_d
+  - bore_extra
+  check:
+    method: measure
+    ref: null
+    description: The nut bears on the 4 mm thick floor; it cannot pass through the
+      3.5 mm bore.
+- id: bolt-pass
+  part: thumb-knob
+  feature: Coaxial full-length passage through bore and nut
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_major_d
+  - bore_extra
+  check:
+    method: measure
+    ref: null
+    description: Before assembly, slide the M3 bolt through the empty knob. After
+      seating the nut, thread the bolt by hand from the flat side and check that the
+      tip can emerge past the nut.
+manual:
+- n: '1'
+  text: Print the knob flat-side down in PLA at 0.2 mm layers, with no supports. Let
+    it cool. Make sure the through-hole and pocket have no loose strings.
+  parts:
+  - thumb-knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: With the pocket facing up, align the nut flats with the pocket and press the
+    nut straight down with your thumb until it seats below the rim. Do not hammer
+    it or use the bolt to force it in.
+  parts:
+  - thumb-knob
+  hardware:
+  - hex-nut
+  tool: null
+- n: '3'
+  text: Invert the knob over a tray and gently shake it. If the nut drops out, reprint
+    with rib_undersize = 0.32 mm. If the nut cannot be seated with firm thumb pressure,
+    reprint with rib_undersize = 0.04 mm. Retest the fit; do not use glue.
+  parts:
+  - thumb-knob
+  hardware:
+  - hex-nut
+  tool: null
+- n: '4'
+  text: Put the flat side toward the work and start the M3 bolt through that side
+    by hand. Check that the bolt threads smoothly through the nut and that a sufficiently
+    long bolt can emerge from the pocket side. Tighten by hand only.
+  parts:
+  - thumb-knob
+  hardware:
+  - hex-nut
+  tool: null

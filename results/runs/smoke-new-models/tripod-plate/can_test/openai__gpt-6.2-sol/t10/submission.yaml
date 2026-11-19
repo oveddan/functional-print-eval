@@ -1,0 +1,261 @@
+task: tripod-plate
+note: 'Prototype quick-release plate for the reported 38 mm knob clamp. Print the
+  plate, not the screw: reuse the metal 1/4-20 webcam bolt if it passes the checks
+  below. The jaw gauge printed cleanly, but jaw fit and camera socket depth were not
+  confirmed. This is a fit-check prototype, not a load-rated substitute for the matching
+  metal plate.'
+questions: []
+params:
+  clamp_nominal_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported width of the plate the clamp takes; measurement datum unverified.
+  clamp_bevel_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: Assumed angle from horizontal; not confirmed as Arca or any other standard.
+  clamp_bevel_height:
+    value: 4
+    unit: mm
+    kind: world
+    source: guessed
+    note: ''
+  clamp_usable_length:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  camera_socket_usable_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Use the camera maker's screw protrusion specification if available; the
+      bottom of a blind hole alone does not prove usable thread depth.
+  bolt_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 major diameter; camera thread reported as 1/4-20.
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_head_width:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate; check maximum width and seating face.
+  bolt_head_height:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_underhead_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  edge_allowance:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Per side relative to nominal width.
+  plate_length:
+    value: 36
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  gauge_length:
+    value: 22
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_height:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip_thickness:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Head seat to camera face. Approximate nominal screw protrusion is 4.4 mm;
+      check actual.
+  shaft_diametral_allowance:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_diametral_allowance:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Room for the head and its driver, if accessible. Not a wrench pocket.
+parts:
+- id: qr-plate
+  role: final
+  material: Black high-speed PLA
+  code: "def build(p):\n    from math import radians, tan\n    h = p.plate_height\n\
+    \    b = p.clamp_bevel_height\n    w = p.clamp_nominal_width / 2 - p.edge_allowance\n\
+    \    a = w - b / tan(radians(p.clamp_bevel_angle))\n    body = cq.Workplane('XZ').polyline([(-a,0),(a,0),(a,h-b),(w,h),(-w,h),(-a,h-b)]).close().extrude(p.plate_length/2,both=True)\n\
+    \    shaft = cq.Workplane('XY').circle((p.bolt_major_d + p.shaft_diametral_allowance)/2).extrude(h)\n\
+    \    pocket = cq.Workplane('XY',origin=(0,0,p.grip_thickness)).circle((p.bolt_head_width\
+    \ + p.head_diametral_allowance)/2).extrude(h-p.grip_thickness)\n    return body.cut(shaft).cut(pocket)"
+  print_orientation: Camera contact face at z=0 on the bed. Wide clamp sole and open
+    screw-head pocket face up. No supports.
+  use_orientation: Flip after printing. Narrow flat face touches the camera; wide
+    recessed face sits in the tripod clamp. Angled rails run along Y, parallel to
+    the jaws.
+- id: jaw-gauge
+  role: coupon
+  material: Black high-speed PLA
+  code: "def build(p):\n    from math import radians, tan\n    h = p.plate_height\n\
+    \    b = p.clamp_bevel_height\n    w = p.clamp_nominal_width / 2 - p.edge_allowance\n\
+    \    a = w - b / tan(radians(p.clamp_bevel_angle))\n    return cq.Workplane('XZ').polyline([(-a,0),(a,0),(a,h-b),(w,h),(-w,h),(-a,h-b)]).close().extrude(p.gauge_length/2,both=True)"
+  print_orientation: Narrow flat face on the bed; wide face up. No supports.
+  use_orientation: Flip wide side down and try in empty clamp only. Never attach a
+    camera to this gauge.
+hardware:
+- id: camera-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-mount
+  fastener: camera-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: qr-plate
+    feature: Flat annular floor of underside counterbore
+    role: head_seat
+  - part: qr-plate
+    feature: Centered 6.9 mm through-hole
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 socket; engagement and depth must be verified before assembly
+criteria:
+- id: jaw-fit
+  part: qr-plate
+  feature: Two bevels and wide support sole
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_nominal_width
+  - clamp_bevel_angle
+  - clamp_bevel_height
+  - clamp_usable_length
+  - edge_allowance
+  - plate_length
+  check:
+    method: coupon
+    ref: jaw-gauge
+    description: Gauge first, then repeat on full-length plate. Sole must sit flush
+      without pin interference; both jaws must grip the bevels broadly, with knob
+      travel remaining and no sliding, lifting or rocking under hand pressure.
+- id: head-fit
+  part: qr-plate
+  feature: Counterbore and flat head seat
+  relation: seats
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - bolt_head_width
+  - bolt_head_height
+  - head_diametral_allowance
+  - plate_height
+  - grip_thickness
+  check:
+    method: measure
+    ref: null
+    description: Head sits flat and below the wide face; confirm access to turn it
+      without forcing it.
+- id: screw-fit
+  part: qr-plate
+  feature: Through-hole and camera-side protrusion of seated screw
+  relation: clears
+  hardware: camera-bolt
+  clearance_mm: 0.55
+  params:
+  - bolt_major_d
+  - shaft_diametral_allowance
+  - bolt_underhead_length
+  - grip_thickness
+  - camera_socket_usable_depth
+  check:
+    method: measure
+    ref: null
+    description: Bolt slips freely through bore. Measure actual protrusion from camera
+      face with head seated, and verify it is within the camera maker's specified
+      engagement/protrusion limits. Confirm the camera face seats before the screw
+      can bottom.
+manual:
+- n: '1'
+  text: Try the already-printed gauge with the clamp empty, wide side down. The gauge
+    and finished plate must drop in without force and sit flat, with both jaws gripping
+    the sloped rails rather than just their edges. Snug the knob by hand and try to
+    slide, lift and rock the gauge. If it moves, the knob runs out of travel, or a
+    pin or latch interferes, stop. The 38 mm width alone does not identify the plate
+    standard.
+  parts:
+  - jaw-gauge
+  hardware: []
+  tool: null
+- n: '2'
+  text: If the gauge passes, print the plate as modeled at 0.2 mm layers, with 5 walls
+    and solid infill, no supports. Inspect for cracks, warping or layer separation.
+    Repeat the empty-clamp test with the full plate; gauge fit does not prove full
+    plate fit.
+  parts:
+  - qr-plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Insert the metal bolt from the wide recessed face. Do not print a PLA screw.
+    The head must seat flat below the wide face and the screw must turn freely in
+    the plate. Measure how far it sticks out of the narrow face; nominal is 4.4 mm,
+    not a verified camera limit. If you cannot verify adequate thread engagement and
+    clearance against bottoming, or cannot turn the recessed head securely, leave
+    the camera off.
+  parts:
+  - qr-plate
+  hardware:
+  - camera-bolt
+  tool: Calipers and a hand driver matching the actual bolt head, if needed
+- n: '4'
+  text: For a fit check only, keep the camera supported on a padded table. Start the
+    screw by hand. The camera base must sit flat on the narrow face without wobbling
+    or the screw binding or bottoming. Do not overtighten. An empty clamp test and
+    a flush screw fit do not establish load capacity. Use the matching metal plate
+    for tripod use; do not carry, tilt, or leave the camera supported by this PLA
+    prototype.
+  parts:
+  - qr-plate
+  hardware:
+  - camera-bolt
+  tool: null

@@ -1,0 +1,221 @@
+task: tripod-plate
+note: Unloaded fit prototype only, not a temporary camera mount. The reported 38 mm
+  width and knob-operated angled jaws are not enough to identify the plate standard
+  or verify retention. The short coupon printed cleanly, but its clamp fit was not
+  confirmed. Reuse the metal 1/4-20 webcam bolt for the bench fit check rather than
+  printing a screw. Use a matching metal quick-release plate and its proper camera
+  screw before putting the camera on the tripod.
+questions: []
+params:
+  plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported width of the plate the clamp takes; not a measured jaw profile.
+  plate_length:
+    value: 38
+    unit: mm
+    kind: design
+    source: design
+    note: Trial length along the jaws; unobstructed clamp length was not confirmed.
+  rail_rise:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Trial flank height, not verified against the jaws.
+  rail_inset:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Inset per side over flank height gives a trial 45-degree flank.
+  grip:
+    value: 6.6
+    unit: mm
+    kind: design
+    source: design
+    note: Head bearing seat to camera-side face.
+  recess_depth:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 major diameter.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate widest head dimension.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length.
+  head_diam_clearance:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shank_diam_clearance:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Camera thread is confirmed 1/4-20, but usable depth is unknown.
+parts:
+- id: trial-plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.grip + p.recess_depth\n    a = p.plate_width / 2\n\
+    \    b = a - p.rail_inset\n    profile = [(-b, 0), (b, 0), (b, h-p.rail_rise),\
+    \ (a, h), (-a, h), (-b, h-p.rail_rise)]\n    plate = cq.Workplane('XZ').polyline(profile).close().extrude(p.plate_length/2,\
+    \ both=True)\n    bore = cq.Workplane('XY').circle((p.bolt_d+p.shank_diam_clearance)/2).extrude(h+1)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=p.grip).circle((p.bolt_head_d+p.head_diam_clearance)/2).extrude(p.recess_depth+1)\n\
+    \    return plate.cut(bore).cut(pocket)"
+  print_orientation: Camera-side face at z=0; recessed bolt head opening faces up.
+    No supports.
+  use_orientation: Flip over so the widest face and bolt head recess face down into
+    the empty clamp; Y runs parallel to the jaws.
+hardware:
+- id: webcam-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt-fit
+  fastener: webcam-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 6.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: trial-plate
+    feature: Flat Ø16 counterbore shoulder
+    role: head_seat
+  - part: trial-plate
+    feature: Ø6.8 axial through bore
+    role: clearance
+  nut: null
+  external: Camera 1/4-20 socket is the intended interface; do not assemble on camera
+    for this prototype.
+criteria:
+- id: jaw-fit
+  part: trial-plate
+  feature: Two angled rails
+  relation: seats
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - rail_rise
+  - rail_inset
+  - plate_length
+  check:
+    method: measure
+    ref: null
+    description: With the tripod empty, compare the trial flanks with both jaws. Verify
+      that the plate sits flat and does not rock, lift, or slide under light hand
+      pressure after snugging the knob. This is a fit check, not a strength or retention
+      rating.
+- id: head-fit
+  part: trial-plate
+  feature: Counterbore
+  relation: contains
+  hardware: webcam-bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - recess_depth
+  - head_diam_clearance
+  check:
+    method: measure
+    ref: null
+    description: Insert the bolt by hand and use a straightedge to verify the head
+      is wholly below the clamp-side face. Nominal recess margin is 0.6 mm.
+- id: tip-projection
+  part: trial-plate
+  feature: Camera-side face and centered bolt bore
+  relation: clears
+  hardware: webcam-bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - grip
+  - socket_depth
+  check:
+    method: measure
+    ref: null
+    description: On the bench, measure tip projection; expected about 3.4 mm. Socket
+      clearance and usable thread engagement are not verified; do not test by tightening
+      into the camera.
+manual:
+- n: '1'
+  text: If the short coupon is still available, use it for the empty-clamp check first.
+    If it doesn't sit flat or the flanks don't match, stop; the full-length plate
+    uses the same cross-section.
+  parts:
+  - trial-plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: For a full-size fit check, print the trial plate in PLA at 0.2 mm layers,
+    with the flat camera-side face on the bed and the recess facing up. Turn supports
+    off.
+  parts:
+  - trial-plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: On the bench, slip the metal webcam bolt into the large recess from the wide
+    side. Check that its head seats flat and remains fully recessed. Measure how far
+    the tip sticks out of the opposite face, then remove the bolt. Do not print a
+    substitute screw or attach the camera.
+  parts:
+  - trial-plate
+  hardware:
+  - webcam-bolt
+  tool: Calipers and straightedge
+- n: '4'
+  text: With the tripod low and empty, open the jaws and drop in the trial plate,
+    wide side down. Snug the knob by hand only. Check that both jaws bear on the angled
+    flanks and that the plate sits flat without rocking, lifting or sliding under
+    light hand pressure. Stop if it binds or the knob runs out of travel. Remove the
+    prototype afterward, even if the fit looks good.
+  parts:
+  - trial-plate
+  hardware: []
+  tool: null
+- n: '5'
+  text: Find the model on the tripod head, not just on the legs, and use that model
+    to locate a matching metal quick-release plate with the correct 1/4-20 camera
+    screw. Don't buy by the 38 mm width alone.
+  parts: []
+  hardware: []
+  tool: null

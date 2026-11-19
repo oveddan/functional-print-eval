@@ -1,0 +1,251 @@
+task: tripod-plate
+note: 'Temporary 38 mm quick-release plate prototype. Print the plate, not the screw:
+  use the salvaged metal 1/4-20 webcam bolt only if it passes the camera fit checks.
+  The jaw coupon printed cleanly, but its fit in the clamp was not confirmed. The
+  45-degree rail profile is a starting point, not a verified match or a load rating.'
+questions: []
+params:
+  plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported width of plate accepted by the clamp, not a verified standard.
+  rail_rise:
+    value: 4
+    unit: mm
+    kind: design
+    source: guessed
+    note: Trial 45-degree slope, 4 mm high and 4 mm inset per side.
+  rail_land:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_length:
+    value: 44
+    unit: mm
+    kind: design
+    source: design
+    note: Check for interference with the clamp body and knob.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate length from under the head to the tip.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate maximum width across the head; drive type unconfirmed.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate height.
+  bolt_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 major diameter.
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Verify usable thread depth before mounting.
+  projection:
+    value: 4.4
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal bolt projection beyond camera face; actual projection depends on
+      the measured bolt and printed web.
+  head_recess:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal amount that the head sits below the clamp-side face.
+  pocket_extra_d:
+    value: 9
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral room around the head for access.
+  shank_extra_d:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bottom_margin:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Minimum clearance to the first stop in the camera socket.
+  min_turns:
+    value: 3
+    unit: count
+    kind: design
+    source: design
+    note: Minimum full turns of smooth engagement with plate installed; not a load
+      rating.
+parts:
+- id: quick-release-plate
+  role: final
+  material: Black high-speed PLA
+  code: "def build(p):\n    web = p.bolt_length - p.projection\n    h = web + p.bolt_head_h\
+    \ + p.head_recess\n    w = p.plate_width / 2\n    n = w - p.rail_rise\n    z =\
+    \ h - p.rail_land - p.rail_rise\n    profile = [(-n,0),(n,0),(n,z),(w,h-p.rail_land),(w,h),(-w,h),(-w,h-p.rail_land),(-n,z)]\n\
+    \    blank = cq.Workplane('XZ').polyline(profile).close().extrude(p.plate_length/2,\
+    \ both=True)\n    through = cq.Workplane('XY', origin=(0,0,-1)).circle((p.bolt_major_d+p.shank_extra_d)/2).extrude(h+2)\n\
+    \    pocket = cq.Workplane('XY', origin=(0,0,web)).circle((p.bolt_head_d+p.pocket_extra_d)/2).extrude(h-web+1)\n\
+    \    return blank.cut(through).cut(pocket)"
+  print_orientation: Narrow flat camera face on bed at z=0, wide clamp face and open
+    head pocket upward. No supports.
+  use_orientation: 'Flip after printing: narrow flat face against camera, wide face
+    down into tripod clamp. Insert the bolt from the wide face toward the camera.'
+hardware:
+- id: camera-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-attachment
+  fastener: camera-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: quick-release-plate
+    feature: Annular floor of recessed bolt-head pocket
+    role: head_seat
+  - part: quick-release-plate
+    feature: Central 6.9 mm through-bore
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 tripod socket
+criteria:
+- id: clamp-capture
+  part: quick-release-plate
+  feature: Both 45-degree rail faces and wide seating face
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - rail_rise
+  - rail_land
+  - plate_length
+  check:
+    method: measure
+    ref: null
+    description: Test in the empty clamp. The plate must sit flat, both jaws must
+      capture the angled faces rather than just the corners, and the tightened plate
+      must not lift, twist, rock or slide by hand.
+- id: head-recess
+  part: quick-release-plate
+  feature: Open bolt-head recess
+  relation: clears
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - head_recess
+  - pocket_extra_d
+  check:
+    method: measure
+    ref: null
+    description: Actual head must seat flat and lie below the wide face; verify with
+      a straightedge. Confirm its drive or grip is accessible.
+- id: thread-fit
+  part: quick-release-plate
+  feature: Bolt projection from camera face
+  relation: engages
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - projection
+  - bolt_pitch
+  - socket_depth
+  - bottom_margin
+  - min_turns
+  check:
+    method: measure
+    ref: null
+    description: Confirm at least three full smooth turns with the plate installed
+      and at least 0.5 mm left before the bolt would bottom. The camera must seat
+      flush without rocking.
+manual:
+- n: '1'
+  text: Print camera-face down in PLA at 0.2 mm layers with at least five walls and
+    50% infill, no supports. Inspect for splits or poor layer bonding. Remove any
+    bed-edge flare or burr that prevents either mating face from sitting flat.
+  parts:
+  - quick-release-plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Before attaching the camera, open the knob and drop the plate wide-side down
+    into the clamp. Tighten normally by hand. Check that the plate sits flat and both
+    lips grip the sloped rails. Try lifting, sliding, twisting, and rocking the plate.
+    If it moves, binds, or grips only an edge, stop; a 38 mm width alone does not
+    establish fit.
+  parts:
+  - quick-release-plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Remove the plate from the clamp. Seat the bolt in the recess and measure actual
+    tip projection from the camera face. The head must sit fully below the opposite
+    face. To check usable socket depth, start the bare bolt by hand and stop at the
+    first light resistance without tightening. Subtract the gap from under the head
+    to the camera mounting face from the bolt's under-head length. That usable depth
+    must exceed the measured projection by at least 0.5 mm. Stop if the bolt doesn't
+    start smoothly or if you can't verify the clearance.
+  parts:
+  - quick-release-plate
+  hardware:
+  - camera-bolt
+  tool: Calipers and straightedge
+- n: '4'
+  text: Start the bolt through the plate by hand. Use the bolt's own drive or grip
+    to snug it gently. Confirm at least three full smooth turns and that the plate
+    seats flush against the camera without rocking. If the head cannot be turned,
+    the bolt stops before the plate seats, or there are fewer than three turns, do
+    not mount the camera.
+  parts:
+  - quick-release-plate
+  hardware:
+  - camera-bolt
+  tool: null
+- n: '5'
+  text: Only after all checks pass, try the setup at its lowest height over a padded
+    surface while keeping a hand on the camera. PLA can creep and the plate has no
+    safety stop against sliding if the knob loosens. Do not carry the tripod with
+    the camera attached, leave it unattended, or use it overhead. Replace the prototype
+    with the correct metal plate as soon as possible.
+  parts:
+  - quick-release-plate
+  hardware:
+  - camera-bolt
+  tool: null

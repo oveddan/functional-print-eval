@@ -1,0 +1,362 @@
+task: bearing-wheel
+note: 50 × 16 mm flat-tread replacement for a non-load-bearing closet-door guide,
+  using both 608ZZ bearings. Uses the 22.10 mm CAD pocket that printed at 22.09 mm
+  and held the bearing snugly in the coupon. Track profile, door support arrangement
+  and bracket fit are unverified. Do not use this PLA design to carry the door, keep
+  it from falling, or replace a grooved/flanged wheel; if its role is uncertain, use
+  a matching rated replacement.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original diameter; confirm clearance before use.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original width; the proposed stack is wider than the tread.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: datasheet
+    note: ''
+  seat_allowance:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: 22.10 CAD; 22.09 mm measured on the snug coupon.
+  shoulder_id:
+    value: 20.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shoulder_land:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: Radial flat outer-race seat next to the pocket wall; taper supports the
+      remainder of the web.
+  edge_break:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  axle_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Selected M8 axle; user's own bolt shank also measures approximately 8 mm
+      but its length and thread extent are unknown.
+  axle_length:
+    value: 50
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  axle_thread_nominal_length:
+    value: 28
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal thread length b; inspect actual shank and runout.
+  axle_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  locknut_height:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  collar_od:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: Verify this contacts only the inner race on each face of each bearing.
+  collar_height:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_bore_extra:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  center_spacer_trim:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: Default spacer length is wheel width minus two bearing widths (2 mm). Adjust
+      this offset if dry fit calls for it.
+  bracket_hole:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  bracket_thickness:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  available_stack_width:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    R = p.wheel_od/2\n    W = p.wheel_width\n    b = p.bearing_width\n\
+    \    r = (p.bearing_od+p.seat_allowance)/2\n    q = p.shoulder_id/2\n    k = p.edge_break\n\
+    \    f = r-p.shoulder_land\n    rise = f-q\n    section = [(r+k,0),(R-k,0),(R,k),(R,W-k),(R-k,W),(r+k,W),(r,W-k),(r,W-b),(f,W-b),(q,W-b-rise),(q,b+rise),(f,b),(r,b),(r,k)]\n\
+    \    return cq.Workplane('XZ').polyline(section).close().revolve(360,(0,0),(0,1))"
+  print_orientation: Flat annular side on the bed at z=0, axle vertical; supports
+    off. Lower seat has a narrow flat land with a tapered web above it.
+  use_orientation: Axle through the center. Flat rim runs on a compatible flat track;
+    either face can face the bracket.
+- id: center-spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.wheel_width-2*p.bearing_width+p.center_spacer_trim\n\
+    \    return cq.Workplane('XY').circle(p.collar_od/2).circle((p.axle_d+p.spacer_bore_extra)/2).extrude(h)"
+  print_orientation: Annular face on the bed at z=0; no supports.
+  use_orientation: Between the two inner races, on the axle. Not attached to the wheel.
+- id: head-collar
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.collar_od/2).circle((p.axle_d+p.spacer_bore_extra)/2).extrude(p.collar_height)"
+  print_orientation: Annular face on the bed at z=0; no supports.
+  use_orientation: Between the head-side washer and the adjacent bearing inner race.
+- id: bracket-collar
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.collar_od/2).circle((p.axle_d+p.spacer_bore_extra)/2).extrude(p.collar_height)"
+  print_orientation: Annular face on the bed at z=0; no supports.
+  use_orientation: Between the bracket and the adjacent bearing inner race.
+hardware:
+- id: axle
+  ref: ISO 4762 M8x50
+  qty: 1
+- id: washers
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: bearings
+  ref: 608ZZ
+  qty: 2
+joints:
+- id: guide-axle
+  fastener: axle
+  axis_origin:
+  - 0.0
+  - 0.0
+  - -1.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: head-collar
+    feature: Head-side washer on outer annular face at z=0
+    role: washer
+  - part: head-collar
+    feature: Axle bore
+    role: clearance
+  - part: wheel
+    feature: Two 608 bores on axle; wheel web clears stationary spacer
+    role: clearance
+  - part: center-spacer
+    feature: Axle bore
+    role: clearance
+  - part: bracket-collar
+    feature: Axle bore
+    role: clearance
+  nut: locknut
+  external: Existing single-sided metal guide bracket with compatible M8 through-hole
+    and access to back of bracket for washer and locknut.
+criteria:
+- id: bearing-fit
+  part: wheel
+  feature: Opposed cylindrical bearing seats with outer-race stops
+  relation: seats
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - bearing_od
+  - bearing_width
+  - seat_allowance
+  - shoulder_land
+  - shoulder_id
+  check:
+    method: coupon
+    ref: seat-fit
+    description: '22.10 mm CAD seat selected from coupon. Verify both final seats,
+      especially the bed-side one: bearing sits square on the stop without shield
+      contact, stays put inverted, and turns smoothly.'
+- id: spacer-fit
+  part: center-spacer
+  feature: Flat faces between the inner races, without shield contact
+  relation: supports
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - collar_od
+  - center_spacer_trim
+  - bearing_width
+  - wheel_width
+  check:
+    method: measure
+    ref: null
+    description: Dry-fit the assembled stack. Minimal clamp must not add drag, shift
+      either bearing off its seat or leave side play. Match the spacer thickness to
+      the gap between the fully seated inner-race faces if necessary.
+- id: bracket-clearance
+  part: bracket-collar
+  feature: Wheel and bracket axial spacing
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - collar_height
+  - wheel_width
+  - available_stack_width
+  - bracket_thickness
+  check:
+    method: measure
+    ref: null
+    description: 22.4 mm between head-side washer and bracket face; allow room for
+      head, washers, bracket and locknut. Verify that the wheel and hardware clear
+      the bracket and door throughout travel.
+manual:
+- n: '1'
+  text: Confirm the old wheel ran on a flat track and served only as a guide. Hold
+    the door safely in place before removing the broken part. Check the proposed 50
+    mm diameter and 16 mm tread against the track, and check for an existing metal
+    bracket with a compatible M8 through-hole and access for a rear nut. Do not drill
+    or modify an incompatible bracket for this design. If the wheel supports the door,
+    is needed to keep it from falling, or you cannot tell, stop and source a matching
+    rated roller.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the wheel and three rings as oriented, in PLA at 0.2 mm with supports
+    off. Use at least five walls for the wheel and solid infill for the rings. Remove
+    any first-layer lip or strings without enlarging the bearing seats. Check that
+    the collars and spacer slide onto the smooth shank and that their faces touch
+    only the inner races, not the shields or outer races.
+  parts:
+  - wheel
+  - center-spacer
+  - head-collar
+  - bracket-collar
+  hardware:
+  - axle
+  - bearings
+  tool: null
+- n: '3'
+  text: Seat one bearing squarely against its stop, using pressure only on its outer
+    race. Insert the center spacer, then seat the second bearing the same way. Use
+    the axle to line up the spacer if needed. Do not hammer the bearings or pull them
+    into place using the axle nut. Both should stay seated when the wheel is inverted
+    and spin smoothly before clamping. Reject a cracked, distorted or loose seat.
+  parts:
+  - wheel
+  - center-spacer
+  hardware:
+  - bearings
+  - axle
+  tool: null
+- n: '4'
+  text: 'Dry-fit in this order: bolt head, washer, head collar, bearing–spacer–bearing
+    inside the wheel, bracket collar, metal bracket, washer, locknut. Verify the smooth
+    shank spans both bearing bores, the thread transition does not block seating,
+    and at least two full threads extend past the nylon locknut. The bolt tip must
+    not foul the door or track. Use the existing bolt only if it meets the same checks
+    and accepts the M8 locknut.'
+  parts:
+  - head-collar
+  - wheel
+  - center-spacer
+  - bracket-collar
+  hardware:
+  - axle
+  - bearings
+  - washers
+  - locknut
+  tool: Hex key and wrench
+- n: '5'
+  text: Tighten only enough to seat the stationary stack and remove looseness; do
+    not crush the PLA rings. The wheel must still spin freely with no rubbing or obvious
+    side play. If it binds when the stack is seated, check for shield contact and
+    a too-short spacer. If the spacer holds a bearing off its stop, it is too long.
+    Correct the spacer length and repeat the dry fit rather than leaving the hardware
+    loose.
+  parts:
+  - wheel
+  - center-spacer
+  - head-collar
+  - bracket-collar
+  hardware:
+  - axle
+  - locknut
+  tool: Hex key and wrench
+- n: '6'
+  text: Move the door slowly through its full travel while observing the guide. Stop
+    if the wheel rubs, climbs out of the track, or shifts on the axle. Recheck for
+    looseness, cracks and bearing movement after the first few cycles and periodically
+    thereafter.
+  parts:
+  - wheel
+  hardware:
+  - axle
+  - locknut
+  tool: null

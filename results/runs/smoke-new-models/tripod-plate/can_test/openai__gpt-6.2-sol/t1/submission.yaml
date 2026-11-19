@@ -1,0 +1,248 @@
+task: tripod-plate
+note: This is a trial 38 mm quick-release plate, not a verified replacement. The fit
+  gauge printed cleanly, but jaw engagement and camera socket depth are still unconfirmed.
+  Print the flat plate only; use the salvaged metal 1/4-20 bolt, not a printed screw.
+  Until the checks below pass, use the print only as a fit gauge. A model-matched
+  metal plate is the recommended replacement.
+questions: []
+params:
+  plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported plate width; jaw profile and tolerance are not known.
+  plate_length:
+    value: 38
+    unit: mm
+    kind: design
+    source: design
+    note: Trial footprint along the jaws; check against floor, stops, and knob.
+  thickness:
+    value: 11.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bevel_rise:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: Equal horizontal run and vertical rise give a trial 45-degree flank, not
+      a verified tripod standard.
+  edge_land:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  gauge_void:
+    value: 23
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_nominal_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length; measure assembled projection before use.
+  bolt_head_across:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate maximum; check actual shape, bearing face and tool access.
+  bolt_head_height:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate; verify the actual head stays below the tripod-side surface.
+  bolt_clearance_d:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_recess_d:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_recess_depth:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal projection is 10 − (11.6 − 6) = 4.4 mm; actual projection must be
+      checked.
+  camera_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Usable insertion below the camera's mating surface is unknown; no assumed
+      depth used.
+parts:
+- id: camera-plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    a=p.plate_width/2\n    b=a-p.bevel_rise\n    t=p.thickness\n\
+    \    k=t-p.edge_land\n    outline=[(-b,0),(b,0),(b,k-p.bevel_rise),(a,k),(a,t),(-a,t),(-a,k),(-b,k-p.bevel_rise)]\n\
+    \    body=cq.Workplane('XZ').polyline(outline).close().extrude(p.plate_length/2,both=True)\n\
+    \    bore=cq.Workplane('XY').circle(p.bolt_clearance_d/2).extrude(t)\n    recess=cq.Workplane('XY',origin=(0,0,t-p.head_recess_depth)).circle(p.head_recess_d/2).extrude(p.head_recess_depth)\n\
+    \    return body.cut(bore).cut(recess)"
+  print_orientation: Camera contact face flat on bed at z=0; head recess opens upward.
+    No supports.
+  use_orientation: 'Flip the part over: the wide, recessed side faces down into the
+    tripod; the screw points toward the camera through the narrow flat face.'
+- id: jaw-fit-gauge
+  role: coupon
+  material: PLA
+  code: "def build(p):\n    a=p.plate_width/2\n    b=a-p.bevel_rise\n    t=p.thickness\n\
+    \    k=t-p.edge_land\n    outline=[(-b,0),(b,0),(b,k-p.bevel_rise),(a,k),(a,t),(-a,t),(-a,k),(-b,k-p.bevel_rise)]\n\
+    \    body=cq.Workplane('XZ').polyline(outline).close().extrude(p.plate_length/2,both=True)\n\
+    \    return body.cut(cq.Workplane('XY').circle(p.gauge_void/2).extrude(t))"
+  print_orientation: Narrow flat face on bed, wide face upward. No supports.
+  use_orientation: Wide face down into empty tripod clamp. No camera or screw.
+hardware:
+- id: camera-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-attachment
+  fastener: camera-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: camera-plate
+    feature: flat floor of underside head recess
+    role: head_seat
+  - part: camera-plate
+    feature: central unthreaded through bore
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 socket
+criteria:
+- id: clamp-fit
+  part: camera-plate
+  feature: paired angled flanks and broad seating face
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - plate_length
+  - bevel_rise
+  - edge_land
+  - thickness
+  check:
+    method: coupon
+    ref: jaw-fit-gauge
+    description: Gauge and then actual plate must sit flat, with both jaws on the
+      bevels and knob travel remaining. Reject any lift, rocking, lengthwise slide,
+      or interference with existing stops.
+- id: head-clearance
+  part: camera-plate
+  feature: underneath counterbore and bearing seat
+  relation: seats
+  hardware: camera-bolt
+  clearance_mm: 1.0
+  params:
+  - head_recess_d
+  - head_recess_depth
+  - bolt_head_across
+  - bolt_head_height
+  - bolt_clearance_d
+  check:
+    method: measure
+    ref: null
+    description: Bolt slides freely; its head seats flat, is fully recessed and remains
+      accessible to its driver. Verify with a straightedge; nominal axial clearance
+      is 1 mm.
+- id: socket-fit
+  part: camera-plate
+  feature: camera contact face and screw projection
+  relation: engages
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - thickness
+  - head_recess_depth
+  - bolt_length
+  - bolt_pitch
+  - camera_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: Measure seated bolt projection. Confirm it is within the camera manufacturer's
+      usable range and that the camera clamps fully flush before the screw bottoms,
+      with adequate thread engagement. Do not infer usable thread depth from a blind-hole
+      probe alone.
+manual:
+- n: '1'
+  text: Use the gauge already printed. With the tripod empty, put the wide face down.
+    The gauge must lie flat, the two lips must contact the bevels (not just pinch
+    a vertical wall), and the knob must tighten without hitting its stop. Pull up,
+    rock, and slide it along the jaws by hand. Reject the design if there is movement,
+    obstruction, or any doubt about where the jaws contact. Do not file the gauge
+    or plate to force a fit.
+  parts:
+  - jaw-fit-gauge
+  hardware: []
+  tool: null
+- n: '2'
+  text: If the gauge passes, print the camera plate in black PLA at 0.2 mm with 6
+    walls and 100% infill; no supports. Keep the broad edges and bevels clean. Reject
+    cracks, layer separation, or warp. Repeat the empty clamp test on the actual plate.
+  parts:
+  - camera-plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Off the tripod, pass the salvaged metal bolt through the recess. Check that
+    it seats flat, the head is completely below the wide face, and you can turn it.
+    Measure tip projection from the camera-side face. Check that projection against
+    the camera's permitted mounting screw insertion and usable thread depth. If you
+    cannot verify usable depth and engagement, stop here. On a padded table, start
+    the verified screw by hand; it must turn freely and clamp the plate flat against
+    the camera without bottoming or rocking. Never force or overtighten it.
+  parts:
+  - camera-plate
+  hardware:
+  - camera-bolt
+  tool: Calipers, straightedge, and the driver that fits the salvaged bolt if needed
+- n: '4'
+  text: Even if the checks pass, this PLA plate has no verified load rating or secondary
+    catch. If used at all, keep it stationary, low over a padded surface, and keep
+    a hand on the camera. Do not carry the tripod with the camera attached, leave
+    it unattended, or use it overhead, in heat, or with a heavy lens. Remove the camera
+    before moving the tripod and replace the print with the correct metal plate as
+    soon as possible.
+  parts:
+  - camera-plate
+  hardware:
+  - camera-bolt
+  tool: null

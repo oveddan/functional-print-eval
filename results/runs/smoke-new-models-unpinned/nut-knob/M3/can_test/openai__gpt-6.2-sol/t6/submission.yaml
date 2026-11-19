@@ -1,0 +1,190 @@
+task: nut-knob/M3
+note: One-piece, 20 mm six-scallop PLA hand knob. The 5.65 mm modeled hex pocket was
+  the only tested size that accepted and held the nut. A solid shoulder under the
+  nut prevents push-through while leaving a central M3 clearance bore.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_h:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_nom_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: asked
+    note: User's existing M3 bolt; length not specified.
+  pocket_af:
+    value: 5.65
+    unit: mm
+    kind: design
+    source: design
+    note: 'Selected by fit testing: 5.35 and 5.50 mm would not accept the nut; 5.65
+      mm held it.'
+  pocket_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_depth:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_af:
+    value: 6.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear_d:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "import math\n\ndef build(p):\n    h=p.knob_h\n    k=2/math.sqrt(3)\n    body=cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \    for i in range(int(p.scallop_count)):\n        a=(i+0.5)*2*math.pi/p.scallop_count\n\
+    \        x=p.scallop_center_r*math.cos(a)\n        y=p.scallop_center_r*math.sin(a)\n\
+    \        cutter=cq.Workplane('XY').center(x,y).circle(p.scallop_r).extrude(h)\n\
+    \        body=body.cut(cutter)\n    pocket=cq.Workplane('XY').workplane(offset=h-p.pocket_depth).polygon(6,p.pocket_af*k).extrude(p.pocket_depth)\n\
+    \    lead=cq.Workplane('XY').workplane(offset=h-p.lead_depth).polygon(6,p.pocket_af*k).workplane(offset=p.lead_depth).polygon(6,p.entry_af*k).loft(ruled=True)\n\
+    \    bore=cq.Workplane('XY').circle(p.bolt_clear_d/2).extrude(h)\n    return body.cut(pocket).cut(lead).cut(bore)"
+  print_orientation: Flat bearing face on the bed at z=0; nut opening faces up. Print
+    at 0.2 mm layers with no supports. Match the fit coupon's slicer settings.
+  use_orientation: Put the flat bearing face toward the workpiece. The bolt enters
+    through that face and exits through the recessed nut opening.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: retention
+  part: knob
+  feature: Press-fit hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - entry_af
+  - lead_depth
+  - nut_af
+  check:
+    method: coupon
+    ref: fit-565
+    description: 5.65 mm coupon held the nut. On the finished knob, seat the nut by
+      hand, remove the bolt, then invert and lightly tap to verify retention.
+- id: recess
+  part: knob
+  feature: Hex pocket floor and bearing shoulder
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  - knob_h
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: Nut rests flat on the shoulder with its top below the opening rim
+      (nominal recess 0.6 mm); shoulder surrounds the bore and blocks nut push-through.
+- id: passthrough
+  part: knob
+  feature: Central axial bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_nom_d
+  - bolt_clear_d
+  check:
+    method: measure
+    ref: null
+    description: 0.5 mm nominal diametral clearance. With the nut seated, hand-thread
+      the actual bolt in from the flat face and verify its tip emerges beyond the
+      opposite rim.
+manual:
+- n: '1'
+  text: Print the knob flat face down, hex opening up, at 0.2 mm layers with no supports.
+    Use the same PLA and fit settings as the successful coupon. Remove any loose strands
+    from the pocket and bore.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Line up the nut flats with the pocket and press it in square by hand until
+    it rests on the floor, below the rim. If your thumb cannot reach, thread the tip
+    of your M3 bolt a couple of turns into the nut from the pocket side and use it
+    as a finger handle to push the nut home, then back it out. Do not hammer it or
+    use glue.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: With the bolt removed, turn the knob pocket-side down and lightly tap it.
+    The nut should stay seated below the rim.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Face the flat side toward the workpiece and start the M3 bolt from that side.
+    Spin the knob by hand. To have the tip emerge beyond the far rim, the bolt must
+    project more than 7 mm past the workpiece at the final tightened position.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
