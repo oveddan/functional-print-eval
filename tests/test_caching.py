@@ -74,6 +74,7 @@ def test_the_body_differs_only_by_the_model_and_the_top_level_cache_field(monkey
     assert claude_body.pop("cache_control") == {"type": "ephemeral"}
     assert "cache_control" not in other_body
     assert claude_body.pop("model") == CLAUDE and other_body.pop("model") == ANY_OTHER
+    other_body.pop("provider")  # a routing choice, tested in test_provider_pin.py
     assert json.dumps(claude_body) == json.dumps(other_body)
 
 

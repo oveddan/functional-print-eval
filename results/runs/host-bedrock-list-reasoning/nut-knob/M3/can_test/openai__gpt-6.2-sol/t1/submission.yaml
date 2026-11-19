@@ -1,0 +1,95 @@
+task: nut-knob/M3
+note: The hex pocket stops the nut from spinning, and the solid shoulder behind it
+  stops it from passing through the knob. The central bore remains open for the bolt.
+questions: []
+params:
+  af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  fit:
+    value: -0.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: PLA
+  code: "import math\ndef build(p):\n    h=7\n    depth=p.nut_h+0.6\n    af=p.af+p.fit\n\
+    \    def hexpts(a):\n        r=a/math.sqrt(3)\n        return [(r*math.cos(i*math.pi/3),r*math.sin(i*math.pi/3))\
+    \ for i in range(6)]\n    s=cq.Workplane('XY').circle(p.od/2).extrude(h)\n   \
+    \ for i in range(8):\n        t=i*math.pi/4\n        r=p.od/2+0.8\n        s=s.cut(cq.Workplane('XY').center(r*math.cos(t),r*math.sin(t)).circle(2).extrude(h))\n\
+    \    s=s.cut(cq.Workplane('XY').circle((p.bolt_d+0.5)/2).extrude(h))\n    pocket=cq.Workplane('XY').workplane(offset=h-depth).polyline(hexpts(af)).close().extrude(depth)\n\
+    \    lead=cq.Workplane('XY').workplane(offset=h-0.4).polyline(hexpts(af)).close().workplane(offset=0.4).polyline(hexpts(af+0.8)).close().loft()\n\
+    \    return s.cut(pocket).cut(lead)\n"
+  print_orientation: Solid shoulder face down; nut pocket up.
+  use_orientation: Pocket opening faces the work; bolt exits through the opposite
+    face.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: retention
+  part: knob
+  feature: Hex press-fit pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - af
+  - fit
+  - nut_h
+  check:
+    method: measure
+    ref: null
+    description: Press nut fully below rim by hand, then invert and lightly shake;
+      nut must stay seated.
+manual:
+- n: '1'
+  text: Print pocket-up in PLA at 0.2 mm layers, with four walls and no supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the nut flats with the pocket and press the nut in squarely by hand
+    until it bottoms. Invert and lightly shake the knob to check retention. If loose,
+    reduce fit by 0.05 mm and reprint; if too tight to seat by hand, increase fit
+    by 0.05 mm and reprint. Do not hammer it.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Thread your M3 bolt in from the recessed nut side. Check that it turns freely
+    and passes out through the opposite face. Use the knob for hand tightening only.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

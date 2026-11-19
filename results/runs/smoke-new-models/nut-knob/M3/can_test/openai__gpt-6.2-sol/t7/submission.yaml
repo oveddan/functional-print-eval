@@ -1,0 +1,203 @@
+task: nut-knob/M3
+note: One-piece, 20 mm fluted hand knob. The 5.70 mm hex pocket was selected because
+  the actual nut pressed in snugly and stayed in when the test print was inverted
+  and shaken. A solid shoulder stops the nut from passing through the knob; the central
+  bore remains open for the M3 bolt.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  check_bolt_length:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Optional pass-through check screw; the working bolt length depends on the
+      application.
+  pocket_af:
+    value: 5.7
+    unit: mm
+    kind: design
+    source: design
+    note: CAD dimension selected by the fit_570 print test; not the as-printed dimension.
+  floor:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_af_extra:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  diameter:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_radius:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_centres:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "from math import sqrt, cos, sin, pi\n\ndef build(p):\n    h = p.floor + p.pocket_depth\n\
+    \    body = cq.Workplane('XY').circle(p.diameter/2).extrude(h)\n    n = int(p.flute_count)\n\
+    \    pts = [(p.flute_centres*cos(2*pi*i/n), p.flute_centres*sin(2*pi*i/n)) for\
+    \ i in range(n)]\n    flutes = cq.Workplane('XY').pushPoints(pts).circle(p.flute_radius).extrude(h,\
+    \ combine=False)\n    d = 2*p.pocket_af/sqrt(3)\n    bore = cq.Workplane('XY').circle(p.bore/2).extrude(h)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=p.floor).polygon(6,d).extrude(p.pocket_depth-p.lead_h)\n\
+    \    lead = cq.Workplane('XY').workplane(offset=h-p.lead_h).polygon(6,d).workplane(offset=p.lead_h).polygon(6,2*(p.pocket_af+p.lead_af_extra)/sqrt(3)).loft()\n\
+    \    return body.cut(flutes).cut(bore).cut(pocket).cut(lead)"
+  print_orientation: Flat face with the small round bore on the bed at Z=0; open hex
+    pocket up. No supports.
+  use_orientation: For clamping, put the small-bore face toward the workpiece and
+    the recessed nut face outward. The bolt enters from the small-bore face so clamp
+    load pulls the nut against its shoulder.
+hardware:
+- id: hex_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: check_screw
+  ref: ISO 4762 M3x12
+  qty: 1
+joints: []
+criteria:
+- id: retains
+  part: knob
+  feature: Chamfered press-fit hex pocket
+  relation: engages
+  hardware: hex_nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  - lead_h
+  - lead_af_extra
+  check:
+    method: coupon
+    ref: fit_570
+    description: Actual nut pressed in snugly and stayed in when inverted and shaken.
+      Repeat with the finished knob.
+- id: recesses
+  part: knob
+  feature: Pocket and solid shoulder surrounding the bore
+  relation: contains
+  hardware: hex_nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  - floor
+  - bore
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Fully seated nut is nominally 0.8 mm below the pocket rim and bears
+      against the shoulder; it cannot fit through the 3.5 mm bore.
+- id: passes
+  part: knob
+  feature: Coaxial through-bore
+  relation: clears
+  hardware: check_screw
+  clearance_mm: 0.5
+  params:
+  - bore
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: The 0.5 mm is nominal diametral clearance in the plastic. Thread
+      an M3 screw through the installed nut and confirm the tip emerges without rubbing
+      the plastic.
+manual:
+- n: '1'
+  text: 'Print one knob in the same PLA and with the same settings as the successful
+    fit test: 0.4 mm nozzle, 0.2 mm layers, pocket up, no supports.'
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: After cooling, align the nut flats with the hex pocket. With the knob on a
+    firm flat surface, press the nut straight down by thumb until it rests on the
+    shoulder and is below the rim. Do not hammer it or use glue. Invert and shake
+    the knob to confirm the nut stays put.
+  parts:
+  - knob
+  hardware:
+  - hex_nut
+  tool: null
+- n: '3'
+  text: With the knob off the workpiece, hand-thread the M3 test screw in from the
+    recessed-nut face and confirm that the tip emerges through the small round bore.
+    Remove the test screw.
+  parts:
+  - knob
+  hardware:
+  - hex_nut
+  - check_screw
+  tool: null
+- n: '4'
+  text: For normal use, face the small round bore toward the workpiece. Spin the knob
+    onto the protruding M3 bolt and tighten by hand. This loads the solid shoulder
+    rather than relying on the press fit to carry clamping force.
+  parts:
+  - knob
+  hardware:
+  - hex_nut
+  tool: null

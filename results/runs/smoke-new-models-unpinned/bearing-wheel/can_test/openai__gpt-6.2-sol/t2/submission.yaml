@@ -1,0 +1,519 @@
+task: bearing-wheel
+note: '50 × 16 mm flat-tread replacement using two 608 bearings. The 22.10 mm CAD
+  pocket was selected from the printed fit test: the 22.09 mm as-printed seat was
+  snug and retained the bearing upside down. This is a closet-door GUIDE wheel only,
+  not a load-bearing roller or hanger. The track profile and bracket dimensions are
+  unverified: use it only after confirming a flat tread is correct, the wheel carries
+  no door weight, and the existing bracket accepts the axle and stack without modification.
+  If you can''t confirm those conditions, use a matching replacement roller assembly.'
+questions: []
+params:
+  old_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel diameter.
+  old_w:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel width.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Both about 22 mm.
+  bearing_w:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Both about 7 mm.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 608 bore; verify bolt slips through both.
+  axle_measured:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximately 8 mm across user's bolt; length and bearing fit unverified.
+  user_axle_length:
+    value: null
+    unit: mm
+    kind: hardware
+    source: unknown
+    note: ''
+  bracket_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: If forked, verify against the assembled spacer stack before installation.
+  bracket_thickness:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  seat_offset:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: 22.10 mm CAD, fit_221 coupon measured 22.09 mm and held snugly.
+  lead:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  shoulder_id:
+    value: 20.6
+    unit: mm
+    kind: design
+    source: design
+    note: Check the shoulder touches the outer race only.
+  spacer_od:
+    value: 11.2
+    unit: mm
+    kind: design
+    source: design
+    note: 'Check both bearings: this diameter must contact the inner race only, not
+      the shield.'
+  spacer_bore_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance relative to nominal M8.
+  outer_spacer_t:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  screw_r:
+    value: 18.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rim_hole:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_pocket:
+    value: 6.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_depth:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_depth:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  m3_len:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_head_d:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_head_h:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m3_nut_t:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m8_len_example:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Example only, select installed length after measuring stack.
+  m8_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m8_locknut_t:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m8_washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+parts:
+- id: head-half
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    h=p.old_w/2\n    web=h-p.bearing_w\n    d=p.bearing_od+p.seat_offset\n\
+    \    s=cq.Workplane('XY').circle(p.old_od/2).extrude(h)\n    s=s.cut(cq.Workplane('XY').circle(p.shoulder_id/2).extrude(h))\n\
+    \    s=s.cut(cq.Workplane('XY').workplane(offset=web).circle(d/2).extrude(p.bearing_w))\n\
+    \    s=s.cut(cq.Solid.makeCone(d/2,d/2+p.lead,p.lead,cq.Vector(0,0,h-p.lead)))\n\
+    \    r=p.screw_r\n    pts=[(r,0),(-r,0),(0,r),(0,-r)]\n    s=s.cut(cq.Workplane('XY').pushPoints(pts).circle(p.rim_hole/2).extrude(h))\n\
+    \    return s.cut(cq.Workplane('XY').workplane(offset=h-p.head_depth).pushPoints(pts).circle(p.head_pocket/2).extrude(p.head_depth))\n"
+  print_orientation: Mating face at Z=0; bearing seat and screw counterbores open
+    upward.
+  use_orientation: Bearing pocket faces out; bed face mates with nut-half.
+- id: nut-half
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    import math\n    h=p.old_w/2\n    web=h-p.bearing_w\n\
+    \    d=p.bearing_od+p.seat_offset\n    s=cq.Workplane('XY').circle(p.old_od/2).extrude(h)\n\
+    \    s=s.cut(cq.Workplane('XY').circle(p.shoulder_id/2).extrude(h))\n    s=s.cut(cq.Workplane('XY').workplane(offset=web).circle(d/2).extrude(p.bearing_w))\n\
+    \    s=s.cut(cq.Solid.makeCone(d/2,d/2+p.lead,p.lead,cq.Vector(0,0,h-p.lead)))\n\
+    \    r=p.screw_r\n    pts=[(r,0),(-r,0),(0,r),(0,-r)]\n    s=s.cut(cq.Workplane('XY').pushPoints(pts).circle(p.rim_hole/2).extrude(h))\n\
+    \    return s.cut(cq.Workplane('XY').workplane(offset=h-p.nut_depth).pushPoints(pts).polygon(6,p.nut_af/math.cos(math.pi/6)).extrude(p.nut_depth))\n"
+  print_orientation: Mating face at Z=0; bearing seat and hex pockets open upward.
+  use_orientation: Flip relative to head-half so the bed faces meet and the nut pockets
+    face out.
+- id: center-spacer
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle((p.bearing_bore+p.spacer_bore_extra)/2).extrude(p.old_w-2*p.bearing_w)\n"
+  print_orientation: Flat annular face at Z=0.
+  use_orientation: Between bearings, around axle, contacting inner races only.
+- id: outer-spacer
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle((p.bearing_bore+p.spacer_bore_extra)/2).extrude(p.outer_spacer_t)\n"
+  print_orientation: Flat annular face at Z=0; print two copies.
+  use_orientation: One on each exterior bearing face, touching the inner race only;
+    keep wheel clear of bracket and metal washers.
+hardware:
+- id: bearing
+  ref: 608ZZ
+  qty: 2
+- id: rim-screw
+  ref: ISO 4762 M3x12
+  qty: 4
+- id: rim-nut
+  ref: ISO 4032 M3
+  qty: 4
+- id: axle
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: axle-nut
+  ref: ISO 10511 M8
+  qty: 1
+- id: axle-washer
+  ref: ISO 7089 M8
+  qty: 2
+joints:
+- id: rim-east
+  fastener: rim-screw
+  axis_origin:
+  - 18.5
+  - 0.0
+  - 4.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: head-half
+    feature: counterbore floor
+    role: head_seat
+  - part: head-half
+    feature: rim through-hole
+    role: clearance
+  - part: nut-half
+    feature: rim through-hole
+    role: clearance
+  - part: nut-half
+    feature: hex pocket
+    role: nut_pocket
+  nut: rim-nut
+  external: null
+- id: rim-west
+  fastener: rim-screw
+  axis_origin:
+  - -18.5
+  - 0.0
+  - 4.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: head-half
+    feature: counterbore floor
+    role: head_seat
+  - part: head-half
+    feature: rim through-hole
+    role: clearance
+  - part: nut-half
+    feature: rim through-hole
+    role: clearance
+  - part: nut-half
+    feature: hex pocket
+    role: nut_pocket
+  nut: rim-nut
+  external: null
+- id: rim-north
+  fastener: rim-screw
+  axis_origin:
+  - 0.0
+  - 18.5
+  - 4.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: head-half
+    feature: counterbore floor
+    role: head_seat
+  - part: head-half
+    feature: rim through-hole
+    role: clearance
+  - part: nut-half
+    feature: rim through-hole
+    role: clearance
+  - part: nut-half
+    feature: hex pocket
+    role: nut_pocket
+  nut: rim-nut
+  external: null
+- id: rim-south
+  fastener: rim-screw
+  axis_origin:
+  - 0.0
+  - -18.5
+  - 4.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: head-half
+    feature: counterbore floor
+    role: head_seat
+  - part: head-half
+    feature: rim through-hole
+    role: clearance
+  - part: nut-half
+    feature: rim through-hole
+    role: clearance
+  - part: nut-half
+    feature: hex pocket
+    role: nut_pocket
+  nut: rim-nut
+  external: null
+criteria:
+- id: fit-head
+  part: head-half
+  feature: bearing pocket
+  relation: engages
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_od
+  - seat_offset
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit_221
+    description: Printed coupon held bearing upside down; repeat on final part with
+      both bearings and verify free rotation.
+- id: fit-nut
+  part: nut-half
+  feature: bearing pocket
+  relation: engages
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - bearing_od
+  - seat_offset
+  - bearing_w
+  check:
+    method: coupon
+    ref: fit_221
+    description: Same as head half; no hammering, cracking, or rocking.
+- id: outer-race
+  part: head-half
+  feature: annular shoulder (same on nut-half)
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - shoulder_id
+  - bearing_od
+  check:
+    method: measure
+    ref: null
+    description: Check that the shoulder only touches the outer race and inner race/shield
+      do not rub.
+- id: no-preload
+  part: center-spacer
+  feature: inner-race contact faces
+  relation: seats
+  hardware: bearing
+  clearance_mm: null
+  params:
+  - old_w
+  - bearing_w
+  - spacer_od
+  check:
+    method: measure
+    ref: null
+    description: Both bearings must seat with the halves flush; light axle clamping
+      must not cause drag or perceptible axial play.
+- id: fork-fit
+  part: outer-spacer
+  feature: two outboard standoffs
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - old_w
+  - outer_spacer_t
+  - bracket_gap
+  check:
+    method: measure
+    ref: null
+    description: Nominal clamped width is 19.2 mm. Check actual fit without forcing
+      or bending bracket ears and verify wheel sides clear on rotation.
+manual:
+- n: '1'
+  text: Keep the door supported. Confirm this wheel only guides the door and that
+    the old tread was flat, not grooved, crowned, or flanged. Check the new 50 × 16
+    mm envelope against the track. Confirm the original bracket already accepts an
+    8 mm bolt and has room for the wheel, spacers and fasteners throughout travel.
+    A fork needs room for the actual stack, nominally 19.2 mm between the ears; do
+    not bend the ears or drill them. If any check fails or the wheel supports the
+    door, stop and get the correct replacement assembly.
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print both halves, one center spacer and two outer spacers in PLA at 0.2 mm,
+    supports off. Use five walls on the halves and solid spacers. Lay the halves on
+    their mating faces. Remove any first-layer lip or burr that prevents the mating
+    faces from meeting, without altering the bearing fits.
+  parts:
+  - head-half
+  - nut-half
+  - center-spacer
+  - outer-spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Dry-fit each bearing in its pocket using even pressure on the outer race only.
+    It should sit against the shoulder, approximately flush with the wheel face, fit
+    snugly and spin freely. Check that each small spacer contacts only the inner race,
+    with visible clearance from the shield or outer race. Check the axle slips through
+    both bearings and all spacers. Do not force any fit.
+  parts:
+  - head-half
+  - nut-half
+  - center-spacer
+  - outer-spacer
+  hardware:
+  - bearing
+  - axle
+  tool: null
+- n: '4'
+  text: With the bearings seated, place the center spacer between the inner races.
+    Use the loose axle as an alignment pin. Mate the two flat back faces. Insert the
+    four nuts and screws from opposite sides and snug evenly in a cross pattern. Check
+    the seam closes without force and all four heads and tips sit below the wheel
+    faces. If the center spacer holds the halves apart, or if clamping the inner races
+    causes drag, verify the actual seated inner-race gap and reprint the spacer to
+    match rather than overtightening.
+  parts:
+  - head-half
+  - nut-half
+  - center-spacer
+  hardware:
+  - rim-screw
+  - rim-nut
+  - bearing
+  - axle
+  tool: M3 socket-head hex key
+- n: '5'
+  text: Select the axle length for the actual bracket. The listed M8×40 is an example,
+    not a measured fit; reuse your M8 bolt if suitable, or choose a listed M8 length.
+    Add bracket thickness, actual wheel-and-spacer stack, and both washer thicknesses
+    for the grip. Allow another 10.5 mm for the locknut and two full threads beyond
+    it. Verify the nut reaches the threads before bottoming on any smooth shank and
+    that the tip cannot hit the track or door.
+  parts: []
+  hardware:
+  - axle
+  - axle-washer
+  - axle-nut
+  tool: null
+- n: '6'
+  text: In a fork mount, stack washer, first ear, outer spacer, wheel, outer spacer,
+    second ear, washer and locknut. For an existing one-sided through-bolt bracket
+    only, put the bracket between the bracket-side outer spacer and its washer; keep
+    one spacer on each wheel face. Do not substitute this for a captive or threaded
+    axle mount. Hold the bolt while snugging the locknut just enough to remove play.
+    The axle should stay still and the wheel should spin freely; washers and bracket
+    must not touch the wheel or bearing shields. If it binds or still rocks, stop
+    and correct the fit.
+  parts:
+  - head-half
+  - nut-half
+  - center-spacer
+  - outer-spacer
+  hardware:
+  - axle
+  - axle-washer
+  - axle-nut
+  tool: M8 socket-head hex key and 13 mm wrench
+- n: '7'
+  text: With the door still supported, move it slowly by hand through its full travel
+    and check for side rub, wobble or derailment. Recheck after the first few uses.
+    Stop using it if the wheel loosens, cracks, binds, or develops play.
+  parts: []
+  hardware: []
+  tool: null

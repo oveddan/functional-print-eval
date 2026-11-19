@@ -1,0 +1,218 @@
+task: nut-knob/M3
+note: One-piece, 20 mm fluted knob with a recessed press-fit M3 nut, a solid seating
+  shoulder, and a through-bore. The fit strip did not give a confirmed result; the
+  selected rib fit is a design estimate and should be checked with the actual nut
+  before use.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal ISO 4032 M3 width across flats; actual nut not measured.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M3 major diameter.
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  height:
+    value: 6.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  seat_z:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Shoulder height above the underside; pocket depth is 3.4 mm and nominal
+      nut recess is 1.0 mm.
+  bore_d:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hex_af:
+    value: 5.75
+    unit: mm
+    kind: design
+    source: design
+    note: Main pocket across flats before ribs.
+  rib_fit_af:
+    value: 5.32
+    unit: mm
+    kind: design
+    source: design
+    note: Twice the center-to-tip distance of the three alternating grip ribs, not
+      the width of the full hex.
+  rib_half_width:
+    value: 0.65
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_af:
+    value: 6.15
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  flute_r:
+    value: 2.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flute_center_r:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "import math\n\ndef profile(af, fit, half):\n    r = af / math.sqrt(3)\n \
+    \   corners = [(r*math.cos(i*math.pi/3),r*math.sin(i*math.pi/3)) for i in range(6)]\n\
+    \    pts = []\n    for i in range(6):\n        a,b = corners[i],corners[(i+1)%6]\n\
+    \        pts.append(a)\n        if i % 2 == 0:\n            dx,dy = (b[0]-a[0])/r,(b[1]-a[1])/r\n\
+    \            mx,my = (a[0]+b[0])/2,(a[1]+b[1])/2\n            depth = (af-fit)/2\n\
+    \            pts.extend([(mx-half*dx,my-half*dy),(mx-depth*dy,my+depth*dx),(mx+half*dx,my+half*dy)])\n\
+    \    return pts\n\ndef build(p):\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(p.height)\n\
+    \    for i in range(int(p.flute_count)):\n        a = 2*math.pi*i/p.flute_count\n\
+    \        x,y = p.flute_center_r*math.cos(a),p.flute_center_r*math.sin(a)\n   \
+    \     body = body.cut(cq.Workplane('XY').center(x,y).circle(p.flute_r).extrude(p.height))\n\
+    \    low = profile(p.hex_af,p.rib_fit_af,p.rib_half_width)\n    high = profile(p.lead_af,p.lead_af-0.02,p.rib_half_width)\n\
+    \    lead_z = p.height-p.lead_h\n    pocket = cq.Workplane('XY',origin=(0,0,p.seat_z)).polyline(low).close().extrude(lead_z-p.seat_z)\n\
+    \    lead = cq.Workplane('XY',origin=(0,0,lead_z)).polyline(low).close().workplane(offset=p.lead_h).polyline(high).close().loft(ruled=True)\n\
+    \    bore = cq.Workplane('XY').circle(p.bore_d/2).extrude(p.height)\n    return\
+    \ body.cut(pocket).cut(lead).cut(bore)"
+  print_orientation: Flat annular underside on the bed at z = 0; hex pocket faces
+    up. No supports.
+  use_orientation: Nut enters from the recessed hex face. The M3 bolt may enter from
+    either face and pass through the assembly; place the flat underside toward the
+    work when using the knob as a thumb nut.
+hardware:
+- id: m3-nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut-recess-and-retention
+  part: knob
+  feature: Lead-in hex pocket with three grip ribs
+  relation: contains
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - nut_h
+  - hex_af
+  - rib_fit_af
+  - rib_half_width
+  - lead_h
+  - lead_af
+  - seat_z
+  - height
+  check:
+    method: measure
+    ref: null
+    description: Thumb-press the nut until flat on the shoulder and fully below the
+      opening. With no bolt installed, turn it pocket-down and tap lightly over a
+      tray; the nut must stay put.
+- id: axial-stop
+  part: knob
+  feature: Continuous seating shoulder around the through-bore
+  relation: supports
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - seat_z
+  - bore_d
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: Verify the nut stops squarely on the shoulder rather than passing
+      through the underside.
+- id: bolt-through
+  part: knob
+  feature: Coaxial through-bore below the nut
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bore_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: Run the user's M3 bolt through the installed nut by hand and verify
+      the tip emerges from the far side without rubbing the printed bore. The 0.5
+      mm is nominal diametral clearance.
+manual:
+- n: '1'
+  text: Print the knob flat-side down at 0.2 mm layer height with supports off. Keep
+    the recessed hex facing up.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Set the knob on a flat bench, align the nut flats with the hex, and press
+    the nut in squarely with your thumb until it bottoms out. The nut should be about
+    1 mm below the rim. Do not hammer it or draw it in with a screw if it will not
+    seat by hand.
+  parts:
+  - knob
+  hardware:
+  - m3-nut
+  tool: null
+- n: '3'
+  text: 'Before installing the bolt, invert the knob over a tray and tap it lightly.
+    If the nut moves or falls out, the fit is too loose. If it would not seat by hand
+    in step 2, the fit is too tight. For a reprint, change rib_fit_af by 0.10 mm at
+    a time: decrease it for a tighter fit, increase it for a looser fit.'
+  parts:
+  - knob
+  hardware:
+  - m3-nut
+  tool: null
+- n: '4'
+  text: Thread your existing M3 bolt through the seated nut by hand. Check that the
+    threaded tip exits the far side and that the nut does not spin in the pocket.
+    Use the fluted rim to tighten by hand only.
+  parts:
+  - knob
+  hardware:
+  - m3-nut
+  tool: null

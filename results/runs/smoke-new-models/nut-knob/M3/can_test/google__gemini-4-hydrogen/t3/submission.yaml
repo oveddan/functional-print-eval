@@ -1,0 +1,222 @@
+task: nut-knob/M3
+note: Single-piece 20 mm 6-lobed M3 hand knob with a 5.65 mm AF hex pocket (verified
+  by test coupon) and 3.5 mm full through-hole.
+questions: []
+params:
+  bolt_clearance:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance added to M3 bolt diameter for smooth pass-through
+  top_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Top outer perimeter chamfer for comfortable grip
+  nut_recess:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Depth below top face so nut sits fully inside the knob
+  hole_chamfer:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Small chamfer on bed-side bolt hole entrance
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M3 nominal thread diameter
+  pocket_chamfer:
+    value: 0.3
+    unit: mm
+    kind: design
+    source: design
+    note: Lead-in chamfer at top of hex pocket for easy hand insertion
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Outer diameter across lobe peaks (~20 mm requested)
+  nut_pocket_clearance:
+    value: 0.15
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats offset to 5.65 mm, verified by nut_fit_coupon test print
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut height
+  lobe_r:
+    value: 2.6
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each outer grip lobe
+  lobe_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of grip lobes around perimeter
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across-flats dimension
+  bottom_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Bed-side outer perimeter chamfer to prevent elephant's foot
+  knob_h:
+    value: 10
+    unit: mm
+    kind: design
+    source: design
+    note: Overall knob height
+  hub_d:
+    value: 16.4
+    unit: mm
+    kind: design
+    source: design
+    note: Inner valley diameter between the 6 lobes
+parts:
+- id: m3_hand_knob
+  role: final
+  material: PLA
+  code: "import math\nimport cadquery as cq\n\ndef build(p):\n    # Central hub cylinder\
+    \ on z = 0\n    knob = cq.Workplane(\"XY\").circle(p.hub_d / 2.0).extrude(p.knob_h)\n\
+    \n    # Outer grip lobes sized to reach p.knob_od\n    lobe_offset_r = p.knob_od\
+    \ / 2.0 - p.lobe_r\n    n_lobes = int(p.lobe_count)\n    for i in range(n_lobes):\n\
+    \        ang = math.radians(i * (360.0 / n_lobes))\n        lx = lobe_offset_r\
+    \ * math.cos(ang)\n        ly = lobe_offset_r * math.sin(ang)\n        lobe =\
+    \ (\n            cq.Workplane(\"XY\")\n            .center(lx, ly)\n         \
+    \   .circle(p.lobe_r)\n            .extrude(p.knob_h)\n        )\n        knob\
+    \ = knob.union(lobe)\n\n    # Chamfer outer top and bottom perimeter edges\n \
+    \   knob = knob.faces(\"<Z\").chamfer(p.bottom_chamfer)\n    knob = knob.faces(\"\
+    >Z\").chamfer(p.top_chamfer)\n\n    # M3 bolt clearance through-hole\n    bolt_clearance_d\
+    \ = p.bolt_d + p.bolt_clearance\n    hole = (\n        cq.Workplane(\"XY\")\n\
+    \        .circle(bolt_clearance_d / 2.0)\n        .extrude(p.knob_h)\n    )\n\
+    \    knob = knob.cut(hole)\n\n    # Bottom chamfer on bolt hole to keep entrance\
+    \ clean off the bed\n    hole_chamfer = (\n        cq.Workplane(\"XY\")\n    \
+    \    .circle(bolt_clearance_d / 2.0 + p.hole_chamfer)\n        .workplane(offset=p.hole_chamfer)\n\
+    \        .circle(bolt_clearance_d / 2.0)\n        .loft(combine=True)\n    )\n\
+    \    knob = knob.cut(hole_chamfer)\n\n    # Hex nut pocket from internal seat\
+    \ up to top face\n    pocket_depth = p.nut_h + p.nut_recess\n    floor_z = p.knob_h\
+    \ - pocket_depth\n    nut_pocket_af = p.nut_af + p.nut_pocket_clearance\n    d_circ\
+    \ = nut_pocket_af * 2.0 / math.sqrt(3.0)\n    pocket = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=floor_z)\n        .polygon(6, d_circ)\n     \
+    \   .extrude(pocket_depth)\n    )\n    knob = knob.cut(pocket)\n\n    # Lead-in\
+    \ chamfer at top of hex pocket\n    d_circ_top = (nut_pocket_af + 2.0 * p.pocket_chamfer)\
+    \ * 2.0 / math.sqrt(3.0)\n    pocket_chamfer = (\n        cq.Workplane(\"XY\"\
+    )\n        .workplane(offset=p.knob_h - p.pocket_chamfer)\n        .polygon(6,\
+    \ d_circ)\n        .workplane(offset=p.pocket_chamfer)\n        .polygon(6, d_circ_top)\n\
+    \        .loft(combine=True)\n    )\n    knob = knob.cut(pocket_chamfer)\n\n \
+    \   return knob\n"
+  print_orientation: Flat bottom face on bed (z = 0), hex nut pocket facing up
+  use_orientation: Any orientation; bolt passes through the nut and exits the opposite
+    face
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: nut_press_fit
+  part: m3_hand_knob
+  feature: hex_nut_pocket
+  relation: engages
+  hardware: m3_nut
+  clearance_mm: 0.15
+  params:
+  - nut_af
+  - nut_pocket_clearance
+  check:
+    method: coupon
+    ref: nut_fit_coupon
+    description: 'Verified on nut_fit_coupon print test: 5.50 mm did not go in, while
+      5.65 mm and 5.75 mm pressed in by hand and held.'
+- id: nut_fully_inside
+  part: m3_hand_knob
+  feature: hex_nut_pocket
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: 0.8
+  params:
+  - nut_h
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: Measure pocket depth (3.2 mm) vs nut height (2.4 mm); nut sits ~0.8
+      mm recessed below the top face.
+- id: nut_stop_shoulder
+  part: m3_hand_knob
+  feature: internal_nut_seat
+  relation: supports
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - knob_h
+  - nut_h
+  - nut_recess
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: none
+    ref: null
+    description: Internal seat at z = 6.8 mm has a 3.5 mm clearance hole, smaller
+      than the 5.5 mm AF nut, preventing push-through.
+- id: bolt_pass_through
+  part: m3_hand_knob
+  feature: m3_through_hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - bolt_clearance
+  check:
+    method: measure
+    ref: null
+    description: Test threading an M3 bolt through the nut and out the 3.5 mm through-hole
+      on the opposite side.
+manual:
+- n: '1'
+  text: Print m3_hand_knob flat on the build plate (z = 0) with the hex nut pocket
+    facing up, using PLA at 0.2 mm layer height and no supports.
+  parts:
+  - m3_hand_knob
+  hardware: []
+  tool: Bambu Lab X1C (0.4 mm nozzle, 0.2 mm layer height)
+- n: '2'
+  text: Place the ISO 4032 M3 hex nut flat onto the chamfered hex pocket at the top
+    of m3_hand_knob and press it straight down by hand until it seats against the
+    internal floor (~0.8 mm below the top surface). Turn the knob upside down to confirm
+    the nut stays firmly retained without glue.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_nut
+  tool: null
+- n: '3'
+  text: Thread your M3 bolt through the pressed-in nut and out the 3.5 mm hole on
+    the opposite side, then tighten by hand using the 6-lobed grip.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_nut
+  tool: null

@@ -1,0 +1,337 @@
+task: bearing-wheel
+note: 50 × 16 mm flat-tread trial wheel for a non-load-bearing, non-retaining closet-door
+  guide only. The door support and rail profile could not be confirmed. Do not install
+  unless you can independently confirm that this wheel neither supports the door nor
+  keeps it from falling or leaving its track, and that the existing wheel and rail
+  take a flat tread. Otherwise use the matching factory roller assembly. The 22.10
+  mm CAD seat printed at about 22.09 mm and was the only test seat that accepted the
+  bearing snugly. Collar contact, final wheel fit, and axle stack are not yet verified.
+questions:
+- text: Does the wheel carry weight or retain the door, and what tread does the rail
+    require?
+  answer: null
+- text: Does the existing M8 bolt slip through both bearings, and what are its usable
+    length and bracket clearances?
+  answer: Shank reported as about 8 mm. Pass-through fit, length, and clearances are
+    unconfirmed.
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original running diameter; used as the design target.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original overall width; used as the design target.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate; used as pocket depth on each face.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  existing_bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  existing_bolt_length:
+    value: null
+    unit: mm
+    kind: hardware
+    source: unknown
+    note: ''
+  bracket_thickness:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Do not assume clearance or drill the bracket.
+  seat_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: Selected by coupon; printed bore reported 22.09 mm.
+  shoulder_id:
+    value: 20.2
+    unit: mm
+    kind: design
+    source: design
+    note: Check the shoulder lands on the outer race only.
+  lead_in:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: 45° bearing-entry relief on both faces.
+  collar_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  collar_od:
+    value: 10.6
+    unit: mm
+    kind: design
+    source: design
+    note: Must contact only the inner race. This contact is unverified.
+  center_collar_extra:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: Print at nominal 2.2 mm and fit to the actual inner-race gap.
+  end_collar_t:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  listed_axle_length:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Conditional listed alternative to user's unverified bolt.
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  locknut_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  m8_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+parts:
+- id: wheel
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    w = p.wheel_width\n    h = p.bearing_width\n    r = p.seat_d/2\n\
+    \    c = p.lead_in\n    wheel = cq.Workplane('XY').circle(p.wheel_od/2).extrude(w)\n\
+    \    wheel = wheel.cut(cq.Workplane('XY').circle(p.shoulder_id/2).extrude(w))\n\
+    \    for z in (0,w-h):\n        wheel = wheel.cut(cq.Workplane('XY',origin=(0,0,z)).circle(r).extrude(h))\n\
+    \    wheel = wheel.cut(cq.Solid.makeCone(r+c,r,c,cq.Vector(0,0,0)))\n    wheel\
+    \ = wheel.cut(cq.Solid.makeCone(r,r+c,c,cq.Vector(0,0,w-c)))\n    return wheel"
+  print_orientation: Flat annular face at z=0, axle vertical. No supports; keep the
+    bearing openings clear of brim material.
+  use_orientation: Bearings enter opposite faces along the axle; the cylindrical outer
+    tread runs on the flat track.
+- id: center-collar
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    t = p.wheel_width-2*p.bearing_width+p.center_collar_extra\n\
+    \    return cq.Workplane('XY').circle(p.collar_od/2).circle(p.collar_id/2).extrude(t)"
+  print_orientation: Flat annular face on the bed.
+  use_orientation: Between the two bearing inner races, coaxial with the axle. Fit
+    thickness before assembly.
+- id: end-collar
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.collar_od/2).circle(p.collar_id/2).extrude(p.end_collar_t)"
+  print_orientation: Flat annular face on the bed. Print two copies.
+  use_orientation: One against each exposed inner race, isolating the bearing shield
+    and outer ring from the bracket, washers and bolt head.
+hardware:
+- id: bearings
+  ref: 608ZZ
+  qty: 2
+- id: axle
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: washers
+  ref: ISO 7089 M8
+  qty: 2
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+joints:
+- id: axle-stack
+  fastener: axle
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 20.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: wheel
+    feature: Coaxial passage through the bearing and collar stack; bolt head bears
+      on an external washer
+    role: clearance
+  - part: end-collar
+    feature: Two coaxial through bores at the wheel ends
+    role: clearance
+  - part: center-collar
+    feature: Center through bore
+    role: clearance
+  nut: locknut
+  external: Existing bracket, only if it has a compatible accessible through-hole
+    and enough clearance; washers sit under head and locknut in the example stack.
+criteria:
+- id: outer-race-fit
+  part: wheel
+  feature: Opposed bearing counterbores and outer-race shoulders
+  relation: seats
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - seat_d
+  - bearing_width
+  - shoulder_id
+  check:
+    method: coupon
+    ref: seat-test
+    description: '22.10 mm CAD was the snug test fit. Recheck both real bearings in
+      the full wheel: square, snug, fully seated, and no shield contact or rocking.'
+- id: collar-contact
+  part: end-collar
+  feature: Inner-race contact face
+  relation: clears
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - collar_id
+  - collar_od
+  - end_collar_t
+  check:
+    method: coupon
+    ref: collar-test
+    description: Coupon printed cleanly but contact was not checked. Hold the collar
+      against the inner race and spin the outer race; reject if the collar overlaps
+      or rubs the shield.
+- id: center-stack
+  part: center-collar
+  feature: Spacer between inner races
+  relation: seats
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - wheel_width
+  - bearing_width
+  - center_collar_extra
+  check:
+    method: measure
+    ref: null
+    description: Both outer races must reach the shoulders while the spacer just fills
+      the inner-race gap. Verify that taking up axle play does not introduce drag.
+- id: bracket-fit
+  part: wheel
+  feature: Flat tread and axial envelope
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_width
+  - end_collar_t
+  - bracket_thickness
+  - listed_axle_length
+  check:
+    method: measure
+    ref: null
+    description: The wheel plus its end collars is nominally 20.8 mm before washers
+      and bracket. Verify the real stack, tread profile, full travel, and safe bolt-tip
+      clearance before any guide use.
+manual:
+- n: '1'
+  text: Identify the wheel’s job before fitting anything. If it carries door weight,
+    prevents derailment, or you can’t tell, stop at a bench prototype and use the
+    matching factory roller assembly. A raised, V-shaped or rounded rail that requires
+    a matching tread is also a stop for this flat design.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the wheel and collars flat without supports at 0.2 mm layers, using
+    at least five walls and solid collars. Print two end collars. Remove any first-layer
+    lip or burr without enlarging the bearing seats. Slide the collars and both bare
+    bearings onto the intended bolt by hand first; do not force them.
+  parts:
+  - wheel
+  - center-collar
+  - end-collar
+  hardware:
+  - bearings
+  - axle
+  tool: null
+- n: '3'
+  text: Check collar-to-inner-race contact on a loose bearing before pressing anything
+    into the wheel. With the collar held against the inner race, the outer race must
+    turn without shield rub. Check both collar types. Start one bearing squarely and
+    press only on its outer race until seated. Add the center collar before fitting
+    the second bearing. Check that the second outer race can reach its shoulder without
+    the center collar pushing it away. If necessary, sand the center collar flat a
+    little at a time, keeping its faces parallel, and retest. If you cannot get both
+    outer races seated with the gap filled and no bind, do not install. Do not hammer
+    or draw bearings into place with the axle bolt.
+  parts:
+  - wheel
+  - center-collar
+  - end-collar
+  hardware:
+  - bearings
+  tool: null
+- n: '4'
+  text: Bench-assemble the stack. For a compatible single-sided through-hole bracket,
+    the example order from the head is washer, end collar, first inner race, center
+    collar, second inner race, end collar, bracket, washer, locknut. Your own M8 bolt
+    may replace the listed M8×40 only if it passes by hand, has threads at the nut
+    position, reaches fully through the nylon with about two full threads visible,
+    and does not foul the track or door. The example is not a reason to alter the
+    bracket. Keep washers off the bearing shields. Take up play gently without crushing
+    the PLA collars; the wheel must still spin freely without knock or wobble.
+  parts:
+  - wheel
+  - center-collar
+  - end-collar
+  hardware:
+  - axle
+  - bearings
+  - washers
+  - locknut
+  tool: Hex key and wrench
+- n: '5'
+  text: For a confirmed non-retaining guide only, check fit first with the door safely
+    supported. Move it slowly by hand through its travel and check for rub, binding,
+    or a bearing shifting out of its seat. Recheck the assembly after a few gentle
+    cycles and stop using it if play, drag, cracks, or bearing migration appear.
+  parts:
+  - wheel
+  - center-collar
+  - end-collar
+  hardware:
+  - axle
+  - bearings
+  - washers
+  - locknut
+  tool: null

@@ -1,0 +1,267 @@
+task: tripod-plate
+note: 'The quick-release plate is easy to print; confirming that it locks into this
+  particular head is the hard part. Reuse the metal 1/4-20 webcam bolt rather than
+  printing a PLA screw. This is a provisional 38 mm dovetail: the coupon printed cleanly,
+  but jaw fit and camera socket depth were not confirmed. Do not put the camera on
+  the tripod unless all checks below pass. If any check is inconclusive, get the correct
+  metal plate for the head.'
+questions: []
+params:
+  clamp_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported plate width; not an actual measurement of the jaw cross-section.
+  jaw_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: Assumed bevel angle from the mounting plane; verify by actual contact on
+      both jaws.
+  clamp_length_available:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  camera_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Must be verified before use; respect any camera manufacturer limit on insertion.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length; measure actual projection after installing.
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate, across head.
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  screw_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  screw_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  length:
+    value: 38
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  total_t:
+    value: 11
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bevel_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  land_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  head_clear:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance.
+  hole_clear:
+    value: 0.65
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance.
+  seat_t:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness from camera contact face to bolt head bearing surface; nominal
+      projection 4.4 mm.
+  tip_margin:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Minimum clearance from tip to an independently verified socket bottom.
+  minimum_turns:
+    value: 3
+    unit: count
+    kind: design
+    source: design
+    note: Reject the fit if there are fewer than three smooth full turns from thread
+      engagement to seating.
+parts:
+- id: qr-plate
+  role: final
+  material: Black high-speed PLA
+  code: "def build(p):\n    from math import radians, tan\n    w = p.clamp_width /\
+    \ 2\n    h = p.total_t\n    r = p.bevel_h\n    f = p.land_h\n    a = w-r/tan(radians(p.jaw_angle))\n\
+    \    profile = [(-a,0),(a,0),(a,h-f-r),(w,h-f),(w,h),(-w,h),(-w,h-f),(-a,h-f-r)]\n\
+    \    b = cq.Workplane('XZ').polyline(profile).close().extrude(p.length/2,both=True)\n\
+    \    hole = cq.Workplane('XY').circle((p.screw_d+p.hole_clear)/2).extrude(h)\n\
+    \    cb = cq.Workplane('XY',origin=(0,0,p.seat_t)).circle((p.head_d+p.head_clear)/2).extrude(h-p.seat_t)\n\
+    \    return b.cut(hole).cut(cb)"
+  print_orientation: Narrow flat camera face on the bed at z=0; wide clamp face and
+    open recess up. No supports.
+  use_orientation: Flip from print orientation. Narrow flat face against camera; wide
+    face and recessed screw head down. Angled edges engage the tripod jaws.
+hardware:
+- id: camera-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-attachment
+  fastener: camera-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: qr-plate
+    feature: Open underside counterbore, flat annular floor
+    role: head_seat
+  - part: qr-plate
+    feature: 7 mm coaxial through bore
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 tripod socket
+criteria:
+- id: jaw-fit
+  part: qr-plate
+  feature: Opposing angled rails and wide support face
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_width
+  - clamp_length_available
+  - jaw_angle
+  - bevel_h
+  - land_h
+  - length
+  check:
+    method: measure
+    ref: null
+    description: Test without camera. Plate must fully seat and both jaws must bear
+      on the bevels, not just the corners or straight upper sides. Reject any interference
+      with pins or stops, or any sliding, lifting or rocking when normally tightened.
+- id: head-fit
+  part: qr-plate
+  feature: Head counterbore and bearing floor
+  relation: seats
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - head_d
+  - head_h
+  - head_clear
+  - seat_t
+  - total_t
+  check:
+    method: measure
+    ref: null
+    description: Head must bear flat, be operable with its normal drive, and sit entirely
+      below the wide clamp surface.
+- id: thread-fit
+  part: qr-plate
+  feature: Through bore and camera-facing surface controlling screw projection
+  relation: engages
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - seat_t
+  - bolt_length
+  - camera_socket_depth
+  - tip_margin
+  - minimum_turns
+  - screw_pitch
+  check:
+    method: measure
+    ref: null
+    description: Measure actual projection with head seated. Verify at least 0.5 mm
+      clearance to the socket bottom and compliance with any manufacturer insertion
+      limit. Verify at least three smooth full turns and that the camera base seats
+      firmly against the plate before the tip bottoms or the shoulder binds.
+manual:
+- n: '1'
+  text: Print the plate as modeled at 0.2 mm in PLA with no supports. Use five walls
+    and solid infill. Reject lifted corners, cracks or layer separation. Remove any
+    brim or burrs without rounding off the bevels.
+  parts:
+  - qr-plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Test the empty plate in the tripod with its wide face down. Confirm that it
+    sits flat, both jaws bear on the sloped faces, and no safety pin or stop holds
+    it up. Tighten the knob normally and try sliding, lifting and rocking the plate
+    by hand. Any movement, corner-only contact or interference means stop and get
+    the matching metal plate.
+  parts:
+  - qr-plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Put the metal webcam bolt through the plate from the wide face. Confirm the
+    head sits flat and fully recessed and that you can turn it with its normal drive.
+    Measure the screw projection past the camera face (expected about 4.4 mm). Confirm
+    it is within the camera's allowed insertion and at least 0.5 mm shorter than the
+    verified socket depth. If you cannot verify the depth, stop.
+  parts:
+  - qr-plate
+  hardware:
+  - camera-bolt
+  tool: null
+- n: '4'
+  text: With the camera supported on a padded surface, start the screw by hand and
+    verify at least three smooth full turns before the plate seats. Snug it gently.
+    The camera base must sit flat and the plate must not twist. Stop if the screw
+    binds, bottoms out, or leaves a gap. Do not force it.
+  parts:
+  - qr-plate
+  hardware:
+  - camera-bolt
+  tool: null
+- n: '5'
+  text: Only after all checks pass, use it temporarily with a light camera on a stationary,
+    low tripod over a padded surface. Support the camera by hand while locking it
+    in and checking for movement. Do not carry the tripod with the camera attached,
+    use it overhead, leave it unattended, or use it in heat. Recheck for loosening
+    each time and switch to the correct metal plate as soon as possible.
+  parts:
+  - qr-plate
+  hardware:
+  - camera-bolt
+  tool: null

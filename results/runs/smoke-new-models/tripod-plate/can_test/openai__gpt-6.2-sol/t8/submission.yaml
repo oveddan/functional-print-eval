@@ -1,0 +1,261 @@
+task: tripod-plate
+note: 'A PLA plate is straightforward to print; I would not print the camera screw.
+  This is a fit-check prototype for the reported 38 mm knob clamp, using the salvaged
+  metal 1/4-20 bolt. The gauge printed cleanly, but jaw contact and camera socket
+  depth were not confirmed. This is not a load-rated replacement: keep the camera
+  off the prototype when it is in the tripod, and use a matching metal plate for actual
+  tripod use.'
+questions: []
+params:
+  clamp_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported nominal plate width; interpreted as the widest edge of the dovetail.
+  camera_thread_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal diameter of the reported 1/4-20 camera thread and salvaged bolt.
+  camera_thread_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  camera_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Usable depth from camera base not reported; verify before even a hand-held
+      bolt fit check.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length.
+  bolt_head_width:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate across head; verify largest outside dimension, including any
+      corners.
+  bolt_head_height:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bevel_h:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Unverified profile used on the coupon.
+  bevel_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: Unverified jaw angle from horizontal, trial profile only.
+  rail_length:
+    value: 42
+    unit: mm
+    kind: design
+    source: design
+    note: Check end clearance and obstructions on actual clamp.
+  coupon_length:
+    value: 24
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_h:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nominal_exposure:
+    value: 4.4
+    unit: mm
+    kind: design
+    source: design
+    note: Projection from camera-facing plane for the reported bolt; actual exposure
+      must be checked.
+  shank_clearance:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral.
+  head_clearance:
+    value: 1.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral.
+  bottom_margin:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Minimum margin from bolt tip to confirmed usable socket depth for bench
+      fit check only.
+parts:
+- id: plate
+  role: final
+  material: Black high-speed PLA
+  code: "import math\n\ndef build(p):\n    w = p.clamp_width / 2\n    s = w - p.bevel_h\
+    \ / math.tan(math.radians(p.bevel_angle))\n    h = p.plate_h\n    z = h - p.bevel_h\n\
+    \    seat = p.bolt_length - p.nominal_exposure\n    body = (cq.Workplane('XZ').polyline([(-s,0),(s,0),(s,z),(w,h),(-w,h),(-s,z)]).close().extrude(p.rail_length/2,both=True))\n\
+    \    bore = cq.Workplane('XY').workplane(offset=-1).circle((p.camera_thread_d+p.shank_clearance)/2).extrude(h+2)\n\
+    \    recess = cq.Workplane('XY').workplane(offset=seat).circle((p.bolt_head_width+p.head_clearance)/2).extrude(h-seat+1)\n\
+    \    return body.cut(bore).cut(recess)"
+  print_orientation: Camera-facing flat face down at z=0. The dovetail widens toward
+    the top of the print; the head recess opens upward. No supports.
+  use_orientation: 'Flip over after printing: narrow flat face toward camera, wide
+    rail face toward tripod. Jaw length runs along Y.'
+- id: jaw-gauge
+  role: coupon
+  material: Black high-speed PLA
+  code: "import math\n\ndef build(p):\n    w = p.clamp_width / 2\n    s = w - p.bevel_h\
+    \ / math.tan(math.radians(p.bevel_angle))\n    h = p.plate_h\n    z = h - p.bevel_h\n\
+    \    return cq.Workplane('XZ').polyline([(-s,0),(s,0),(s,z),(w,h),(-w,h),(-s,z)]).close().extrude(p.coupon_length/2,both=True)"
+  print_orientation: Narrow flat face down at z=0; the dovetail widens toward the
+    top of the print.
+  use_orientation: Flip narrow face up and place in the empty clamp with widest face
+    down.
+hardware:
+- id: camera-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-interface
+  fastener: camera-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: flat counterbore shoulder
+    role: head_seat
+  - part: plate
+    feature: 6.90 mm axial through-hole
+    role: clearance
+  nut: null
+  external: Camera 1/4-20 socket, for separate hand-held fit check only after verifying
+    usable depth.
+criteria:
+- id: dovetail-fit
+  part: plate
+  feature: opposed inclined rail faces
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - clamp_width
+  - bevel_h
+  - bevel_angle
+  - rail_length
+  check:
+    method: coupon
+    ref: jaw-gauge
+    description: In the empty clamp, verify both angled faces are gripped instead
+      of the jaws bottoming on another surface or the knob reaching its travel limit.
+      Check for any lift, rock or slide. Repeat on the full plate to check end and
+      pin clearance. Fit is not a load rating.
+- id: bolt-head-fit
+  part: plate
+  feature: counterbore shoulder and recess
+  relation: seats
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - bolt_head_width
+  - bolt_head_height
+  - bolt_length
+  - plate_h
+  - head_clearance
+  - nominal_exposure
+  check:
+    method: measure
+    ref: null
+    description: Head must seat flat, remain fully below the rail face, and be reachable
+      with its driver. Reject a proud or tilted head.
+- id: thread-fit
+  part: plate
+  feature: bolt projection beyond camera-facing face
+  relation: clears
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - nominal_exposure
+  - camera_socket_depth
+  - camera_thread_pitch
+  - bottom_margin
+  check:
+    method: measure
+    ref: null
+    description: Measure actual projection and confirm usable socket depth exceeds
+      it by at least 0.5 mm; confirm the bolt's usable full threads, not just matching
+      diameter. If unknown, skip the camera check.
+manual:
+- n: '1'
+  text: Use the already printed gauge first. Drop it into the empty clamp wide side
+    down and snug the knob by hand. Check from the end that both jaws bear on the
+    slopes. Tug up and along the channel by hand. Stop if it rocks, lifts, slides,
+    hits a pin, or the knob bottoms out. A clean print alone does not establish fit.
+  parts:
+  - jaw-gauge
+  hardware: []
+  tool: null
+- n: '2'
+  text: If the gauge fits and you want a full-size mock-up, print the plate camera
+    face down in PLA at 0.2 mm layers with at least five walls and no supports. Repeat
+    the empty-clamp checks on the full plate, including at both ends. Do not force
+    the clamp closed.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Off the tripod, insert the metal webcam bolt from the wide side. Make sure
+    its head sits flat, below the rail face, and that you can reach its drive. Measure
+    how far the tip projects beyond the camera face (about 4.4 mm with the reported
+    bolt). Do not substitute a PLA screw.
+  parts:
+  - plate
+  hardware:
+  - camera-bolt
+  tool: Calipers and driver matching the salvaged bolt
+- n: '4'
+  text: For a separate bench fit check only, support the camera on a padded surface.
+    Skip this check unless you can confirm the socket's usable depth exceeds actual
+    bolt projection by at least 0.5 mm. Start by hand; stop if it binds, bottoms out,
+    or fails to bring the plate flush with the camera. Do not force or tighten against
+    resistance.
+  parts:
+  - plate
+  hardware:
+  - camera-bolt
+  tool: null
+- n: '5'
+  text: For photography, identify the head model and borrow or buy the matching metal
+    quick-release plate and camera screw. The printed prototype does not verify retention
+    under load, and has no independent end stop if the clamp slips.
+  parts:
+  - plate
+  hardware: []
+  tool: null

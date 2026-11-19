@@ -1,0 +1,239 @@
+task: tripod-plate
+note: Provisional 38 mm drop-in dovetail plate for a knob-tightened tripod clamp,
+  with a recessed salvaged metal 1/4-20 camera screw. The coupon printed cleanly,
+  but jaw engagement and socket depth were not verified. The 45-degree flank and interpretation
+  of 38 mm as the widest edge are assumptions. Do not mount a camera unless all fit
+  checks pass. A compatible metal replacement is the safer choice, particularly for
+  a heavy or valuable camera.
+questions: []
+params:
+  receiver_plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported width of plate the clamp takes; assumes widest edge, not confirmed.
+  jaw_angle:
+    value: null
+    unit: deg
+    kind: world
+    source: unknown
+    note: ''
+  camera_socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Usable depth from actual camera contact plane; verify before use.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length; measure actual projection after seating.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate maximum width across head.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 major diameter.
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  flank_run:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  flank_height:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: Equal to run for an assumed 45-degree dovetail.
+  plate_length:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_height:
+    value: 11.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  web:
+    value: 5.8
+    unit: mm
+    kind: design
+    source: design
+    note: Head bearing plane to camera face; nominal tip projection is 4.2 mm.
+  head_pocket:
+    value: 17
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: plate
+  role: final
+  material: PLA
+  code: "def build(p):\n    w = p.receiver_plate_width/2\n    n = w-p.flank_run\n\
+    \    h = p.plate_height\n    a = h-p.flank_height\n    body = cq.Workplane('XZ').polyline([(-n,0),(n,0),(n,a),(w,h),(-w,h),(-n,a)]).close().extrude(p.plate_length/2,both=True)\n\
+    \    bore = cq.Workplane('XY').circle(p.bolt_clear/2).extrude(h+1)\n    pocket\
+    \ = cq.Workplane('XY').workplane(offset=p.web).circle(p.head_pocket/2).extrude(h-p.web+1)\n\
+    \    return body.cut(bore).cut(pocket)"
+  print_orientation: Flat camera-contact face at z=0 on the bed. Screw-head recess
+    faces up. No supports.
+  use_orientation: Flip over so the flat camera-contact face is up, screw-head recess
+    opens downward, and the wide edges are at the bottom under the clamp lips.
+hardware:
+- id: camera-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-mount
+  fastener: camera-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.8
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: Flat bearing shoulder at the bottom of the head recess in print orientation
+    role: head_seat
+  - part: plate
+    feature: Central screw clearance bore
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 tripod socket
+criteria:
+- id: jaw-fit
+  part: plate
+  feature: Both angled long edges
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - receiver_plate_width
+  - jaw_angle
+  - flank_run
+  - flank_height
+  - plate_length
+  check:
+    method: measure
+    ref: null
+    description: 'Check the final unloaded print in the actual clamp: floor seating,
+      positive capture on both flanks, no obstruction, and no lift, rock or slide
+      when hand-snug.'
+- id: recess
+  part: plate
+  feature: Head recess and bearing shoulder
+  relation: contains
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - plate_height
+  - web
+  - head_pocket
+  - bolt_head_d
+  - bolt_head_h
+  check:
+    method: measure
+    ref: null
+    description: The head sits flat on the shoulder and entirely below the tripod-side
+      seating surface in use; confirm it can be turned with the appropriate driver.
+- id: socket-fit
+  part: plate
+  feature: Camera-contact face and screw projection
+  relation: seats
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - web
+  - bolt_length
+  - bolt_pitch
+  - camera_socket_depth
+  check:
+    method: measure
+    ref: null
+    description: Verify actual projection is at least 0.5 mm shorter than usable socket
+      depth; confirm at least three full turns of smooth engagement and flush seating
+      without bottoming.
+manual:
+- n: '1'
+  text: Print camera face down in PLA at 0.2 mm, no supports. Use five walls and 100%
+    infill. Inspect the bevels and screw shoulder for cracks, gaps, or layer separation;
+    discard a defective print.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Test the bare plate in the empty clamp, wide edges down. It must sit flat
+    on the support surfaces, with both jaw lips visibly capturing the angled edges
+    and no pin or other feature holding it up. Tighten the knob by hand and try lifting,
+    twisting, and sliding the plate. If it moves, rocks, or the jaws merely pinch
+    without capturing it, stop and get the correct metal plate.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Remove the plate. Insert the metal bolt from the recessed side. Check the
+    head sits flat, remains entirely recessed, and can be turned. Measure the tip
+    projection past the camera face and verify it is at least 0.5 mm shorter than
+    the usable socket depth. If you cannot verify the depth, don't mount the camera.
+  parts:
+  - plate
+  hardware:
+  - camera-bolt
+  tool: null
+- n: '4'
+  text: Over a padded table, support the camera by hand and start the screw gently.
+    It must turn smoothly for at least three full turns before snugging down. Verify
+    that the plate contacts the camera flat and cannot twist by hand; if the screw
+    binds or stops with a gap, remove it. Do not force or overtighten it.
+  parts:
+  - plate
+  hardware:
+  - camera-bolt
+  tool: null
+- n: '5'
+  text: Only after all checks pass, use it briefly with a lightweight camera, upright
+    and low over a padded surface. Keep a hand on the camera while mounting or adjusting
+    it, and recheck the knob and any play. Do not carry the tripod with the camera
+    attached, leave it unattended, use it overhead, or leave the PLA in heat. Replace
+    it with the correct metal plate promptly.
+  parts:
+  - plate
+  hardware:
+  - camera-bolt
+  tool: null

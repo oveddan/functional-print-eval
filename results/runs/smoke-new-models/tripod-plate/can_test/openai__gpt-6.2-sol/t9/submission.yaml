@@ -1,0 +1,242 @@
+task: tripod-plate
+note: 'Temporary 38 mm dovetail plate prototype for the reported knob clamp. The coupon
+  printed cleanly, but jaw fit and socket depth were not confirmed. Print the plate,
+  not the screw: reuse the salvaged metal 1/4-20 bolt only if it passes the checks
+  below. A matching metal replacement plate is the right choice for normal use.'
+questions: []
+params:
+  wide:
+    value: 38
+    unit: mm
+    kind: world
+    source: asked
+    note: Reported nominal plate width; not a measured jaw profile.
+  length:
+    value: 28
+    unit: mm
+    kind: design
+    source: design
+    note: Same length and outer profile as the printed coupon.
+  height:
+    value: 12
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  ramp:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: 45 degree trial taper, 3.2 mm per side.
+  land:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal major diameter of 1/4-20.
+  bolt_pitch:
+    value: 1.27
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate maximum width across head; check actual fit.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bolt_length:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length.
+  socket_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Measure usable depth from the camera mounting face before use.
+  socket_margin:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Minimum clearance from screw tip to the end of usable socket depth.
+  bore_extra:
+    value: 0.55
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance.
+  head_extra:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral space for head and access.
+  web:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Nominally leaves 4 mm of screw projection and recesses the head 1 mm below
+      the tripod-side face.
+parts:
+- id: quick-release-plate
+  role: final
+  material: High-speed black PLA
+  code: "def build(p):\n    a=p.wide/2\n    b=a-p.ramp\n    h=p.height\n    z=h-p.land\n\
+    \    profile=[(-b,0),(b,0),(b,z-p.ramp),(a,z),(a,h),(-a,h),(-a,z),(-b,z-p.ramp)]\n\
+    \    solid=cq.Workplane('XZ').polyline(profile).close().extrude(p.length/2,both=True)\n\
+    \    bore=cq.Workplane('XY').circle((p.bolt_d+p.bore_extra)/2).extrude(h)\n  \
+    \  pocket=cq.Workplane('XY',origin=(0,0,p.web)).circle((p.bolt_head_d+p.head_extra)/2).extrude(h-p.web)\n\
+    \    return solid.cut(bore).cut(pocket)"
+  print_orientation: Camera-contact face at z=0, recess opening up. Print without
+    supports.
+  use_orientation: 'Flip from print orientation: flat narrow face against camera,
+    broad dovetail and screw recess toward tripod. Sloped edges run along the clamp
+    jaws.'
+hardware:
+- id: camera-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-attachment
+  fastener: camera-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 6.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: quick-release-plate
+    feature: Flat shoulder at bottom of head recess
+    role: head_seat
+  - part: quick-release-plate
+    feature: Center through bore
+    role: clearance
+  nut: null
+  external: Camera's 1/4-20 tripod socket
+criteria:
+- id: jaw-fit
+  part: quick-release-plate
+  feature: Opposing dovetail faces
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - wide
+  - ramp
+  - land
+  - length
+  - height
+  check:
+    method: coupon
+    ref: fit-coupon
+    description: Test the empty clamp first using the printed coupon; repeat on the
+      final print. Both jaws must grip the slopes, not just the edges. No wobble,
+      lift, or sliding under a firm hand check in all directions.
+- id: head-fit
+  part: quick-release-plate
+  feature: Recess and flat bearing shoulder
+  relation: seats
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - height
+  - web
+  - bolt_head_h
+  - bolt_head_d
+  - head_extra
+  check:
+    method: measure
+    ref: null
+    description: Verify that the head bears squarely, can be turned with its intended
+      drive, and stays below the tripod-side face. Check that nothing in the clamp
+      floor hits the head or recess.
+- id: socket-fit
+  part: quick-release-plate
+  feature: Through bore and bolt projection
+  relation: engages
+  hardware: camera-bolt
+  clearance_mm: null
+  params:
+  - bolt_length
+  - bolt_pitch
+  - web
+  - socket_depth
+  - socket_margin
+  check:
+    method: measure
+    ref: null
+    description: Measure actual projection with head seated and measure usable camera
+      socket depth from the mounting face. At least 0.5 mm must remain before bottoming.
+      The bolt must start by hand and make at least three full turns after engaging
+      before the plate seats flat.
+manual:
+- n: '1'
+  text: 'Try the printed fit-coupon in the empty tripod clamp. Close the knob normally
+    by hand and pull and twist the coupon firmly. If it rocks, slides, lifts, or grips
+    only at the jaw edges, stop: get a plate matched to the tripod head.'
+  parts: []
+  hardware: []
+  tool: null
+- n: '2'
+  text: Print the quick-release plate at 0.2 mm layers, with at least five walls and
+    solid infill. No supports. Inspect for weak layers or cracks, remove any brim,
+    and repeat the empty-clamp test with the final plate.
+  parts:
+  - quick-release-plate
+  hardware: []
+  tool: null
+- n: '3'
+  text: Slip the metal bolt in from the recessed side. Verify that the head seats
+    flat below the dovetail face, turns with its intended drive, and does not touch
+    the clamp floor. Measure how far the tip projects from the camera face and use
+    a blunt nonmetal probe to check usable socket depth. If you cannot verify at least
+    0.5 mm of bottom clearance, do not mount the camera.
+  parts:
+  - quick-release-plate
+  hardware:
+  - camera-bolt
+  tool: null
+- n: '4'
+  text: With the camera supported on a padded surface, start the screw by hand without
+    forcing it. You need at least three full turns after it catches and the plate
+    must seat flush without rocking or the screw bottoming. Snug gently using the
+    bolt's intended drive. If anything binds or the plate is loose, stop. Do not substitute
+    a printed screw.
+  parts:
+  - quick-release-plate
+  hardware:
+  - camera-bolt
+  tool: null
+- n: '5'
+  text: Only after all checks pass, test the assembled fit with the tripod low over
+    a padded surface and your hand supporting the camera. Use only for a brief, attended
+    stationary setup. Do not carry the tripod with the camera attached or use this
+    overhead, in heat, or where a drop could hurt someone. Replace it with the correct
+    metal plate as soon as possible.
+  parts:
+  - quick-release-plate
+  hardware:
+  - camera-bolt
+  tool: null

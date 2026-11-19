@@ -1,0 +1,197 @@
+task: nut-knob/M3
+note: One-piece 20 mm six-scallop thumb knob. The final geometry matches the 5.65
+  mm coupon, which held the test nut. The 3.2 mm-deep socket recesses the nominal
+  2.4 mm nut by 0.8 mm. A solid shoulder around the 3.6 mm through-bore prevents the
+  nut from passing through the far side.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal ISO 4032 M3 width across flats; actual width could not be measured.
+  nut_height:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  test_bolt_length:
+    value: 12
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  height:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: Axial thickness of the shoulder below the nut.
+  bore:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  socket_af:
+    value: 5.65
+    unit: mm
+    kind: design
+    source: design
+    note: CAD size selected by coupon; this is not the measured as-printed size.
+  entry_h:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_af_add:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_pitch_r:
+    value: 11.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "import math\ndef build(p):\n    af = p.socket_af\n    body = cq.Workplane('XY').circle(p.knob_od/2).extrude(p.height)\n\
+    \    for i in range(int(p.scallop_count)):\n        a = 2*math.pi*i/p.scallop_count\n\
+    \        cutter = (cq.Workplane('XY')\n            .center(p.scallop_pitch_r*math.cos(a),p.scallop_pitch_r*math.sin(a))\n\
+    \            .circle(p.scallop_r).extrude(p.height))\n        body = body.cut(cutter)\n\
+    \    d = af/math.cos(math.pi/6)\n    hex_void = (cq.Workplane('XY',origin=(0,0,p.floor)).polygon(6,d)\n\
+    \        .workplane(offset=p.height-p.entry_h-p.floor).polygon(6,d)\n        .workplane(offset=2*p.entry_h).polygon(6,(af+2*p.entry_af_add)/math.cos(math.pi/6)).loft(ruled=True))\n\
+    \    bore = cq.Workplane('XY').circle(p.bore/2).extrude(p.height)\n    return\
+    \ body.cut(hex_void).cut(bore)"
+  print_orientation: Flat small-bore face on the bed at z=0, hex socket up. Print
+    at 0.2 mm layers, no supports, with the same fit-affecting slicer settings as
+    the coupon.
+  use_orientation: Small round bore faces the workpiece and receives the protruding
+    bolt; the recessed hex opening faces outward.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: test-bolt
+  ref: ISO 4762 M3x12
+  qty: 1
+joints: []
+criteria:
+- id: nut-retention
+  part: knob
+  feature: Press-fit hex socket with flared entry
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - socket_af
+  - nut_af
+  - entry_h
+  - entry_af_add
+  check:
+    method: coupon
+    ref: fit_565
+    description: The 5.65 mm coupon held the nut. Confirm on the final part that the
+      nut seats by hand and stays in when inverted and gently shaken.
+- id: recess-and-stop
+  part: knob
+  feature: Socket floor and annular shoulder
+  relation: seats
+  hardware: nut
+  clearance_mm: null
+  params:
+  - height
+  - floor
+  - bore
+  - nut_height
+  - nut_af
+  check:
+    method: measure
+    ref: null
+    description: With the nut against the floor, verify the nut is below the outer
+      face and cannot pass through the small round bore.
+- id: bolt-passage
+  part: knob
+  feature: Axial through-bore and open hex mouth
+  relation: clears
+  hardware: test-bolt
+  clearance_mm: 0.6
+  params:
+  - bore
+  - bolt_d
+  - height
+  - test_bolt_length
+  check:
+    method: measure
+    ref: null
+    description: Feed the bolt through the small bore, thread it through the nut,
+      and verify that its tip can emerge past the hex-opening face.
+manual:
+- n: '1'
+  text: Print the knob with the small round opening against the bed and the hex socket
+    facing up. Use the same PLA and slicer settings as the successful 5.65 mm coupon.
+    Let it cool before fitting the nut.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the nut flats with the hex socket and press the nut in squarely with
+    your thumb until it rests on the shoulder. It should be fully below the outer
+    face. Flip the knob over and give it a gentle shake; the nut should stay put.
+    Do not hammer it in or use glue.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Feed the M3 bolt in from the small round opening and turn the knob by hand
+    to check that the bolt threads smoothly and can emerge from the hex face. In use,
+    keep the small-bore face toward the workpiece so tightening pulls the nut against
+    the printed shoulder. For the bolt tip to emerge when tightened, there must be
+    more than 5.6 mm of usable bolt length protruding from the workpiece.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - test-bolt
+  tool: null

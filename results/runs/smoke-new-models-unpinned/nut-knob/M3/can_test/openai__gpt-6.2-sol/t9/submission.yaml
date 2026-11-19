@@ -1,0 +1,199 @@
+task: nut-knob/M3
+note: One-piece, 20 mm scalloped hand knob for a press-in ISO 4032 M3 nut. The 5.75
+  mm hex pocket held the nut in the printed fit test. A 4 mm floor stops the nut,
+  while the centered 3.5 mm through-bore lets the bolt pass. No glue or supports.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_height:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  fit_offset_af:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: Yields the 5.75 mm across-flats pocket that held the actual nut in the coupon
+      test.
+  floor_t:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  recess:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal distance from the pocket-side face to the top of a fully seated
+      nut.
+  mouth_extra_af:
+    value: 0.9
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_extra:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance over the nominal M3 bolt diameter.
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 11.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_cut_r:
+    value: 3.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "def build(p):\n    import math\n    seat_z = p.floor_t\n    h = seat_z +\
+    \ p.nut_height + p.recess\n    pocket_af = p.nut_af + p.fit_offset_af\n    def\
+    \ hex_wire(af, z):\n        return cq.Workplane('XY', origin=(0, 0, z)).polygon(6,\
+    \ af / math.cos(math.pi / 6)).val()\n    pocket = cq.Solid.makeLoft([\n      \
+    \  hex_wire(pocket_af, seat_z),\n        hex_wire(pocket_af, h - p.lead_h),\n\
+    \        hex_wire(p.nut_af + p.mouth_extra_af, h)\n    ], True)\n    body = cq.Workplane('XY').circle(p.knob_od\
+    \ / 2).extrude(h)\n    for i in range(int(p.scallop_count)):\n        ang = 2\
+    \ * math.pi * i / p.scallop_count\n        x = p.scallop_center_r * math.cos(ang)\n\
+    \        y = p.scallop_center_r * math.sin(ang)\n        scallop = cq.Workplane('XY').center(x,\
+    \ y).circle(p.scallop_cut_r).extrude(h)\n        body = body.cut(scallop)\n  \
+    \  bore = cq.Workplane('XY').circle((p.bolt_d + p.bore_extra) / 2).extrude(h)\n\
+    \    return body.cut(pocket).cut(bore)"
+  print_orientation: Flat face with the round bore on the bed at z = 0; hex pocket
+    opens up.
+  use_orientation: Flat bore face toward the workpiece so the nut bears on the pocket
+    floor when tightened. The M3 bolt enters the round bore and exits through the
+    recessed nut.
+hardware:
+- id: m3-nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: press-fit
+  part: knob
+  feature: Hex pocket and tapered lead-in
+  relation: engages
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - fit_offset_af
+  - mouth_extra_af
+  - lead_h
+  check:
+    method: coupon
+    ref: fit-575
+    description: The 5.75 mm coupon held the actual nut. On the final print, verify
+      it seats by hand and stays in when inverted and lightly shaken.
+- id: recessed-nut
+  part: knob
+  feature: Hex pocket depth
+  relation: contains
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - nut_height
+  - recess
+  check:
+    method: measure
+    ref: null
+    description: Fully seated nut is nominally 1 mm below the opening face.
+- id: nut-stop
+  part: knob
+  feature: Floor around the central through-bore
+  relation: supports
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - bolt_d
+  - bore_extra
+  check:
+    method: none
+    ref: null
+    description: The 3.5 mm bore is smaller than the nut across flats, leaving a solid
+      shoulder.
+- id: bolt-pass
+  part: knob
+  feature: Round through-bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - bore_extra
+  check:
+    method: measure
+    ref: null
+    description: Check for a clear 3.5 mm bore and verify the intended M3 bolt starts
+      by hand from the flat face and threads through the nut.
+manual:
+- n: '1'
+  text: Print flat face down and pocket up in PLA at 0.2 mm layer height, with supports
+    off. Use the same slicer settings as the fit coupons.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: After cooling, remove any loose strings from the pocket and bore. Line up
+    the nut’s flats with the hex pocket and press it straight in with your thumb until
+    it bottoms out. The nut should sit completely below the opening. Do not hammer
+    it or add glue.
+  parts:
+  - knob
+  hardware:
+  - m3-nut
+  tool: null
+- n: '3'
+  text: Turn the knob upside down and shake it lightly to verify the nut stays in.
+    Thread your M3 bolt in by hand from the flat face. If you want the bolt tip to
+    stick out beyond the pocket-side face, allow more than 7.4 mm of bolt projection
+    from the workpiece. Tighten by hand with the flat face toward the workpiece.
+  parts:
+  - knob
+  hardware:
+  - m3-nut
+  tool: null

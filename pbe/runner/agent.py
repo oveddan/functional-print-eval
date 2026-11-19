@@ -12,7 +12,9 @@ test prints only (pbe/runner/coupon_loop.py's readings). Whether to test, and wh
 conditions' prompt and tools are exactly as they were before either existed.
 """
 import base64
+import copy
 import json
+import os
 import re
 import tempfile
 import time
@@ -173,6 +175,38 @@ def tools(condition="can_ask", assembly=False):
         [function_tool("print_test", PRINT_TEST, test_print_schema(design))] if condition == TEST_CONDITION else [])
 
 
+PARAMS_AS_LIST = "PBE_PARAMS_AS_LIST"  # host experiment only (results/runs/host-bedrock-list): never set for a leaderboard run
+
+
+def params_as_list(tool_list):
+    """The tools with `params` sent as a list of entries with fixed fields (name, value, kind, ...) instead of a map from
+    free names. Amazon Bedrock's conversion turns the map (additionalProperties) into "any" (2026-11-18)."""
+    out = copy.deepcopy(tool_list)
+    for tool in out:
+        properties = tool["function"]["parameters"].get("properties", {})
+        if "additionalProperties" not in properties.get("params", {}):
+            continue
+        entry = copy.deepcopy(properties["params"]["additionalProperties"])
+        entry["properties"] = {"name": {"type": "string", "description": "The param's name, e.g. od"}, **entry["properties"]}
+        entry["required"] = ["name"] + entry.get("required", [])
+        properties["params"] = {"type": "array", "items": entry, "description": properties["params"].get("description", "")}
+    return out
+
+
+def sent_tools(condition, assembly=False):
+    """The tools a trial sends: tools(), in list form only when the host experiment's PBE_PARAMS_AS_LIST is set."""
+    return params_as_list(tools(condition, assembly)) if os.environ.get(PARAMS_AS_LIST) else tools(condition, assembly)
+
+
+def params_as_map(arguments):
+    """A tool call's arguments with list-form params turned back into the map the submission format reads."""
+    params = arguments.get("params")
+    if not isinstance(params, list):
+        return arguments
+    as_map = {str(entry.get("name")): {k: v for k, v in entry.items() if k != "name"} for entry in params if isinstance(entry, dict)}
+    return {**arguments, "params": as_map}
+
+
 def test_print_schema(design):
     """print_test's parameters: the params and parts of submit_design's schema, nothing else."""
     return {"type": "object", "properties": {"params": design["properties"]["params"],
@@ -329,7 +363,7 @@ class TrialTools:
         if self.can_test:
             tools_by_name["print_test"] = self.print_test
         try:
-            arguments = read_arguments(call)
+            arguments = params_as_map(read_arguments(call))
         except UnreadableArguments as e:
             if call.function.name == "submit_design":  # a submission sent back to fix is a repair
                 self.repairs += 1
@@ -512,7 +546,7 @@ def run_trial(task, model, condition="can_ask", max_turns=8, max_tokens=32000, c
     started = time.monotonic()
     for _ in range(max_turns):
         try:
-            response = chat(model, messages, tools=tools(condition, task.format.assembly), max_tokens=max_tokens,
+            response = chat(model, messages, tools=sent_tools(condition, task.format.assembly), max_tokens=max_tokens,
                             **llm.caching_params(model))
         except llm.LLMError as e:
             error = str(e)
@@ -548,7 +582,7 @@ def asked_test_prints(task_id, messages) -> list[Submission]:
         for call in message.get("tool_calls") or []:
             if call["function"]["name"] != "print_test" or not replies.get(call["id"], "").startswith(TEST_PRINTED):
                 continue
-            arguments = json.loads(call["function"]["arguments"] or "{}")
+            arguments = params_as_map(json.loads(call["function"]["arguments"] or "{}"))
             parts = [{**part, "role": "coupon"} for part in arguments.get("parts") or []]
             pieces.append(Submission.model_validate({"task": task_id, "params": arguments.get("params") or {}, "parts": parts}))
     return pieces

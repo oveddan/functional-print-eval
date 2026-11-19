@@ -1,0 +1,181 @@
+task: nut-knob/M3
+note: 'One-piece 20 mm female hand knob. The 5.80 mm CAD pocket was selected from
+  coupon E: the actual nut went in with light hand pressure and stayed in when inverted
+  and shaken. Use the same slicer profile as coupon E. The nut bottoms against a solid
+  shoulder around the 3.50 mm bolt passage, so tightening loads the shoulder rather
+  than relying on the press fit.'
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal across flats; actual nut not measured.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal thickness.
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  diameter:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  height:
+    value: 7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  recess:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal recess below rim when the nut is fully seated.
+  lead_depth:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  entry_af:
+    value: 6.3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_clear:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral CAD clearance.
+  pocket_af:
+    value: 5.8
+    unit: mm
+    kind: design
+    source: design
+    note: CAD dimension validated for insertion and inversion retention by coupon
+      E.
+  scallops:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "def build(p):\n    import math\n    h=p.height; z=h-p.nut_h-p.recess; af=p.pocket_af;\
+    \ k=2/math.sqrt(3)\n    body=cq.Workplane('XY').circle(p.diameter/2).extrude(h)\n\
+    \    for i in range(p.scallops):\n        a=2*math.pi*i/p.scallops\n        body=body.cut(cq.Workplane('XY').center(p.scallop_center_r*math.cos(a),p.scallop_center_r*math.sin(a)).circle(p.scallop_r).extrude(h))\n\
+    \    pocket=cq.Workplane('XY').workplane(offset=z).polygon(6,k*af).extrude(h-z)\n\
+    \    lead=cq.Workplane('XY').workplane(offset=h-p.lead_depth).polygon(6,k*af).workplane(offset=p.lead_depth).polygon(6,k*p.entry_af).loft(ruled=True)\n\
+    \    return body.cut(pocket).cut(lead).cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_clear)/2).extrude(h))"
+  print_orientation: Flat face with small round hole on bed at z=0; hex pocket opens
+    up. No supports.
+  use_orientation: Small-hole face toward the work; recessed nut and bolt exit face
+    away from the work.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: press_fit
+  part: knob
+  feature: Chamfered hex pocket
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - pocket_af
+  - entry_af
+  - lead_depth
+  check:
+    method: coupon
+    ref: E
+    description: Nut goes in with light hand pressure and remains in place when inverted
+      and shaken.
+- id: recessed_nut
+  part: knob
+  feature: Hex pocket and bottom shoulder
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_h
+  - recess
+  - height
+  - bolt_d
+  - bolt_clear
+  check:
+    method: measure
+    ref: null
+    description: Check that the nut bottoms out and its top face is below the rim;
+      the shoulder prevents it passing through the small hole.
+- id: bolt_passage
+  part: knob
+  feature: Round through-hole
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - bolt_clear
+  check:
+    method: none
+    ref: null
+    description: Hand-thread the existing M3 bolt from the small-hole face and verify
+      the tip emerges through the nut when enough thread length is available.
+manual:
+- n: '1'
+  text: Print the knob with the small-hole face on the bed, pocket up, at 0.2 mm layers
+    using the same settings as coupon E. Do not use supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Set the knob flat on a table. Align the nut flats with the hex pocket and
+    press it straight down with your thumb until it rests on the shoulder. The nut
+    should sit entirely below the rim. Turn the knob over and give it a light shake
+    to verify retention. No glue or hammering.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Put the small-hole face toward the work. Start your M3 bolt from that side
+    and turn the knob by hand. With sufficient bolt length, the tip emerges through
+    the nut on the recessed side. Hand-tighten only.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

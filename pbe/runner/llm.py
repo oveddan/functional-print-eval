@@ -120,10 +120,31 @@ def caching_params(model) -> dict:
     return {"cache_control": AUTOMATIC_CACHE} if requests_caching(model) else {}
 
 
+# The maker's own servers for a closed model, so every trial of a model runs on the same host. Unpinned, OpenRouter
+# sent GPT-6.2 Sol to Amazon Bedrock for 23 of 40 trials (2026-11-18, results/runs/smoke-new-models), where it
+# reasoned about 25 tokens a trial against 650 on OpenAI's, never asked for a test print, and passed 5 of 23,
+# against 11 of 16 on OpenAI's. The published runs already ran on these hosts: every GPT-6.1 Sol call on OpenAI,
+# every Gemini call on Google Vertex or AI Studio. Open-weight models stay unpinned: no maker's server to pin to.
+PINNED_PROVIDERS = {"openai/": ["openai"], "google/": ["google-vertex", "google-ai-studio"]}
+
+
+def provider_params(model) -> dict:
+    """What a call adds to its request to pin its host: a routing choice, never a change to what the model reads.
+    PBE_PROVIDER (an OpenRouter provider slug, e.g. amazon-bedrock) sends every call to that host instead, for a run
+    that compares hosts (results/runs/host-bedrock); it's never set for a leaderboard run."""
+    if override := os.environ.get("PBE_PROVIDER"):
+        reasoning = {"reasoning": {"effort": effort}} if (effort := os.environ.get("PBE_REASONING_EFFORT")) else {}
+        return {"provider": {"only": [override], "allow_fallbacks": False}, **reasoning}
+    for prefix, providers in PINNED_PROVIDERS.items():
+        if model.startswith(prefix):
+            return {"provider": {"only": providers, "allow_fallbacks": False}}
+    return {}
+
+
 def chat(model, messages, tools=None, retries=4, timeout=900, **params) -> dict:
     """One completion. Returns OpenRouter's response with `elapsed_s` added;
     `usage.cost` is what the call was charged, in USD."""
-    body = {"model": model, "messages": messages, "usage": {"include": True}, **params}
+    body = {"model": model, "messages": messages, "usage": {"include": True}, **provider_params(model), **params}
     if tools:
         body["tools"] = tools
     data = json.dumps(body).encode()

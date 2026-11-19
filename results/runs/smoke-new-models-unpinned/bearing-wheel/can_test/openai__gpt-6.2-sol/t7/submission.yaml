@@ -1,0 +1,314 @@
+task: bearing-wheel
+note: Conditional replacement for a confirmed non-load-bearing closet-door guide.
+  The 50 × 16 mm wheel has a flat tread because the original profile could not be
+  verified. Do not install it if the roller carries the door, retains it against derailment
+  or falling, or needs a shaped tread. Use an OEM or matching rated replacement in
+  those cases. Axle and bracket fit are unverified; the included bolt is a sizing
+  example, not a claim that it fits.
+questions: []
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original outside diameter.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate original tread width.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 608ZZ OD, also confirmed approximately by the user.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 608ZZ width, also confirmed approximately by the user.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 608ZZ bore.
+  bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: User reports approximately 8 mm across shank; check actual bolt passes through
+      both bearings by hand.
+  example_bolt_length:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Example only; user bolt length unknown.
+  bolt_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_thickness:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_od:
+    value: 16
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  locknut_height:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  fork_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Must be checked before installation; default rigid stack is 19.2 mm.
+  bearing_fit_delta:
+    value: 0
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral offset from nominal OD; calibrate with the coupon before printing
+      the wheel.
+  seat_throat_d:
+    value: 20.6
+    unit: mm
+    kind: design
+    source: design
+    note: Center relief; check each bearing shield clears the seating shoulder.
+  seat_ramp:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree relief above the lower seating ledge, followed by a short unsupported
+      radial step.
+  entry_chamfer:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tread_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  coupon_od:
+    value: 32
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  collar_od:
+    value: 10.5
+    unit: mm
+    kind: design
+    source: design
+    note: Must contact only the inner race on the actual bearings.
+  collar_bore_clearance:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance over M8.
+  outer_collar_length:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: Per side. The wheel and both collars occupy 19.2 mm nominal.
+parts:
+- id: wheel
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    h=p.wheel_width\n    s=p.bearing_width\n    r=p.wheel_od/2\n\
+    \    a=(p.bearing_od+p.bearing_fit_delta)/2\n    t=p.seat_throat_d/2\n    q=p.seat_ramp\n\
+    \    c=p.entry_chamfer\n    e=p.tread_chamfer\n    profile=[(a+c,0),(r-e,0),(r,e),(r,h-e),(r-e,h),(a+c,h),(a,h-c),(a,h-s),(t,h-s),(t,s+q),(t+q,s),(a,s),(a,c)]\n\
+    \    return cq.Workplane('XZ').polyline(profile).close().revolve(360,(0,0),(0,1))"
+  print_orientation: Flat annular end at z=0; axle vertical. No supports.
+  use_orientation: Axle horizontal in the verified guide bracket; flat tread faces
+    the flat track.
+- id: hub-coupon
+  role: coupon
+  material: High-speed PLA
+  code: "def build(p):\n    h=p.wheel_width\n    s=p.bearing_width\n    r=p.coupon_od/2\n\
+    \    a=(p.bearing_od+p.bearing_fit_delta)/2\n    t=p.seat_throat_d/2\n    q=p.seat_ramp\n\
+    \    c=p.entry_chamfer\n    e=p.tread_chamfer\n    profile=[(a+c,0),(r-e,0),(r,e),(r,h-e),(r-e,h),(a+c,h),(a,h-c),(a,h-s),(t,h-s),(t,s+q),(t+q,s),(a,s),(a,c)]\n\
+    \    return cq.Workplane('XZ').polyline(profile).close().revolve(360,(0,0),(0,1))"
+  print_orientation: Flat annular end on bed; same settings as wheel.
+  use_orientation: Test each bearing pocket individually from its open end.
+- id: center-spacer
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.collar_od/2).circle((p.bolt_d+p.collar_bore_clearance)/2).extrude(p.wheel_width-2*p.bearing_width)"
+  print_orientation: Flat annular face at z=0. No supports.
+  use_orientation: On the bolt between the bearing inner races.
+- id: outer-collar
+  role: final
+  material: High-speed PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.collar_od/2).circle((p.bolt_d+p.collar_bore_clearance)/2).extrude(p.outer_collar_length)"
+  print_orientation: Flat annular face at z=0. Print two copies; no supports.
+  use_orientation: One on each side of the wheel, touching the exposed bearing inner
+    race only.
+hardware:
+- id: bearings
+  ref: 608ZZ
+  qty: 2
+- id: axle-example
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washers
+  ref: ISO 7089 M8
+  qty: 2
+joints: []
+criteria:
+- id: bearing-fit
+  part: wheel
+  feature: Opposed counterbores and outer-race shoulders
+  relation: seats
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - bearing_od
+  - bearing_width
+  - bearing_fit_delta
+  - seat_throat_d
+  check:
+    method: coupon
+    ref: hub-coupon
+    description: From each end the bearing seats square and flush with steady pressure
+      on the outer ring, without cracking the PLA, spinning in the pocket, or slipping
+      out by hand. The inner race still turns freely.
+- id: inner-race-contact
+  part: outer-collar
+  feature: Annular collar faces
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - collar_od
+  - bolt_d
+  - collar_bore_clearance
+  - outer_collar_length
+  check:
+    method: measure
+    ref: null
+    description: Check collars and center spacer bear only on inner rings, never on
+      seals or outer rings. With the axle secured, the wheel must still coast freely
+      without rubbing or perceptible axial play.
+- id: guide-fit
+  part: wheel
+  feature: Flat tread and complete axial stack
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_width
+  - fork_gap
+  - outer_collar_length
+  check:
+    method: measure
+    ref: null
+    description: Confirm a flat guide track, matching diameter and alignment, and
+      clearance to both bracket faces through the full travel.
+manual:
+- n: '1'
+  text: Confirm this roller is only a guide and is not needed to retain the door against
+    derailment or falling. With the door secured, compare the flat 50 × 16 mm outline
+    with the old wheel and track. If the roller's function or tread shape remains
+    uncertain, or the track requires a groove or ridge, stop and get the matching
+    replacement.
+  parts:
+  - wheel
+  hardware: []
+  tool: null
+- n: '2'
+  text: Check that the existing bracket can take an M8 through-bolt and has room for
+    the head, washers, nut and protruding tip throughout door travel. The default
+    stack between fork ears is 19.2 mm. Use the design only if the collars seat without
+    bending or spreading the bracket and the wheel clears both sides. Measure the
+    bolt under its head and dry-fit it; 40 mm is only an example. For a fork, add
+    both ear thicknesses, the 19.2 mm stack, both washers (3.2 mm total), the 8 mm
+    locknut and at least two exposed threads (2.5 mm). Check the threaded portion
+    reaches through the entire nylon insert and the bolt passes freely through both
+    bearings. Do not drill out the bracket to make this design fit.
+  parts:
+  - wheel
+  - outer-collar
+  hardware:
+  - axle-example
+  - locknut
+  - washers
+  - bearings
+  tool: null
+- n: '3'
+  text: Print the hub coupon first at 0.2 mm layer height, no supports, with the same
+    material, slicer compensation and at least five wall loops as the wheel. Check
+    both pocket orientations. If too tight or too loose, change bearing_fit_delta
+    by +0.10 mm or −0.10 mm respectively and reprint the coupon. If needed, push a
+    test bearing back out evenly from the opposite side by its outer ring. Do not
+    hammer it or press on its inner ring. Print the wheel with the verified value,
+    plus one center spacer and two outer collars. Print the small rings solid.
+  parts:
+  - hub-coupon
+  - wheel
+  - center-spacer
+  - outer-collar
+  hardware:
+  - bearings
+  tool: null
+- n: '4'
+  text: Seat the first bearing squarely and flush, pressing only its outer ring. Drop
+    the center spacer into the hub against that bearing's inner ring; use the bolt
+    loose as an alignment pin while seating the second bearing from the other side.
+    The spacer must not keep the second bearing from seating. Check that both collars
+    and the center spacer contact only inner rings.
+  parts:
+  - wheel
+  - center-spacer
+  - outer-collar
+  hardware:
+  - bearings
+  - axle-example
+  tool: null
+- n: '5'
+  text: For a compatible two-ear fork, stack bolt head, washer, first ear, outer collar,
+    complete wheel, outer collar, second ear, washer and locknut. Snug only enough
+    to seat the inner-ring stack without crushing the printed spacers. The wheel must
+    spin freely and not click side-to-side once the locknut is engaged; if it binds
+    when snugged, correct the fit instead of running with a loose axle. Check slow
+    full door travel by hand, then inspect after the first few uses and periodically.
+    Stop if the wheel rubs, cracks, develops play, or either bearing migrates.
+  parts:
+  - wheel
+  - center-spacer
+  - outer-collar
+  hardware:
+  - axle-example
+  - washers
+  - locknut
+  - bearings
+  tool: Hex key and wrench

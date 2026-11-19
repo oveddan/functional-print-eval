@@ -1,0 +1,253 @@
+task: nut-knob/M5
+note: Designed a 30 mm 5-lobe ergonomic M5 hand knob with an 8.10 mm across-flats
+  press-fit hex pocket validated by the user's print_test coupon.
+questions: []
+params:
+  outer_chamfer_top:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg top perimeter bevel on lobe tips
+  lobe_fillet_r:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: Vertical fillet radius smoothing lobe-to-valley transitions
+  scallop_r:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of circular finger scallops between lobes
+  floor_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Solid floor thickness below nut pocket so nut cannot push through
+  pocket_af:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket across flats (8.10 mm confirmed snug hand press-fit on print_test)
+  outer_chamfer_bot:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg bottom perimeter bevel on lobe tips
+  valley_r:
+    value: 11.5
+    unit: mm
+    kind: design
+    source: design
+    note: Radial distance from center to deepest point of finger scallops
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: Outer diameter across lobe tips (~30 mm as requested)
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut height
+  lead_in:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg entry chamfer at top of hex pocket
+  n_lobes:
+    value: 5
+    unit: count
+    kind: design
+    source: design
+    note: Number of ergonomic grip lobes
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 hex nut across flats
+  pocket_depth:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket depth (encloses 4.7 mm nut completely)
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: M5 nominal bolt major diameter
+  thru_hole_d:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: M5 bolt clearance thru-hole diameter
+  hole_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: 45 deg bottom entry chamfer on M5 thru-hole
+parts:
+- id: hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    knob_h = p.floor_t + p.pocket_depth\n \
+    \   r_outer = p.knob_od / 2.0\n\n    # Base cylinder\n    part = cq.Workplane(\"\
+    XY\").circle(r_outer).extrude(knob_h)\n\n    # Cut ergonomic finger scallops around\
+    \ the perimeter\n    r_scallop_center = p.valley_r + p.scallop_r\n    for i in\
+    \ range(int(p.n_lobes)):\n        ang = math.radians((i + 0.5) * 360.0 / p.n_lobes)\n\
+    \        sx = r_scallop_center * math.cos(ang)\n        sy = r_scallop_center\
+    \ * math.sin(ang)\n        scallop = (\n            cq.Workplane(\"XY\")\n   \
+    \         .circle(p.scallop_r)\n            .extrude(knob_h + 1.0)\n         \
+    \   .translate((sx, sy, -0.5))\n        )\n        part = part.cut(scallop)\n\n\
+    \    # Smooth vertical lobe-to-valley corners\n    part = part.edges(\"|Z\").fillet(p.lobe_fillet_r)\n\
+    \n    # Bevel outer lobe tips top and bottom using a revolved envelope\n    c_bot\
+    \ = p.outer_chamfer_bot\n    c_top = p.outer_chamfer_top\n    envelope = (\n \
+    \       cq.Workplane(\"XZ\")\n        .moveTo(0.0, 0.0)\n        .lineTo(r_outer\
+    \ - c_bot, 0.0)\n        .lineTo(r_outer, c_bot)\n        .lineTo(r_outer, knob_h\
+    \ - c_top)\n        .lineTo(r_outer - c_top, knob_h)\n        .lineTo(0.0, knob_h)\n\
+    \        .close()\n        .revolve(360.0, (0, 0, 0), (0, 1, 0))\n    )\n    part\
+    \ = part.intersect(envelope)\n\n    # Central M5 bolt clearance thru-hole\n  \
+    \  thru_hole = (\n        cq.Workplane(\"XY\")\n        .circle(p.thru_hole_d\
+    \ / 2.0)\n        .extrude(knob_h + 1.0)\n        .translate((0.0, 0.0, -0.5))\n\
+    \    )\n    part = part.cut(thru_hole)\n\n    # Bottom lead-in chamfer on thru-hole\n\
+    \    hole_chamfer = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=-0.2)\n\
+    \        .circle(p.thru_hole_d / 2.0 + p.hole_chamfer + 0.2)\n        .workplane(offset=p.hole_chamfer\
+    \ + 0.2)\n        .circle(p.thru_hole_d / 2.0)\n        .loft()\n    )\n    part\
+    \ = part.cut(hole_chamfer)\n\n    # Hex nut pocket (8.10 mm across flats)\n  \
+    \  circum_d = p.pocket_af * 2.0 / math.sqrt(3.0)\n    hex_cut = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=p.floor_t)\n        .polygon(6, circum_d)\n \
+    \       .extrude(p.pocket_depth + 0.5)\n    )\n    part = part.cut(hex_cut)\n\n\
+    \    # Top entry lead-in chamfer on hex pocket\n    lead_d = (p.pocket_af + 2.0\
+    \ * (p.lead_in + 0.2)) * 2.0 / math.sqrt(3.0)\n    pocket_chamfer = (\n      \
+    \  cq.Workplane(\"XY\")\n        .workplane(offset=knob_h - p.lead_in)\n     \
+    \   .polygon(6, circum_d)\n        .workplane(offset=p.lead_in + 0.2)\n      \
+    \  .polygon(6, lead_d)\n        .loft()\n    )\n    part = part.cut(pocket_chamfer)\n\
+    \n    return part\n"
+  print_orientation: flat bottom (z = 0) on the bed, hex nut pocket facing up
+  use_orientation: M5 hex nut seated inside pocket; M5 bolt passes through the nut
+    and thru-hole out the opposite side
+hardware:
+- id: nut_m5
+  ref: ISO 4032 M5
+  qty: 1
+- id: bolt_m5
+  ref: ISO 4762 M5x30
+  qty: 1
+joints:
+- id: m5_knob_joint
+  fastener: bolt_m5
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: hand_knob
+    feature: thru_hole
+    role: clearance
+  - part: hand_knob
+    feature: hex_pocket
+    role: nut_pocket
+  nut: nut_m5
+  external: null
+criteria:
+- id: c_nut_press_fit
+  part: hand_knob
+  feature: hex_pocket
+  relation: engages
+  hardware: nut_m5
+  clearance_mm: -0.05
+  params:
+  - nut_af
+  - pocket_af
+  check:
+    method: coupon
+    ref: nut_fit_test_bar
+    description: 'Verified on print_test coupon nut_fit_test_bar: 8.10 mm pocket allows
+      snug hand press-fit and retains the nut when inverted and shaken'
+- id: c_nut_fully_inside
+  part: hand_knob
+  feature: hex_pocket
+  relation: contains
+  hardware: nut_m5
+  clearance_mm: 0.3
+  params:
+  - nut_h
+  - pocket_depth
+  check:
+    method: measure
+    ref: null
+    description: 5.0 mm pocket depth fully encloses the 4.7 mm tall ISO 4032 M5 nut
+      (seated 0.3 mm below top face)
+- id: c_nut_floor_stop
+  part: hand_knob
+  feature: pocket_floor
+  relation: supports
+  hardware: nut_m5
+  clearance_mm: null
+  params:
+  - floor_t
+  - nut_af
+  - thru_hole_d
+  check:
+    method: none
+    ref: null
+    description: 5.0 mm solid floor with 5.5 mm thru-hole prevents the 8.0 mm AF nut
+      from being pushed out the far side
+- id: c_bolt_clearance
+  part: hand_knob
+  feature: thru_hole
+  relation: clears
+  hardware: bolt_m5
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - thru_hole_d
+  check:
+    method: measure
+    ref: null
+    description: 5.5 mm thru-hole clears 5.0 mm M5 bolt completely through the nut
+      and out the far side
+manual:
+- n: '1'
+  text: Print hand_knob in PLA flat on the bed (z = 0, hex pocket facing up) at 0.2
+    mm layer height with no supports.
+  parts:
+  - hand_knob
+  hardware: []
+  tool: Bambu Lab X1C
+- n: '2'
+  text: Align the ISO 4032 M5 hex nut with the hex pocket on top of hand_knob and
+    press it in firmly with your thumb (you can finish seating it against a flat table
+    if needed) until it bottoms out ~0.3 mm below the top face. Turn the knob upside
+    down and shake it to verify the nut stays seated.
+  parts:
+  - hand_knob
+  hardware:
+  - nut_m5
+  tool: null
+- n: '3'
+  text: Thread your M5 bolt (e.g. ISO 4762 M5x30, or any M5 bolt long enough to protrude)
+    through the nut and out the opposite side through the 5.5 mm thru-hole, then tighten
+    by hand.
+  parts:
+  - hand_knob
+  hardware:
+  - bolt_m5
+  tool: null

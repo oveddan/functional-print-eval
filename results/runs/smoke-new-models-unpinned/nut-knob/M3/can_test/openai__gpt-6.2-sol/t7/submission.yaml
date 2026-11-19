@@ -1,0 +1,192 @@
+task: nut-knob/M3
+note: One-piece, six-scallop, Ø20 × 6.2 mm hand knob. Uses the 5.72 mm CAD pocket
+  from test D, which held the nut on the user's printer. The recessed hex prevents
+  rotation, the press fit retains the unloaded nut, and the solid shoulder around
+  the through-bore backs the nut during tightening. Test D is geometrically identical
+  to the final part and can be used directly if it passes the final checks.
+questions: []
+params:
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center:
+    value: 14
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of the load-bearing shoulder.
+  nut_recess:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal setback from the pocket face with the nut bottomed.
+  lead_h:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_af_add:
+    value: 0.7
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bore_d_add:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral allowance above nominal M3; creates a 3.6 mm through-bore.
+  pocket_af:
+    value: 5.72
+    unit: mm
+    kind: design
+    source: design
+    note: CAD dimension, not a measured printed opening. Selected from passing test
+      D; keep the same print profile.
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "import math\ndef build(p):\n    top=p.floor_t+p.nut_h+p.nut_recess\n    b=cq.Workplane('XY').circle(p.knob_od/2).extrude(top)\n\
+    \    pts=[(p.scallop_center*math.cos(i*math.pi/3),p.scallop_center*math.sin(i*math.pi/3))\
+    \ for i in range(6)]\n    b=b.cut(cq.Workplane('XY').pushPoints(pts).circle(p.scallop_r).extrude(top))\n\
+    \    def hexwire(af,z):\n        r=af/math.sqrt(3)\n        return cq.Workplane('XY',origin=(0,0,z)).polyline([(r*math.cos(i*math.pi/3),r*math.sin(i*math.pi/3))\
+    \ for i in range(6)]).close().val()\n    af=p.pocket_af\n    pocket=cq.Solid.makeLoft([hexwire(af,p.floor_t),hexwire(af,top-p.lead_h)],True)\n\
+    \    lead=cq.Solid.makeLoft([hexwire(af,top-p.lead_h),hexwire(af+p.lead_af_add,top)],True)\n\
+    \    bore=cq.Workplane('XY').circle((p.bolt_d+p.bore_d_add)/2).extrude(top)\n\
+    \    return b.cut(pocket.fuse(lead)).cut(bore)"
+  print_orientation: Flat small-bore face on the bed at z=0, hex opening up. Print
+    at 0.2 mm with the same profile as test D; no supports.
+  use_orientation: Hex-pocket opening faces the workpiece. The threaded end of the
+    M3 bolt enters through that face, runs through the recessed nut, and exits the
+    small round bore on the hand side.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: check_screw
+  ref: ISO 4762 M3x12
+  qty: 1
+joints: []
+criteria:
+- id: retention
+  part: knob
+  feature: Lead-in and straight hex pocket
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  - nut_h
+  - nut_recess
+  - lead_h
+  - lead_af_add
+  check:
+    method: coupon
+    ref: D
+    description: 'Finger-press to the bottom; make sure no part of the nut stands
+      above the face. Invert and gently shake without a screw: the nut must stay put.'
+- id: backstop
+  part: knob
+  feature: Shoulder under hex pocket
+  relation: supports
+  hardware: nut
+  clearance_mm: null
+  params:
+  - floor_t
+  - nut_af
+  - bolt_d
+  - bore_d_add
+  check:
+    method: measure
+    ref: null
+    description: Confirm the nut seats on the shoulder and cannot enter the smaller
+      round bore.
+- id: through
+  part: knob
+  feature: Coaxial round bore under nut
+  relation: clears
+  hardware: check_screw
+  clearance_mm: 0.6
+  params:
+  - bolt_d
+  - bore_d_add
+  check:
+    method: measure
+    ref: null
+    description: Spin the screw in from the nut-pocket side by hand. The tip should
+      pass out the round side without rubbing; 0.6 mm is nominal diametral clearance.
+manual:
+- n: '1'
+  text: Reuse test piece D if undamaged, or print the final knob with the same settings.
+    Keep the round-bore face down and the hex recess up; no supports.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the flats of the M3 nut with the recess and press it straight in with
+    your thumb until it bottoms out below the face. Do not hammer it or use glue.
+    Flip the knob over and gently shake it to confirm the nut stays in.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: 'Check with an M3×12 screw: start it by hand from the hex-pocket side and
+    verify the tip comes out the round side. This screw is a fit check; the bolt length
+    needed in use depends on the thickness of your workpiece.'
+  parts:
+  - knob
+  hardware:
+  - nut
+  - check_screw
+  tool: null
+- n: '4'
+  text: In use, put the recessed-nut face toward the workpiece. Spin the knob onto
+    the protruding M3 threads and tighten by hand only. In this orientation the tightening
+    load presses the nut against the printed shoulder rather than pulling it out of
+    the pocket.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null

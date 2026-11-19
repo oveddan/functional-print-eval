@@ -1,0 +1,239 @@
+task: tripod-plate
+note: 'Printing the plate is straightforward. Getting a trustworthy fit is the hard
+  part: 38 mm alone does not identify the quick-release profile. This is a fit-check
+  design based on an unverified 45° jaw profile. The coupon printed cleanly, but jaw
+  engagement was not confirmed. Use the salvaged metal 1/4-20 screw, not a printed
+  screw. For the borrowed camera, use a compatible metal plate rather than relying
+  on this unverified PLA prototype.'
+questions:
+- text: Did the coupon sit flat and engage both sloped jaws without lifting or sliding?
+  answer: null
+- text: What screw insertion depth does the camera manufacturer allow?
+  answer: null
+params:
+  plate_w:
+    value: 38
+    unit: mm
+    kind: world
+    source: measured
+    note: Reported plate width; assumed to be the width at the bottom of the dovetail.
+  flank_angle:
+    value: 45
+    unit: deg
+    kind: world
+    source: guessed
+    note: Assumed angle to the clamp floor; not verified.
+  flank_h:
+    value: 4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_l:
+    value: 40
+    unit: mm
+    kind: design
+    source: design
+    note: Verify the clamp has room along its jaws.
+  test_l:
+    value: 18
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  plate_h:
+    value: 11.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  grip:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness from the screw head seat to the camera face.
+  bolt_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 diameter.
+  bolt_len:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate, underside of head to tip.
+  head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate maximum width.
+  head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate.
+  bore_allowance:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral.
+  pocket_allowance:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral.
+  camera_thread_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Manufacturer's allowable screw insertion, not established by thread size.
+parts:
+- id: plate
+  role: final
+  material: Black PLA
+  code: "import math\ndef build(p):\n    h=p.plate_h\n    w=p.plate_w/2\n    n=w-p.flank_h/math.tan(math.radians(p.flank_angle))\n\
+    \    outline=[(-n,0),(n,0),(n,h-p.flank_h),(w,h),(-w,h),(-n,h-p.flank_h)]\n  \
+    \  plate=cq.Workplane('XZ').polyline(outline).close().extrude(p.plate_l/2,both=True)\n\
+    \    bore=cq.Workplane('XY').circle((p.bolt_d+p.bore_allowance)/2).extrude(h)\n\
+    \    recess=cq.Workplane('XY',origin=(0,0,p.grip)).circle((p.head_d+p.pocket_allowance)/2).extrude(h-p.grip)\n\
+    \    return plate.cut(bore).cut(recess)"
+  print_orientation: Flat camera-contact face at z=0; head recess opens upward. No
+    supports.
+  use_orientation: 'Flip over: broad dovetail face down in clamp; narrow flat face
+    toward camera; rails parallel to jaws.'
+- id: fit-test
+  role: coupon
+  material: Black PLA
+  code: "import math\ndef build(p):\n    h=p.plate_h\n    w=p.plate_w/2\n    n=w-p.flank_h/math.tan(math.radians(p.flank_angle))\n\
+    \    outline=[(-n,0),(n,0),(n,h-p.flank_h),(w,h),(-w,h),(-n,h-p.flank_h)]\n  \
+    \  plate=cq.Workplane('XZ').polyline(outline).close().extrude(p.test_l/2,both=True)\n\
+    \    bore=cq.Workplane('XY').circle((p.bolt_d+p.bore_allowance)/2).extrude(h)\n\
+    \    recess=cq.Workplane('XY',origin=(0,0,p.grip)).circle((p.head_d+p.pocket_allowance)/2).extrude(h-p.grip)\n\
+    \    return plate.cut(bore).cut(recess)"
+  print_orientation: Flat camera-contact face at z=0; head recess opens upward. No
+    supports.
+  use_orientation: Flip wide face down for an unloaded clamp fit check.
+hardware:
+- id: camera-screw
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: camera-attachment
+  fastener: camera-screw
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 5.6
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: plate
+    feature: flat floor of head recess
+    role: head_seat
+  - part: plate
+    feature: central through bore
+    role: clearance
+  nut: null
+  external: Camera's confirmed 1/4-20 socket; usable insertion depth not confirmed.
+criteria:
+- id: rail-fit
+  part: plate
+  feature: two tapered rails
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_w
+  - flank_angle
+  - flank_h
+  - plate_l
+  check:
+    method: coupon
+    ref: fit-test
+    description: Check the coupon first, then repeat with the full plate. Normal knob
+      tightening must seat both jaws on the sloped faces with no rocking, lifting
+      or lengthwise sliding under firm hand pressure. An unloaded fit check is not
+      a load test.
+- id: head-fit
+  part: plate
+  feature: head recess
+  relation: contains
+  hardware: camera-screw
+  clearance_mm: 1.0
+  params:
+  - head_d
+  - head_h
+  - plate_h
+  - pocket_allowance
+  - grip
+  check:
+    method: coupon
+    ref: fit-test
+    description: Confirm the screw drops in, the flat underside of the head bears
+      on the seat, the driver can reach it, and the head stays entirely below the
+      clamp-contact face when seated.
+- id: insertion
+  part: plate
+  feature: screw projection above camera face
+  relation: engages
+  hardware: camera-screw
+  clearance_mm: null
+  params:
+  - bolt_len
+  - grip
+  - camera_thread_depth
+  check:
+    method: measure
+    ref: null
+    description: Measure actual projection with the head seated (about 4.4 mm expected).
+      Compare with the camera manufacturer's specified engagement and depth before
+      trying the screw in the camera. Do not use the screw if compatibility cannot
+      be confirmed.
+manual:
+- n: '1'
+  text: Use the already printed fit-test coupon first. Drop it in wide face down with
+    no camera present. Tighten the knob normally and check that both jaws bear on
+    the sloped sides, not on the corners or upper walls. Pull up and push along the
+    jaws by hand. Stop if it shifts, rocks or lifts; do not force the clamp.
+  parts:
+  - fit-test
+  hardware: []
+  tool: null
+- n: '2'
+  text: Insert the metal screw from the recessed side of the coupon. Make sure it
+    passes freely, its head seats flat and stays entirely within the recess, and your
+    driver can reach it. Measure how far the tip projects above the camera face. Do
+    not try the screw in the camera unless the projection meets the camera manufacturer's
+    specifications.
+  parts:
+  - fit-test
+  hardware:
+  - camera-screw
+  tool: Calipers and a driver that matches the salvaged screw
+- n: '3'
+  text: If the coupon fits and you want to check the full footprint, print the plate
+    in PLA with the camera face on the bed, 0.2 mm layers, five walls and no supports.
+    Repeat the unloaded fit checks on the full plate, including checking that it does
+    not hit any latch or stop.
+  parts:
+  - plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Treat the print as a fit prototype, not a load-rated camera mount. Bring the
+    tripod head or its model number to a camera shop to identify a compatible metal
+    replacement. Do not carry or leave the borrowed camera supported by this prototype.
+  parts:
+  - plate
+  hardware: []
+  tool: null

@@ -1,0 +1,192 @@
+task: nut-knob/M5
+note: One-piece, 30 mm six-scallop hand knob. The final 8.10 mm hex pocket matches
+  the coupon that seated snugly and retained the nut when inverted and shaken. The
+  nut sits nominally 1.50 mm below the open face. A solid shoulder stops the nut,
+  while a coaxial round hole lets the M5 bolt pass through.
+questions: []
+params:
+  knob_od:
+    value: 30
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  height:
+    value: 9.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor_t:
+    value: 3.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_af:
+    value: 8.1
+    unit: mm
+    kind: design
+    source: design
+    note: Selected from the reported fit of the 8.10 mm coupon.
+  lead_h:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  lead_af:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: Total increase across flats at the pocket mouth.
+  exit_d:
+    value: 5.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_pitch_radius:
+    value: 17.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_radius:
+    value: 5.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal width across flats; actual nut validated by coupon.
+  nut_h:
+    value: 4.7
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M5 nominal height.
+  bolt_d:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M5 thread diameter. Use the existing M5 bolt; length is application-dependent.
+parts:
+- id: m5-hand-knob
+  role: final
+  material: Black high-speed PLA
+  code: "from math import sqrt, cos, sin, pi\n\ndef build(p):\n    body = cq.Workplane('XY').circle(p.knob_od/2).extrude(p.height)\n\
+    \    n = int(p.scallop_count)\n    for i in range(n):\n        a = 2*pi*i/n\n\
+    \        x = p.scallop_pitch_radius*cos(a)\n        y = p.scallop_pitch_radius*sin(a)\n\
+    \        cutter = cq.Workplane('XY',origin=(x,y,-1)).circle(p.scallop_radius).extrude(p.height+2)\n\
+    \        body = body.cut(cutter)\n    d = 2*p.pocket_af/sqrt(3)\n    pocket =\
+    \ cq.Workplane('XY',origin=(0,0,p.floor_t)).polygon(6,d).extrude(p.height-p.floor_t)\n\
+    \    lead = cq.Workplane('XY',origin=(0,0,p.height-p.lead_h)).polygon(6,d).workplane(offset=p.lead_h).polygon(6,2*(p.pocket_af+p.lead_af)/sqrt(3)).loft(ruled=True)\n\
+    \    exit_hole = cq.Workplane('XY',origin=(0,0,-1)).circle(p.exit_d/2).extrude(p.floor_t+2)\n\
+    \    return body.cut(pocket).cut(lead).cut(exit_hole)"
+  print_orientation: Flat face with the round exit on the bed at z=0; hex pocket opens
+    upward. No supports.
+  use_orientation: Press the nut into the open hex face. Start the M5 bolt from that
+    face so its tip exits through the round hole in the opposite face.
+hardware:
+- id: m5-nut
+  ref: ISO 4032 M5
+  qty: 1
+joints: []
+criteria:
+- id: press-retention
+  part: m5-hand-knob
+  feature: Lead-in and straight hex pocket
+  relation: engages
+  hardware: m5-nut
+  clearance_mm: null
+  params:
+  - pocket_af
+  - nut_af
+  - lead_h
+  - lead_af
+  check:
+    method: coupon
+    ref: fit-strip
+    description: The reported 8.10 mm pocket accepted the nut snugly and retained
+      it when inverted and shaken. Repeat on the finished knob before use.
+- id: recessed-nut
+  part: m5-hand-knob
+  feature: Recess and annular shoulder
+  relation: contains
+  hardware: m5-nut
+  clearance_mm: null
+  params:
+  - height
+  - floor_t
+  - nut_h
+  - nut_af
+  - exit_d
+  check:
+    method: measure
+    ref: null
+    description: With the nut seated flat against the shoulder, verify its top is
+      below the pocket rim (nominal recess 1.50 mm) and the nut cannot pass through
+      the smaller round exit.
+- id: bolt-through
+  part: m5-hand-knob
+  feature: Coaxial round exit
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - bolt_d
+  - exit_d
+  check:
+    method: measure
+    ref: null
+    description: Thread the existing M5 bolt in by hand and confirm its tip passes
+      freely through the round exit. The model has 0.60 mm diametral clearance over
+      nominal M5.
+manual:
+- n: '1'
+  text: Print with the round-hole face flat on the bed and the hex pocket up. Use
+    the same PLA and dimensional settings as the successful coupon, at 0.2 mm layers
+    with no supports.
+  parts:
+  - m5-hand-knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: With the print off the bed, align the nut flats with the pocket and press
+    it in squarely by thumb until it sits flat on the shoulder. The entire nut should
+    be below the rim. Do not hammer it or add glue.
+  parts:
+  - m5-hand-knob
+  hardware:
+  - m5-nut
+  tool: null
+- n: '3'
+  text: Invert the assembled knob over your palm and shake it gently. The nut should
+    stay put before the bolt is installed.
+  parts:
+  - m5-hand-knob
+  hardware:
+  - m5-nut
+  tool: null
+- n: '4'
+  text: Start your M5 bolt from the open hex face, turn the knob by hand, and check
+    that the tip emerges through the round hole without rubbing or binding. Use a
+    bolt long enough to do so once installed. Hand-tighten only.
+  parts:
+  - m5-hand-knob
+  hardware:
+  - m5-nut
+  tool: null

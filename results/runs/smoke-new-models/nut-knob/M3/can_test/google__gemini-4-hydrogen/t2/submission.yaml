@@ -1,0 +1,229 @@
+task: nut-knob/M3
+note: Single-piece 20 mm fluted M3 hand knob with a 5.75 mm AF press-fit hex pocket
+  validated via print_test (nut_pocket_coupon_v2).
+questions: []
+params:
+  flute_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: Number of ergonomic perimeter finger flutes
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut thickness
+  bolt_hole_d:
+    value: 3.5
+    unit: mm
+    kind: design
+    source: design
+    note: M3 clearance through-hole in knob floor
+  top_chamfer:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree top outer chamfer for comfortable grip
+  flute_center_r:
+    value: 10.8
+    unit: mm
+    kind: design
+    source: design
+    note: Radial offset of perimeter flute cutters
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M3 bolt diameter
+  pocket_depth:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: Hex pocket depth so 2.4 mm nut sits fully inside
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 hex nut across flats
+  pocket_af:
+    value: 5.75
+    unit: mm
+    kind: design
+    source: design
+    note: Press-fit hex pocket across flats verified on nut_pocket_coupon_v2
+  knob_od:
+    value: 20
+    unit: mm
+    kind: design
+    source: asked
+    note: Target outer diameter ('about 20 mm across')
+  floor_t:
+    value: 5
+    unit: mm
+    kind: design
+    source: design
+    note: Solid floor thickness under nut pocket preventing push-through
+  flute_r:
+    value: 2.3
+    unit: mm
+    kind: design
+    source: design
+    note: Radius of each perimeter finger flute cutter
+  bot_chamfer:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: 45-degree bottom outer chamfer for clean bed edge
+parts:
+- id: m3_hand_knob
+  role: final
+  material: PLA
+  code: "import math\n\ndef build(p):\n    total_h = p.floor_t + p.pocket_depth\n\
+    \    r_outer = p.knob_od / 2.0\n    r_bot = r_outer - p.bot_chamfer\n    r_top\
+    \ = r_outer - p.top_chamfer\n\n    # Chamfered outer envelope (z = 0 to total_h)\n\
+    \    bot_frustum = (\n        cq.Workplane(\"XY\")\n        .circle(r_bot)\n \
+    \       .workplane(offset=p.bot_chamfer)\n        .circle(r_outer)\n        .loft(ruled=True)\n\
+    \    )\n    mid_cyl = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=p.bot_chamfer)\n\
+    \        .circle(r_outer)\n        .extrude(total_h - p.bot_chamfer - p.top_chamfer)\n\
+    \    )\n    top_frustum = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=total_h\
+    \ - p.top_chamfer)\n        .circle(r_outer)\n        .workplane(offset=p.top_chamfer)\n\
+    \        .circle(r_top)\n        .loft(ruled=True)\n    )\n    envelope = bot_frustum.union(mid_cyl).union(top_frustum)\n\
+    \n    # Fluted knob body\n    knob = cq.Workplane(\"XY\").circle(r_outer).extrude(total_h)\n\
+    \    n_flutes = int(p.flute_count)\n    for i in range(n_flutes):\n        ang\
+    \ = math.radians(30.0 + (360.0 / n_flutes) * i)\n        fx = p.flute_center_r\
+    \ * math.cos(ang)\n        fy = p.flute_center_r * math.sin(ang)\n        flute_cutter\
+    \ = (\n            cq.Workplane(\"XY\")\n            .workplane(offset=-1.0)\n\
+    \            .center(fx, fy)\n            .circle(p.flute_r)\n            .extrude(total_h\
+    \ + 2.0)\n        )\n        knob = knob.cut(flute_cutter)\n\n    knob = knob.intersect(envelope)\n\
+    \n    # M3 clearance through-hole\n    hole_cutter = (\n        cq.Workplane(\"\
+    XY\")\n        .workplane(offset=-1.0)\n        .circle(p.bolt_hole_d / 2.0)\n\
+    \        .extrude(total_h + 2.0)\n    )\n    knob = knob.cut(hole_cutter)\n\n\
+    \    # Captive press-fit hex nut pocket (open at top z = total_h, stopped by floor\
+    \ at z = floor_t)\n    d_corners = p.pocket_af * 2.0 / math.sqrt(3.0)\n    pocket_cutter\
+    \ = (\n        cq.Workplane(\"XY\")\n        .workplane(offset=p.floor_t)\n  \
+    \      .polygon(6, d_corners)\n        .extrude(p.pocket_depth + 1.0)\n    )\n\
+    \    knob = knob.cut(pocket_cutter)\n\n    return knob\n"
+  print_orientation: flat floor (z=0) on bed, hex nut pocket facing up
+  use_orientation: clamping face down or up, M3 bolt passing through nut and out the
+    far side
+hardware:
+- id: m3_nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: m3_bolt
+  ref: ISO 4762 M3x16
+  qty: 1
+joints:
+- id: knob_m3_joint
+  fastener: m3_bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 0.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - 1.0
+  seats:
+  - part: m3_hand_knob
+    feature: m3_clearance_hole
+    role: clearance
+  - part: m3_hand_knob
+    feature: hex_nut_pocket
+    role: nut_pocket
+  nut: m3_nut
+  external: null
+criteria:
+- id: nut_press_fit
+  part: m3_hand_knob
+  feature: hex_nut_pocket
+  relation: contains
+  hardware: m3_nut
+  clearance_mm: 0.25
+  params:
+  - pocket_af
+  - nut_af
+  check:
+    method: coupon
+    ref: nut_pocket_coupon_v2
+    description: 'Verified on nut_pocket_coupon_v2: 5.75 mm modeled hex pocket presses
+      in by hand and holds ISO 4032 M3 nut securely when inverted without glue'
+- id: nut_depth_and_stop
+  part: m3_hand_knob
+  feature: hex_nut_pocket
+  relation: seats
+  hardware: m3_nut
+  clearance_mm: null
+  params:
+  - pocket_depth
+  - nut_h
+  - floor_t
+  check:
+    method: measure
+    ref: null
+    description: 3.0 mm pocket depth seats the 2.4 mm nut fully inside the knob; 5.0
+      mm floor with 3.5 mm hole blocks push-through
+- id: bolt_clearance
+  part: m3_hand_knob
+  feature: m3_clearance_hole
+  relation: clears
+  hardware: m3_bolt
+  clearance_mm: 0.5
+  params:
+  - bolt_hole_d
+  - bolt_d
+  check:
+    method: measure
+    ref: null
+    description: M3 bolt passes cleanly through the 3.5 mm clearance hole, engages
+      the captive nut, and exits the far side
+- id: knob_ergonomics
+  part: m3_hand_knob
+  feature: outer_profile
+  relation: supports
+  hardware: null
+  clearance_mm: null
+  params:
+  - knob_od
+  - flute_count
+  - flute_r
+  check:
+    method: measure
+    ref: null
+    description: 20 mm outer diameter with 6 perimeter finger flutes allows comfortable
+      tool-free tightening
+manual:
+- n: '1'
+  text: Print m3_hand_knob in PLA with the flat floor on the build plate (z=0) and
+    the hex nut pocket facing upward. No supports are required.
+  parts:
+  - m3_hand_knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Align the ISO 4032 M3 hex nut with the hex pocket opening and press it firmly
+    by hand until it seats against the pocket floor (~0.6 mm below the top rim). Turn
+    the knob upside down to verify the nut stays retained without glue.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_nut
+  tool: hand / flat table surface
+- n: '3'
+  text: Insert your M3 bolt (such as an ISO 4762 M3x16 or longer) through the 3.5
+    mm clearance hole on the flat bottom face, thread it through the captive M3 nut,
+    and continue out the opposite side. Tighten or loosen by hand using the 6-flute
+    grip.
+  parts:
+  - m3_hand_knob
+  hardware:
+  - m3_bolt
+  - m3_nut
+  tool: null

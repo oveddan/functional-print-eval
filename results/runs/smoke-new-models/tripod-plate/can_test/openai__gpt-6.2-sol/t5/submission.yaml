@@ -1,0 +1,199 @@
+task: tripod-plate
+note: Fit-check prototype only, not a camera support. The 38 mm width is known, but
+  the jaw angle and lip height are unverified; the coupon printed cleanly, but clamp
+  retention was not confirmed. A printed 1/4-20 screw is not recommended. Use the
+  salvaged metal screw only for the prototype's bench checks. For the borrowed tripod,
+  get a compatible metal quick-release plate with a captive 1/4-20 camera screw and
+  verify the camera's permitted insertion depth.
+questions: []
+params:
+  plate_width:
+    value: 38
+    unit: mm
+    kind: world
+    source: asked
+    note: Reported plate width; assumed to be the widest dovetail dimension.
+  plate_length:
+    value: 38
+    unit: mm
+    kind: design
+    source: design
+    note: Length along jaws; not a measured head dimension.
+  rail_height:
+    value: 3.6
+    unit: mm
+    kind: design
+    source: design
+    note: Trial profile, not measured on the clamp.
+  rail_angle:
+    value: 45
+    unit: deg
+    kind: design
+    source: guessed
+    note: Trial angle from vertical; not confirmed.
+  bolt_major_d:
+    value: 6.35
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal 1/4-20 major diameter.
+  bolt_head_d:
+    value: 15
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate dimension across salvaged bolt head.
+  bolt_head_h:
+    value: 5
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate height of salvaged bolt head.
+  bolt_underhead_l:
+    value: 10
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate under-head length; usable threaded length not confirmed.
+  camera_socket_usable_depth:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Camera thread reported 1/4-20, but safe insertion depth not supplied.
+  bore_allowance:
+    value: 0.45
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance.
+  pocket_allowance:
+    value: 1.2
+    unit: mm
+    kind: design
+    source: design
+    note: Diametral clearance.
+  head_setback:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: Nominal head clearance below wide face when seated.
+  web:
+    value: 6
+    unit: mm
+    kind: design
+    source: design
+    note: Seat to camera-side face; nominal bolt projection is 4 mm, not an approved
+      insertion depth.
+parts:
+- id: trial-plate
+  role: final
+  material: High-speed PLA
+  code: "import math\n\ndef build(p):\n    w = p.plate_width\n    h = p.rail_height\n\
+    \    t = p.web + p.bolt_head_h + p.head_setback\n    n = w/2 - h*math.tan(math.radians(p.rail_angle))\n\
+    \    profile = [(-n,0),(n,0),(n,t-h),(w/2,t),(-w/2,t),(-n,t-h)]\n    plate = cq.Workplane('XZ').polyline(profile).close().extrude(p.plate_length/2,both=True)\n\
+    \    bore = cq.Workplane('XY').circle((p.bolt_major_d+p.bore_allowance)/2).extrude(t)\n\
+    \    pocket = cq.Workplane('XY').workplane(offset=p.web).circle((p.bolt_head_d+p.pocket_allowance)/2).extrude(t-p.web)\n\
+    \    return plate.cut(bore).cut(pocket)"
+  print_orientation: Narrow flat camera-contact face at z=0; large head recess opens
+    upward. No supports.
+  use_orientation: Flip for empty-clamp test. Wide face and bolt-head recess face
+    the tripod; sloped rails run parallel to the jaws.
+hardware:
+- id: bench-bolt
+  ref: salvaged:webcam-mount-bolt
+  qty: 1
+joints:
+- id: bolt-fit
+  fastener: bench-bolt
+  axis_origin:
+  - 0.0
+  - 0.0
+  - 6.0
+  axis_dir:
+  - 0.0
+  - 0.0
+  - -1.0
+  seats:
+  - part: trial-plate
+    feature: annular floor of bolt-head recess
+    role: head_seat
+  - part: trial-plate
+    feature: central through-bore
+    role: clearance
+  nut: null
+  external: Nominal 1/4-20 camera socket; compatibility reference only, do not assemble
+    the prototype onto the camera.
+criteria:
+- id: head-fit
+  part: trial-plate
+  feature: recess and central bore
+  relation: seats
+  hardware: bench-bolt
+  clearance_mm: null
+  params:
+  - bolt_head_d
+  - bolt_head_h
+  - bolt_major_d
+  - pocket_allowance
+  - bore_allowance
+  - head_setback
+  check:
+    method: measure
+    ref: null
+    description: Off the tripod, insert the bolt by hand. The head must sit flat on
+      the shoulder and stay below the wide face. Measure actual tip projection; about
+      4 mm expected.
+- id: jaw-fit
+  part: trial-plate
+  feature: opposing dovetail faces
+  relation: engages
+  hardware: null
+  clearance_mm: null
+  params:
+  - plate_width
+  - plate_length
+  - rail_height
+  - rail_angle
+  check:
+    method: measure
+    ref: null
+    description: On the empty head, check for broad contact on both slopes, then check
+      for rock, lift and endwise slide with light hand pressure. This checks geometry
+      only, not carrying capacity.
+manual:
+- n: '1'
+  text: If the existing coupon has not been checked in the tripod, start with it;
+    there is no need to print the longer trial plate if the coupon fails. Print the
+    trial plate camera-face down at 0.2 mm layers with supports off.
+  parts:
+  - trial-plate
+  hardware: []
+  tool: null
+- n: '2'
+  text: Off the tripod, insert the salvaged metal bolt from the wide face. Confirm
+    the head seats flat without forcing it and is fully recessed. Measure the tip
+    projection past the opposite face, then remove the bolt; it is not captive.
+  parts:
+  - trial-plate
+  hardware:
+  - bench-bolt
+  tool: null
+- n: '3'
+  text: With no camera or bolt installed, open the jaws and drop the print in wide-face
+    down, with one sloped rail under each lip. Close the knob by hand. If the plate
+    contacts only an edge, rocks, lifts, or slides, remove it; do not compensate by
+    overtightening.
+  parts:
+  - trial-plate
+  hardware: []
+  tool: null
+- n: '4'
+  text: Do not use the trial plate to support a camera even if the fit looks good.
+    Match a metal replacement to the tripod head model or original plate, and check
+    the screw projection against the camera manufacturer's permitted mounting depth
+    before attaching the camera.
+  parts: []
+  hardware: []
+  tool: null

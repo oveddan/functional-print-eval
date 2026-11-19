@@ -1,0 +1,329 @@
+task: bearing-wheel
+note: Trial replacement for a lightweight bottom-running closet door with a flat tread
+  and a two-sided axle bracket. The 50 × 16 mm envelope is approximate; track profile,
+  bracket gap, and the user's bolt length were not established. The 22.10 mm bearing
+  pocket is based on the snug coupon. Do not install on a top-hung, heavy, or mirrored
+  door, or on a track that needs a groove or flange; use the correct rated replacement
+  in those cases.
+questions:
+- text: Is this a flat-tread, bottom-running roller on a lightweight door with support
+    at both ends of the axle, and does the assembled 20 mm stack fit between the cheeks?
+  answer: null
+params:
+  wheel_od:
+    value: 50
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel OD; verify against the original or matching roller.
+  wheel_width:
+    value: 16
+    unit: mm
+    kind: world
+    source: asked
+    note: Approximate old wheel width.
+  bearing_od:
+    value: 22
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate; the printed fit test governs the pocket size.
+  bearing_width:
+    value: 7
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate per bearing.
+  bearing_bore:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate; verify actual bolt fit by hand.
+  pocket_d:
+    value: 22.1
+    unit: mm
+    kind: design
+    source: design
+    note: The user reported the 22.10 mm printed coupon was snug.
+  shoulder_id:
+    value: 20.4
+    unit: mm
+    kind: design
+    source: design
+    note: Verify the opposing seats bear only on the outer rings.
+  entry_chamfer:
+    value: 0.25
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  tread_chamfer:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  spacer_od:
+    value: 11
+    unit: mm
+    kind: design
+    source: guessed
+    note: Must fit entirely on raised inner-ring face; real ring diameter unmeasured.
+  spacer_id:
+    value: 8.4
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  side_spacer_t:
+    value: 2
+    unit: mm
+    kind: design
+    source: design
+    note: One on each side; model assumes a 20 mm between-cheek stack with seated,
+      flush bearings.
+  bracket_gap:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Must fit the actual assembled stack without drawing the cheeks inward.
+  cheek_thickness_total:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: ''
+  axle_hole_d:
+    value: null
+    unit: mm
+    kind: world
+    source: unknown
+    note: Both existing holes must accept the M8 axle without drilling and without
+      obvious play.
+  own_bolt_d:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: measured
+    note: Approximate shank diameter only.
+  own_bolt_length:
+    value: null
+    unit: mm
+    kind: hardware
+    source: unknown
+    note: ''
+  axle_catalog_l:
+    value: 40
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Candidate length, not verified against the bracket.
+  axle_pitch:
+    value: 1.25
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  locknut_h:
+    value: 8
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  washer_t:
+    value: 1.6
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Two washers, both outside the bracket.
+parts:
+- id: wheel
+  role: final
+  material: PLA
+  code: "def build(p):\n    r = p.wheel_od/2\n    w = p.wheel_width\n    c = p.tread_chamfer\n\
+    \    b = p.bearing_width\n    a = p.pocket_d/2\n    e = p.entry_chamfer\n    assert\
+    \ 2*b < w\n    rim = cq.Workplane('XZ').polyline([(0,0),(r-c,0),(r,c),(r,w-c),(r-c,w),(0,w)]).close().revolve(360,(0,0),(0,1))\n\
+    \    rim = rim.cut(cq.Workplane('XY').circle(p.shoulder_id/2).extrude(w))\n  \
+    \  for z in (0,w-b):\n        rim = rim.cut(cq.Workplane('XY',origin=(0,0,z)).circle(a).extrude(b))\n\
+    \    low = cq.Solid.makeCone(a+e,a,e,cq.Vector(0,0,0),cq.Vector(0,0,1))\n    high\
+    \ = cq.Solid.makeCone(a+e,a,e,cq.Vector(0,0,w),cq.Vector(0,0,-1))\n    return\
+    \ rim.cut(low).cut(high)"
+  print_orientation: Flat annular face at z=0; bearing axis vertical. No supports.
+    The lower shoulder steps inward by 0.85 mm, as in the fit coupon.
+  use_orientation: Axle horizontal across the track; one 608ZZ pressed into each face.
+- id: center-spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    h = p.wheel_width-2*p.bearing_width\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_id/2).extrude(h)"
+  print_orientation: Flat on bed at z=0; bore vertical.
+  use_orientation: Between the two bearing inner rings, coaxial with the axle.
+- id: side-spacer
+  role: final
+  material: PLA
+  code: "def build(p):\n    return cq.Workplane('XY').circle(p.spacer_od/2).circle(p.spacer_id/2).extrude(p.side_spacer_t)"
+  print_orientation: Flat on bed at z=0; bore vertical. Print two copies.
+  use_orientation: One between each outer-facing bearing inner ring and its adjacent
+    bracket cheek.
+hardware:
+- id: bearings
+  ref: 608ZZ
+  qty: 2
+- id: axle
+  ref: ISO 4762 M8x40
+  qty: 1
+- id: locknut
+  ref: ISO 10511 M8
+  qty: 1
+- id: washers
+  ref: ISO 7089 M8
+  qty: 2
+joints: []
+criteria:
+- id: press-fit
+  part: wheel
+  feature: opposed bearing pockets and center seats
+  relation: seats
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - pocket_d
+  - bearing_od
+  - bearing_width
+  - shoulder_id
+  check:
+    method: coupon
+    ref: fit-2200-2215-2230
+    description: User reported the 22.10 mm print went in snugly and held upside down.
+      On the final print verify both bearings seat flat, cannot be shifted by hand,
+      and shields remain free.
+- id: inner-ring-contact
+  part: center-spacer
+  feature: annular end faces
+  relation: faces
+  hardware: bearings
+  clearance_mm: null
+  params:
+  - spacer_od
+  - spacer_id
+  - wheel_width
+  - bearing_width
+  check:
+    method: measure
+    ref: null
+    description: Verify spacer contact falls entirely on both inner rings, and the
+      wheel turns freely with the axle stack lightly snugged. Check the two outside
+      spacers against their bearing faces too.
+- id: track
+  part: wheel
+  feature: flat tread and 50 × 16 mm envelope
+  relation: clears
+  hardware: null
+  clearance_mm: null
+  params:
+  - wheel_od
+  - wheel_width
+  - tread_chamfer
+  check:
+    method: template
+    ref: null
+    description: Compare to an intact matching roller or original profile and trial-fit
+      in the unloaded bracket on the actual track. Reject if the track needs a groove,
+      crown, or flange, or if the door guide cannot keep the roller on track.
+- id: stack
+  part: side-spacer
+  feature: complete between-cheek stack with two side spacers
+  relation: clears
+  hardware: axle
+  clearance_mm: null
+  params:
+  - bracket_gap
+  - axle_hole_d
+  - cheek_thickness_total
+  - wheel_width
+  - side_spacer_t
+  - axle_catalog_l
+  - own_bolt_length
+  - washer_t
+  - locknut_h
+  - axle_pitch
+  check:
+    method: measure
+    ref: null
+    description: Check for a close slip fit without bending the cheeks, no appreciable
+      axial play after snugging, and full engagement through the nylon with at least
+      one complete thread visible. Ensure the projecting end and head clear the door
+      and track.
+manual:
+- n: '1'
+  text: Before printing the full wheel, inspect the original or an intact matching
+    roller. Proceed only for a lightweight door carried on bottom rollers, with a
+    flat tread and a rigid two-cheek bracket that accepts an M8 axle. Check space
+    for the roughly 20 mm bearing-and-spacer stack. If you cannot confirm the profile,
+    support arrangement, or clearances, get a matching replacement rather than fitting
+    this print.
+  parts:
+  - wheel
+  - side-spacer
+  hardware:
+  - axle
+  tool: null
+- n: '2'
+  text: Print at 0.2 mm layers, flat as modeled, without supports. Use six walls and
+    solid infill. Print two side spacers. Remove loose strings or brim without reaming
+    the bearing seats. Check the wheel for cracks or gaps around the shoulders.
+  parts:
+  - wheel
+  - center-spacer
+  - side-spacer
+  hardware: []
+  tool: null
+- n: '3'
+  text: Seat the first bearing squarely with firm even pressure on its outer ring,
+    not on its shield or inner ring. Insert the center spacer from the other side,
+    then seat the second bearing. The bearings should sit roughly flush and neither
+    should shift by hand. Check that all three spacers contact only the raised inner
+    rings. A clean-looking spacer print does not establish that fit. Do not hammer
+    in a bearing or install one that is loose.
+  parts:
+  - wheel
+  - center-spacer
+  - side-spacer
+  hardware:
+  - bearings
+  tool: null
+- n: '4'
+  text: 'With the door safely supported and the bracket unloaded, assemble in this
+    order: bolt head, washer, cheek, side spacer, wheel assembly, side spacer, cheek,
+    washer, locknut. The listed M8×40 is a candidate; use your own M8 bolt only if
+    it slides through both bearings by hand and gives the required locknut engagement
+    and clearance. Bring the stack just snug to remove play; do not torque down hard
+    on the PLA spacers or pull the cheeks together to close a gap. If the wheel binds,
+    rubs a shield, or wobbles, stop and correct the fit before loading it.'
+  parts:
+  - wheel
+  - center-spacer
+  - side-spacer
+  hardware:
+  - bearings
+  - axle
+  - washers
+  - locknut
+  tool: Hex key and wrench
+- n: '5'
+  text: Test free spin off-load. Then transfer the lightweight door's weight gradually
+    while keeping it supported. Move it slowly a few times, checking that the wheel
+    stays on the track, the guides remain engaged, and the tread and bracket do not
+    rub. This is an unrated temporary repair. Stop using it if the PLA cracks or flattens,
+    a bearing migrates, the axle loosens, or the door starts to drag.
+  parts:
+  - wheel
+  - center-spacer
+  - side-spacer
+  hardware:
+  - bearings
+  - axle
+  - washers
+  - locknut
+  tool: null

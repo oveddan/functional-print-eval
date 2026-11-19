@@ -1,0 +1,223 @@
+task: nut-knob/M3
+note: One-piece Ø20 × 8 mm scalloped PLA knob. Three tapered ribs grip the nut, the
+  hex flats resist rotation, and a 4.8 mm thick floor stops the nut while leaving
+  a through-bore for the bolt. The nominal nut face is recessed 0.8 mm. The fit test
+  did not yield a usable result; the selected 5.40 mm rib setting is unverified. The
+  M3×12 screw is a fit-check example, not a required bolt length.
+questions: []
+params:
+  knob_d:
+    value: 20
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  knob_height:
+    value: 8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 8
+    unit: count
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 11.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 2.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  nut_height:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_nominal_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  pocket_extra_af:
+    value: 0.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  pocket_depth:
+    value: 3.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  bolt_pass_extra_d:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_effective_af:
+    value: 5.4
+    unit: mm
+    kind: design
+    source: design
+    note: Sets the radial position of each of the three rib tips; nominal 0.05 mm
+      intrusion into each of three alternate flats of a 5.50 mm nut.
+  rib_width:
+    value: 0.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_root_overlap:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_straight_h:
+    value: 1.8
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_ramp_end:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: knob
+  role: final
+  material: Black high-speed PLA
+  code: "from math import pi, cos, sin\n\ndef build(p):\n    h = p.knob_height\n \
+    \   z = h - p.pocket_depth\n    a = (p.nut_af + p.pocket_extra_af)/2\n    r =\
+    \ a/cos(pi/6)\n    bore_d = p.bolt_nominal_d + p.bolt_pass_extra_d\n    hexpts\
+    \ = [(r*cos(pi/6+i*pi/3), r*sin(pi/6+i*pi/3)) for i in range(6)]\n    body = cq.Workplane('XY').circle(p.knob_d/2).extrude(h)\n\
+    \    grippts = [(p.scallop_center_r*cos(2*pi*i/int(p.scallop_count)), p.scallop_center_r*sin(2*pi*i/int(p.scallop_count)))\
+    \ for i in range(int(p.scallop_count))]\n    body = body.cut(cq.Workplane('XY').pushPoints(grippts).circle(p.scallop_r).extrude(h))\n\
+    \    body = body.cut(cq.Workplane('XY').workplane(offset=z).polyline(hexpts).close().extrude(p.pocket_depth))\n\
+    \    tip = p.rib_effective_af/2\n    root = a + p.rib_root_overlap\n    rib =\
+    \ cq.Workplane('XZ').polyline([(tip,z),(root,z),(root,z+p.rib_ramp_end),(a,z+p.rib_ramp_end),(tip,z+p.rib_straight_h)]).close().extrude(p.rib_width/2,both=True)\n\
+    \    for angle in (0,120,240):\n        body = body.union(rib.rotate((0,0,0),(0,0,1),angle))\n\
+    \    return body.cut(cq.Workplane('XY').circle(bore_d/2).extrude(h))"
+  print_orientation: Flat bearing face at z=0 on the bed; hex recess opens up. No
+    supports.
+  use_orientation: Flat bearing face toward the work; hex recess away from the work.
+    The bolt enters from the bearing face and can protrude through the nut into and
+    past the recess.
+hardware:
+- id: nut
+  ref: ISO 4032 M3
+  qty: 1
+- id: test_bolt
+  ref: ISO 4762 M3x12
+  qty: 1
+joints: []
+criteria:
+- id: nut_recessed
+  part: knob
+  feature: Hex pocket and annular floor
+  relation: contains
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_height
+  - pocket_depth
+  - nut_af
+  - pocket_extra_af
+  check:
+    method: measure
+    ref: null
+    description: Seat the nut flat on the floor and lay a straightedge across the
+      top; the entire nut must be below it. Verify the floor extends under the nut
+      all around the bore.
+- id: inversion
+  part: knob
+  feature: Three tapered retention ribs
+  relation: engages
+  hardware: nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - rib_effective_af
+  - rib_width
+  - rib_straight_h
+  - rib_ramp_end
+  check:
+    method: measure
+    ref: null
+    description: The nut must seat with thumb pressure, then stay in when inverted
+      and lightly tapped with no bolt installed.
+- id: bolt_exit
+  part: knob
+  feature: Axial through-bore
+  relation: clears
+  hardware: test_bolt
+  clearance_mm: 0.25
+  params:
+  - bolt_nominal_d
+  - bolt_pass_extra_d
+  - knob_height
+  check:
+    method: measure
+    ref: null
+    description: Radial clearance stated for the unthreaded printed bore only. Spin
+      an M3 screw in from the flat side by hand; it must engage the nut and emerge
+      from the open side without binding on the PLA.
+manual:
+- n: '1'
+  text: Print knob flat-side down with the recess facing up, using 0.2 mm layers and
+    no supports. Let it cool before removing it. Clear any loose strands or burrs
+    from the bore and recess without trimming the ribs.
+  parts:
+  - knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Set knob flat-side down on a firm surface. Line up the nut flats with the
+    hex recess and press the nut straight in with your thumb until it sits flat on
+    the floor, below the rim. Do not hammer it in or use the bolt to pull it in.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '3'
+  text: Before installing a bolt, turn knob recess-down over the bench and give it
+    a few light taps. The nut must stay seated. If it falls out, reduce rib_effective_af
+    by 0.10 mm and reprint; if it cannot be seated by thumb pressure, increase rib_effective_af
+    by 0.10 mm and reprint.
+  parts:
+  - knob
+  hardware:
+  - nut
+  tool: null
+- n: '4'
+  text: Start your M3 bolt from the flat side and turn knob by hand. An M3×12 screw
+    can be used to verify through travel on the bench; for use, choose a bolt that
+    leaves more than 8 mm projecting from the work if you want it to emerge beyond
+    the knob. Hand-tighten only.
+  parts:
+  - knob
+  hardware:
+  - nut
+  - test_bolt
+  tool: null

@@ -1,0 +1,230 @@
+task: nut-knob/M3
+note: One-piece, 20 mm scalloped M3 thumb knob. The ISO 4032 nut presses into the
+  top and sits nominally 0.6 mm below the rim. Three small ribs retain it; a solid
+  shoulder stops it from passing through the bottom, while a Ø3.5 mm through-hole
+  clears the bolt. The coupon fit was not confirmed, so the final model uses the middle
+  rib size as a starting point.
+questions: []
+params:
+  knob_od:
+    value: 20
+    unit: mm
+    kind: world
+    source: asked
+    note: User requested about 20 mm across; modeled at 20 mm across opposing lobes.
+  nut_af:
+    value: 5.5
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ISO 4032 M3 nominal width across flats.
+  nut_h:
+    value: 2.4
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: ''
+  bolt_d:
+    value: 3
+    unit: mm
+    kind: hardware
+    source: catalog
+    note: Nominal M3 major diameter.
+  bolt_clearance_diametral:
+    value: 0.5
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  floor:
+    value: 2.4
+    unit: mm
+    kind: design
+    source: design
+    note: Thickness of shoulder below the nut.
+  nut_recess:
+    value: 0.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  hex_extra_af:
+    value: 0.26
+    unit: mm
+    kind: design
+    source: design
+    note: Across-flats clearance away from the ribs.
+  rib_center:
+    value: 3.05
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_r:
+    value: 0.4
+    unit: mm
+    kind: design
+    source: design
+    note: 'Middle coupon setting: effective three-rib hex AF 5.30 mm. Larger radius
+      tightens the fit.'
+  rib_straight_h:
+    value: 1.6
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_tip_r:
+    value: 0.1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  rib_lead_h:
+    value: 1
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_center_r:
+    value: 12.2
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_r:
+    value: 3
+    unit: mm
+    kind: design
+    source: design
+    note: ''
+  scallop_count:
+    value: 6
+    unit: count
+    kind: design
+    source: design
+    note: ''
+parts:
+- id: thumb-knob
+  role: final
+  material: Black high-speed PLA
+  code: "import math\n\ndef build(p):\n    pocket_h = p.nut_h + p.nut_recess\n   \
+    \ h = p.floor + pocket_h\n    w = cq.Workplane('XY').circle(p.knob_od/2).extrude(h)\n\
+    \    for i in range(int(p.scallop_count)):\n        a = (i+0.5)*2*math.pi/p.scallop_count\n\
+    \        x = p.scallop_center_r*math.cos(a)\n        y = p.scallop_center_r*math.sin(a)\n\
+    \        w = w.cut(cq.Workplane('XY').center(x,y).circle(p.scallop_r).extrude(h))\n\
+    \    R = (p.nut_af+p.hex_extra_af)/math.sqrt(3)\n    pts = [(R*math.cos(i*math.pi/3),R*math.sin(i*math.pi/3))\
+    \ for i in range(6)]\n    pocket = cq.Workplane('XY',origin=(0,0,p.floor)).polyline(pts).close().extrude(pocket_h)\n\
+    \    w = w.cut(pocket)\n    for i in range(3):\n        a = math.pi/6+i*2*math.pi/3\n\
+    \        x = p.rib_center*math.cos(a)\n        y = p.rib_center*math.sin(a)\n\
+    \        stem = cq.Solid.makeCylinder(p.rib_r,p.rib_straight_h,cq.Vector(x,y,p.floor))\n\
+    \        lead = cq.Solid.makeCone(p.rib_r,p.rib_tip_r,p.rib_lead_h,cq.Vector(x,y,p.floor+p.rib_straight_h))\n\
+    \        w = w.union(stem.fuse(lead))\n    return w.cut(cq.Workplane('XY').circle((p.bolt_d+p.bolt_clearance_diametral)/2).extrude(h))"
+  print_orientation: Flat shoulder-side underside at z=0. Print with hex pocket facing
+    up, 0.2 mm layers, no supports.
+  use_orientation: Place the flat underside toward the clamped surface. Start the
+    protruding M3 bolt through the round underside hole and turn the knob by hand.
+hardware:
+- id: m3-nut
+  ref: ISO 4032 M3
+  qty: 1
+joints: []
+criteria:
+- id: recess
+  part: thumb-knob
+  feature: Recessed hex pocket
+  relation: contains
+  hardware: m3-nut
+  clearance_mm: 0.6
+  params:
+  - nut_af
+  - nut_h
+  - hex_extra_af
+  - nut_recess
+  check:
+    method: measure
+    ref: null
+    description: With the nut seated, lay a straightedge across the rim and confirm
+      that the nut is entirely below it.
+- id: retention
+  part: thumb-knob
+  feature: Three tapered press-fit ribs and hex flats
+  relation: engages
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - nut_af
+  - rib_center
+  - rib_r
+  - rib_straight_h
+  - rib_lead_h
+  check:
+    method: measure
+    ref: null
+    description: Nut must seat by thumb pressure alone and stay seated with the pocket
+      facing down during a light shake. No glue.
+- id: stop
+  part: thumb-knob
+  feature: Shoulder surrounding the bolt through-hole
+  relation: supports
+  hardware: m3-nut
+  clearance_mm: null
+  params:
+  - floor
+  - nut_af
+  - bolt_d
+  - bolt_clearance_diametral
+  check:
+    method: measure
+    ref: null
+    description: Press the seated nut toward the round through-hole; confirm it stops
+      on the shoulder and cannot pass through.
+- id: bolt-pass
+  part: thumb-knob
+  feature: Straight bolt clearance bore
+  relation: clears
+  hardware: null
+  clearance_mm: 0.5
+  params:
+  - bolt_d
+  - bolt_clearance_diametral
+  check:
+    method: measure
+    ref: null
+    description: Using a sufficiently long M3 bolt, start it from the flat side and
+      thread it by hand until its tip emerges above the rim. The bolt should not bind
+      on PLA or lift the nut during normal thread starting.
+manual:
+- n: '1'
+  text: Print flat-side down with the hex pocket up, using black PLA, 0.2 mm layers,
+    and no supports. Let the part cool before removing it.
+  parts:
+  - thumb-knob
+  hardware: []
+  tool: null
+- n: '2'
+  text: Set the nut squarely in the hex opening, align the flats, and press it straight
+    down with your thumb until it stops. Do not hammer it or use the bolt to force
+    it in. The nut must sit below the rim.
+  parts:
+  - thumb-knob
+  hardware:
+  - m3-nut
+  tool: null
+- n: '3'
+  text: Flip the knob pocket-down and shake it lightly. If the nut falls out, increase
+    rib_r by 0.04 mm and reprint. If it won't seat by thumb pressure, reduce rib_r
+    by 0.04 mm and reprint. Repeat the fit check before use.
+  parts:
+  - thumb-knob
+  hardware:
+  - m3-nut
+  tool: null
+- n: '4'
+  text: Face the flat side toward the work. Start your M3 bolt through the round hole
+    without pushing hard, then turn the knob by hand. Verify that a long enough bolt
+    threads through the nut and exits the recessed side. Tighten by hand only.
+  parts:
+  - thumb-knob
+  hardware:
+  - m3-nut
+  tool: null
